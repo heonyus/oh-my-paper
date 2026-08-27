@@ -1,0 +1,229 @@
+.metadata-sidebar {
+  width: 320px;
+  min-width: 300px;
+  max-width: 340px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  padding: var(--space-4, 16px);
+  background: var(--surface, #ffffff);
+  border-left: 1px solid var(--line, #e1e5ea);
+  overflow-y: auto;
+}
+
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sidebar-chat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border: 1px solid var(--line, #e1e5ea);
+  border-radius: 6px;
+  background: var(--surface, #ffffff);
+  color: var(--action, #3478f6);
+  font-size: 12px;
+  cursor: pointer;
+}
+.sidebar-chat:hover {
+  background: var(--action-subtle, #eaf2ff);
+}
+.sidebar-collapse {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--ink-muted, #656d78);
+  cursor: pointer;
+  transition:
+    opacity 110ms ease,
+    transform 110ms ease;
+}
+.sidebar-collapse:hover {
+  opacity: 0.7;
+}
+.sidebar-collapse:focus-visible {
+  outline: 2px solid var(--action, #3478f6);
+  outline-offset: 1px;
+}
+
+.sidebar-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--ink, #20242a);
+  word-break: break-word;
+}
+
+.metadata-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.metadata-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.metadata-label {
+  color: var(--ink-muted, #656d78);
+  font-weight: 500;
+}
+.metadata-value {
+  color: var(--ink, #20242a);
+  font-weight: 430;
+}
+
+.sidebar-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink, #20242a);
+}
+.sidebar-section ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sidebar-section button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--ink, #20242a);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 110ms ease;
+}
+.sidebar-section button:hover {
+  background: var(--surface-muted, #f4f6f8);
+}
+.sidebar-section button:focus-visible {
+  outline: 2px solid var(--action, #3478f6);
+  outline-offset: -1px;
+}
+.outline-page {
+  color: var(--ink-muted, #656d78);
+  font-size: 12px;
+  font-family: "SF Mono", ui-monospace, monospace;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tag-list li {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--surface-muted, #f4f6f8);
+  color: var(--ink-muted, #656d78);
+  font-size: 12px;
+  font-weight: 500;
+}
+.sidebar-section li + li {
+  margin-top: 2px;
+}
+.sidebar-card-list {
+  display: grid;
+  gap: 4px;
+}
+.sidebar-card-list button {
+  gap: 10px;
+  min-height: 48px;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+}
+.sidebar-card-list button:hover {
+  border-color: var(--line, #e1e5ea);
+}
+.sidebar-card-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.sidebar-card-kind {
+  color: var(--action, #3478f6);
+  font-size: 11px;
+  font-weight: 650;
+}
+.sidebar-card-title {
+  overflow: hidden;
+  color: var(--ink, #20242a);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-counts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--line, #e1e5ea);
+  color: var(--ink-muted, #656d78);
+  font-size: 12px;
+}
+
+.sidebar-hint {
+  margin: 0;
+  color: var(--ink-muted, #656d78);
+  font-size: 12px;
+}
+.sidebar-empty {
+  margin: auto;
+  color: var(--ink-muted, #656d78);
+  font-size: 14px;
+  text-align: center;
+}
+
+.sidebar-rail {
+  width: 36px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface, #ffffff);
+  border-left: 1px solid var(--line, #e1e5ea);
+}
+.sidebar-rail-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--ink-muted, #656d78);
+  cursor: pointer;
+  transition: opacity 110ms ease;
+}
+.sidebar-rail-toggle:hover {
+  opacity: 0.7;
+}
+.sidebar-rail-toggle:focus-visible {
+  outline: 2px solid var(--action, #3478f6);
+  outline-offset: 1px;
+}

@@ -1,0 +1,59 @@
+export function findPdfTextPage(query: string): number | null {
+  const needle = query.trim().toLocaleLowerCase()
+  if (!needle) return null
+  for (const span of document.querySelectorAll<HTMLElement>(".textLayer span")) {
+    if (!span.textContent?.toLocaleLowerCase().includes(needle)) continue
+    const page = Number(span.closest<HTMLElement>(".page")?.getAttribute("data-page-number"))
+    if (Number.isInteger(page) && page > 0) return page
+  }
+  return null
+}
+
+export function paperContextForQuestion(question: string, currentPage: number): string {
+  const terms = question
+    .toLocaleLowerCase()
+    .split(/[^\p{L}\p{N}_]+/u)
+    .filter((term) => term.length >= 2)
+  const pages = Array.from(document.querySelectorAll<HTMLElement>(".page")).flatMap((page) => {
+    const pageNumber = Number(page.getAttribute("data-page-number"))
+    const text = page
+      .querySelector<HTMLElement>(".textLayer")
+      ?.textContent?.replace(/\s+/gu, " ")
+      .trim()
+    if (!Number.isInteger(pageNumber) || !text) return []
+    const normalized = text.toLocaleLowerCase()
+    const score =
+      terms.reduce((total, term) => total + (normalized.includes(term) ? 1 : 0), 0) +
+      (pageNumber === currentPage ? 1 : 0)
+    return [{ pageNumber, text, score }]
+  })
+  return pages
+    .sort((left, right) => right.score - left.score || left.pageNumber - right.pageNumber)
+    .slice(0, 4)
+    .map((page) => `Page ${page.pageNumber}: ${page.text}`)
+    .join("\n\n")
+    .slice(0, 8_000)
+}
+
+export function paperOverviewContext(): string {
+  const pages = Array.from(document.querySelectorAll<HTMLElement>(".page")).flatMap((page) => {
+    const pageNumber = Number(page.getAttribute("data-page-number"))
+    const text = page
+      .querySelector<HTMLElement>(".textLayer")
+      ?.textContent?.replace(/\s+/gu, " ")
+      .trim()
+    if (!Number.isInteger(pageNumber) || !text) return []
+    const score =
+      (pageNumber === 1 ? 8 : 0) +
+      (/\b(?:method|approach|framework)\b/iu.test(text) ? 4 : 0) +
+      (/\b(?:experiment|result|evaluation)\b/iu.test(text) ? 3 : 0) +
+      (/\b(?:conclusion|limitation|discussion)\b/iu.test(text) ? 3 : 0)
+    return [{ pageNumber, text, score }]
+  })
+  return pages
+    .sort((left, right) => right.score - left.score || left.pageNumber - right.pageNumber)
+    .slice(0, 6)
+    .map((page) => `Page ${page.pageNumber}: ${page.text}`)
+    .join("\n\n")
+    .slice(0, 8_000)
+}

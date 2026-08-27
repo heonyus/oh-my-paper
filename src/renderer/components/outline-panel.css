@@ -1,0 +1,75 @@
+.outline-panel {
+  grid-row: 2;
+  grid-column: 2;
+  min-width: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+}
+.outline-panel header {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px 0 16px;
+  border-bottom: 1px solid var(--line);
+}
+.outline-panel h2 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 14px;
+}
+.outline-panel header button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.outline-panel header button:hover {
+  background: var(--surface-muted);
+}
+.outline-panel ol {
+  height: calc(100% - 52px);
+  margin: 0;
+  padding: 8px;
+  overflow-y: auto;
+  list-style: none;
+}
+.outline-panel li + li {
+  margin-top: 2px;
+}
+.outline-panel li button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.35;
+  cursor: pointer;
+}
+.outline-panel li button:hover,
+.outline-panel li button[aria-current="page"] {
+  background: var(--action-subtle);
+}
+.outline-panel li button > span:last-child {
+  color: var(--ink-muted);
+  font-family: "SF Mono", ui-monospace, monospace;
+}
+.outline-panel > p {
+  margin: 20px 16px;
+  color: var(--ink-muted);
+  font-size: 12px;
+}
