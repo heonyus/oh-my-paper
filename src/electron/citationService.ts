@@ -8,7 +8,7 @@ import {
   citationLookupResultSchema,
   citationPaperSchema,
 } from "../shared/ipc"
-import { selectCitationPaper } from "./citationMatching"
+import { normalizedDoi, selectCitationPaper } from "./citationMatching"
 
 type TransportResponse = {
   readonly statusCode: number
@@ -46,6 +46,32 @@ const crossrefResponseSchema = z.object({
       }),
     ),
   }),
+})
+const arxivEntrySchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  published: z.string().min(1),
+  author: z.array(z.object({ name: z.string().min(1) })).default([]),
+  summary: z.string().optional(),
+})
+const arxivResponseSchema = z.object({
+  entry: z.union([arxivEntrySchema, z.array(arxivEntrySchema)]).optional(),
+})
+const openAlexWorkSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  publication_year: z.number().int().nullable().optional(),
+  doi: z.string().nullable().optional(),
+  authorships: z
+    .array(z.object({ author: z.object({ display_name: z.string().nullable().optional() }) }))
+    .default([]),
+  cited_by_count: z.number().int().nonnegative().nullable().optional(),
+  primary_location: z
+    .object({
+      source: z.object({ display_name: z.string().nullable().optional() }).nullable().optional(),
+    })
+    .nullable()
+    .optional(),
 })
 
 function buildQuery(request: CitationLookupRequest): string | null {
@@ -127,10 +153,84 @@ function parseCrossrefPapers(value: unknown): readonly CitationPaper[] {
   })
 }
 
+export function parseArxivPapers(value: unknown): readonly CitationPaper[] {
+  const parsed = arxivResponseSchema.safeParse(value)
+  if (!parsed.success) return []
+  const entries = Array.isArray(parsed.data.entry) ? parsed.data.entry : [parsed.data.entry]
+  return entries.flatMap((item) => {
+    if (!item) return []
+    const year = Number(item.published.slice(0, 4))
+    const paper = citationPaperSchema.safeParse({
+      paperId: item.id,
+      title: item.title.replace(/\s+/gu, " ").trim(),
+      authors: item.author.map((author) => author.name),
+      year: Number.isInteger(year) && year >= 1000 && year <= 9999 ? year : null,
+      venue: "arXiv",
+      abstract: item.summary ?? null,
+      doi: null,
+      url: isHttpsUrl(item.id),
+      openAccessUrl: isHttpsUrl(item.id),
+      citationCount: null,
+    })
+    return paper.success ? [paper.data] : []
+  })
+}
+
+export function parseArxivXml(body: string): unknown {
+  const entryPattern = new RegExp("<entry>([\\s\\S]*?)</entry>", "gu")
+  const entryMatches = [...body.matchAll(entryPattern)]
+  const entries = entryMatches.map((entry) => {
+    const pick = (tag: string): string =>
+      entry[1]
+        ?.match(new RegExp("<" + tag + "[^>]*>([\\s\\S]*?)</" + tag + ">", "u"))?.[1]
+        ?.trim() ?? ""
+    const namePattern = new RegExp("<name>([\\s\\S]*?)</name>", "gu")
+    const authors = [...(entry[1]?.matchAll(namePattern) ?? [])]
+      .map((match) => match[1]?.trim() ?? "")
+      .filter((name) => name.length > 0)
+    return {
+      id: pick("id"),
+      title: pick("title"),
+      published: pick("published"),
+      author: authors.map((name) => ({ name })),
+      summary: pick("summary") || undefined,
+    }
+  })
+  return { entry: entries }
+}
+
+function parseOpenAlexPapers(value: unknown): readonly CitationPaper[] {
+  const parsed = z.object({ results: z.array(openAlexWorkSchema) }).safeParse(value)
+  if (!parsed.success) return []
+  return parsed.data.results.flatMap((item) => {
+    const doi = normalizedDoi(item.doi)
+    const paper = citationPaperSchema.safeParse({
+      paperId: item.id,
+      title: item.title.replace(/\s+/gu, " ").trim(),
+      authors: item.authorships.flatMap((authorship) =>
+        authorship.author.display_name ? [authorship.author.display_name] : [],
+      ),
+      year: item.publication_year ?? null,
+      venue: item.primary_location?.source?.display_name ?? "OpenAlex",
+      abstract: null,
+      doi: doi,
+      url: item.doi && isHttpsUrl(item.doi) ? item.doi : null,
+      openAccessUrl: null,
+      citationCount: item.cited_by_count ?? null,
+    })
+    return paper.success ? [paper.data] : []
+  })
+}
+
 async function defaultTransport(url: string): Promise<TransportResponse> {
   const response = await request(url, {
     method: "GET",
-    headers: { accept: "application/json", "user-agent": "Hotebook/0.1" },
+    headers: {
+      accept: "application/json",
+      "user-agent": url.includes("openalex.org")
+        ? "Hotebook/0.1 (https://github.com/heonyus/hotebook)"
+        : "Hotebook/0.1",
+    },
     headersTimeout: 5_000,
     bodyTimeout: 5_000,
   })
@@ -194,6 +294,49 @@ export async function lookupCitation(
     if (crossref.statusCode >= 200 && crossref.statusCode < 300) {
       const match = selectCitationPaper(
         parseCrossrefPapers(parseJson(crossref.body)),
+        parsedRequest,
+      )
+      if (match) {
+        return citationLookupResultSchema.parse({
+          status: "found",
+          paper: match.paper,
+          match: {
+            score: match.score,
+            signals: match.signals,
+            candidatesCompared: match.candidatesCompared,
+          },
+          query,
+        })
+      }
+    }
+    const arxivQuery = parsedRequest.title ? `ti:"${parsedRequest.title.slice(0, 180)}"` : query
+    const arxiv = await transport(
+      `https://export.arxiv.org/api/query?search_query=${encodeURIComponent(arxivQuery)}&max_results=3`,
+    )
+    if (arxiv.statusCode >= 200 && arxiv.statusCode < 300) {
+      const match = selectCitationPaper(parseArxivPapers(parseArxivXml(arxiv.body)), parsedRequest)
+      if (match) {
+        return citationLookupResultSchema.parse({
+          status: "found",
+          paper: match.paper,
+          match: {
+            score: match.score,
+            signals: match.signals,
+            candidatesCompared: match.candidatesCompared,
+          },
+          query,
+        })
+      }
+    }
+    const openAlexParams = new URLSearchParams({
+      search: query.slice(0, 300),
+      per_page: "3",
+      select: "id,title,publication_year,doi,authorships,cited_by_count,primary_location",
+    })
+    const openAlex = await transport(`https://api.openalex.org/works?${openAlexParams.toString()}`)
+    if (openAlex.statusCode >= 200 && openAlex.statusCode < 300) {
+      const match = selectCitationPaper(
+        parseOpenAlexPapers(parseJson(openAlex.body)),
         parsedRequest,
       )
       if (match) {

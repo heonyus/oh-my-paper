@@ -2,7 +2,7 @@ import type { ProviderConfig } from "../shared/ipc"
 import { providerConfigSchema, providerKindSchema } from "../shared/ipc"
 
 export const DEFAULT_OPENAI_MODEL = "gpt-5"
-export const DEFAULT_OPENROUTER_MODEL = "openai/gpt-5"
+export const DEFAULT_OPENROUTER_MODEL = "z-ai/glm-5.3-flash"
 
 export type ProviderEnvironment = {
   readonly HOTEBOOK_AI_PROVIDER?: string

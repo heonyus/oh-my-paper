@@ -22,7 +22,7 @@ function words(value: string): readonly string[] {
     .filter((word) => word.length > 1 && !titleStopWords.has(word))
 }
 
-function normalizedDoi(value: string | null | undefined): string | null {
+export function normalizedDoi(value: string | null | undefined): string | null {
   if (!value) return null
   return value
     .toLocaleLowerCase()
