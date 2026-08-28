@@ -14,7 +14,7 @@ afterEach(async () => {
 
 describe("WorkspaceStore", () => {
   it("migrates legacy source anchors without deleting saved cards", async () => {
-    const root = await mkdtemp(join(tmpdir(), "hotebook-workspace-"))
+    const root = await mkdtemp(join(tmpdir(), "scourgify-workspace-"))
     temporaryRoots.push(root)
     const legacy = {
       documents: [],
@@ -44,7 +44,7 @@ describe("WorkspaceStore", () => {
   })
 
   it("serializes rapid workspace saves without losing the newest state", async () => {
-    const root = await mkdtemp(join(tmpdir(), "hotebook-workspace-"))
+    const root = await mkdtemp(join(tmpdir(), "scourgify-workspace-"))
     temporaryRoots.push(root)
     const store = new WorkspaceStore(root)
     const workspace = defaultWorkspace()

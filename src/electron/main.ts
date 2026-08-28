@@ -28,7 +28,7 @@ import { WorkspaceStore } from "./workspaceStore"
 const developmentOrigin = "http://localhost:5173"
 
 function createStore(): WorkspaceStore {
-  return new WorkspaceStore(join(app.getPath("userData"), "hotebook"))
+  return new WorkspaceStore(join(app.getPath("userData"), "scourgify"))
 }
 
 function emitPreparation(event: IpcMainInvokeEvent, update: PreparationUpdate): void {
@@ -58,7 +58,7 @@ async function chooseAndImport(event: IpcMainInvokeEvent): Promise<unknown> {
 
 function registerIpc(): void {
   const store = createStore()
-  const provider = new ProviderService(join(app.getPath("userData"), "hotebook"))
+  const provider = new ProviderService(join(app.getPath("userData"), "scourgify"))
   ipcMain.handle(ipcChannels.workspaceRead, async () =>
     workspaceReadResultSchema.parse(await store.read()),
   )

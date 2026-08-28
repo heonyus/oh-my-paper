@@ -20,7 +20,7 @@ const documentFixture = documentRecordSchema.parse({
 
 describe("CitationPanel", () => {
   it("verifies identity, assesses reading value, and saves the result", async () => {
-    Object.defineProperty(window, "hotebook", {
+    Object.defineProperty(window, "scourgify", {
       configurable: true,
       value: {
         lookupCitation: vi.fn(async () => ({
@@ -83,6 +83,6 @@ describe("CitationPanel", () => {
     expect(screen.getByText(/신원 일치 98%/u)).toBeVisible()
     await userEvent.click(screen.getByRole("button", { name: /보드에 저장/u }))
     expect(onSave).toHaveBeenCalledOnce()
-    Reflect.deleteProperty(window, "hotebook")
+    Reflect.deleteProperty(window, "scourgify")
   })
 })

@@ -56,7 +56,7 @@ export function PaperDiscussion({
         {entries.length > 0 ? (
           entries.map((entry) => (
             <article key={entry.id} data-role={entry.role}>
-              <strong>{entry.role === "user" ? "나" : "Hotebook"}</strong>
+              <strong>{entry.role === "user" ? "나" : "Scourgify"}</strong>
               <p>{entry.content}</p>
             </article>
           ))

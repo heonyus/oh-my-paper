@@ -22,7 +22,7 @@ const structure: DetectedStructure = {
 
 describe("inline citation assessment", () => {
   it("uses the same conservative assessment contract as the citation sidebar", async () => {
-    Object.defineProperty(window, "hotebook", {
+    Object.defineProperty(window, "scourgify", {
       configurable: true,
       value: {
         lookupCitation: vi.fn(async () => ({
@@ -70,6 +70,6 @@ describe("inline citation assessment", () => {
       expect(result.body).toContain("정독")
     }
     expect(ai.mock.lastCall?.[0]?.action).toBe("citation_assessment")
-    Reflect.deleteProperty(window, "hotebook")
+    Reflect.deleteProperty(window, "scourgify")
   })
 })

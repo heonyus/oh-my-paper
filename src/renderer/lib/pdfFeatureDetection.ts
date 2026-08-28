@@ -75,21 +75,32 @@ function isProse(text: string): boolean {
 }
 
 const CITATION_PATTERN = /\[(\d+(?:\s*,\s*\d+)*)\]/gu
+const AUTHOR_YEAR_CITATION_PATTERN =
+  /\b[A-Z][A-Za-zÀ-ÖØ-öø-ÿ'-]+(?:\s+et al\.|,)\s*,?\s*(?:19|20)\d{2}[a-z]?\b/gu
 
 function extractCitations(span: PdfTextSpan, pageNumber: number): readonly PdfFeature[] {
   const features: PdfFeature[] = []
-  const matches = span.text.matchAll(CITATION_PATTERN)
+  const matches = [
+    ...[...span.text.matchAll(CITATION_PATTERN)].map((match) => ({
+      index: match.index,
+      label: match[0],
+    })),
+    ...[...span.text.matchAll(AUTHOR_YEAR_CITATION_PATTERN)].map((match) => ({
+      index: match.index,
+      label: match[0],
+    })),
+  ].sort((left, right) => (left.index ?? 0) - (right.index ?? 0))
   for (const match of matches) {
     if (match.index === undefined || span.text.length === 0) continue
     const startRatio = Math.max(0, Math.min(1, match.index / span.text.length))
-    const widthRatio = Math.max(0, Math.min(1, match[0].length / span.text.length))
+    const widthRatio = Math.max(0, Math.min(1, match.label.length / span.text.length))
     const tokenX = span.x + startRatio * span.width
     const tokenWidth = Math.max(14, widthRatio * span.width)
     features.push({
       kind: "citation",
       pageNumber,
       rect: { x: tokenX, y: span.y, width: tokenWidth, height: span.height },
-      label: match[0],
+      label: match.label,
       context: span.text,
       priority: 0.5,
       sourceSpanIds: [span.id],
@@ -131,10 +142,7 @@ function detectSections(
       continue
     }
 
-    if (fontSize < 10.5) continue
-    if (isProse(text)) continue
-
-    if (NAMED_SECTIONS.test(text)) {
+    if (NAMED_SECTIONS.test(text) && fontSize >= 9.5) {
       features.push({
         kind: "heading",
         pageNumber,
@@ -148,7 +156,12 @@ function detectSections(
     }
 
     const numMatch = text.match(NUMBERED_HEADING)
-    if (numMatch?.[1] && Number(numMatch[1].split(".")[0]) <= 99) {
+    if (
+      numMatch?.[1] &&
+      Number(numMatch[1].split(".")[0]) <= 99 &&
+      text.length <= 100 &&
+      !isProse(text)
+    ) {
       const isSub = numMatch[1].includes(".")
       features.push({
         kind: isSub ? "subheading" : "heading",
@@ -161,6 +174,9 @@ function detectSections(
       })
       continue
     }
+
+    if (fontSize < 10.5) continue
+    if (isProse(text)) continue
 
     const appendixMatch = text.match(APPENDIX_HEADING)
     if (appendixMatch?.[1]) {

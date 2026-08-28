@@ -9,6 +9,13 @@ type VisualRow = {
 
 type ColumnZone = "left" | "right" | "full"
 
+export function normalizeExtractedPdfText(value: string): string {
+  return value
+    .replace(/\b([A-Z])\s+(?=[A-Z]{2,}\b)/gu, "$1")
+    .replace(/\s+/gu, " ")
+    .trim()
+}
+
 function columnZone(span: PdfTextSpan, pageWidth: number): ColumnZone {
   const right = span.x + span.width
   if (span.width >= pageWidth * 0.58 || (span.x < pageWidth * 0.42 && right > pageWidth * 0.58)) {
@@ -41,11 +48,7 @@ function mergeSegment(spans: readonly PdfTextSpan[]): PdfTextSpan {
   const bottom = Math.max(...spans.map((span) => span.y + span.height))
   return {
     id: spans.map((span) => span.id).join("+"),
-    text: spans
-      .map((span) => span.text)
-      .join(" ")
-      .replace(/\s+/gu, " ")
-      .trim(),
+    text: normalizeExtractedPdfText(spans.map((span) => span.text).join(" ")),
     x: left,
     y: top,
     width: right - left,
@@ -68,13 +71,13 @@ export function mergePdfTextLines(
     const row = rows.find(
       (candidate) =>
         candidate.zone === zone &&
-        Math.abs(candidate.centerY - centerY) <= Math.max(candidate.height, span.height) * 0.5 &&
+        Math.abs(candidate.centerY - centerY) <= Math.max(candidate.height, span.height) * 0.75 &&
         Math.abs((candidate.spans[0]?.rotation ?? 0) - (span.rotation ?? 0)) < 12,
     )
     if (row) row.spans.push(span)
     else rows.push({ centerY, height: span.height, zone, spans: [span] })
   }
-  return rows.flatMap((row) => {
+  const lines = rows.flatMap((row) => {
     const sorted = row.spans.sort((left, right) => left.x - right.x)
     const segments: PdfTextSpan[][] = []
     for (const span of sorted) {
@@ -86,4 +89,20 @@ export function mergePdfTextLines(
     }
     return segments.map(mergeSegment)
   })
+  const repaired: PdfTextSpan[] = []
+  for (const line of lines.sort((left, right) => left.y - right.y || left.x - right.x)) {
+    const previous = repaired.at(-1)
+    const gap = previous ? line.x - (previous.x + previous.width) : Number.POSITIVE_INFINITY
+    const sameHeadingRow =
+      previous !== undefined &&
+      previous.fontSize >= 12 &&
+      line.fontSize >= 12 &&
+      Math.abs(previous.y - line.y) <= Math.max(previous.height, line.height) * 0.75 &&
+      gap >= -4 &&
+      gap <= 10 &&
+      (previous.fontWeight >= 600 || /^\d+(?:\.\d+)*\.?\s/u.test(previous.text))
+    if (sameHeadingRow) repaired[repaired.length - 1] = mergeSegment([previous, line])
+    else repaired.push(line)
+  }
+  return repaired
 }

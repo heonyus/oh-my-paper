@@ -153,7 +153,7 @@ function parseCrossrefPapers(value: unknown): readonly CitationPaper[] {
   })
 }
 
-export function parseArxivPapers(value: unknown): readonly CitationPaper[] {
+function parseArxivPapers(value: unknown): readonly CitationPaper[] {
   const parsed = arxivResponseSchema.safeParse(value)
   if (!parsed.success) return []
   const entries = Array.isArray(parsed.data.entry) ? parsed.data.entry : [parsed.data.entry]
@@ -176,15 +176,13 @@ export function parseArxivPapers(value: unknown): readonly CitationPaper[] {
   })
 }
 
-export function parseArxivXml(body: string): unknown {
-  const entryPattern = new RegExp("<entry>([\\s\\S]*?)</entry>", "gu")
+function parseArxivXml(body: string): unknown {
+  const entryPattern = /<entry>([\s\S]*?)<\/entry>/gu
   const entryMatches = [...body.matchAll(entryPattern)]
   const entries = entryMatches.map((entry) => {
     const pick = (tag: string): string =>
-      entry[1]
-        ?.match(new RegExp("<" + tag + "[^>]*>([\\s\\S]*?)</" + tag + ">", "u"))?.[1]
-        ?.trim() ?? ""
-    const namePattern = new RegExp("<name>([\\s\\S]*?)</name>", "gu")
+      entry[1]?.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "u"))?.[1]?.trim() ?? ""
+    const namePattern = /<name>([\s\S]*?)<\/name>/gu
     const authors = [...(entry[1]?.matchAll(namePattern) ?? [])]
       .map((match) => match[1]?.trim() ?? "")
       .filter((name) => name.length > 0)
@@ -228,8 +226,8 @@ async function defaultTransport(url: string): Promise<TransportResponse> {
     headers: {
       accept: "application/json",
       "user-agent": url.includes("openalex.org")
-        ? "Hotebook/0.1 (https://github.com/heonyus/hotebook)"
-        : "Hotebook/0.1",
+        ? "Scourgify/0.1 (https://github.com/heonyus/scourgify)"
+        : "Scourgify/0.1",
     },
     headersTimeout: 5_000,
     bodyTimeout: 5_000,

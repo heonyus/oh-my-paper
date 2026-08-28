@@ -24,6 +24,60 @@ function isAuthorOrAffiliation(text: string): boolean {
   )
 }
 
+function isEquationText(text: string): boolean {
+  return /[=∑∫√≤≥±≈∼~πθσμφ∆∪]/u.test(text) && /\(\d{1,3}(?:\.\d+)?\)\s*$/u.test(text)
+}
+
+function isBodyProse(span: PdfTextSpan, columnWidth: number): boolean {
+  const words = span.text.match(/[A-Za-z]{2,}/gu)?.length ?? 0
+  return span.text.length >= 30 && (words >= 6 || (words >= 5 && span.width >= columnWidth * 0.62))
+}
+
+function isSectionHeading(text: string, fontSize: number, pageWidth: number): boolean {
+  const normalizedSize = (fontSize * 600) / pageWidth
+  const normalized = text.trim()
+  return (
+    (normalizedSize >= 9.5 &&
+      /^(?:Abstract|Introduction|Background|Related\s+Work|Methods|Experiments|Results|Discussion|Conclusion|References|Analysis)\b/iu.test(
+        normalized,
+      )) ||
+    (normalizedSize >= 10.5 && /^(?:\d+(?:\.\d+)*|[A-Z](?:\.\d+)*)\s+[A-Z]/u.test(normalized))
+  )
+}
+
+function overlapsColumn(span: PdfTextSpan, left: number, right: number): boolean {
+  return Math.min(span.x + span.width, right) - Math.max(span.x, left) > 0
+}
+
+function columnBounds(
+  caption: PdfTextSpan,
+  captions: readonly PdfTextSpan[],
+  pageWidth: number,
+  isFigure: boolean,
+): { readonly left: number; readonly right: number } {
+  if (!isFigure) return { left: 0, right: pageWidth }
+  const center = caption.x + caption.width / 2
+  const sameRow = captions
+    .filter(
+      (candidate) =>
+        Math.abs(candidate.y - caption.y) <= Math.max(candidate.height, caption.height),
+    )
+    .sort((left, right) => left.x - right.x)
+  const index = sameRow.findIndex((candidate) => candidate.id === caption.id)
+  const previous = index > 0 ? sameRow[index - 1] : undefined
+  const next = index >= 0 ? sameRow[index + 1] : undefined
+  if (sameRow.length === 1 && caption.width < pageWidth * 0.52) {
+    if (Math.abs(center - pageWidth / 2) > pageWidth * 0.15) {
+      return center < pageWidth / 2
+        ? { left: 0, right: pageWidth / 2 }
+        : { left: pageWidth / 2, right: pageWidth }
+    }
+  }
+  const left = previous ? (previous.x + previous.width / 2 + center) / 2 : 0
+  const right = next ? (center + next.x + next.width / 2) / 2 : pageWidth
+  return { left, right }
+}
+
 function canMergeHeading(
   left: PdfFeature,
   right: PdfFeature,
@@ -100,131 +154,134 @@ export function detectFiguresAndTables(
 ): { readonly features: readonly PdfFeature[]; readonly consumed: ReadonlySet<string> } {
   const features: PdfFeature[] = []
   const consumed = new Set<string>(consumedAbove)
-  const figureCaptions = spans.filter((span) =>
-    /^(?:Figure|Fig\.?)\s*\d+\s*[:.]/iu.test(span.text.trim()),
+  const captions = spans.filter((span) =>
+    /^(?:Figure|Fig\.?|Table|Tab\.?)\s*\d+\s*[:.]/iu.test(span.text.trim()),
   )
+  const figureCaptions = captions.filter((span) => /^(?:Figure|Fig\.?)/iu.test(span.text.trim()))
 
-  for (const span of spans) {
-    const text = span.text.trim()
-    const figMatch = text.match(/^(?:Figure|Fig\.?)\s*(\d+)\s*[:.]\s*(.*)$/iu)
-    const tabMatch = text.match(/^(?:Table|Tab\.?)\s*(\d+)\s*[:.]\s*(.*)$/iu)
-    if (!figMatch && !tabMatch) continue
+  for (const caption of captions) {
+    const text = caption.text.trim()
+    const figMatch = text.match(/^(?:Figure|Fig\.?)\s*(\d+)\s*[:.]/iu)
+    const tabMatch = text.match(/^(?:Table|Tab\.?)\s*(\d+)\s*[:.]/iu)
+    const isFigure = Boolean(figMatch)
+    const number = figMatch?.[1] ?? tabMatch?.[1] ?? ""
+    if (!number) continue
 
-    consumed.add(span.id)
-    const isFig = Boolean(figMatch)
-    const num = figMatch?.[1] ?? tabMatch?.[1] ?? ""
-    const label = (isFig ? "Figure " : "Table ") + num
-    const spanRight = span.x + span.width
-    const captionRow = figureCaptions
-      .filter(
-        (candidate) =>
-          Math.abs(candidate.y + candidate.height / 2 - (span.y + span.height / 2)) <=
-          Math.max(candidate.height, span.height),
-      )
-      .sort((left, right) => left.x - right.x)
-    const visualLabels = spans.filter((candidate) => {
-      const words = candidate.text.match(/[A-Za-z]{2,}/gu)?.length ?? 0
-      return (
-        candidate.y < span.y &&
-        candidate.y >= span.y - pageHeight * 0.45 &&
-        candidate.text.length <= 48 &&
-        words <= 5 &&
-        !/^(?:Figure|Fig\.?)\s*\d+/iu.test(candidate.text.trim())
-      )
-    })
-    const spansBothHalves =
-      visualLabels.filter((candidate) => candidate.x + candidate.width / 2 < pageWidth / 2)
-        .length >= 3 &&
-      visualLabels.filter((candidate) => candidate.x + candidate.width / 2 >= pageWidth / 2)
-        .length >= 3
-    const isFullWidthFigure =
-      isFig &&
-      captionRow.length === 1 &&
-      (span.width >= pageWidth * 0.62 ||
-        (span.x < pageWidth * 0.35 && spanRight > pageWidth * 0.65) ||
-        (span.x < pageWidth * 0.35 && spansBothHalves))
-    const captionCenter = span.x + span.width / 2
-    const figureWindow = Math.max(pageWidth * 0.28, span.width + pageWidth * 0.06)
-    const captionIndex = captionRow.findIndex((candidate) => candidate.id === span.id)
-    const previousCaption = captionIndex > 0 ? captionRow[captionIndex - 1] : undefined
-    const nextCaption = captionIndex >= 0 ? captionRow[captionIndex + 1] : undefined
-    const previousCenter = previousCaption ? previousCaption.x + previousCaption.width / 2 : null
-    const nextCenter = nextCaption ? nextCaption.x + nextCaption.width / 2 : null
-    const colLeft =
-      isFig && !isFullWidthFigure
-        ? previousCenter === null
-          ? Math.max(
-              0,
-              captionCenter - (nextCenter === null ? figureWindow : nextCenter - captionCenter) / 2,
-            )
-          : (previousCenter + captionCenter) / 2
-        : 0
-    const colRight =
-      isFig && !isFullWidthFigure
-        ? nextCenter === null
-          ? Math.min(
-              pageWidth,
-              captionCenter +
-                (previousCenter === null ? figureWindow : captionCenter - previousCenter) / 2,
-            )
-          : (captionCenter + nextCenter) / 2
-        : pageWidth
+    const columns = columnBounds(caption, figureCaptions, pageWidth, isFigure)
     const lookback = pageHeight * 0.58
+    const above = spans.filter(
+      (span) =>
+        span.id !== caption.id &&
+        span.y < caption.y &&
+        span.y >= caption.y - lookback &&
+        !consumed.has(span.id) &&
+        overlapsColumn(span, columns.left, columns.right),
+    )
+    const below = spans.filter(
+      (span) =>
+        span.id !== caption.id &&
+        span.y >= caption.y + caption.height + 18 &&
+        span.y <= caption.y + pageHeight * 0.58 &&
+        !consumed.has(span.id) &&
+        overlapsColumn(span, columns.left, columns.right),
+    )
 
-    const candidates = spans.filter((s) => {
-      if (s.id === span.id || consumedAbove.has(s.id)) return false
-      if (s.y >= span.y || s.y < span.y - lookback) return false
-      const overlap = Math.min(s.x + s.width, colRight) - Math.max(s.x, colLeft)
-      if (overlap <= 0) return false
-      const center = s.x + s.width / 2
-      return center >= colLeft && center <= colRight
-    })
-    const isSectionHeading = (s: PdfTextSpan) =>
-      (s.fontSize * 600) / pageWidth >= 11 &&
-      (/^(?:\d+(?:\.\d+)*|[A-Z](?:\.\d+)*)\s+[A-Z]/u.test(s.text.trim()) ||
-        /^(?:Abstract|Introduction|Background|Related\s+Work|Methods|Experiments|Results|Discussion|Conclusion|References)\b/iu.test(
-          s.text.trim(),
-        ))
-    const boundaryAbove = candidates
-      .filter(
-        (s) =>
-          isSectionHeading(s) ||
-          isAuthorOrAffiliation(s.text) ||
-          (s.text.length >= 35 && /[.?!]$/u.test(s.text.trim())) ||
-          /^(?:Figure|Fig\.?|Table|Tab\.?)\s*\d+/iu.test(s.text.trim()),
+    let selected: readonly PdfTextSpan[]
+    let top: number
+    let bottom: number
+    let left: number
+    let right: number
+
+    if (isFigure) {
+      const structural = above.filter(
+        (span) =>
+          isSectionHeading(span.text, span.fontSize, pageWidth) ||
+          isAuthorOrAffiliation(span.text) ||
+          /^(?:Figure|Fig\.?|Table|Tab\.?)\s*\d+\b/iu.test(span.text.trim()),
       )
-      .sort((a, b) => b.y - a.y)[0]
-    const cutoffY = boundaryAbove ? boundaryAbove.y + boundaryAbove.height : 0
-    const internal = candidates.filter((s) => s.y > cutoffY)
-
-    for (const s of internal) consumed.add(s.id)
-    const topY =
-      internal.length > 0
-        ? Math.min(...internal.map((s) => s.y)) - (isFig ? 4 : 8)
-        : boundaryAbove
-          ? boundaryAbove.y + boundaryAbove.height + 8
-          : Math.max(0, span.y - pageHeight * 0.22)
-    const rectX = internal.length > 0 ? Math.min(span.x, ...internal.map((s) => s.x)) - 4 : colLeft
-    const rightX =
-      internal.length > 0
-        ? Math.max(spanRight, ...internal.map((s) => s.x + s.width)) + 4
-        : colRight
-    const bottomY = Math.max(topY + 20, span.y - 4)
-    const rect: PdfFeatureRect = {
-      x: Math.max(0, rectX),
-      y: Math.max(0, topY),
-      width: Math.min(pageWidth - Math.max(0, rectX), Math.max(span.width, rightX - rectX)),
-      height: bottomY - topY,
+      const visual = above.filter(
+        (span) =>
+          !isBodyProse(span, columns.right - columns.left) &&
+          !structural.some((boundary) => boundary.id === span.id),
+      )
+      const boundary = structural
+        .concat(
+          above.filter(
+            (span) =>
+              isBodyProse(span, columns.right - columns.left) && /[.?!:]$/u.test(span.text.trim()),
+          ),
+        )
+        .sort((leftSpan, rightSpan) => rightSpan.y - leftSpan.y)[0]
+      selected = visual
+      top = boundary
+        ? boundary.y + boundary.height + 8
+        : visual.length
+          ? Math.max(0, Math.min(...visual.map((span) => span.y)) - 8)
+          : Math.max(0, caption.y - pageHeight * 0.22)
+      bottom = Math.max(top + 20, caption.y - 4)
+      left = visual.length
+        ? Math.max(0, Math.min(caption.x, ...visual.map((span) => span.x)) - 4)
+        : columns.left
+      right = visual.length
+        ? Math.min(
+            pageWidth,
+            Math.max(caption.x + caption.width, ...visual.map((span) => span.x + span.width)) + 4,
+          )
+        : columns.right
+    } else {
+      const tableRows = below.filter(
+        (span) =>
+          !isSectionHeading(span.text, span.fontSize, pageWidth) &&
+          !/^(?:Figure|Fig\.?|Table|Tab\.?)\s*\d+\b/iu.test(span.text.trim()),
+      )
+      const compactTableRows = tableRows.filter((span) => span.fontSize <= caption.fontSize * 0.85)
+      const preferredRows = compactTableRows.length > 0 ? compactTableRows : tableRows
+      const fallbackRows = above.filter(
+        (span) =>
+          !isBodyProse(span, pageWidth) &&
+          !isSectionHeading(span.text, span.fontSize, pageWidth) &&
+          !isEquationText(span.text),
+      )
+      selected = preferredRows.length > 0 ? preferredRows : fallbackRows
+      const firstRow = selected[0]
+      const rows = selected.filter(
+        (span) =>
+          firstRow !== undefined && (span.y <= firstRow.y + 90 || !isBodyProse(span, pageWidth)),
+      )
+      selected = rows
+      top = rows.length
+        ? Math.max(0, Math.min(...rows.map((span) => span.y)) - 6)
+        : Math.max(0, caption.y + caption.height + 18)
+      bottom = rows.length
+        ? Math.min(pageHeight, Math.max(...rows.map((span) => span.y + span.height)) + 6)
+        : Math.min(pageHeight, top + 24)
+      left = rows.length
+        ? Math.max(0, Math.min(caption.x, ...rows.map((span) => span.x)) - 4)
+        : columns.left
+      right = rows.length
+        ? Math.min(
+            pageWidth,
+            Math.max(caption.x + caption.width, ...rows.map((span) => span.x + span.width)) + 4,
+          )
+        : columns.right
     }
 
+    for (const span of selected) consumed.add(span.id)
+    consumed.add(caption.id)
+    const rect: PdfFeatureRect = {
+      x: left,
+      y: top,
+      width: Math.max(24, right - left),
+      height: Math.max(20, bottom - top),
+    }
     features.push({
-      kind: isFig ? "figure" : "table",
+      kind: isFigure ? "figure" : "table",
       pageNumber,
       rect,
-      label,
+      label: (isFigure ? "Figure " : "Table ") + number,
       context: text,
-      priority: isFig ? 0.75 : 0.85,
-      sourceSpanIds: [span.id, ...internal.map((s) => s.id)],
+      priority: isFigure ? 0.75 : 0.85,
+      sourceSpanIds: [caption.id, ...selected.map((span) => span.id)],
     })
   }
   return { features, consumed }

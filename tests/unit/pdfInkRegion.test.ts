@@ -23,8 +23,8 @@ describe("caption ink search region", () => {
 
     const region = captionInkSearchRegion(caption, candidate, 1_200, 1_200, "table")
 
-    expect(region.x).toBe(0)
-    expect(region.width).toBe(1_200)
+    expect(region.x).toBe(37)
+    expect(region.width).toBe(1_126)
   })
 
   it("rejects a tiny ink fragment as the bound for a sparse chart", () => {

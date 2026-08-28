@@ -31,6 +31,13 @@ type PdfColumnProps = {
   readonly onStructureTrigger?: ((structure: DetectedStructure) => void) | undefined
 }
 
+const PDF_URL_PATTERN = /https:\/\/[^\s<>"')]+/iu
+
+function urlFromText(value: string): string | null {
+  const match = value.match(PDF_URL_PATTERN)?.[0]
+  return match ? match.replace(/[.,;:)]+$/u, "") : null
+}
+
 export type { PreparedSummary } from "../lib/pdfDocumentFeatures"
 
 type ViewerSession = {
@@ -101,7 +108,12 @@ export function PdfColumn({
     })
     eventBus.on("pagesinit", () => {
       viewer.currentScale = zoomRef.current
-      requestAnimationFrame(() => syncViewerWidth(container, viewer))
+      requestAnimationFrame(() => {
+        syncViewerWidth(container, viewer)
+        scheduleOverlayRefresh()
+      })
+      window.setTimeout(refreshOverlays, 320)
+      window.setTimeout(refreshOverlays, 1_000)
     })
     const refreshOverlays = (): void => {
       for (const pageDiv of container.querySelectorAll<HTMLElement>(".page")) {
@@ -126,8 +138,19 @@ export function PdfColumn({
         window.setTimeout(refreshOverlays, 180)
       })
     }
+    const handlePdfUrlClick = (event: MouseEvent): void => {
+      const target =
+        event.target instanceof Element ? event.target.closest(".textLayer span") : null
+      const url = target ? urlFromText(target.textContent ?? "") : null
+      if (!url) return
+      event.preventDefault()
+      event.stopPropagation()
+      void window.scourgify.openExternal({ url })
+    }
+    container.addEventListener("click", handlePdfUrlClick)
     overlayRefreshRef.current = scheduleOverlayRefresh
     eventBus.on("scalechanging", scheduleOverlayRefresh)
+    eventBus.on("pagerendered", scheduleOverlayRefresh)
     eventBus.on(
       "textlayerrendered",
       ({
@@ -161,7 +184,7 @@ export function PdfColumn({
       },
     )
 
-    void window.hotebook
+    void window.scourgify
       .readDocument(document.id)
       .then(async (encoded) => {
         const loadingTask = getDocument({ data: decodeBase64(encoded) })
@@ -207,6 +230,7 @@ export function PdfColumn({
       if (activeSession) sessionRef.current = null
       viewer.cleanup()
       layoutPool.dispose()
+      container.removeEventListener("click", handlePdfUrlClick)
       overlayRefreshRef.current = null
       onRegisterPageJump?.(() => {})
       if (activeSession) void activeSession.loadingTask.destroy()

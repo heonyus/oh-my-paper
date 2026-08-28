@@ -53,6 +53,9 @@ export function captionInkSearchRegion(
   pageHeight: number,
   kind: "figure" | "table",
 ): BoundingBox {
+  if (kind === "table") {
+    return expandBoundsWithinPage(candidate, INK_PAD_PX, pageWidth, pageHeight)
+  }
   const horizontalPad =
     kind === "figure"
       ? Math.min(16, Math.max(4, candidate.width * 0.04))
@@ -82,11 +85,13 @@ export function inkBoundsForCaption(
   const image = context.getImageData(area.x, area.y, area.width, area.height)
   const mask = buildInkMask(image.data, area.width, area.height, [])
   const union =
-    bottomAnchoredInkBounds(mask, {
-      maxGap: Math.max(8, Math.round(area.height * 0.025)),
-      minRowInk: Math.max(3, Math.round(area.width * 0.004)),
-      maxDistanceFromBottom: Math.max(24, Math.round(area.height * 0.08)),
-    }) ?? inkUnionBounds(mask, 10)
+    kind === "figure"
+      ? (bottomAnchoredInkBounds(mask, {
+          maxGap: Math.max(8, Math.round(area.height * 0.025)),
+          minRowInk: Math.max(3, Math.round(area.width * 0.004)),
+          maxDistanceFromBottom: Math.max(24, Math.round(area.height * 0.08)),
+        }) ?? inkUnionBounds(mask, 10))
+      : inkUnionBounds(mask, 10)
   if (!union) return null
   const scaleX = canvas.width / pageRect.width
   const scaleY = canvas.height / pageRect.height

@@ -35,12 +35,12 @@ export type FixtureGenerationResult = {
 export const DEFAULT_FIXTURE_PATH = path.resolve(process.cwd(), "tests/fixtures/sample-paper.pdf")
 
 export const DEFAULT_FIXTURE_METADATA: FixtureMetadata = {
-  title: "Hotebook: Spatial Reading and Exploration of Scientific Papers",
-  author: "Hotebook Research and Engineering",
+  title: "Scourgify: Spatial Reading and Exploration of Scientific Papers",
+  author: "Scourgify Research and Engineering",
   subject: "Deterministic Benchmark Fixture for Spatial Document Interaction",
-  keywords: ["hotebook", "spatial-reading", "pdf-fixture", "deterministic", "benchmarks"],
+  keywords: ["scourgify", "spatial-reading", "pdf-fixture", "deterministic", "benchmarks"],
   producer: "pdf-lib (https://github.com/Hopding/pdf-lib)",
-  creator: "Hotebook Fixture Generator",
+  creator: "Scourgify Fixture Generator",
   creationDate: new Date("2026-08-26T00:00:00.000Z"),
   modificationDate: new Date("2026-08-26T00:00:00.000Z"),
 }
@@ -49,7 +49,7 @@ type Ctx = { readonly regular: PDFFont; readonly bold: PDFFont; readonly mono: P
 
 function drawHeaderFooter(page: PDFPage, num: number, ctx: Ctx): void {
   const { width } = page.getSize()
-  page.drawText("Hotebook Technical Report — Deterministic Test Fixture", {
+  page.drawText("Scourgify Technical Report — Deterministic Test Fixture", {
     x: 50,
     y: 800,
     size: 8.5,
@@ -73,14 +73,14 @@ function drawHeaderFooter(page: PDFPage, num: number, ctx: Ctx): void {
 
 function renderPage1(page: PDFPage, ctx: Ctx): void {
   drawHeaderFooter(page, 1, ctx)
-  page.drawText("Hotebook: Deterministic Spatial PDF Fixture", {
+  page.drawText("Scourgify: Deterministic Spatial PDF Fixture", {
     x: 50,
     y: 750,
     size: 16,
     font: ctx.bold,
     color: rgb(0.1, 0.1, 0.1),
   })
-  page.drawText("Hotebook Research Team • Spatial Computing & Document Intelligence", {
+  page.drawText("Scourgify Research Team • Spatial Computing & Document Intelligence", {
     x: 50,
     y: 730,
     size: 9.5,
@@ -104,7 +104,7 @@ function renderPage1(page: PDFPage, ctx: Ctx): void {
     color: rgb(0.15, 0.15, 0.15),
   })
   const abstract = [
-    "Hotebook is a local-first spatial canvas engineered for rigorous scientific document reading,",
+    "Scourgify is a local-first spatial canvas engineered for rigorous scientific document reading,",
     "bidirectional card linking, and offline annotation. This deterministic multi-page fixture guarantees",
     "reproducible ingestion, robust text coordinate extraction, and structured tabular validation.",
   ]
@@ -127,7 +127,7 @@ function renderPage1(page: PDFPage, ctx: Ctx): void {
   const intro = [
     "Scientific inquiry demands seamless cross-referencing between hypotheses, mathematical derivations,",
     "and tabular empirical evidence. Traditional linear PDF viewers constrain cognitive synthesis.",
-    "Hotebook treats document pages as spatially addressable artifacts on an infinite vector canvas.",
+    "Scourgify treats document pages as spatially addressable artifacts on an infinite vector canvas.",
     "Users excerpt verbatim passages into atomic cards, cluster findings, and preserve provenance links.",
   ]
   intro.forEach((l, i) => {

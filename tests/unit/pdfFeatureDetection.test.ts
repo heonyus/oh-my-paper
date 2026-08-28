@@ -126,6 +126,96 @@ describe("PDF feature detection", () => {
     expect(table?.priority).toBeGreaterThan(figure?.priority ?? 0)
   })
 
+  it("detects a table whose caption is above its cell rows", () => {
+    const spans = [
+      {
+        id: "caption",
+        text: "Table 3: Test set results of LLMs.",
+        x: 72,
+        y: 100,
+        width: 260,
+        height: 14,
+        fontSize: 11,
+        fontWeight: 700,
+      },
+      {
+        id: "header",
+        text: "Dataset Metric Score",
+        x: 72,
+        y: 145,
+        width: 420,
+        height: 11,
+        fontSize: 8,
+        fontWeight: 700,
+      },
+      {
+        id: "row-1",
+        text: "MedAgentGym 0.42 0.58",
+        x: 72,
+        y: 165,
+        width: 420,
+        height: 11,
+        fontSize: 8,
+        fontWeight: 400,
+      },
+      {
+        id: "row-2",
+        text: "BioCoder 0.31 0.47",
+        x: 72,
+        y: 185,
+        width: 420,
+        height: 11,
+        fontSize: 8,
+        fontWeight: 400,
+      },
+      {
+        id: "body",
+        text: "The following paragraph discusses the results and their implications for the benchmark.",
+        x: 72,
+        y: 270,
+        width: 420,
+        height: 12,
+        fontSize: 9,
+        fontWeight: 400,
+      },
+    ] satisfies readonly PdfTextSpan[]
+
+    const table = detectPdfFeatures({ pageNumber: 6, pageWidth: 600, pageHeight: 800, spans }).find(
+      (feature) => feature.kind === "table",
+    )
+
+    expect(table?.sourceSpanIds).toEqual(["caption", "header", "row-1", "row-2"])
+    expect(table?.rect.y).toBeGreaterThan(100)
+    expect((table?.rect.y ?? 0) + (table?.rect.height ?? 0)).toBeGreaterThan(195)
+  })
+
+  it("creates actions for author-year citations as well as numeric citations", () => {
+    const spans = [
+      {
+        id: "body",
+        text: "Prior work (Guo et al., 2017; Shao et al., 2024b) improves evaluation.",
+        x: 72,
+        y: 220,
+        width: 420,
+        height: 12,
+        fontSize: 9,
+        fontWeight: 400,
+      },
+    ] satisfies readonly PdfTextSpan[]
+
+    const citations = detectPdfFeatures({
+      pageNumber: 7,
+      pageWidth: 600,
+      pageHeight: 800,
+      spans,
+    }).filter((feature) => feature.kind === "citation")
+
+    expect(citations.map((feature) => feature.label)).toEqual([
+      "Guo et al., 2017",
+      "Shao et al., 2024b",
+    ])
+  })
+
   it("uses page-local rectangles and rejects empty or ordinary spans", () => {
     const spans = [
       { id: "empty", text: "   ", x: 0, y: 0, width: 0, height: 0, fontSize: 9, fontWeight: 400 },

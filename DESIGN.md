@@ -1,4 +1,4 @@
-# Hotebook Design System
+# Scourgify Design System
 
 ## 0. Research Log
 
@@ -6,11 +6,12 @@
 - Interaction evidence: `.omo/evidence/hotebook-rnr-verified.md` and the preserved private Record & Replay session.
 - Component references: sanitized captures under `recording-review-2026-08-26/`; prior MarginLedger implementation is explicitly not a pixel or source-code base.
 - Owner corrections: continuous vertical paper column; research cards remain on the infinite board; collapsible right sidebar is metadata/index only.
-- Skipped: generated design variants and third-party brand tokens. The owner-approved Hotebook mockup is the reference.
+- Scourgify branding assets: `assets/branding/scourgify-logo-v2.png` (app mark) and `assets/branding/scourgify-wordmark-v1.png` (topbar wordmark).
+- Skipped: third-party brand tokens. The owner-approved layout mockup remains the interaction reference.
 
 ## 1. Atmosphere & Identity
 
-Hotebook is a quiet spatial research desk: the paper stays crisp and central while translation, reasoning, notes, citations, and infographics accumulate around exact passages. Its signature is the provenance connector, a thin blue path that makes every board object visibly accountable to its source without turning the workspace into a dashboard.
+Scourgify is a quiet spatial research desk: the paper stays crisp and central while translation, reasoning, notes, citations, and infographics accumulate around exact passages. Its signature is the provenance connector, a thin blue path that makes every board object visibly accountable to its source without turning the workspace into a dashboard.
 
 ## 2. Color
 

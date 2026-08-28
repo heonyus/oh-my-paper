@@ -1,4 +1,4 @@
-import type { HotebookApi } from "../shared/ipc"
+import type { ScourgifyApi } from "../shared/ipc"
 
 export type BoardTool = "select" | "pan"
 
@@ -16,6 +16,6 @@ export type {
 
 declare global {
   interface Window {
-    readonly hotebook: HotebookApi
+    readonly scourgify: ScourgifyApi
   }
 }

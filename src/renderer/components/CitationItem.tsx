@@ -107,7 +107,7 @@ export function CitationItem({
             {sourceUrl ? (
               <button
                 type="button"
-                onClick={() => void window.hotebook.openExternal({ url: sourceUrl })}
+                onClick={() => void window.scourgify.openExternal({ url: sourceUrl })}
               >
                 <ExternalLink size={14} /> 논문 열기
               </button>

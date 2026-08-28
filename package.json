@@ -1,14 +1,14 @@
 {
-  "name": "hotebook",
+  "name": "scourgify",
   "version": "0.1.0",
   "private": false,
   "description": "A local-first spatial PDF reading board",
   "license": "MIT",
   "author": "heonyus",
-  "homepage": "https://github.com/heonyus/hotebook#readme",
+  "homepage": "https://github.com/heonyus/scourgify#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/heonyus/hotebook.git"
+    "url": "https://github.com/heonyus/scourgify.git"
   },
   "main": "dist-electron/electron/main.js",
   "scripts": {
@@ -29,13 +29,14 @@
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test"
   },
   "build": {
-    "appId": "com.honey.hotebook",
-    "productName": "Hotebook",
+    "appId": "com.honey.scourgify",
+    "productName": "Scourgify",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "directories": {
       "output": "release"
     },
     "mac": {
+      "icon": "build/scourgify.icns",
       "target": [
         "dir",
         "dmg",
@@ -72,7 +73,7 @@
     "publish": {
       "provider": "github",
       "owner": "heonyus",
-      "repo": "hotebook"
+      "repo": "scourgify"
     }
   },
   "devDependencies": {

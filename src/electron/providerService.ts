@@ -15,6 +15,7 @@ import {
   providerConfigSchema,
   type providerStatusSchema,
 } from "../shared/ipc"
+import { DEFAULT_OPENROUTER_MODEL, isOpenRouterModel } from "../shared/providerModels"
 import { systemPromptFor, userInputFor } from "./aiPrompts"
 import { DEFAULT_OPENAI_MODEL, providerConfigFromEnvironment } from "./providerEnvironment"
 
@@ -64,7 +65,10 @@ export class ProviderService {
   async #loadConfig(): Promise<ProviderConfig> {
     try {
       const encrypted = await readFile(this.configFile)
-      return providerConfigSchema.parse(JSON.parse(safeStorage.decryptString(encrypted)))
+      const config = providerConfigSchema.parse(JSON.parse(safeStorage.decryptString(encrypted)))
+      return config.provider === "openrouter" && !isOpenRouterModel(config.model)
+        ? { ...config, model: DEFAULT_OPENROUTER_MODEL }
+        : config
     } catch (error) {
       if (!missingFile(error)) throw error
       try {

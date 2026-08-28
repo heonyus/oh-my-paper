@@ -8,7 +8,7 @@ describe("provider environment configuration", () => {
   it("loads a development OpenAI key without exposing it to the renderer", () => {
     expect(
       providerConfigFromEnvironment({
-        HOTEBOOK_AI_PROVIDER: "openai",
+        SCOURGIFY_AI_PROVIDER: "openai",
         OPENAI_API_KEY: "sk-example-key-at-least-twenty-characters",
       }),
     ).toEqual({
@@ -21,9 +21,9 @@ describe("provider environment configuration", () => {
   it("uses OpenRouter only when its own key is present", () => {
     expect(
       providerConfigFromEnvironment({
-        HOTEBOOK_AI_PROVIDER: "openrouter",
+        SCOURGIFY_AI_PROVIDER: "openrouter",
         OPENROUTER_API_KEY: "sk-or-example-key-at-least-twenty-characters",
-        HOTEBOOK_AI_MODEL: "anthropic/claude-sonnet-4.6",
+        SCOURGIFY_AI_MODEL: "anthropic/claude-sonnet-4.6",
       }),
     ).toMatchObject({
       provider: "openrouter",
@@ -32,6 +32,6 @@ describe("provider environment configuration", () => {
   })
 
   it("fails closed when no valid key is configured", () => {
-    expect(providerConfigFromEnvironment({ HOTEBOOK_AI_PROVIDER: "openai" })).toBeNull()
+    expect(providerConfigFromEnvironment({ SCOURGIFY_AI_PROVIDER: "openai" })).toBeNull()
   })
 })

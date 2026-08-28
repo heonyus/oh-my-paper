@@ -160,7 +160,7 @@ export type CitationLookupResult = z.infer<typeof citationLookupResultSchema>
 export type CitationPaper = z.infer<typeof citationPaperSchema>
 export type CitationIdentityMatch = z.infer<typeof citationIdentityMatchSchema>
 
-export type HotebookApi = {
+export type ScourgifyApi = {
   readonly readWorkspace: () => Promise<Workspace>
   readonly saveWorkspace: (workspace: Workspace) => Promise<void>
   readonly importDocument: () => Promise<ImportResult>

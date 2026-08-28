@@ -53,7 +53,7 @@ export function AiChatPanel({ page, provider, onClose, onAsk }: AiChatPanelProps
             <Sparkles size={15} />
           </span>
           <div>
-            <strong>Ask Hotebook</strong>
+            <strong>Ask Scourgify</strong>
             <span>논문 AI 어시스턴트</span>
           </div>
         </div>
@@ -90,7 +90,7 @@ export function AiChatPanel({ page, provider, onClose, onAsk }: AiChatPanelProps
         ) : (
           entries.map((entry) => (
             <article key={entry.id} data-role={entry.role}>
-              <strong>{entry.role === "user" ? "나" : "Hotebook"}</strong>
+              <strong>{entry.role === "user" ? "나" : "Scourgify"}</strong>
               <p>{entry.content}</p>
             </article>
           ))

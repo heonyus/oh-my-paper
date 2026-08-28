@@ -31,6 +31,7 @@ describe("Topbar", () => {
     await userEvent.click(screen.getByRole("button", { name: "다시 실행" }))
     await userEvent.click(screen.getByRole("button", { name: "확대" }))
 
+    expect(screen.getByRole("img", { name: "Scourgify" })).toBeInTheDocument()
     expect(onToggleOutline).toHaveBeenCalledOnce()
     expect(onToolChange).toHaveBeenCalledWith("pan")
     expect(onUndo).toHaveBeenCalledOnce()

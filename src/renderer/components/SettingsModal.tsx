@@ -1,6 +1,11 @@
 import { X } from "lucide-react"
 import { type FormEvent, type JSX, useState } from "react"
 import type { ProviderConfig, ProviderStatus } from "../../shared/ipc"
+import {
+  DEFAULT_OPENROUTER_MODEL,
+  isOpenRouterModel,
+  OPENROUTER_MODEL_OPTIONS,
+} from "../../shared/providerModels"
 
 type SettingsModalProps = {
   readonly status: ProviderStatus
@@ -8,9 +13,16 @@ type SettingsModalProps = {
   readonly onSave: (config: ProviderConfig) => Promise<void>
 }
 
+function initialModel(provider: ProviderConfig["provider"], model: string): string {
+  if (provider !== "openrouter" || isOpenRouterModel(model)) {
+    return model
+  }
+  return DEFAULT_OPENROUTER_MODEL
+}
+
 export function SettingsModal({ status, onClose, onSave }: SettingsModalProps): JSX.Element {
   const [provider, setProvider] = useState<ProviderConfig["provider"]>(status.provider)
-  const [model, setModel] = useState(status.model)
+  const [model, setModel] = useState(initialModel(status.provider, status.model))
   const [key, setKey] = useState("")
   const [message, setMessage] = useState("")
 
@@ -62,19 +74,33 @@ export function SettingsModal({ status, onClose, onSave }: SettingsModalProps): 
               const next = event.currentTarget.value
               if (next !== "openai" && next !== "openrouter") return
               setProvider(next)
-              setModel(next === "openai" ? "gpt-5" : "openai/gpt-5")
+              setModel(next === "openai" ? "gpt-5" : DEFAULT_OPENROUTER_MODEL)
             }}
           >
             <option value="openai">OpenAI API</option>
             <option value="openrouter">OpenRouter</option>
           </select>
           <label htmlFor="provider-model">모델 ID</label>
-          <input
-            id="provider-model"
-            type="text"
-            value={model}
-            onChange={(event) => setModel(event.currentTarget.value)}
-          />
+          {provider === "openrouter" ? (
+            <select
+              id="provider-model"
+              value={model}
+              onChange={(event) => setModel(event.currentTarget.value)}
+            >
+              {OPENROUTER_MODEL_OPTIONS.map((modelOption) => (
+                <option key={modelOption} value={modelOption}>
+                  {modelOption}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              id="provider-model"
+              type="text"
+              value={model}
+              onChange={(event) => setModel(event.currentTarget.value)}
+            />
+          )}
           <label htmlFor="provider-key">API 키</label>
           <input
             id="provider-key"
@@ -88,9 +114,6 @@ export function SettingsModal({ status, onClose, onSave }: SettingsModalProps): 
             암호화하여 저장
           </button>
         </form>
-        <p className="settings-note">
-          ChatGPT Plus/Pro 구독은 API 사용권이 아니므로 이 앱에 OAuth 모델 호출로 연결되지 않습니다.
-        </p>
         {message ? <p role="status">{message}</p> : null}
       </section>
     </div>

@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest"
-import { mergePdfTextLines } from "../../src/renderer/lib/pdfTextLines"
+import { mergePdfTextLines, normalizeExtractedPdfText } from "../../src/renderer/lib/pdfTextLines"
 
 describe("mergePdfTextLines", () => {
+  it("repairs PDF text layers that insert spaces inside uppercase words", () => {
+    expect(normalizeExtractedPdfText("G ENERALIZATION, A BLATION, AND E RROR A NALYSIS")).toBe(
+      "GENERALIZATION, ABLATION, AND ERROR ANALYSIS",
+    )
+  })
+
   it("joins split heading spans without merging the opposite column", () => {
     const lines = mergePdfTextLines([
       { id: "n", text: "2.1", x: 70, y: 100, width: 20, height: 14, fontSize: 12, fontWeight: 700 },

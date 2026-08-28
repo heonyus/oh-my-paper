@@ -40,7 +40,7 @@ export async function assessCitationStructure(
   onAiRequest: (request: Omit<AiRequest, "documentId">) => Promise<string>,
 ): Promise<CitationStructureResult> {
   const entry = entryFor(structure)
-  const lookup = await window.hotebook.lookupCitation(citationLookupRequest(entry))
+  const lookup = await window.scourgify.lookupCitation(citationLookupRequest(entry))
   if (lookup.status !== "found") return { status: "not_found" }
   try {
     const raw = await onAiRequest({

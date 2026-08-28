@@ -7,18 +7,18 @@ import {
   citationLookupResultSchema,
   documentBytesRequestSchema,
   documentBytesResultSchema,
-  type HotebookApi,
   importResultSchema,
   ipcChannels,
   openExternalRequestSchema,
   preparationUpdateSchema,
   providerConfigSchema,
   providerStatusSchema,
+  type ScourgifyApi,
   workspaceReadResultSchema,
   workspaceSaveRequestSchema,
 } from "../shared/ipc"
 
-const api: HotebookApi = {
+const api: ScourgifyApi = {
   readWorkspace: async () =>
     workspaceReadResultSchema.parse(await ipcRenderer.invoke(ipcChannels.workspaceRead)),
   saveWorkspace: async (workspace) => {
@@ -64,4 +64,4 @@ const api: HotebookApi = {
   },
 }
 
-contextBridge.exposeInMainWorld("hotebook", api)
+contextBridge.exposeInMainWorld("scourgify", api)

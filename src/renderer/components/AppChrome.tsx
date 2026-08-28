@@ -11,6 +11,8 @@ import {
   ZoomOut,
 } from "lucide-react"
 import type { JSX } from "react"
+import logoUrl from "../../../assets/branding/scourgify-logo-v2.png"
+import wordmarkUrl from "../../../assets/branding/scourgify-wordmark-v1.png"
 import { zoomViewportAt } from "../lib/viewport"
 import type { BoardTool, Viewport } from "../types"
 
@@ -49,7 +51,10 @@ export function Topbar({
 
   return (
     <header className="topbar">
-      <strong>Hotebook</strong>
+      <div className="topbar-brand">
+        <img className="topbar-brand-mark" src={logoUrl} alt="" />
+        <img className="topbar-wordmark" src={wordmarkUrl} alt="Scourgify" />
+      </div>
       <span className="topbar-divider" />
       <span>Research Board</span>
       <button

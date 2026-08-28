@@ -11,7 +11,7 @@ import "./components/board-index.css"
 import "./components/citation-panel.css"
 
 const root = document.getElementById("root")
-if (!root) throw new Error("Hotebook root element is missing")
+if (!root) throw new Error("Scourgify root element is missing")
 
 createRoot(root).render(
   <StrictMode>

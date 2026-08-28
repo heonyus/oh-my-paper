@@ -52,15 +52,15 @@ export function App(): JSX.Element {
   )
 
   useEffect(() => {
-    void window.hotebook.readWorkspace().then(resetWorkspace)
-    void window.hotebook.providerStatus().then(setProvider)
-    return window.hotebook.onPreparation((update) => {
+    void window.scourgify.readWorkspace().then(resetWorkspace)
+    void window.scourgify.providerStatus().then(setProvider)
+    return window.scourgify.onPreparation((update) => {
       setPreparation((current) => [...current.filter((item) => item.step !== update.step), update])
     })
   }, [resetWorkspace])
 
   useEffect(() => {
-    if (workspace) void window.hotebook.saveWorkspace(workspace)
+    if (workspace) void window.scourgify.saveWorkspace(workspace)
   }, [workspace])
 
   useEffect(() => {
@@ -114,15 +114,15 @@ export function App(): JSX.Element {
     setPreparation([])
     setOutline([])
     setCitations([])
-    const result = await window.hotebook.importDocument()
+    const result = await window.scourgify.importDocument()
     if (!result) return
-    const current = await window.hotebook.readWorkspace()
+    const current = await window.scourgify.readWorkspace()
     resetWorkspace({ ...current, activeDocumentId: result.document.id })
   }
 
   async function runAi(request: Omit<AiRequest, "documentId">): Promise<string> {
     if (!activeDocument) throw new Error("active document is missing")
-    const result = await window.hotebook.runAi({
+    const result = await window.scourgify.runAi({
       ...request,
       documentId: activeDocument.id,
     })
@@ -131,7 +131,7 @@ export function App(): JSX.Element {
 
   const jumpToCard = useBoardCardJump(activeCards, setWorkspace, setCurrentPage)
 
-  if (!workspace) return <main className="loading-screen">Hotebook을 여는 중…</main>
+  if (!workspace) return <main className="loading-screen">Scourgify을 여는 중…</main>
 
   return (
     <main className="app-shell" data-outline-open={outlineOpen}>
@@ -225,8 +225,8 @@ export function App(): JSX.Element {
           status={provider}
           onClose={() => setSettingsOpen(false)}
           onSave={async (config) => {
-            await window.hotebook.saveProviderConfig(config)
-            setProvider(await window.hotebook.providerStatus())
+            await window.scourgify.saveProviderConfig(config)
+            setProvider(await window.scourgify.providerStatus())
           }}
         />
       ) : null}

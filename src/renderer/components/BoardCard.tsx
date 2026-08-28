@@ -126,7 +126,7 @@ export function BoardCard({
             <button
               type="button"
               className="source-link"
-              onClick={() => void window.hotebook.openExternal({ url: card.sourceUrl ?? "" })}
+              onClick={() => void window.scourgify.openExternal({ url: card.sourceUrl ?? "" })}
             >
               논문 열기 <ExternalLink size={13} />
             </button>
