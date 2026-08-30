@@ -25,6 +25,9 @@ describe("BoardMinimap", () => {
       />,
     )
     const map = screen.getByLabelText("미니맵 탐색")
+    expect(map.querySelectorAll(".minimap-document")).toHaveLength(1)
+    expect(map.querySelectorAll(".minimap-page")).toHaveLength(1)
+    expect(screen.getByText("2p")).toBeVisible()
     Object.defineProperty(map, "getBoundingClientRect", {
       value: () => ({ left: 0, top: 0, right: 140, bottom: 180, width: 140, height: 180 }),
     })

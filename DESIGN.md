@@ -86,7 +86,7 @@ The paper column and cards transform together. Toolbar, rails, and metadata side
 - **Boundary stability:** finite board bounds are applied before paint. Repeated wheel or trackpad input at the top, bottom, left, or right edge never renders an overscrolled frame and snaps back, so the paper and cards do not vibrate at navigation limits.
 
 ### BoardMinimap
-- **Structure:** 160px token-driven surface, recognisable paper stack, labelled card markers, current-page emphasis, and a high-contrast live viewport rectangle. A compact switch in the header turns the minimap on or off and the choice persists per workspace.
+- **Structure:** 160px token-driven surface, one continuous document strip spanning the paper's real world bounds, one current-page marker, labelled card markers, and a high-contrast live viewport rectangle. Do not render every page as a bordered miniature: long papers must remain a legible document silhouette rather than a dense ladder of page lines. The header shows the page count, and a compact switch turns the minimap on or off with workspace persistence.
 - **Behavior:** click or pointer-drag maps minimap coordinates into board world coordinates and recenters through the same finite navigation bounds as wheel/drag. `첫 페이지로` centers page 1 horizontally and restores 40px top padding.
 - **States:** live, dragging, current-page, card-present.
 - **Accessibility:** labelled navigation surface, visible `첫 페이지로` button, semantic current viewport; no information is conveyed by color alone.

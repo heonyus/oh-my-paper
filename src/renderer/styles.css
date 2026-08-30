@@ -270,6 +270,10 @@ button:focus-visible {
 .board-minimap-title {
   margin-right: auto;
 }
+.board-minimap-pages {
+  margin-right: 2px;
+  font-variant-numeric: tabular-nums;
+}
 .board-minimap header button {
   width: 24px;
   height: 24px;
@@ -298,14 +302,15 @@ button:focus-visible {
 .minimap-bounds {
   fill: var(--canvas);
 }
-.minimap-page {
+.minimap-document {
   fill: var(--surface);
   stroke: var(--line);
-  stroke-width: 1.1;
+  stroke-width: 1.2;
 }
-.minimap-page[data-current="true"] {
+.minimap-page {
   fill: var(--action-subtle);
   stroke: var(--action);
+  stroke-width: 1.6;
 }
 .minimap-card {
   fill: var(--ink-muted);

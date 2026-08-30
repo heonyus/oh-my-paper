@@ -46,12 +46,23 @@ export function BoardMinimap({
   }
   const visibleWorld = intersectWorldRects(viewportWorldRect(viewport, available), bounds)
   const visible = visibleWorld ? worldRectToMinimap(visibleWorld, bounds) : null
-  const minimapPages = pages.map((page) => worldRectToMinimap(page, bounds))
+  const paper = pages.reduce<WorldRect | null>((combined, page) => {
+    if (!combined) return page
+    const right = Math.max(combined.x + combined.width, page.x + page.width)
+    const bottom = Math.max(combined.y + combined.height, page.y + page.height)
+    const x = Math.min(combined.x, page.x)
+    const y = Math.min(combined.y, page.y)
+    return { x, y, width: right - x, height: bottom - y }
+  }, null)
+  const minimapDocument = paper ? worldRectToMinimap(paper, bounds) : null
+  const activePage = pages[currentPage - 1]
+  const minimapActivePage = activePage ? worldRectToMinimap(activePage, bounds) : null
   const minimapCards = cards.map((card) => worldRectToMinimap(card, bounds))
   return (
     <aside className="board-minimap" aria-label="보드 미니맵">
       <header>
         <strong className="board-minimap-title">미니맵</strong>
+        <span className="board-minimap-pages">{pages.length}p</span>
         <button type="button" aria-label="첫 페이지로" title="첫 페이지로" onClick={onHome}>
           <RotateCcw size={13} aria-hidden="true" />
         </button>
@@ -83,14 +94,8 @@ export function BoardMinimap({
         onWheel={(event) => event.stopPropagation()}
       >
         <rect className="minimap-bounds" x={0} y={0} width={100} height={100} />
-        {minimapPages.map((page, index) => (
-          <rect
-            key={`${page.x}:${page.y}:${page.width}:${page.height}`}
-            className="minimap-page"
-            data-current={index + 1 === currentPage}
-            {...page}
-          />
-        ))}
+        {minimapDocument ? <rect className="minimap-document" {...minimapDocument} /> : null}
+        {minimapActivePage ? <rect className="minimap-page" {...minimapActivePage} /> : null}
         {minimapCards.map((card) => (
           <rect
             key={`${card.x}:${card.y}:${card.width}:${card.height}`}
