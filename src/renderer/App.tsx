@@ -139,14 +139,12 @@ export function App(): JSX.Element {
 
   if (!workspace) return <main className="loading-screen">Scourgify을 여는 중…</main>
 
-  const appStyle = appShellStyle(workspace.uiFontScale)
-
   return (
     <main
       className="app-shell"
       data-outline-open={outlineOpen}
       data-theme={workspace.theme}
-      style={appStyle}
+      style={appShellStyle(workspace.uiFontScale)}
     >
       <Topbar
         viewport={workspace.viewport}

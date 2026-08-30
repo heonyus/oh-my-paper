@@ -40,7 +40,6 @@
     "mac": {
       "icon": "build/scourgify.icns",
       "target": [
-        "dir",
         "dmg",
         "zip"
       ],
