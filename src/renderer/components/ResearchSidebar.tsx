@@ -71,6 +71,7 @@ export function ResearchSidebar({
 }): JSX.Element {
   const [mode, setMode] = useState<ResearchMode>("ai")
   const [aiActivationToken, setAiActivationToken] = useState(0)
+  const [seenCounts, setSeenCounts] = useState<Partial<Record<ResearchMode, number>>>({})
   const modes: readonly {
     readonly id: ResearchMode
     readonly label: string
@@ -197,12 +198,19 @@ export function ResearchSidebar({
             title={item.label}
             onClick={() => {
               setMode(item.id)
+              if (item.count) {
+                setSeenCounts((current) => ({ ...current, [item.id]: item.count }))
+              }
               if (item.id === "ai") setAiActivationToken((value) => value + 1)
             }}
           >
             {item.icon}
-            {item.count ? (
-              <span className="mode-count">{item.count > 99 ? "99+" : item.count}</span>
+            {item.count && item.count > (seenCounts[item.id] ?? 0) ? (
+              <span className="mode-count">
+                {item.count - (seenCounts[item.id] ?? 0) > 99
+                  ? "99+"
+                  : item.count - (seenCounts[item.id] ?? 0)}
+              </span>
             ) : null}
           </button>
         ))}

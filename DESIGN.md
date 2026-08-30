@@ -174,7 +174,7 @@ The paper column and cards transform together. Toolbar, rails, and metadata side
 
 ### SidebarCategoryPanel
 - **Structure:** macOS-style grouped list with a strong feature title and immediately readable content preview. Translation foregrounds translated text and source; explanation foregrounds a Markdown takeaway; visual analysis foregrounds structured nodes; notes foreground editable prose; highlights foreground the quotation; citations foreground identity and reading rationale.
-- **Constraint:** no blue icon tiles, colored left rails, oversized counters, or decorative gradients. Rail badges use compact 9–11px capsules and abbreviate counts above 99 as `99+`.
+- **Constraint:** no blue icon tiles, colored left rails, oversized counters, or decorative gradients. Rail badges represent unread additions rather than lifetime totals, use compact 9–11px capsules, abbreviate counts above 99 as `99+`, and clear as soon as the user opens that mode.
 
 ### MarkdownContent
 - **Coverage:** every user-authored or AI-authored prose surface uses the same renderer; plain strings remain plain paragraphs while Markdown headings, lists, links, tables, code, and block quotes are supported.

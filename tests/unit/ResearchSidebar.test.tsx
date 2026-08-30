@@ -90,6 +90,9 @@ describe("ResearchSidebar", () => {
       expect(screen.getByRole("button", { name: `${label} 모드` })).toBeVisible()
     }
     await userEvent.click(screen.getByRole("button", { name: "번역 모드" }))
+    expect(
+      screen.getByRole("button", { name: "번역 모드" }).querySelector(".mode-count"),
+    ).toBeNull()
     expect(screen.getByRole("region", { name: "번역 인덱스" })).toBeInTheDocument()
     expect(screen.getByText("선택 번역")).toBeVisible()
     expect(screen.queryByText("Abstract 해설")).not.toBeInTheDocument()

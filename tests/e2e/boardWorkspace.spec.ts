@@ -209,6 +209,9 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
     await board.click({ position: { x: 24, y: 24 } })
     await expect(page.locator(".connector-layer path")).toHaveCount(0)
     await page.getByRole("button", { name: "AI 설명 모드" }).click()
+    await expect(
+      page.getByRole("button", { name: "AI 설명 모드" }).locator(".mode-count"),
+    ).toHaveCount(0)
     await page.getByRole("button", { name: /Abstract 해설/u }).click()
     const focusedCard = await explanationCard.boundingBox()
     const boardBounds = await page.locator(".board-viewport").boundingBox()
