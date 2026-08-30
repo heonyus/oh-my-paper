@@ -44,7 +44,6 @@ export function PreparationProgress({ updates, onClose }: PreparationProgressPro
       <header>
         <strong>논문을 보드에 준비하는 중</strong>
         <div>
-          <span className="preparation-local-label">로컬 전용</span>
           {onClose ? (
             <button type="button" aria-label="준비 상태 닫기" onClick={onClose}>
               <X size={14} />

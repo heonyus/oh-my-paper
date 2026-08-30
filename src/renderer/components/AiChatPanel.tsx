@@ -1,6 +1,8 @@
-import { Bot, LayoutGrid, Send, Sparkles } from "lucide-react"
+import { Bot, LayoutGrid, Sparkles } from "lucide-react"
 import { type FormEvent, type JSX, useState } from "react"
 import type { AiHistoryMessage, ProviderStatus } from "../../shared/ipc"
+import { ChatComposer } from "./ChatComposer"
+import { MarkdownContent } from "./MarkdownContent"
 
 type ChatEntry = AiHistoryMessage & { readonly id: string }
 
@@ -78,7 +80,6 @@ export function AiChatPanel({ page, provider, onClose, onAsk }: AiChatPanelProps
               <Bot size={22} />
             </span>
             <strong>논문과 대화하기</strong>
-            <p>현재 문서의 방법, 수식, 표와 실험 결과를 근거로 답합니다.</p>
             <div className="ai-chat-suggestions">
               {["핵심 기여 요약", "현재 페이지 설명", "한계와 후속 연구"].map((suggestion) => (
                 <button type="button" key={suggestion} onClick={() => setInput(suggestion)}>
@@ -91,23 +92,20 @@ export function AiChatPanel({ page, provider, onClose, onAsk }: AiChatPanelProps
           entries.map((entry) => (
             <article key={entry.id} data-role={entry.role}>
               <strong>{entry.role === "user" ? "나" : "Scourgify"}</strong>
-              <p>{entry.content}</p>
+              <MarkdownContent source={entry.content} />
             </article>
           ))
         )}
       </div>
-      <form onSubmit={(event) => void submit(event)}>
-        <textarea
-          aria-label="논문 질문"
-          value={input}
-          onChange={(event) => setInput(event.currentTarget.value)}
-          placeholder="이 논문의 핵심 기여가 뭐야?"
-          rows={2}
-        />
-        <button type="submit" disabled={!input.trim() || sending}>
-          <Send size={15} /> {sending ? "답변 중" : "보내기"}
-        </button>
-      </form>
+      <ChatComposer
+        label="논문 질문"
+        submitLabel="보내기"
+        value={input}
+        sending={sending}
+        model={provider.model}
+        onChange={setInput}
+        onSubmit={(event) => void submit(event)}
+      />
     </aside>
   )
 }

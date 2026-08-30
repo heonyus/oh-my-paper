@@ -6,6 +6,12 @@ export function structureSourceKey(structure: DetectedStructure): string {
   return `${structure.page}:${structure.kind}:${structure.title}:${quote}`
 }
 
+export function shouldRegenerateStructureCard(card: BoardCard, generationActive = false): boolean {
+  return (
+    card.kind === "citation" && !card.sourceMeta?.assessment && (!card.loading || !generationActive)
+  )
+}
+
 function matchesStructure(
   card: BoardCard,
   sourceKey: string,
@@ -23,13 +29,14 @@ export function upsertStructureCard(
   cards: readonly BoardCard[],
   freshCard: BoardCard,
   structure: DetectedStructure,
-): { readonly cards: readonly BoardCard[]; readonly card: BoardCard } {
+): { readonly cards: readonly BoardCard[]; readonly card: BoardCard; readonly reused: boolean } {
   const sourceKey = structureSourceKey(structure)
   const existing = cards.find((item) => matchesStructure(item, sourceKey, structure))
-  if (!existing) return { cards: [...cards, freshCard], card: freshCard }
-  const card = { ...existing, ...freshCard, id: existing.id, x: existing.x, y: existing.y }
+  if (!existing) return { cards: [...cards, freshCard], card: freshCard, reused: false }
+  const card = { ...existing, anchor: freshCard.anchor, sourceKey }
   return {
     cards: cards.map((item) => (item.id === existing.id ? card : item)),
     card,
+    reused: true,
   }
 }

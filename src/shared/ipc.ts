@@ -1,5 +1,10 @@
 import { z } from "zod"
 import {
+  type DocumentLayoutResult,
+  documentLayoutRequestSchema,
+  documentLayoutResultSchema,
+} from "./documentLayout"
+import {
   type DocumentId,
   documentIdSchema,
   documentRecordSchema,
@@ -37,12 +42,20 @@ export const documentBytesResultSchema = z.string().min(1)
 export const workspaceReadResultSchema = workspaceSchema
 export const workspaceSaveRequestSchema = workspaceSchema
 export const apiKeySchema = z.string().trim().min(20).max(512)
-export const providerKindSchema = z.enum(["openai", "openrouter"])
-export const providerConfigSchema = z.object({
-  provider: providerKindSchema,
-  apiKey: apiKeySchema,
-  model: z.string().trim().min(1).max(160),
-})
+export const providerKindSchema = z.enum(["openai", "openrouter", "opencodex"])
+export const providerConfigSchema = z.discriminatedUnion("provider", [
+  z.object({
+    provider: z.literal("openai"),
+    apiKey: apiKeySchema,
+    model: z.string().trim().min(1).max(160),
+  }),
+  z.object({
+    provider: z.literal("openrouter"),
+    apiKey: apiKeySchema,
+    model: z.string().trim().min(1).max(160),
+  }),
+  z.object({ provider: z.literal("opencodex"), model: z.string().trim().min(1).max(160) }),
+])
 export const providerStatusSchema = z.object({
   configured: z.boolean(),
   provider: providerKindSchema,
@@ -63,17 +76,19 @@ export const aiActionSchema = z.enum([
   "citation_assessment",
   "citation_chat",
   "chat",
+  "card_title",
 ])
 export const aiHistoryMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
   content: z.string().min(1).max(4_000),
 })
+export const AI_CONTEXT_MAX_CHARACTERS = 8_000
 export const aiRequestSchema = z.object({
   action: aiActionSchema,
   documentId: documentIdSchema,
   page: z.number().int().positive(),
-  quote: z.string().min(1).max(4_000),
-  before: z.string().max(8_000),
+  quote: z.string().min(1).max(AI_CONTEXT_MAX_CHARACTERS),
+  before: z.string().max(AI_CONTEXT_MAX_CHARACTERS),
   after: z.string().max(3_000),
   featureKind: z
     .enum(["heading", "subheading", "figure", "table", "equation", "citation"])
@@ -96,6 +111,7 @@ const httpsUrlSchema = z
 
 export const citationLookupRequestSchema = z.object({
   key: z.string().trim().min(1).max(120),
+  currentPaperTitle: z.string().trim().min(1).max(500).optional(),
   title: z.string().trim().max(500).optional(),
   authors: z.string().trim().max(500).optional(),
   year: z.number().int().min(1000).max(9999).nullable().optional(),
@@ -137,6 +153,7 @@ export const openExternalRequestSchema = z.object({ url: httpsUrlSchema })
 export const ipcChannels = {
   documentImport: "document:import",
   documentBytes: "document:bytes",
+  documentLayout: "document:layout",
   workspaceRead: "workspace:read",
   workspaceSave: "workspace:save",
   preparationProgress: "preparation:progress",
@@ -165,6 +182,7 @@ export type ScourgifyApi = {
   readonly saveWorkspace: (workspace: Workspace) => Promise<void>
   readonly importDocument: () => Promise<ImportResult>
   readonly readDocument: (id: DocumentId) => Promise<string>
+  readonly readDocumentLayout: (id: DocumentId) => Promise<DocumentLayoutResult>
   readonly onPreparation: (listener: (update: PreparationUpdate) => void) => () => void
   readonly saveApiKey: (key: string) => Promise<void>
   readonly saveProviderConfig: (config: ProviderConfig) => Promise<void>
@@ -175,3 +193,5 @@ export type ScourgifyApi = {
   readonly lookupCitation: (request: CitationLookupRequest) => Promise<CitationLookupResult>
   readonly openExternal: (request: z.infer<typeof openExternalRequestSchema>) => Promise<void>
 }
+
+export { documentLayoutRequestSchema, documentLayoutResultSchema }

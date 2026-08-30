@@ -56,7 +56,9 @@ export function CitationPanel({
   async function analyze(entry: CitationIndexEntry): Promise<void> {
     setStates((current) => ({ ...current, [entry.key]: { status: "loading" } }))
     try {
-      const lookup = await window.scourgify.lookupCitation(citationLookupRequest(entry))
+      const lookup = await window.scourgify.lookupCitation(
+        citationLookupRequest(entry, document.title),
+      )
       if (lookup.status !== "found") {
         setStates((current) => ({
           ...current,

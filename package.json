@@ -1,6 +1,6 @@
 {
   "name": "scourgify",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": false,
   "description": "A local-first spatial PDF reading board",
   "license": "MIT",
@@ -26,7 +26,9 @@
     "dist:win": "npm run build && electron-builder --win nsis portable --x64",
     "dist:linux": "npm run build && electron-builder --linux AppImage deb --x64",
     "fixture": "tsx scripts/create-fixture.ts",
-    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test"
+    "setup:layout": "node scripts/setup-layout-runtime.mjs",
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test",
+    "verify:installed-layout": "node scripts/verify-installed-layout.mjs"
   },
   "build": {
     "appId": "com.honey.scourgify",
@@ -70,6 +72,12 @@
     "extraMetadata": {
       "main": "dist-electron/electron/main.js"
     },
+    "extraResources": [
+      {
+        "from": "src/layout/pp_structure_layout.py",
+        "to": "layout/pp_structure_layout.py"
+      }
+    ],
     "publish": {
       "provider": "github",
       "owner": "heonyus",
@@ -104,12 +112,17 @@
   },
   "dependencies": {
     "dotenv": "^16.6.1",
+    "katex": "^0.18.4",
     "lucide-react": "^0.542.0",
     "openai": "^7.5.0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.2.108",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-markdown": "^10.1.0",
+    "rehype-katex": "^7.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
     "undici": "^6.28.0",
     "zod": "^4.1.5"
   }

@@ -1,6 +1,8 @@
+import { detectFiguresAndTables } from "./pdfCaptionFeatureDetection"
 import { detectDisplayEquations } from "./pdfEquationDetection"
-import { detectFiguresAndTables, refinePdfFeatures } from "./pdfFeatureRefinement"
+import { refinePdfFeatures } from "./pdfFeatureRefinement"
 import { detectFrontMatter } from "./pdfFrontMatter"
+import { headingLevel, isSectionHeadingSpan, normalizedHeadingText } from "./pdfHeadingClassifier"
 import {
   type BoundingBox,
   type ConnectedVisualBoundsOptions,
@@ -43,13 +45,6 @@ export interface DetectPdfFeaturesInput {
   readonly spans: readonly PdfTextSpan[]
 }
 
-const NAMED_SECTIONS =
-  /^(?:Abstract|Introduction|Background|Related\s+Work|Methodology|Methods|Framework|Approach|Model|Architecture|System|Experiments|Experimental\s+Setup|Results|Evaluation|Discussion|Analysis|Ablation(?:\s+Stud(?:y|ies))?|Conclusions?|Future\s+Work|Limitations|Ethical\s+Considerations|Broader\s+Impacts?|References|Bibliography|Appendix|Appendices|Acknowledgements?)$/iu
-
-const NUMBERED_HEADING = /^(\d+(?:\.\d+)*)\.?\s+([A-Z][-:,/\w\s]{1,80})$/u
-const APPENDIX_HEADING =
-  /^([A-Z])((?:\.\d+)*)\.?\s+([A-Z][A-Za-z-]{2,}(?:\s+(?:[A-Z][A-Za-z-]*|and|of|for|in|with|to)){0,7})$/u
-
 function isAuthorOrAffiliation(text: string): boolean {
   if (
     /\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b|http|www|arXiv:|University|Institute|Laboratory|Department|School|College|Hospital|Center|Author|Contribution/iu.test(
@@ -59,16 +54,6 @@ function isAuthorOrAffiliation(text: string): boolean {
     return true
   }
   if (/^[♠♦†*∗,\s]+$/u.test(text) || /\{[\w,]+\}/u.test(text)) {
-    return true
-  }
-  return false
-}
-
-function isProse(text: string): boolean {
-  if (/^[a-z]/u.test(text)) return true
-  if (/[.?!]$/u.test(text) && text.length >= 30) return true
-  if (/^[-*–—•●○◦]|^\([a-z0-9]+\)|^\d+\)/iu.test(text)) return true
-  if (/\b(?:we\s+propose|in\s+this\s+paper|confirmed\s+that|through\s+clinical)\b/iu.test(text)) {
     return true
   }
   return false
@@ -119,7 +104,7 @@ function detectSections(
   const features: PdfFeature[] = []
   for (const span of spans) {
     if (consumedIds.has(span.id)) continue
-    const text = span.text.trim()
+    const text = normalizedHeadingText(span.text)
     if (!text) continue
     if (isAuthorOrAffiliation(text)) continue
     const fontSize = (span.fontSize * 600) / pageWidth
@@ -142,52 +127,15 @@ function detectSections(
       continue
     }
 
-    if (NAMED_SECTIONS.test(text) && fontSize >= 9.5) {
+    const level = headingLevel(text)
+    if (level && isSectionHeadingSpan({ ...span, text }, pageWidth)) {
       features.push({
-        kind: "heading",
+        kind: level,
         pageNumber,
         rect: { x: span.x, y: span.y, width: span.width, height: span.height },
         label: text,
         context: text,
-        priority: 0.9,
-        sourceSpanIds: [span.id],
-      })
-      continue
-    }
-
-    const numMatch = text.match(NUMBERED_HEADING)
-    if (
-      numMatch?.[1] &&
-      Number(numMatch[1].split(".")[0]) <= 99 &&
-      text.length <= 100 &&
-      !isProse(text)
-    ) {
-      const isSub = numMatch[1].includes(".")
-      features.push({
-        kind: isSub ? "subheading" : "heading",
-        pageNumber,
-        rect: { x: span.x, y: span.y, width: span.width, height: span.height },
-        label: text,
-        context: text,
-        priority: isSub ? 0.85 : 0.9,
-        sourceSpanIds: [span.id],
-      })
-      continue
-    }
-
-    if (fontSize < 10.5) continue
-    if (isProse(text)) continue
-
-    const appendixMatch = text.match(APPENDIX_HEADING)
-    if (appendixMatch?.[1]) {
-      const isSub = Boolean(appendixMatch[2])
-      features.push({
-        kind: isSub ? "subheading" : "heading",
-        pageNumber,
-        rect: { x: span.x, y: span.y, width: span.width, height: span.height },
-        label: text,
-        context: text,
-        priority: isSub ? 0.85 : 0.9,
+        priority: level === "subheading" ? 0.85 : 0.9,
         sourceSpanIds: [span.id],
       })
     }

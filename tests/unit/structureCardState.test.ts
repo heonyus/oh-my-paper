@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { upsertStructureCard } from "../../src/renderer/lib/structureCardState"
+import {
+  shouldRegenerateStructureCard,
+  upsertStructureCard,
+} from "../../src/renderer/lib/structureCardState"
 import type { DetectedStructure } from "../../src/renderer/lib/structureDetector"
 import { boardCardSchema } from "../../src/shared/schemas"
 
@@ -35,7 +38,12 @@ function card(id: string, fragmentX: number) {
 
 describe("structure card state", () => {
   it("keeps one card per structure and refreshes its source geometry", () => {
-    const existing = card("f7ac31b5-19f6-4bec-b30a-3cf8692f9d82", 100)
+    const existing = {
+      ...card("f7ac31b5-19f6-4bec-b30a-3cf8692f9d82", 100),
+      body: "cached explanation",
+      loading: false,
+      chat: [{ role: "user" as const, content: "follow-up" }],
+    }
     const fresh = card("88bdf14a-eace-4d70-80be-45ea55e8dd06", 320)
 
     const result = upsertStructureCard([existing], fresh, structure)
@@ -44,5 +52,36 @@ describe("structure card state", () => {
     expect(result.card.id).toBe(existing.id)
     expect(result.card.x).toBe(existing.x)
     expect(result.card.anchor.fragments[0]?.x).toBe(320)
+    expect(result.card.body).toBe("cached explanation")
+    expect(result.card.chat).toEqual(existing.chat)
+    expect(result.reused).toBe(true)
+  })
+
+  it("retries only an incomplete cached citation card", () => {
+    const citation = boardCardSchema.parse({
+      id: "63b52673-19ca-4b24-9680-4d3e7615887c",
+      documentId: "aabbccddeeff0011",
+      kind: "citation",
+      title: "DeepMind, 2025",
+      body: "메타정보를 확인했습니다.",
+      x: 900,
+      y: 240,
+      minimized: false,
+      loading: false,
+      anchor: {
+        page: 2,
+        quote: "DeepMind, 2025",
+        x: 820,
+        y: 260,
+        fragments: [{ x: 620, y: 180, width: 120, height: 24 }],
+      },
+    })
+
+    expect(shouldRegenerateStructureCard(citation)).toBe(true)
+    expect(shouldRegenerateStructureCard({ ...citation, loading: true }, true)).toBe(false)
+    expect(shouldRegenerateStructureCard({ ...citation, loading: true }, false)).toBe(true)
+    expect(shouldRegenerateStructureCard(card("81ecb049-348d-48cc-aa75-a33920407e9a", 100))).toBe(
+      false,
+    )
   })
 })

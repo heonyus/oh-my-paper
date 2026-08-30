@@ -44,7 +44,24 @@ describe("inline citation assessment", () => {
         })),
       },
     })
-    const ai = vi.fn(async (_request: Omit<AiRequest, "documentId">) =>
+    let resolveAi: ((value: string) => void) | undefined
+    const ai = vi.fn(
+      async (_request: Omit<AiRequest, "documentId">) =>
+        await new Promise<string>((resolve) => {
+          resolveAi = resolve
+        }),
+    )
+    const onMetadata = vi.fn()
+    const pending = assessCitationStructure({
+      structure,
+      currentPaperTitle: "Current Paper",
+      onAiRequest: ai,
+      onMetadata,
+    })
+
+    await vi.waitFor(() => expect(onMetadata).toHaveBeenCalledOnce())
+    expect(onMetadata).toHaveBeenCalledWith(expect.objectContaining({ title: "Planning Agents" }))
+    resolveAi?.(
       JSON.stringify({
         breakdown: {
           dependency: 30,
@@ -61,8 +78,7 @@ describe("inline citation assessment", () => {
         limitations: [],
       }),
     )
-
-    const result = await assessCitationStructure(structure, "Current Paper", ai)
+    const result = await pending
 
     expect(result.status).toBe("assessed")
     if (result.status === "assessed") {

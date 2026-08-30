@@ -164,7 +164,7 @@
 }
 .sidebar-card-kind {
   color: var(--action, #3478f6);
-  font-size: 11px;
+  font-size: var(--type-compact-size);
   font-weight: 650;
 }
 .sidebar-card-title {

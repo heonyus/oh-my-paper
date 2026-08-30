@@ -94,3 +94,37 @@ export function selectCitationPaper(
       .sort((left, right) => right.score - left.score)[0] ?? null
   )
 }
+
+function requestedSurname(request: CitationLookupRequest): string | null {
+  const source = request.authors || request.key.replace(/-\d{4}[a-z]?$/iu, "")
+  return words(source).find((word) => word !== "al" && word !== "et") ?? null
+}
+
+export function selectCitationGraphPaper(
+  candidates: readonly CitationPaper[],
+  request: CitationLookupRequest,
+): CitationIdentityMatch | null {
+  const direct = selectCitationPaper(candidates, request)
+  if (direct) {
+    return {
+      ...direct,
+      signals: [...direct.signals, "current-paper reference graph"],
+    }
+  }
+  const surname = requestedSurname(request)
+  if (!surname || !request.year) return null
+  const matching = candidates.filter(
+    (paper) =>
+      paper.year === request.year &&
+      paper.authors.some((author) => words(author).includes(surname)),
+  )
+  const paper = matching.length === 1 ? matching[0] : undefined
+  return paper
+    ? {
+        paper,
+        score: 0.86,
+        signals: ["author match", "year match", "current-paper reference graph"],
+        candidatesCompared: candidates.length,
+      }
+    : null
+}

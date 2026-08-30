@@ -36,7 +36,7 @@ function citationReference(
 ): ReferenceItem | undefined {
   const numericKey = feature.context.match(/\[(\d+)/u)?.[1]
   if (numericKey && bibliography[numericKey]) return bibliography[numericKey]
-  const authorYear = feature.context.match(/([A-Z][A-Za-z-]+)(?:\s+et al\.)?,?\s+(\d{4})/u)
+  const authorYear = feature.context.match(/([A-Z][A-Za-z-]+)(?:\s+et al\.)?,?\s+(\d{4}[a-z]?)/u)
   if (!authorYear?.[1]) return undefined
   const authorYearKey = `${authorYear[1].toLowerCase()}-${(authorYear[2] ?? "").toLowerCase()}`
   if (bibliography[authorYearKey]) return bibliography[authorYearKey]
@@ -44,7 +44,7 @@ function citationReference(
     key: authorYearKey,
     title: "인용 논문 제목을 확인하는 중",
     authors: authorYear[1],
-    year: authorYear[2] ? Number(authorYear[2]) : null,
+    year: authorYear[2] ? Number.parseInt(authorYear[2], 10) : null,
     venue: "",
     rawText: feature.context,
   }
@@ -90,9 +90,8 @@ export async function analyzePdfDocument(
 ): Promise<{ readonly summary: PreparedSummary; readonly bibliography: BibliographyMap }> {
   const metadata = await pdf.getMetadata()
   const metadataResult = metadataTitleSchema.safeParse(metadata.info)
-  const title = metadataResult.success
-    ? (metadataResult.data.Title ?? fallbackTitle)
-    : fallbackTitle
+  const metadataTitle = metadataResult.success ? metadataResult.data.Title?.trim() : undefined
+  const title = metadataTitle || fallbackTitle
   const pageTexts = await Promise.all(
     Array.from({ length: pdf.numPages }, async (_, index) => {
       const page = await pdf.getPage(index + 1)

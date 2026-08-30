@@ -34,8 +34,8 @@ describe("CitationPanel", () => {
             year: 2024,
             venue: "KDD",
             abstract: "A method paper.",
-            doi: null,
-            url: null,
+            doi: "10.1234/cited-paper",
+            url: "https://example.org/cited-paper",
             openAccessUrl: null,
             citationCount: 12,
           },
@@ -79,8 +79,14 @@ describe("CitationPanel", () => {
     )
 
     await userEvent.click(screen.getByRole("button", { name: /논문 확인·판독/u }))
-    expect(await screen.findByText("정독")).toBeVisible()
+    expect((await screen.findAllByText("정독")).length).toBeGreaterThan(0)
     expect(screen.getByText(/신원 일치 98%/u)).toBeVisible()
+    expect(screen.getByText("96/100")).toBeVisible()
+    expect(screen.getByText("현재 논문 의존도")).toBeVisible()
+    expect(screen.getByRole("button", { name: "실제 논문 열기" })).toBeVisible()
+    expect(screen.getByRole("textbox", { name: "Cited Paper 질문" })).not.toHaveAttribute(
+      "placeholder",
+    )
     await userEvent.click(screen.getByRole("button", { name: /보드에 저장/u }))
     expect(onSave).toHaveBeenCalledOnce()
     Reflect.deleteProperty(window, "scourgify")

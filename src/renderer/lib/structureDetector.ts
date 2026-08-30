@@ -37,10 +37,73 @@ const equationPattern =
   /(?:Equation\s*\((\d+)\)|\((\d+)\)\s*$|[=≤≥≈∑∫∆θσμφ]\s*[A-Za-z0-9_+\-/*()^]+)/iu
 const citationPattern = /\[(\d+(?:\s*,\s*\d+)*)\]/gu
 
+function bibliographySection(text: string): string {
+  const spacedHeading = /\bR\s+E\s*F\s*E\s*R\s*E\s*N\s*C\s*E\s*S\b/u.exec(text)
+  const plainHeading = /\b(?:References|Bibliography)\b/iu.exec(text)
+  const heading = spacedHeading ?? plainHeading
+  if (!heading || heading.index === undefined) return ""
+  const afterHeading = text.slice(heading.index + heading[0].length)
+  const appendix = /\b[A-Z]\s+[A-Z]\s+[A-Z]{3,}\b/u.exec(afterHeading)
+  return (
+    appendix?.index === undefined ? afterHeading : afterHeading.slice(0, appendix.index)
+  ).trim()
+}
+
+function authorBoundary(entry: string): number {
+  for (const match of entry.matchAll(/\.\s+(?=[A-Z])/gu)) {
+    if (match.index === undefined) continue
+    const prefix = entry.slice(0, match.index + 1)
+    const words = prefix.split(/\s+/u)
+    if (/\bet al\.$/iu.test(prefix) || /\band\s+[^.]+\.$/iu.test(prefix) || words.length <= 3) {
+      return match.index + 1
+    }
+  }
+  return -1
+}
+
+function addYearAtEndReferences(text: string, map: Record<string, ReferenceItem>): void {
+  const entryPattern =
+    /([\s\S]*?)(?:,\s*|\.\s*)(20\d{2}[a-z]?)\.(?:\s+Accessed:\s*[^.]+\.)?(?=\s+[A-Z]|\s*$)/gu
+  for (const match of text.matchAll(entryPattern)) {
+    const raw = match[0]
+      .replace(/\s+/gu, " ")
+      .replace(/^(?:Preprint\s+)?\d{1,3}\s+/u, "")
+      .trim()
+    const yearText = match[2]
+    if (!yearText || raw.length < 24) continue
+    const boundary = authorBoundary(raw)
+    if (boundary < 0) continue
+    const authors = raw.slice(0, boundary).trim().replace(/[.]$/u, "")
+    const remainder = raw.slice(boundary).trim()
+    const titleEnd = remainder.search(/\.\s+(?=[A-Za-z])/u)
+    const title = (titleEnd >= 8 ? remainder.slice(0, titleEnd) : remainder)
+      .replace(/,\s*20\d{2}[a-z]?\.$/u, "")
+      .trim()
+    const firstAuthor = authors.split(/,|\band\b|\bet al\b/iu)[0]?.trim()
+    const surname = firstAuthor
+      ?.split(/\s+/u)
+      .at(-1)
+      ?.replace(/[^\p{L}\p{N}'-]/gu, "")
+    if (!surname || title.length < 8) continue
+    const key = `${surname.toLowerCase()}-${yearText.toLowerCase()}`
+    map[key] = {
+      key,
+      title,
+      authors,
+      year: Number.parseInt(yearText, 10),
+      venue: remainder
+        .slice(title.length)
+        .replace(/^[.\s]+|,?\s*20\d{2}[a-z]?\.$/gu, "")
+        .trim(),
+      rawText: raw,
+    }
+  }
+}
+
 export function extractReferencesFromText(text: string): BibliographyMap {
   const map: Record<string, ReferenceItem> = {}
-  const refSectionIndex = text.search(/\b(?:References|Bibliography)\b/iu)
-  const bibliographyText = refSectionIndex >= 0 ? text.slice(refSectionIndex) : text
+  const bibliographyText = bibliographySection(text)
+  if (!bibliographyText) return map
   const entryPattern =
     /(?:\[(\d+)\]|(\d+)\.)\s+([^.\n]{3,180})\.\s+(?:(20\d{2}[a-z]?)\.\s+)?([^.\n]{8,240})\.(?:\s+([^.\n]{2,180})\.)?/gu
 
@@ -82,6 +145,7 @@ export function extractReferencesFromText(text: string): BibliographyMap {
       rawText: match[0].trim(),
     }
   }
+  addYearAtEndReferences(bibliographyText, map)
   return map
 }
 

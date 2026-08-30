@@ -1,12 +1,13 @@
 import { Sparkles } from "lucide-react"
-import { type JSX, useState } from "react"
+import { type JSX, useEffect, useRef, useState } from "react"
 import type { AiAction, AiHistoryMessage, AiRequest, ProviderStatus } from "../../shared/ipc"
+import type { DocumentInsight, DocumentInsightKind } from "../../shared/schemas"
 import { paperContextForQuestion, paperOverviewContext } from "../lib/pdfSearch"
 import type { DocumentRecord } from "../types"
 import { PaperDiscussion } from "./PaperDiscussion"
 import { SidebarInsightSection } from "./SidebarInsightSection"
 
-type InsightKey = "keywords" | "threeLines" | "summary"
+type InsightKey = DocumentInsightKind
 type InsightState = { readonly value: string; readonly loading: boolean; readonly error: string }
 
 const initialState: Readonly<Record<InsightKey, InsightState>> = {
@@ -29,16 +30,35 @@ export function AiOverviewPanel({
   provider,
   onAiRequest,
   onSave,
+  cachedInsights = [],
+  onInsightChange,
+  activationToken = 0,
 }: {
   readonly document: DocumentRecord
   readonly currentPage: number
   readonly provider: ProviderStatus
   readonly onAiRequest: (request: Omit<AiRequest, "documentId">) => Promise<string>
   readonly onSave: (title: string, body: string) => void
+  readonly cachedInsights?: readonly DocumentInsight[] | undefined
+  readonly onInsightChange?: ((kind: DocumentInsightKind, value: string) => void) | undefined
+  readonly activationToken?: number | undefined
 }): JSX.Element {
-  const [insights, setInsights] = useState(initialState)
+  const running = useRef(new Set<InsightKey>())
+  const [insights, setInsights] = useState(() => ({
+    ...initialState,
+    ...Object.fromEntries(
+      cachedInsights.map((insight) => [
+        insight.kind,
+        { value: insight.value, loading: false, error: "" },
+      ]),
+    ),
+  }))
+  const insightsRef = useRef(insights)
+  insightsRef.current = insights
 
   async function generate(key: InsightKey): Promise<void> {
+    if (running.current.has(key)) return
+    running.current.add(key)
     setInsights((current) => ({
       ...current,
       [key]: { ...current[key], loading: true, error: "" },
@@ -52,13 +72,32 @@ export function AiOverviewPanel({
         after: "",
       })
       setInsights((current) => ({ ...current, [key]: { value, loading: false, error: "" } }))
+      onInsightChange?.(key, value)
     } catch {
       setInsights((current) => ({
         ...current,
-        [key]: { ...current[key], loading: false, error: "AI 설정을 확인해주세요." },
+        [key]: {
+          ...current[key],
+          loading: false,
+          error: provider.configured
+            ? "요청을 완료하지 못했습니다. 다시 시도해주세요."
+            : "AI 설정을 확인해주세요.",
+        },
       }))
+    } finally {
+      running.current.delete(key)
     }
   }
+  const generateRef = useRef(generate)
+  generateRef.current = generate
+
+  useEffect(() => {
+    if (activationToken <= 0) return
+    for (const key of insightKeys) {
+      const state = insightsRef.current[key]
+      if (!state.value && !state.loading) void generateRef.current(key)
+    }
+  }, [activationToken])
 
   async function ask(question: string, history: readonly AiHistoryMessage[]): Promise<string> {
     return onAiRequest({
@@ -78,7 +117,6 @@ export function AiOverviewPanel({
           <Sparkles size={18} />
           <h2>With AI</h2>
         </div>
-        <span>명시적 실행</span>
       </header>
       <div className="ai-overview-scroll">
         {insightKeys.map((key) => (

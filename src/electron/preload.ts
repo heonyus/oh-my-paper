@@ -7,6 +7,8 @@ import {
   citationLookupResultSchema,
   documentBytesRequestSchema,
   documentBytesResultSchema,
+  documentLayoutRequestSchema,
+  documentLayoutResultSchema,
   importResultSchema,
   ipcChannels,
   openExternalRequestSchema,
@@ -31,6 +33,12 @@ const api: ScourgifyApi = {
     const request = documentBytesRequestSchema.parse({ id })
     return documentBytesResultSchema.parse(
       await ipcRenderer.invoke(ipcChannels.documentBytes, request),
+    )
+  },
+  readDocumentLayout: async (id) => {
+    const request = documentLayoutRequestSchema.parse({ id })
+    return documentLayoutResultSchema.parse(
+      await ipcRenderer.invoke(ipcChannels.documentLayout, request),
     )
   },
   onPreparation: (listener) => {

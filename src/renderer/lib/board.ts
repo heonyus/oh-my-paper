@@ -9,18 +9,27 @@ import {
 import type { BoardTextSelection } from "./boardSelection"
 import type { DetectedStructure } from "./structureDetector"
 
-export const CARD_WIDTH = 320
+export const CARD_WIDTH = 300
+export const DEFAULT_RESEARCH_CARD_HEIGHT = 420
+export const SHORT_TRANSLATION_CARD_HEIGHT = 180
+export const MINIMIZED_CARD_HEIGHT = 32
+
+export function initialResearchCardHeight(card: BoardCard): number {
+  return card.kind === "translation" && card.anchor.quote.trim().length <= 120
+    ? SHORT_TRANSLATION_CARD_HEIGHT
+    : DEFAULT_RESEARCH_CARD_HEIGHT
+}
 
 export const CARD_COPY = {
   translation: {
-    title: "페이지 번역",
-    body: "선택한 구절의 번역을 생성하려면 API 설정이 필요합니다.",
+    title: "선택 번역",
+    body: "",
   },
   explanation: {
     title: "선택 구절 설명",
-    body: "선택한 근거를 중심으로 설명 카드를 준비했습니다.",
+    body: "",
   },
-  infographic: { title: "인포그래픽", body: "선택한 구절을 시각화할 준비가 되었습니다." },
+  infographic: { title: "인포그래픽", body: "" },
   note: { title: "주석", body: "이 구절에 연결된 메모입니다." },
   highlight: { title: "하이라이트", body: "" },
 } as const
@@ -33,6 +42,7 @@ type CreateCardInput = {
   readonly anchor: SourceAnchor
   readonly placement: Point
   readonly sourceKey?: string
+  readonly loading?: boolean
 }
 
 export function createBoardCard(input: CreateCardInput): BoardCard {
@@ -45,6 +55,10 @@ export function createBoardCard(input: CreateCardInput): BoardCard {
     x: input.placement.x,
     y: input.placement.y,
     minimized: false,
+    width: CARD_WIDTH,
+    height: null,
+    loading: input.loading ?? false,
+    chat: [],
     ...(input.sourceKey ? { sourceKey: input.sourceKey } : {}),
     anchor: input.anchor,
   }
@@ -52,6 +66,23 @@ export function createBoardCard(input: CreateCardInput): BoardCard {
 
 export function saveTranslationAsNote(card: BoardCard): BoardCard {
   return card.kind === "translation" ? { ...card, kind: "note", title: "번역 주석" } : card
+}
+
+export function createPostIt(documentId: DocumentId, page: number, placement: Point): BoardCard {
+  return createBoardCard({
+    documentId,
+    kind: "sticky",
+    title: "포스트잇",
+    body: "",
+    placement,
+    anchor: {
+      page,
+      quote: "보드 포스트잇",
+      x: placement.x,
+      y: placement.y,
+      fragments: [{ x: placement.x, y: placement.y, width: 1, height: 1 }],
+    },
+  })
 }
 
 export function createSelectionCard(
@@ -75,6 +106,7 @@ export function createSelectionCard(
       y: first.y + first.height / 2,
       fragments: [...selection.fragments],
     },
+    loading: kind !== "note" && kind !== "highlight",
   })
 }
 
@@ -94,16 +126,13 @@ export function createStructureCard(input: StructureCardInput): BoardCard {
       : structure.kind === "figure"
         ? "infographic"
         : "explanation"
-  const body =
-    structure.kind === "citation"
-      ? "인용 논문 메타정보를 확인하는 중입니다."
-      : `${structure.title}을(를) AI가 분석하는 중입니다.`
   return createBoardCard({
     documentId,
     kind: cardKind,
     title: structure.title,
-    body,
+    body: "",
     sourceKey,
+    loading: true,
     placement: {
       x: fragment.x + fragment.width + 32,
       y: Math.max(pageWorld.y, fragment.y - 18),

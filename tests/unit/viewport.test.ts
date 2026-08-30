@@ -5,6 +5,7 @@ import {
   moveWorldPointByScreenDelta,
   panViewport,
   revealWorldRectHorizontally,
+  wheelPanDelta,
   zoomViewportAt,
 } from "../../src/renderer/lib/viewport"
 
@@ -39,6 +40,22 @@ describe("board viewport", () => {
     expect(next).toEqual({ x: -30, y: 52, zoom: 0.72 })
   })
 
+  it("locks a mostly vertical trackpad gesture to the vertical axis", () => {
+    // Given / When
+    const delta = wheelPanDelta({ x: 7, y: 100 }, false)
+
+    // Then
+    expect(delta).toEqual({ x: 0, y: -100 })
+  })
+
+  it("maps shift-wheel to intentional horizontal panning", () => {
+    // Given / When
+    const delta = wheelPanDelta({ x: 0, y: 100 }, true)
+
+    // Then
+    expect(delta).toEqual({ x: -100, y: 0 })
+  })
+
   it("converts card drag distance from screen pixels to world units", () => {
     // Given / When
     const point = moveWorldPointByScreenDelta({ x: 100, y: 200 }, { x: 150, y: -75 }, 1.5)
@@ -66,7 +83,7 @@ describe("board viewport", () => {
       { x: 1200, y: 900, width: 320, height: 220 },
     )
 
-    expect(next.x + 1200 * next.zoom).toBeCloseTo(640)
+    expect(next.x + (1200 + 320 / 2) * next.zoom).toBeCloseTo(640)
     expect(next.y + 900 * next.zoom).toBeCloseTo(84)
   })
 })

@@ -1,6 +1,6 @@
 .ai-overview-scroll {
   overflow-y: auto;
-  padding: 0 16px 18px;
+  padding: 0 18px 20px;
 }
 .insight-section {
   padding: 18px 0;
@@ -19,7 +19,7 @@
   padding: 0;
   border: 0;
   background: transparent;
-  font-size: 15px;
+  font-size: var(--type-body-size);
   font-weight: 650;
   cursor: pointer;
 }
@@ -49,8 +49,8 @@
 .insight-body {
   position: relative;
   padding: 12px 4px 0 23px;
-  font-size: 13px;
-  line-height: 1.65;
+  font-size: var(--type-body-size);
+  line-height: 1.68;
 }
 .insight-body > p {
   margin: 0;
@@ -61,24 +61,65 @@
   overflow: hidden;
   mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
 }
-.insight-generate,
-.insight-show-all {
-  padding: 6px 10px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--surface);
-  color: var(--action);
-  font-size: 12px;
+.insight-disclosure {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: -20px 0 0 auto;
+  padding: 4px 0 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
   cursor: pointer;
+  opacity: 0.82;
 }
-.insight-show-all {
-  position: absolute;
-  right: 0;
-  bottom: -10px;
-  background: var(--surface);
+.insight-disclosure:hover {
+  color: var(--ink);
+  opacity: 1;
+}
+.insight-body[data-expanded="true"] .insight-disclosure {
+  margin-top: 8px;
+}
+.insight-body[data-expanded="true"] .insight-disclosure svg {
+  transform: rotate(180deg);
 }
 .insight-muted {
   color: var(--ink-muted);
+}
+.insight-progress {
+  position: relative;
+  display: block;
+  height: 3px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--action-subtle);
+}
+.insight-progress::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 42%;
+  border-radius: inherit;
+  background: var(--action);
+  animation: insight-progress 1s ease-in-out infinite alternate;
+}
+@keyframes insight-progress {
+  from {
+    transform: translateX(-20%);
+  }
+  to {
+    transform: translateX(160%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .insight-progress::after {
+    animation: none;
+    opacity: 0.65;
+  }
 }
 .insight-error {
   color: var(--error);
@@ -93,11 +134,11 @@
 }
 .discussion-section h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--type-body-size);
 }
 .discussion-section header > span {
   color: var(--ink-muted);
-  font-size: 11px;
+  font-size: var(--type-compact-size);
 }
 .discussion-messages {
   display: grid;
@@ -110,8 +151,8 @@
   padding: 10px;
   border-radius: 8px;
   background: var(--surface-muted);
-  font-size: 12px;
-  line-height: 1.55;
+  font-size: var(--type-toolbar-size);
+  line-height: 1.62;
 }
 .discussion-messages article[data-role="user"] {
   margin-left: 40px;
@@ -120,45 +161,4 @@
 .discussion-messages article p {
   margin: 4px 0 0;
   white-space: pre-wrap;
-}
-.discussion-section form {
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
-}
-.discussion-section textarea {
-  width: 100%;
-  resize: none;
-  border: 0;
-  outline: 0;
-  font: inherit;
-  line-height: 1.5;
-}
-.discussion-section form > div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-.discussion-model {
-  max-width: 250px;
-  overflow: hidden;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: var(--surface-muted);
-  color: var(--ink-muted);
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.discussion-section form button {
-  width: 30px;
-  height: 30px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  border-radius: 50%;
-  background: var(--action);
-  color: white;
 }

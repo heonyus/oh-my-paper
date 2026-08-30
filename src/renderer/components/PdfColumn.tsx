@@ -1,50 +1,25 @@
-import {
-  GlobalWorkerOptions,
-  getDocument,
-  type PDFDocumentLoadingTask,
-  type PDFDocumentProxy,
-} from "pdfjs-dist/legacy/build/pdf.mjs"
+import { GlobalWorkerOptions, getDocument } from "pdfjs-dist/legacy/build/pdf.mjs"
 import workerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url"
 import { EventBus, PDFLinkService, PDFViewer } from "pdfjs-dist/legacy/web/pdf_viewer.mjs"
 import { type JSX, useEffect, useRef, useState } from "react"
+import type { DocumentLayoutPage } from "../../shared/documentLayout"
 import { decodeBase64 } from "../lib/base64"
-import { analyzePdfDocument, type PreparedSummary } from "../lib/pdfDocumentFeatures"
+import { urlFromPdfClickTarget, type ViewerSession } from "../lib/pdfColumnSupport"
+import { analyzePdfDocument } from "../lib/pdfDocumentFeatures"
 import { PdfLayoutWorkerPool } from "../lib/pdfLayoutWorkerPool"
 import { extractPdfOutline, outlineTitle, type PdfOutlineEntry } from "../lib/pdfOutline"
 import type { PageOverlayState } from "../lib/pdfOverlayAnalysis"
+import { enrichOverlayCitations } from "../lib/pdfOverlayBibliography"
 import { nextOverlayState, syncViewerWidth } from "../lib/pdfOverlayRefresh"
 import { analyzePageOverlayInWorker } from "../lib/pdfOverlayWorkerAnalysis"
-import type { BibliographyMap, DetectedStructure } from "../lib/structureDetector"
-import type { DocumentRecord } from "../types"
+import { pdfCanvasDimensionLimit, pdfCanvasPixelBudget } from "../lib/pdfRenderQuality"
+import type { BibliographyMap } from "../lib/structureDetector"
+import type { PdfColumnProps } from "./PdfColumnProps"
 import { PdfOverlayLayer } from "./PdfOverlayLayer"
 
 GlobalWorkerOptions.workerSrc = workerUrl
 
-type PdfColumnProps = {
-  readonly document: DocumentRecord
-  readonly zoom: number
-  readonly onLoaded: (summary: PreparedSummary) => void
-  readonly onPageActive: (page: number) => void
-  readonly onOutlineChange?: ((outline: readonly PdfOutlineEntry[]) => void) | undefined
-  readonly onRegisterPageJump?: ((jump: (page: number) => void) => void) | undefined
-  readonly onPageJump?: ((page: number, pageElement: HTMLElement) => void) | undefined
-  readonly onStructureTrigger?: ((structure: DetectedStructure) => void) | undefined
-}
-
-const PDF_URL_PATTERN = /https:\/\/[^\s<>"')]+/iu
-
-function urlFromText(value: string): string | null {
-  const match = value.match(PDF_URL_PATTERN)?.[0]
-  return match ? match.replace(/[.,;:)]+$/u, "") : null
-}
-
 export type { PreparedSummary } from "../lib/pdfDocumentFeatures"
-
-type ViewerSession = {
-  readonly viewer: PDFViewer
-  readonly pdf: PDFDocumentProxy
-  readonly loadingTask: PDFDocumentLoadingTask
-}
 
 export function PdfColumn({
   document,
@@ -63,6 +38,7 @@ export function PdfColumn({
   const bibliographyRef = useRef<BibliographyMap>({})
   const outlineRef = useRef(new Map<string, PdfOutlineEntry>())
   const pageOverlaysRef = useRef<Readonly<Record<number, PageOverlayState>>>({})
+  const layoutPagesRef = useRef<ReadonlyMap<number, DocumentLayoutPage>>(new Map())
   const overlayRefreshRef = useRef<(() => void) | null>(null)
   const [pageOverlays, setPageOverlays] = useState<Readonly<Record<number, PageOverlayState>>>({})
   const [error, setError] = useState<string | null>(null)
@@ -82,6 +58,7 @@ export function PdfColumn({
     if (!container || !viewerElement) return
     setError(null)
     setPageOverlays({})
+    layoutPagesRef.current = new Map()
     outlineRef.current.clear()
     viewerElement.replaceChildren()
     const eventBus = new EventBus()
@@ -95,6 +72,10 @@ export function PdfColumn({
       removePageBorders: true,
       supportsPinchToZoom: false,
       enableAutoLinking: true,
+      maxCanvasPixels: pdfCanvasPixelBudget,
+      maxCanvasDim: pdfCanvasDimensionLimit,
+      enableDetailCanvas: true,
+      enableOptimizedPartialRendering: true,
     })
     linkService.setViewer(viewer)
     onRegisterPageJump?.((page: number) => {
@@ -125,6 +106,7 @@ export function PdfColumn({
           pageNumber,
           pageDiv,
           bibliographyRef.current,
+          layoutPagesRef.current.get(pageNumber),
         ).then((analyzed) => {
           if (disposed || !pageDiv.isConnected) return
           const nextState = nextOverlayState(pageOverlaysRef.current[pageNumber], pageDiv, analyzed)
@@ -139,15 +121,13 @@ export function PdfColumn({
       })
     }
     const handlePdfUrlClick = (event: MouseEvent): void => {
-      const target =
-        event.target instanceof Element ? event.target.closest(".textLayer span") : null
-      const url = target ? urlFromText(target.textContent ?? "") : null
+      const url = urlFromPdfClickTarget(event.target)
       if (!url) return
       event.preventDefault()
       event.stopPropagation()
       void window.scourgify.openExternal({ url })
     }
-    container.addEventListener("click", handlePdfUrlClick)
+    container.addEventListener("click", handlePdfUrlClick, true)
     overlayRefreshRef.current = scheduleOverlayRefresh
     eventBus.on("scalechanging", scheduleOverlayRefresh)
     eventBus.on("pagerendered", scheduleOverlayRefresh)
@@ -167,6 +147,7 @@ export function PdfColumn({
           pageNumber,
           pageDiv,
           bibliographyRef.current,
+          layoutPagesRef.current.get(pageNumber),
         ).then((pageState) => {
           if (disposed || !pageState) return
           for (const structure of pageState.structures) {
@@ -183,6 +164,14 @@ export function PdfColumn({
         })
       },
     )
+
+    void window.scourgify.readDocumentLayout(document.id).then((result) => {
+      if (disposed || result.status !== "ready") return
+      layoutPagesRef.current = new Map(
+        result.layout.pages.map((page) => [page.pageNumber, page] as const),
+      )
+      scheduleOverlayRefresh()
+    })
 
     void window.scourgify
       .readDocument(document.id)
@@ -202,22 +191,7 @@ export function PdfColumn({
         outlineRef.current.clear()
         for (const entry of outline) outlineRef.current.set(`${entry.page}:${entry.title}`, entry)
         onOutlineChange?.(outline)
-        setPageOverlays((current) =>
-          Object.fromEntries(
-            Object.entries(current).map(([key, value]) => [
-              key,
-              {
-                ...value,
-                structures: value.structures.map((structure) => {
-                  if (structure.kind !== "citation" || structure.reference) return structure
-                  const citationKey = structure.quote.match(/\[(\d+)/u)?.[1]
-                  const reference = citationKey ? bibliography[citationKey] : undefined
-                  return reference ? { ...structure, reference } : structure
-                }),
-              },
-            ]),
-          ),
-        )
+        setPageOverlays((current) => enrichOverlayCitations(current, bibliography))
         onLoaded(summary)
       })
       .catch((reason: unknown) => {
@@ -230,7 +204,7 @@ export function PdfColumn({
       if (activeSession) sessionRef.current = null
       viewer.cleanup()
       layoutPool.dispose()
-      container.removeEventListener("click", handlePdfUrlClick)
+      container.removeEventListener("click", handlePdfUrlClick, true)
       overlayRefreshRef.current = null
       onRegisterPageJump?.(() => {})
       if (activeSession) void activeSession.loadingTask.destroy()

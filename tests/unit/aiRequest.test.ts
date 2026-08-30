@@ -44,6 +44,11 @@ describe("AI feature request boundary", () => {
     expect(result.success).toBe(true)
   })
 
+  it("accepts the full overview context and rejects text above its boundary", () => {
+    expect(aiRequestSchema.safeParse({ ...base, quote: "a".repeat(8_000) }).success).toBe(true)
+    expect(aiRequestSchema.safeParse({ ...base, quote: "a".repeat(8_001) }).success).toBe(false)
+  })
+
   it("accepts OpenAI and OpenRouter provider configuration", () => {
     expect(
       providerConfigSchema.safeParse({

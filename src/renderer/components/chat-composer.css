@@ -1,0 +1,76 @@
+.chat-composer {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  background: var(--surface-muted);
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+.chat-composer:focus-within {
+  border-color: color-mix(in srgb, var(--ink-muted) 24%, var(--line));
+  background: var(--surface);
+}
+.chat-composer textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 24px;
+  max-height: 120px;
+  padding: 2px 4px;
+  overflow-y: auto;
+  resize: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.5;
+}
+.chat-composer footer {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.chat-composer-model {
+  min-width: 0;
+  margin-right: auto;
+  overflow: hidden;
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-composer button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ink-muted);
+  color: var(--surface);
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    opacity 120ms ease;
+}
+.chat-composer button:hover:not(:disabled) {
+  background: var(--ink);
+}
+.chat-composer button:disabled {
+  background: var(--line);
+  color: var(--ink-muted);
+  cursor: default;
+  opacity: 0.72;
+}
+.ai-chat-sidebar > .chat-composer {
+  margin: 12px 14px 14px;
+}
+.discussion-section > .chat-composer {
+  margin-top: 12px;
+}

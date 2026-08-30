@@ -6,12 +6,12 @@ import {
   MousePointer2,
   Redo2,
   Settings,
+  StickyNote,
   Undo2,
   ZoomIn,
   ZoomOut,
 } from "lucide-react"
 import type { JSX } from "react"
-import logoUrl from "../../../assets/branding/scourgify-logo-v2.png"
 import wordmarkUrl from "../../../assets/branding/scourgify-wordmark-v1.png"
 import { zoomViewportAt } from "../lib/viewport"
 import type { BoardTool, Viewport } from "../types"
@@ -52,7 +52,6 @@ export function Topbar({
   return (
     <header className="topbar">
       <div className="topbar-brand">
-        <img className="topbar-brand-mark" src={logoUrl} alt="" />
         <img className="topbar-wordmark" src={wordmarkUrl} alt="Scourgify" />
       </div>
       <span className="topbar-divider" />
@@ -82,6 +81,15 @@ export function Topbar({
           onClick={() => onToolChange("pan")}
         >
           <Hand size={16} />
+        </button>
+        <button
+          type="button"
+          className={tool === "sticky" ? "active" : undefined}
+          aria-label="포스트잇 도구"
+          aria-keyshortcuts="N"
+          onClick={() => onToolChange("sticky")}
+        >
+          <StickyNote size={16} />
         </button>
       </div>
       <div className="tool-cluster">
@@ -122,21 +130,28 @@ export function LeftRail({
         type="button"
         className={active === "library" ? "active" : undefined}
         onClick={onLibrary}
+        aria-label="라이브러리"
+        title="라이브러리"
       >
         <Library size={20} />
-        <span>라이브러리</span>
       </button>
       <button
         type="button"
         className={active === "documents" ? "active" : undefined}
         onClick={onDocuments}
+        aria-label="문서"
+        title="문서"
       >
         <FolderOpen size={20} />
-        <span>문서</span>
       </button>
-      <button type="button" className="rail-settings" onClick={onSettings}>
+      <button
+        type="button"
+        className="rail-settings"
+        onClick={onSettings}
+        aria-label="설정"
+        title="설정"
+      >
         <Settings size={20} />
-        <span>설정</span>
       </button>
     </nav>
   )

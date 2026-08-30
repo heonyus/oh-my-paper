@@ -220,10 +220,13 @@ function renderPage3(page: PDFPage, ctx: Ctx): void {
     font: ctx.bold,
     color: rgb(0.1, 0.1, 0.1),
   })
-  page.drawText(
-    "Table 1 summarizes execution metrics for deterministic document processing pipelines:",
-    { x: 50, y: 730, size: 9, font: ctx.regular, color: rgb(0.2, 0.2, 0.2) },
-  )
+  page.drawText("Table 1: Execution metrics for deterministic document processing pipelines.", {
+    x: 50,
+    y: 730,
+    size: 9,
+    font: ctx.regular,
+    color: rgb(0.2, 0.2, 0.2),
+  })
   const top = 710
   const colX = [50, 170, 265, 360, 455, 545]
   const headers = ["Component", "Throughput", "Latency (p95)", "Memory", "Status"]

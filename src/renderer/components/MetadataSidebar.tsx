@@ -20,6 +20,7 @@ const cardKindLabel: Readonly<Record<BoardCard["kind"], string>> = {
   explanation: "AI 설명",
   infographic: "AI 카드",
   note: "주석",
+  sticky: "포스트잇",
   highlight: "하이라이트",
   citation: "인용",
 }

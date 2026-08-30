@@ -9,8 +9,12 @@ import {
 
 type SettingsModalProps = {
   readonly status: ProviderStatus
+  readonly fontScale: number
   readonly onClose: () => void
   readonly onSave: (config: ProviderConfig) => Promise<void>
+  readonly onFontScaleChange: (scale: number) => void
+  readonly theme?: "system" | "light" | "dark" | undefined
+  readonly onThemeChange?: ((theme: "system" | "light" | "dark") => void) | undefined
 }
 
 function initialModel(provider: ProviderConfig["provider"], model: string): string {
@@ -20,7 +24,15 @@ function initialModel(provider: ProviderConfig["provider"], model: string): stri
   return DEFAULT_OPENROUTER_MODEL
 }
 
-export function SettingsModal({ status, onClose, onSave }: SettingsModalProps): JSX.Element {
+export function SettingsModal({
+  status,
+  fontScale,
+  onClose,
+  onSave,
+  onFontScaleChange,
+  theme = "system",
+  onThemeChange,
+}: SettingsModalProps): JSX.Element {
   const [provider, setProvider] = useState<ProviderConfig["provider"]>(status.provider)
   const [model, setModel] = useState(initialModel(status.provider, status.model))
   const [key, setKey] = useState("")
@@ -29,11 +41,13 @@ export function SettingsModal({ status, onClose, onSave }: SettingsModalProps): 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
     try {
-      await onSave({ provider, model, apiKey: key })
+      await onSave(
+        provider === "opencodex" ? { provider, model } : { provider, model, apiKey: key },
+      )
       setKey("")
-      setMessage("키가 Electron safeStorage를 통해 암호화되어 보관되었습니다.")
+      setMessage("저장됨")
     } catch {
-      setMessage("키를 저장하지 못했습니다. 형식과 운영체제 보안 저장소를 확인하세요.")
+      setMessage("저장 실패")
     }
   }
 
@@ -51,10 +65,6 @@ export function SettingsModal({ status, onClose, onSave }: SettingsModalProps): 
             <X size={17} />
           </button>
         </header>
-        <p>
-          AI 기능은 사용자가 번역·설명·시각화를 직접 실행할 때만 선택 구절과 최소 주변 문맥을
-          전송합니다.
-        </p>
         <dl>
           <div>
             <dt>상태</dt>
@@ -72,13 +82,20 @@ export function SettingsModal({ status, onClose, onSave }: SettingsModalProps): 
             value={provider}
             onChange={(event) => {
               const next = event.currentTarget.value
-              if (next !== "openai" && next !== "openrouter") return
+              if (next !== "openai" && next !== "openrouter" && next !== "opencodex") return
               setProvider(next)
-              setModel(next === "openai" ? "gpt-5" : DEFAULT_OPENROUTER_MODEL)
+              setModel(
+                next === "openai"
+                  ? "gpt-5"
+                  : next === "opencodex"
+                    ? "gpt-5.6-sol"
+                    : DEFAULT_OPENROUTER_MODEL,
+              )
             }}
           >
             <option value="openai">OpenAI API</option>
             <option value="openrouter">OpenRouter</option>
+            <option value="opencodex">Local OpenCodex</option>
           </select>
           <label htmlFor="provider-model">모델 ID</label>
           {provider === "openrouter" ? (
@@ -101,15 +118,47 @@ export function SettingsModal({ status, onClose, onSave }: SettingsModalProps): 
               onChange={(event) => setModel(event.currentTarget.value)}
             />
           )}
-          <label htmlFor="provider-key">API 키</label>
-          <input
-            id="provider-key"
-            type="password"
-            autoComplete="off"
-            value={key}
-            onChange={(event) => setKey(event.currentTarget.value)}
-            placeholder={provider === "openrouter" ? "sk-or-…" : "sk-…"}
-          />
+          {provider === "opencodex" ? (
+            <p className="settings-provider-note">
+              실행 중인 로컬 OpenCodex(127.0.0.1:10100)에 연결합니다. 별도 키를 저장하지 않습니다.
+            </p>
+          ) : (
+            <>
+              <label htmlFor="provider-key">API 키</label>
+              <input
+                id="provider-key"
+                type="password"
+                autoComplete="off"
+                value={key}
+                onChange={(event) => setKey(event.currentTarget.value)}
+                placeholder={provider === "openrouter" ? "sk-or-…" : "sk-…"}
+              />
+            </>
+          )}
+          <label htmlFor="ui-font-scale">글자 크기</label>
+          <select
+            id="ui-font-scale"
+            value={fontScale}
+            onChange={(event) => onFontScaleChange(Number(event.currentTarget.value))}
+          >
+            <option value={0.9}>작게 · 90%</option>
+            <option value={1}>기본 · 100%</option>
+            <option value={1.1}>크게 · 110%</option>
+            <option value={1.2}>아주 크게 · 120%</option>
+          </select>
+          <label htmlFor="appearance-theme">화면 모드</label>
+          <select
+            id="appearance-theme"
+            value={theme}
+            onChange={(event) => {
+              const next = event.currentTarget.value
+              if (next === "system" || next === "light" || next === "dark") onThemeChange?.(next)
+            }}
+          >
+            <option value="system">시스템 설정</option>
+            <option value="light">라이트</option>
+            <option value="dark">다크</option>
+          </select>
           <button className="primary-action" type="submit">
             암호화하여 저장
           </button>

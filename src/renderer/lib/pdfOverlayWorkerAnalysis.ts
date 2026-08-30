@@ -1,3 +1,4 @@
+import type { DocumentLayoutPage } from "../../shared/documentLayout"
 import { detectPdfFeatures } from "./pdfFeatureDetection"
 import type { PdfLayoutWorkerPool } from "./pdfLayoutWorkerPool"
 import {
@@ -12,10 +13,11 @@ export async function analyzePageOverlayInWorker(
   pageNumber: number,
   pageDiv: HTMLElement,
   bibliography: BibliographyMap,
+  modelLayout?: DocumentLayoutPage,
 ): Promise<PageOverlayState | null> {
   const captured = capturePageOverlayInput(pageNumber, pageDiv)
   if (!captured) return null
   const detected = await pool.analyze(captured.input).catch(() => detectPdfFeatures(captured.input))
   if (!pageDiv.isConnected) return null
-  return completePageOverlay(pageDiv, bibliography, captured, detected)
+  return completePageOverlay(pageDiv, bibliography, captured, detected, modelLayout)
 }

@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
@@ -13,6 +13,36 @@ afterEach(async () => {
 })
 
 describe("WorkspaceStore", () => {
+  it("uses the compact research sidebar width for new workspaces", () => {
+    expect(defaultWorkspace().researchSidebarWidth).toBe(300)
+    expect(defaultWorkspace()).toMatchObject({ theme: "system", minimapVisible: true })
+  })
+
+  it("migrates the former default sidebar width once", async () => {
+    const root = await mkdtemp(join(tmpdir(), "scourgify-workspace-"))
+    temporaryRoots.push(root)
+    const legacy = { ...defaultWorkspace(), researchSidebarWidth: 340 }
+    await writeFile(join(root, "workspace.json"), JSON.stringify(legacy), "utf8")
+
+    const store = new WorkspaceStore(root)
+    const workspace = await store.read()
+    await store.save(workspace)
+    const persisted = JSON.parse(await readFile(join(root, "workspace.json"), "utf8"))
+
+    expect(workspace.researchSidebarWidth).toBe(300)
+    expect(persisted.layoutVersion).toBe(2)
+  })
+
+  it("preserves a user-resized research sidebar", async () => {
+    const root = await mkdtemp(join(tmpdir(), "scourgify-workspace-"))
+    temporaryRoots.push(root)
+    const store = new WorkspaceStore(root)
+
+    await store.save({ ...defaultWorkspace(), researchSidebarWidth: 412 })
+
+    expect((await store.read()).researchSidebarWidth).toBe(412)
+  })
+
   it("migrates legacy source anchors without deleting saved cards", async () => {
     const root = await mkdtemp(join(tmpdir(), "scourgify-workspace-"))
     temporaryRoots.push(root)

@@ -78,13 +78,17 @@ export function rankCitationAssessments(
   })
 }
 
-export function citationLookupRequest(entry: CitationIndexEntry): CitationLookupRequest {
+export function citationLookupRequest(
+  entry: CitationIndexEntry,
+  currentPaperTitle?: string,
+): CitationLookupRequest {
   const context = entry.contexts
     .map((item) => item.text)
     .join("\n")
     .slice(0, 1_500)
   return {
     key: entry.key,
+    ...(currentPaperTitle ? { currentPaperTitle } : {}),
     title: entry.title,
     authors: entry.authors,
     year: entry.year,

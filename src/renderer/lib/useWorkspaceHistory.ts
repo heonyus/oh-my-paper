@@ -1,11 +1,12 @@
 import { useCallback, useRef, useState } from "react"
 import type { Workspace } from "../../shared/schemas"
 
-type WorkspaceUpdate = Workspace | null | ((current: Workspace | null) => Workspace | null)
+export type WorkspaceUpdate = Workspace | null | ((current: Workspace | null) => Workspace | null)
+export type WorkspaceSetter = (update: WorkspaceUpdate) => void
 
 export function useWorkspaceHistory(): {
   readonly workspace: Workspace | null
-  readonly setWorkspace: (update: WorkspaceUpdate) => void
+  readonly setWorkspace: WorkspaceSetter
   readonly resetWorkspace: (workspace: Workspace) => void
   readonly undo: () => void
   readonly redo: () => void

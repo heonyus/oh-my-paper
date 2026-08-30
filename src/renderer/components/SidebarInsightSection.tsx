@@ -1,5 +1,6 @@
 import { ChevronDown, Copy, Pin, RefreshCw } from "lucide-react"
-import { type JSX, useState } from "react"
+import { type JSX, useId, useState } from "react"
+import { MarkdownContent } from "./MarkdownContent"
 
 type SidebarInsightSectionProps = {
   readonly title: string
@@ -20,11 +21,18 @@ export function SidebarInsightSection({
 }: SidebarInsightSectionProps): JSX.Element {
   const [open, setOpen] = useState(true)
   const [showAll, setShowAll] = useState(false)
+  const bodyId = useId()
   const long = value.length > 260
   return (
     <section className="insight-section" data-open={open}>
       <header>
-        <button type="button" className="insight-title" onClick={() => setOpen((value) => !value)}>
+        <button
+          type="button"
+          className="insight-title"
+          aria-expanded={open}
+          aria-controls={bodyId}
+          onClick={() => setOpen((value) => !value)}
+        >
           <ChevronDown size={15} /> {title}
         </button>
         <div className="insight-actions">
@@ -47,31 +55,30 @@ export function SidebarInsightSection({
           </button>
         </div>
       </header>
-      {open ? (
-        <div className="insight-body">
-          {loading ? <p className="insight-muted">AI가 근거를 정리하는 중입니다…</p> : null}
-          {!loading && error ? <p className="insight-error">{error}</p> : null}
-          {!loading && !error && !value ? (
-            <button type="button" className="insight-generate" onClick={onGenerate}>
-              생성하기
-            </button>
-          ) : null}
-          {value ? (
-            <>
-              <p className={long && !showAll ? "insight-clamped" : undefined}>{value}</p>
-              {long ? (
-                <button
-                  type="button"
-                  className="insight-show-all"
-                  onClick={() => setShowAll(!showAll)}
-                >
-                  {showAll ? "접기" : "전체 보기"}
-                </button>
-              ) : null}
-            </>
-          ) : null}
-        </div>
-      ) : null}
+      <div id={bodyId} className="insight-body" data-expanded={showAll} hidden={!open}>
+        {loading ? <span className="insight-progress" aria-hidden="true" /> : null}
+        {!loading && error ? <p className="insight-error">{error}</p> : null}
+        {value ? (
+          <>
+            <MarkdownContent
+              className={long && !showAll ? "insight-clamped" : undefined}
+              source={value}
+            />
+            {long ? (
+              <button
+                type="button"
+                className="insight-disclosure"
+                aria-expanded={showAll}
+                aria-label={`${title} ${showAll ? "접기" : "전체 내용 펼치기"}`}
+                onClick={() => setShowAll(!showAll)}
+              >
+                <span>{showAll ? "접기" : "더 보기"}</span>
+                <ChevronDown size={12} />
+              </button>
+            ) : null}
+          </>
+        ) : null}
+      </div>
     </section>
   )
 }

@@ -32,7 +32,7 @@ export function paperContextForQuestion(question: string, currentPage: number): 
     .slice(0, 4)
     .map((page) => `Page ${page.pageNumber}: ${page.text}`)
     .join("\n\n")
-    .slice(0, 8_000)
+    .slice(0, AI_CONTEXT_MAX_CHARACTERS)
 }
 
 export function paperOverviewContext(): string {
@@ -55,5 +55,7 @@ export function paperOverviewContext(): string {
     .slice(0, 6)
     .map((page) => `Page ${page.pageNumber}: ${page.text}`)
     .join("\n\n")
-    .slice(0, 8_000)
+    .slice(0, AI_CONTEXT_MAX_CHARACTERS)
 }
+
+import { AI_CONTEXT_MAX_CHARACTERS } from "../../shared/ipc"

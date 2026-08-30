@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest"
 import {
   PaperStructureOverlay,
   resolveEquationActionSide,
+  resolveObjectActionSide,
 } from "../../src/renderer/components/PaperStructureOverlay"
 import type { DetectedStructure } from "../../src/renderer/lib/structureDetector"
 
@@ -54,6 +55,11 @@ describe("PaperStructureOverlay", () => {
   it("moves equation actions to the visible side when the preferred margin is clipped", () => {
     expect(resolveEquationActionSide("left", 6, 620)).toBe("right")
     expect(resolveEquationActionSide("right", 620, 6)).toBe("left")
+  })
+
+  it("moves object actions to the margin with enough control width", () => {
+    expect(resolveObjectActionSide("right", 180, 20, false)).toBe("left")
+    expect(resolveObjectActionSide("right", 20, 50, true)).toBe("right")
   })
 
   it("activates the owning structure when an invisible action intercepts pointer movement", () => {
@@ -109,6 +115,31 @@ describe("PaperStructureOverlay", () => {
     view.unmount()
     page.remove()
     overlayHost.remove()
+  })
+
+  it("keeps a margin action alive while the pointer crosses the empty corridor", () => {
+    vi.useFakeTimers()
+    const view = render(
+      <PaperStructureOverlay
+        structures={[figure]}
+        onTrigger={vi.fn()}
+        onCopy={vi.fn(async () => {})}
+      />,
+    )
+    const region = document.querySelector<HTMLElement>(".structure-hover-region")
+    const button = screen.getByRole("button", { name: /Figure 1 해설 AI 그림 해설/u })
+    if (!region) throw new Error("structure hover region is missing")
+
+    fireEvent.pointerMove(region)
+    fireEvent.pointerMove(document.body)
+    act(() => vi.advanceTimersByTime(200))
+    expect(region).toHaveAttribute("data-active", "true")
+    fireEvent.pointerMove(button)
+    act(() => vi.advanceTimersByTime(300))
+    expect(region).toHaveAttribute("data-active", "true")
+
+    view.unmount()
+    vi.useRealTimers()
   })
 
   it("prefers the smallest overlapping structure at the pointer", () => {
@@ -171,6 +202,62 @@ describe("PaperStructureOverlay", () => {
     const stroke = document.querySelector(".structure-screen-stroke")
     expect(stroke).toHaveAttribute("width", "100%")
     expect(stroke).toHaveAttribute("height", "100%")
+  })
+
+  it("marks narrow figures for compact icon-only actions", () => {
+    render(
+      <PaperStructureOverlay
+        structures={[{ ...figure, bounds: { ...figure.bounds, width: 100 } }]}
+        onTrigger={vi.fn()}
+        onCopy={vi.fn(async () => {})}
+      />,
+    )
+
+    expect(document.querySelector(".structure-hover-region")).toHaveAttribute(
+      "data-compact-actions",
+      "true",
+    )
+    const region = document.querySelector<HTMLElement>(".structure-hover-region")
+    if (!region) throw new Error("compact Figure region is missing")
+    fireEvent.pointerMove(region)
+    expect(screen.getByRole("button", { name: /Figure 1 해설 AI 그림 해설/u })).toHaveAttribute(
+      "title",
+      "AI 그림 해설",
+    )
+    expect(screen.getByRole("button", { name: /Figure 1 해설 복사/u })).toHaveAttribute(
+      "title",
+      "그림 복사",
+    )
+  })
+
+  it("uses compact actions on the preferred side instead of jumping across a text column", () => {
+    render(
+      <PaperStructureOverlay
+        structures={[{ ...figure, bounds: { ...figure.bounds, x: 60, width: 400 } }]}
+        pageWidth={800}
+        onTrigger={vi.fn()}
+        onCopy={vi.fn(async () => {})}
+      />,
+    )
+
+    const region = document.querySelector(".structure-hover-region")
+    expect(region).toHaveAttribute("data-compact-actions", "true")
+    expect(region).toHaveAttribute("data-object-action-side", "left")
+  })
+
+  it("keeps labelled figure actions on the preferred side when it has enough width", () => {
+    render(
+      <PaperStructureOverlay
+        structures={[{ ...figure, bounds: { ...figure.bounds, x: 180 } }]}
+        pageWidth={800}
+        onTrigger={vi.fn()}
+        onCopy={vi.fn(async () => {})}
+      />,
+    )
+
+    const region = document.querySelector(".structure-hover-region")
+    expect(region).toHaveAttribute("data-compact-actions", "false")
+    expect(region).toHaveAttribute("data-object-action-side", "left")
   })
 
   it("keeps the section affordance icon-only so it cannot cover the heading", () => {

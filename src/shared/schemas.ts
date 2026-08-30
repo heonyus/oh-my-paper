@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { citationAssessmentResultSchema } from "./citationAssessment"
+import { researchSidebarLayout } from "./uiLayout"
 
 export const documentIdSchema = z
   .string()
@@ -85,12 +86,32 @@ export const sourceAnchorSchema = z.object({
 export const boardCardSchema = z.object({
   id: cardIdSchema,
   documentId: documentIdSchema,
-  kind: z.enum(["translation", "explanation", "infographic", "note", "highlight", "citation"]),
+  kind: z.enum([
+    "translation",
+    "explanation",
+    "infographic",
+    "note",
+    "sticky",
+    "highlight",
+    "citation",
+  ]),
   title: z.string().min(1),
   body: z.string(),
   x: z.number().finite(),
   y: z.number().finite(),
   minimized: z.boolean(),
+  width: z.number().min(240).max(720).default(300),
+  height: z.number().min(160).max(900).nullable().default(null),
+  loading: z.boolean().default(false),
+  chat: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().min(1).max(4_000),
+      }),
+    )
+    .max(24)
+    .default([]),
   sourceKey: z.string().min(1).max(512).optional(),
   sourceUrl: z.string().url().nullable().optional(),
   sourceMeta: z
@@ -109,10 +130,28 @@ export const boardCardSchema = z.object({
   anchor: sourceAnchorSchema,
 })
 
+export const documentInsightKindSchema = z.enum(["keywords", "threeLines", "summary"])
+export const documentInsightSchema = z.object({
+  documentId: documentIdSchema,
+  kind: documentInsightKindSchema,
+  value: z.string().min(1),
+  updatedAt: z.string().datetime(),
+})
+
 export const workspaceSchema = z.object({
   documents: z.array(documentRecordSchema),
   cards: z.array(boardCardSchema),
+  insights: z.array(documentInsightSchema).default([]),
   sidebarOpen: z.boolean(),
+  outlineWidth: z.number().min(200).max(420).default(240),
+  researchSidebarWidth: z
+    .number()
+    .min(researchSidebarLayout.contentMinimum)
+    .max(researchSidebarLayout.contentMaximum)
+    .default(researchSidebarLayout.contentDefault),
+  uiFontScale: z.number().min(0.9).max(1.2).default(1),
+  theme: z.enum(["system", "light", "dark"]).default("system"),
+  minimapVisible: z.boolean().default(true),
   viewport: viewportSchema,
   activeDocumentId: documentIdSchema.nullable(),
 })
@@ -126,4 +165,6 @@ export type PreparedPdf = z.infer<typeof preparedPdfSchema>
 export type SourceAnchor = z.infer<typeof sourceAnchorSchema>
 export type SourceFragment = SourceAnchor["fragments"][number]
 export type BoardCard = z.infer<typeof boardCardSchema>
+export type DocumentInsight = z.infer<typeof documentInsightSchema>
+export type DocumentInsightKind = z.infer<typeof documentInsightKindSchema>
 export type Workspace = z.infer<typeof workspaceSchema>

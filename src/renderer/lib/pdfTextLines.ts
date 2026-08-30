@@ -3,42 +3,14 @@ import type { PdfTextSpan } from "./pdfFeatureDetection"
 type VisualRow = {
   readonly centerY: number
   readonly height: number
-  readonly zone: ColumnZone
   readonly spans: PdfTextSpan[]
 }
-
-type ColumnZone = "left" | "right" | "full"
 
 export function normalizeExtractedPdfText(value: string): string {
   return value
     .replace(/\b([A-Z])\s+(?=[A-Z]{2,}\b)/gu, "$1")
     .replace(/\s+/gu, " ")
     .trim()
-}
-
-function columnZone(span: PdfTextSpan, pageWidth: number): ColumnZone {
-  const right = span.x + span.width
-  if (span.width >= pageWidth * 0.58 || (span.x < pageWidth * 0.42 && right > pageWidth * 0.58)) {
-    return "full"
-  }
-  return span.x + span.width / 2 < pageWidth / 2 ? "left" : "right"
-}
-
-function hasTwoColumns(spans: readonly PdfTextSpan[], pageWidth: number): boolean {
-  const left = spans.filter((span) => columnZone(span, pageWidth) === "left")
-  const right = spans.filter((span) => columnZone(span, pageWidth) === "right")
-  let pairedRows = 0
-  for (const leftSpan of left) {
-    const leftCenter = leftSpan.y + leftSpan.height / 2
-    const paired = right.some(
-      (rightSpan) =>
-        Math.abs(rightSpan.y + rightSpan.height / 2 - leftCenter) <=
-        Math.max(leftSpan.height, rightSpan.height) * 0.6,
-    )
-    if (paired) pairedRows += 1
-    if (pairedRows >= 3) return true
-  }
-  return false
 }
 
 function mergeSegment(spans: readonly PdfTextSpan[]): PdfTextSpan {
@@ -64,18 +36,15 @@ export function mergePdfTextLines(
   pageWidth?: number,
 ): readonly PdfTextSpan[] {
   const rows: VisualRow[] = []
-  const twoColumns = pageWidth !== undefined && hasTwoColumns(spans, pageWidth)
   for (const span of [...spans].sort((left, right) => left.y - right.y || left.x - right.x)) {
     const centerY = span.y + span.height / 2
-    const zone = twoColumns && pageWidth !== undefined ? columnZone(span, pageWidth) : "full"
     const row = rows.find(
       (candidate) =>
-        candidate.zone === zone &&
         Math.abs(candidate.centerY - centerY) <= Math.max(candidate.height, span.height) * 0.75 &&
         Math.abs((candidate.spans[0]?.rotation ?? 0) - (span.rotation ?? 0)) < 12,
     )
     if (row) row.spans.push(span)
-    else rows.push({ centerY, height: span.height, zone, spans: [span] })
+    else rows.push({ centerY, height: span.height, spans: [span] })
   }
   const lines = rows.flatMap((row) => {
     const sorted = row.spans.sort((left, right) => left.x - right.x)
@@ -84,7 +53,23 @@ export function mergePdfTextLines(
       const current = segments.at(-1)
       const previous = current?.at(-1)
       const gap = previous ? span.x - (previous.x + previous.width) : 0
-      if (!current || gap > Math.max(24, row.height * 1.5)) segments.push([span])
+      const crossesGutter =
+        previous !== undefined &&
+        pageWidth !== undefined &&
+        previous.x < pageWidth * 0.43 &&
+        previous.x + previous.width <= pageWidth * 0.57 &&
+        span.x >= pageWidth * 0.46 &&
+        gap >= -pageWidth * 0.02 &&
+        (previous.text.trim().length >= 12 || span.text.trim().length >= 12)
+      const smallerChartLabel =
+        previous !== undefined &&
+        pageWidth !== undefined &&
+        previous.text.trim().length >= 24 &&
+        previous.fontSize >= span.fontSize * 1.55 &&
+        previous.x < pageWidth / 2 &&
+        span.x >= pageWidth / 2
+      if (!current || gap > Math.max(18, row.height * 1.35) || crossesGutter || smallerChartLabel)
+        segments.push([span])
       else current.push(span)
     }
     return segments.map(mergeSegment)

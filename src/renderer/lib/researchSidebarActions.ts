@@ -1,6 +1,7 @@
 import { useCallback } from "react"
 import type { AiHistoryMessage, AiRequest } from "../../shared/ipc"
 import type { BoardCard, CardId, DocumentRecord, Workspace } from "../types"
+import { MINIMIZED_CARD_HEIGHT } from "./board"
 import { paperContextForQuestion } from "./pdfSearch"
 import { focusWorldRect } from "./viewport"
 
@@ -30,8 +31,8 @@ export function focusWorkspaceOnCard(
     viewport: focusWorldRect(workspace.viewport, available, {
       x: card.x,
       y: card.y,
-      width: 320,
-      height: 220,
+      width: card.minimized ? 240 : card.width,
+      height: card.minimized ? MINIMIZED_CARD_HEIGHT : (card.height ?? 220),
     }),
   }
 }

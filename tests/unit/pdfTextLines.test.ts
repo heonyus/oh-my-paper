@@ -96,4 +96,104 @@ describe("mergePdfTextLines", () => {
       "Figure 4: Error statistics 5.5 Impact of Context Length",
     )
   })
+
+  it("keeps full-width small-caps headings intact on chart-heavy pages", () => {
+    const pairedChartLabels = Array.from({ length: 4 }, (_, index) => [
+      {
+        id: `left-${index}`,
+        text: `Left chart ${index}`,
+        x: 120,
+        y: 300 + index * 18,
+        width: 90,
+      },
+      {
+        id: `right-${index}`,
+        text: `Right chart ${index}`,
+        x: 390,
+        y: 300 + index * 18,
+        width: 100,
+      },
+    ]).flat()
+    const spans = [
+      { id: "a", text: "A", x: 286, y: 100, width: 10 },
+      { id: "bstract", text: "BSTRACT", x: 299, y: 100, width: 64 },
+      ...pairedChartLabels,
+    ].map((span) => ({
+      ...span,
+      height: 14,
+      fontSize: 12,
+      fontWeight: 400,
+    }))
+
+    const lines = mergePdfTextLines(spans, 600)
+
+    expect(lines.map((line) => line.text)).toContain("ABSTRACT")
+    expect(lines.map((line) => line.text)).not.toContain("A")
+  })
+
+  it("separates small chart labels from neighboring body prose on the same row", () => {
+    const lines = mergePdfTextLines(
+      [
+        {
+          id: "body",
+          text: "Figure 9 illustrates the diverse task distribution within",
+          x: 60,
+          y: 200,
+          width: 250,
+          height: 14,
+          fontSize: 12,
+          fontWeight: 400,
+        },
+        {
+          id: "chart-label",
+          text: "Analysis",
+          x: 312,
+          y: 201,
+          width: 42,
+          height: 7,
+          fontSize: 6,
+          fontWeight: 400,
+        },
+      ],
+      600,
+    )
+
+    expect(lines.map((line) => line.text)).toEqual([
+      "Figure 9 illustrates the diverse task distribution within",
+      "Analysis",
+    ])
+  })
+
+  it("keeps adjacent two-column prose and a table caption as separate lines", () => {
+    const lines = mergePdfTextLines(
+      [
+        {
+          id: "left-prose",
+          text: "The external suites were intentionally chosen",
+          x: 60,
+          y: 200,
+          width: 275,
+          height: 14,
+          fontSize: 12,
+          fontWeight: 400,
+        },
+        {
+          id: "right-caption",
+          text: "Table 5: External test set results.",
+          x: 330,
+          y: 200,
+          width: 220,
+          height: 14,
+          fontSize: 12,
+          fontWeight: 400,
+        },
+      ],
+      600,
+    )
+
+    expect(lines.map((line) => line.text)).toEqual([
+      "The external suites were intentionally chosen",
+      "Table 5: External test set results.",
+    ])
+  })
 })

@@ -15,7 +15,9 @@ describe("AiChatPanel", () => {
       />,
     )
 
-    await userEvent.type(screen.getByRole("textbox", { name: "논문 질문" }), "핵심 기여가 뭐야?")
+    const composer = screen.getByRole("textbox", { name: "논문 질문" })
+    expect(composer).not.toHaveAttribute("placeholder")
+    await userEvent.type(composer, "핵심 기여가 뭐야?")
     await userEvent.click(screen.getByRole("button", { name: "보내기" }))
 
     expect(onAsk).toHaveBeenCalledWith("핵심 기여가 뭐야?", [])

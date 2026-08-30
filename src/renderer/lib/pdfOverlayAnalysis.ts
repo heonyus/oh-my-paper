@@ -1,3 +1,4 @@
+import type { DocumentLayoutPage } from "../../shared/documentLayout"
 import { featureToStructure } from "./pdfDocumentFeatures"
 import {
   type DetectPdfFeaturesInput,
@@ -12,6 +13,7 @@ import {
   tightenCandidateToSpans,
   tightestInkLineBounds,
 } from "./pdfInkRegion"
+import { applyModelLayoutBounds, pdfFeatureKey } from "./pdfModelLayout"
 import { mergePdfTextLines } from "./pdfTextLines"
 import type { BibliographyMap, DetectedStructure } from "./structureDetector"
 
@@ -55,6 +57,7 @@ export function completePageOverlay(
   bibliography: BibliographyMap,
   captured: CapturedPageOverlay,
   detected: readonly PdfFeature[],
+  modelLayout?: DocumentLayoutPage,
 ): PageOverlayState | null {
   const pageRect = pageDiv.getBoundingClientRect()
   if (
@@ -62,7 +65,15 @@ export function completePageOverlay(
     Math.abs(pageRect.height - captured.input.pageHeight) > 0.5
   )
     return null
-  const features = detected.map((feature) => {
+  const modelApplied = applyModelLayoutBounds(
+    detected,
+    captured.spans,
+    modelLayout,
+    pageRect.width,
+    pageRect.height,
+  )
+  const features = modelApplied.features.map((feature) => {
+    if (modelApplied.boundFeatureKeys.has(pdfFeatureKey(feature))) return feature
     if (feature.kind === "figure" || feature.kind === "table") {
       const captionId = feature.sourceSpanIds[0]
       const caption = captionId ? captured.spans.find((span) => span.id === captionId) : undefined

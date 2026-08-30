@@ -10,13 +10,25 @@ import type { WorkspaceStore } from "./workspaceStore"
 export class DocumentImportError extends Error {
   readonly name = "DocumentImportError"
 
-  constructor(readonly kind: "invalid_pdf" | "password_required" | "read_failed") {
-    super(kind)
+  constructor(
+    readonly kind: "invalid_pdf" | "password_required" | "read_failed",
+    cause?: unknown,
+  ) {
+    super(kind, { cause })
   }
 }
 
 function extractDoi(subject: string | undefined): string | null {
   return subject?.match(/10\.\d{4,9}\/[\w.()/:;-]+/iu)?.[0] ?? null
+}
+
+function extractAuthors(author: string | undefined): readonly string[] {
+  return (
+    author
+      ?.split(/[;,]/u)
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0) ?? []
+  )
 }
 
 async function inspectDocument(bytes: Uint8Array, sourcePath: string): Promise<DocumentRecord> {
@@ -34,11 +46,7 @@ async function inspectDocument(bytes: Uint8Array, sourcePath: string): Promise<D
       importedAt: new Date().toISOString(),
       pageCount: pdf.getPageCount(),
       title: pdf.getTitle()?.trim() || basename(sourcePath).replace(/\.pdf$/iu, ""),
-      authors:
-        pdf
-          .getAuthor()
-          ?.split(/[;,]/u)
-          .map((value) => value.trim()) ?? [],
+      authors: extractAuthors(pdf.getAuthor()),
       year: pdf.getCreationDate()?.getFullYear() ?? null,
       doi: extractDoi(pdf.getSubject()),
       quality: { textCharacters: 0, needsOcr: false, warnings: [] },
@@ -48,7 +56,7 @@ async function inspectDocument(bytes: Uint8Array, sourcePath: string): Promise<D
     if (error instanceof Error && /encrypt|password/iu.test(error.message)) {
       throw new DocumentImportError("password_required")
     }
-    throw new DocumentImportError("read_failed")
+    throw new DocumentImportError("read_failed", error)
   }
 }
 
@@ -73,8 +81,12 @@ export async function importDocument(
 }
 
 export async function readDocumentBytes(id: DocumentId, store: WorkspaceStore): Promise<Buffer> {
+  return readFile(await resolveDocumentPath(id, store))
+}
+
+export async function resolveDocumentPath(id: DocumentId, store: WorkspaceStore): Promise<string> {
   const workspace = await store.read()
   const document = workspace.documents.find((candidate) => candidate.id === id)
   if (!document) throw new DocumentImportError("read_failed")
-  return readFile(join(store.documentsDirectory, `${document.hash}.pdf`))
+  return join(store.documentsDirectory, `${document.hash}.pdf`)
 }

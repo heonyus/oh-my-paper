@@ -1,16 +1,34 @@
-import { BookOpen, ExternalLink, MessageSquareText, Pin } from "lucide-react"
+import { BookOpen, ExternalLink, Pin } from "lucide-react"
 import { type FormEvent, type JSX, useState } from "react"
 import type { CitationAssessmentResult, ReadingTier } from "../../shared/citationAssessment"
 import { citationAssessmentResultSchema } from "../../shared/citationAssessment"
 import type { RankedCitation } from "../lib/citationTriage"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
+import { ChatComposer } from "./ChatComposer"
 import type { CitationAnalysisState } from "./citationPanelTypes"
+import { MarkdownContent } from "./MarkdownContent"
 
 const tierLabels: Readonly<Record<ReadingTier, string>> = {
   deep_read: "정독",
   skim: "훑어보기",
   abstract_only: "초록만",
   pass: "패스",
+}
+
+const scoreParts = [
+  { key: "dependency", label: "현재 논문 의존도", maximum: 30 },
+  { key: "methodological", label: "방법 관련성", maximum: 25 },
+  { key: "conceptual", label: "개념 관련성", maximum: 20 },
+  { key: "evidentiary", label: "근거 중요도", maximum: 15 },
+  { key: "contextSufficiency", label: "문맥 충분성", maximum: 10 },
+] as const
+
+function citationSourceUrl(state: CitationAnalysisState | undefined): string | null {
+  if (state?.status !== "complete") return null
+  if (state.paper.openAccessUrl) return state.paper.openAccessUrl
+  if (state.paper.url) return state.paper.url
+  if (state.paper.doi) return `https://doi.org/${state.paper.doi}`
+  return state.paper.paperId.startsWith("https://") ? state.paper.paperId : null
 }
 
 export function CitationItem({
@@ -55,7 +73,7 @@ export function CitationItem({
           tier: ranked.tier,
         })
       : null
-  const sourceUrl = complete?.paper.openAccessUrl ?? complete?.paper.url
+  const sourceUrl = citationSourceUrl(state)
   return (
     <article className="citation-item" data-tier={ranked?.tier ?? "unassessed"}>
       <header>
@@ -76,8 +94,17 @@ export function CitationItem({
       <div className="citation-item-meta">
         <span>인용 문맥 {entry.contexts.length}개</span>
         {complete ? <span>신원 일치 {Math.round(complete.match.score * 100)}%</span> : null}
-        {ranked ? <span>읽기 점수 {ranked.score}</span> : null}
+        {ranked ? <span>읽기 점수 {ranked.score}/100</span> : null}
       </div>
+      {complete && sourceUrl ? (
+        <button
+          type="button"
+          className="citation-source-link"
+          onClick={() => void window.scourgify.openExternal({ url: sourceUrl })}
+        >
+          <ExternalLink size={14} /> 실제 논문 열기
+        </button>
+      ) : null}
       {!state || state.status === "error" ? (
         <div className="citation-item-actions">
           <button type="button" onClick={onAnalyze}>
@@ -93,8 +120,25 @@ export function CitationItem({
       ) : null}
       {complete && result ? (
         <div className="citation-assessment">
-          <p>{result.citationReason}</p>
-          <p>{result.readingValue}</p>
+          <section className="citation-score" aria-label={`읽기 점수 ${result.score}점`}>
+            <div className="citation-score-head">
+              <strong className="citation-score-total">{result.score}/100</strong>
+              <span className="citation-score-tier">{tierLabels[result.tier]}</span>
+            </div>
+            <span className="citation-score-track" aria-hidden="true">
+              <span className="citation-score-fill" style={{ width: `${result.score}%` }} />
+            </span>
+            <dl className="citation-score-breakdown">
+              {scoreParts.map((part) => (
+                <div className="citation-score-row" key={part.key}>
+                  <dt className="citation-score-label">{part.label}</dt>
+                  <dd className="citation-score-part">{`${result.breakdown[part.key]}/${part.maximum}`}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+          <MarkdownContent source={result.citationReason} />
+          <MarkdownContent source={result.readingValue} />
           <ul>
             {result.reasons.map((reason) => (
               <li key={reason}>{reason}</li>
@@ -104,34 +148,19 @@ export function CitationItem({
             <p className="citation-sections">읽을 부분: {result.recommendedSections.join(", ")}</p>
           ) : null}
           <div className="citation-item-actions">
-            {sourceUrl ? (
-              <button
-                type="button"
-                onClick={() => void window.scourgify.openExternal({ url: sourceUrl })}
-              >
-                <ExternalLink size={14} /> 논문 열기
-              </button>
-            ) : null}
             <button type="button" onClick={() => onSave(result)}>
               <Pin size={14} /> 보드에 저장
             </button>
           </div>
-          <form className="citation-question" onSubmit={(event) => void submit(event)}>
-            <input
-              aria-label={`${entry.title} 질문`}
-              value={question}
-              onChange={(event) => setQuestion(event.currentTarget.value)}
-              placeholder="이 논문이 왜 필요한지 질문하세요"
-            />
-            <button
-              type="submit"
-              disabled={!question.trim() || asking}
-              aria-label="인용 논문 질문 보내기"
-            >
-              <MessageSquareText size={14} />
-            </button>
-          </form>
-          {answer ? <p className="citation-answer">{answer}</p> : null}
+          <ChatComposer
+            label={`${entry.title} 질문`}
+            submitLabel="인용 논문 질문 보내기"
+            value={question}
+            sending={asking}
+            onChange={setQuestion}
+            onSubmit={(event) => void submit(event)}
+          />
+          {answer ? <MarkdownContent className="citation-answer" source={answer} /> : null}
         </div>
       ) : null}
     </article>

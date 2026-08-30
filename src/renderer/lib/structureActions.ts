@@ -1,10 +1,17 @@
 import type { AiAction, AiRequest } from "../../shared/ipc"
 import type { BoardCard, DocumentId, Viewport } from "../../shared/schemas"
 import { CARD_WIDTH, createStructureCard } from "./board"
+import { parsedCardResponse } from "./cardPresentation"
+import { citationCardSource } from "./citationCardSource"
 import { assessCitationStructure } from "./citationStructureAssessment"
 import { cropFeatureImage } from "./pdfFeatureDom"
+import { sectionRequestContext } from "./sectionContext"
 import { rectsToElementSpace } from "./selectionGeometry"
-import { structureSourceKey, upsertStructureCard } from "./structureCardState"
+import {
+  shouldRegenerateStructureCard,
+  structureSourceKey,
+  upsertStructureCard,
+} from "./structureCardState"
 import type { DetectedStructure } from "./structureDetector"
 import { revealWorldRectHorizontally } from "./viewport"
 
@@ -47,10 +54,11 @@ export function createStructureActionHandler(
   input: StructureActionsInput,
 ): (structure: DetectedStructure) => void {
   return (structure) => {
-    const pageElement = input.viewportElement?.querySelector<HTMLElement>(
+    const viewer = input.viewportElement
+    const pageElement = viewer?.querySelector<HTMLElement>(
       `.page[data-page-number="${structure.page}"]`,
     )
-    if (!pageElement || !input.worldElement) return
+    if (!viewer || !pageElement || !input.worldElement) return
     const worldRect = input.worldElement.getBoundingClientRect()
     const pageRect = pageElement.getBoundingClientRect()
     const worldBounds = {
@@ -104,36 +112,53 @@ export function createStructureActionHandler(
         ),
       )
 
+    const retryCitation =
+      upserted.reused && shouldRegenerateStructureCard(card, activeGenerations.has(card.id))
+    if (upserted.reused && !retryCitation) return
+    if (retryCitation) {
+      input.commitCards(
+        patchCard(input.getCards(), card.id, (item) => ({
+          ...item,
+          loading: true,
+          body: "인용 논문과 읽을 가치를 다시 확인하는 중입니다.",
+        })),
+      )
+    }
+
     const currentGen = (activeGenerations.get(card.id) ?? 0) + 1
     activeGenerations.set(card.id, currentGen)
 
     void (async () => {
       if (structure.kind === "citation") {
-        const result = await assessCitationStructure(
+        const result = await assessCitationStructure({
           structure,
-          input.currentPaperTitle,
-          input.onAiRequest,
-        )
+          currentPaperTitle: input.currentPaperTitle,
+          onAiRequest: input.onAiRequest,
+          onMetadata: (paper) => {
+            if (activeGenerations.get(card.id) !== currentGen) return
+            input.commitCards(
+              patchCard(input.getCards(), card.id, (item) => ({
+                ...item,
+                ...citationCardSource(paper),
+              })),
+            )
+          },
+        })
         if (activeGenerations.get(card.id) !== currentGen) return
         if (result.status !== "not_found") {
           const paper = result.paper
+          const source = citationCardSource(paper)
           input.commitCards(
             patchCard(input.getCards(), card.id, (item) => ({
               ...item,
+              loading: false,
               body:
                 result.status === "assessed"
                   ? result.body
-                  : "메타정보를 확인했습니다. AI 설정 후 읽을 가치 판독을 다시 실행하세요.",
-              sourceUrl: paper.openAccessUrl ?? paper.url,
+                  : "읽기 가치 판독을 완료하지 못했습니다. 인용 버튼을 다시 누르면 재시도합니다.",
+              sourceUrl: source.sourceUrl,
               sourceMeta: {
-                title: paper.title,
-                authors: paper.authors,
-                year: paper.year,
-                venue: paper.venue,
-                abstract: paper.abstract,
-                doi: paper.doi,
-                url: paper.url,
-                citationCount: paper.citationCount,
+                ...source.sourceMeta,
                 ...(result.status === "assessed" ? { assessment: result.assessment } : {}),
               },
             })),
@@ -142,6 +167,7 @@ export function createStructureActionHandler(
           input.commitCards(
             patchCard(input.getCards(), card.id, (item) => ({
               ...item,
+              loading: false,
               body: "인용 논문의 온라인 메타정보를 찾지 못했습니다. 인용 문맥은 보존했습니다.",
             })),
           )
@@ -160,12 +186,22 @@ export function createStructureActionHandler(
               sourceSpanIds: [],
             })
           : null
+      const sectionContext =
+        structure.kind === "section"
+          ? sectionRequestContext({
+              viewer,
+              page: pageElement,
+              heading: structure.quote,
+              bounds: structure.bounds,
+              paperTitle: input.currentPaperTitle,
+            })
+          : null
       const baseRequest = {
         action: actionFor(structure),
         page: structure.page,
         quote: structure.quote,
-        before: "",
-        after: "",
+        before: sectionContext?.paper ?? "",
+        after: sectionContext?.section ?? "",
         featureKind: structure.kind === "section" ? "heading" : structure.kind,
       } satisfies Omit<AiRequest, "documentId" | "imageDataUrl">
       const explanation = await input.onAiRequest(
@@ -173,17 +209,22 @@ export function createStructureActionHandler(
       )
       if (activeGenerations.get(card.id) !== currentGen) return
       input.commitCards(
-        patchCard(input.getCards(), card.id, (item) => ({ ...item, body: explanation })),
+        patchCard(input.getCards(), card.id, (item) => ({
+          ...item,
+          ...parsedCardResponse(explanation, item.title),
+          loading: false,
+        })),
       )
     })().catch(() => {
       if (activeGenerations.get(card.id) !== currentGen) return
       input.commitCards(
         patchCard(input.getCards(), card.id, (item) => ({
           ...item,
+          loading: false,
           body:
             structure.kind === "citation" && item.sourceMeta
-              ? "메타정보를 불러왔습니다. AI 키를 설정하면 인용 관계 설명을 생성합니다."
-              : "OpenAI API 키를 설정한 뒤 다시 실행하세요.",
+              ? "읽기 가치 판독을 완료하지 못했습니다. 인용 버튼을 다시 누르면 재시도합니다."
+              : "AI 요청을 완료하지 못했습니다. 설정을 확인하고 다시 시도해주세요.",
         })),
       )
     })

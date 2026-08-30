@@ -1,6 +1,6 @@
-import { BookOpen, Copy, FunctionSquare, Image, Plus, Sparkles, Table2 } from "lucide-react"
-import { type JSX, useEffect, useRef, useState } from "react"
+import { type CSSProperties, type JSX, useCallback, useEffect, useRef, useState } from "react"
 import type { DetectedStructure } from "../lib/structureDetector"
+import { PaperStructureActions } from "./PaperStructureActions"
 
 type PaperStructureOverlayProps = {
   readonly structures: readonly DetectedStructure[]
@@ -10,6 +10,11 @@ type PaperStructureOverlayProps = {
 }
 
 type EquationActionSide = "left" | "right"
+
+type StructureRegionStyle = CSSProperties
+
+const labelledObjectActionWidth = 130
+const compactObjectActionWidth = 40
 
 export function resolveEquationActionSide(
   preferred: EquationActionSide,
@@ -22,28 +27,19 @@ export function resolveEquationActionSide(
   return rightSpace >= leftSpace ? "right" : "left"
 }
 
-function StructureIcon({ kind }: { readonly kind: DetectedStructure["kind"] }): JSX.Element {
-  switch (kind) {
-    case "section":
-      return <Sparkles size={13} aria-hidden="true" />
-    case "figure":
-      return <Image size={13} aria-hidden="true" />
-    case "table":
-      return <Table2 size={13} aria-hidden="true" />
-    case "equation":
-      return <FunctionSquare size={13} aria-hidden="true" />
-    case "citation":
-      return <BookOpen size={13} aria-hidden="true" />
-  }
+export function resolveObjectActionSide(
+  preferred: EquationActionSide,
+  leftSpace: number,
+  rightSpace: number,
+  compact: boolean,
+): EquationActionSide {
+  const requiredSpace = compact ? compactObjectActionWidth : labelledObjectActionWidth
+  if (preferred === "left" && leftSpace >= requiredSpace) return "left"
+  if (preferred === "right" && rightSpace >= requiredSpace) return "right"
+  if (preferred === "left" && rightSpace >= requiredSpace) return "right"
+  if (preferred === "right" && leftSpace >= requiredSpace) return "left"
+  return rightSpace >= leftSpace ? "right" : "left"
 }
-
-const actionLabel = {
-  section: "AI 섹션 해설",
-  figure: "AI 그림 해설",
-  table: "AI 표 분석",
-  equation: "AI 수식 해설",
-  citation: "인용 논문 보기",
-} as const
 
 export function PaperStructureOverlay({
   structures,
@@ -52,13 +48,20 @@ export function PaperStructureOverlay({
   onCopy,
 }: PaperStructureOverlayProps): JSX.Element {
   const overlayRef = useRef<HTMLDivElement>(null)
+  const clearTimerRef = useRef<number | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [copyingId, setCopyingId] = useState<string | null>(null)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
   const [equationPlacement, setEquationPlacement] = useState<{
     readonly id: string
     readonly side: EquationActionSide
   } | null>(null)
+
+  const activateStructure = useCallback((id: string | null): void => {
+    if (clearTimerRef.current !== null) {
+      window.clearTimeout(clearTimerRef.current)
+      clearTimerRef.current = null
+    }
+    setActiveId(id)
+  }, [])
 
   useEffect(() => {
     const handleMove = (event: PointerEvent): void => {
@@ -68,7 +71,7 @@ export function PaperStructureOverlay({
       const owner = target?.closest<HTMLElement>(".structure-hover-region")
       const activate = (region: HTMLElement): void => {
         const id = region.getAttribute("data-structure-id")
-        setActiveId(id)
+        activateStructure(id)
         if (!id || region.getAttribute("data-kind") !== "equation") return
         const viewport = region.closest<HTMLElement>(".board-viewport")
         if (!viewport) return
@@ -104,38 +107,63 @@ export function PaperStructureOverlay({
           return leftRect.width * leftRect.height - rightRect.width * rightRect.height
         })[0]
       if (active) activate(active)
-      else setActiveId(null)
+      else if (clearTimerRef.current === null) {
+        clearTimerRef.current = window.setTimeout(() => {
+          clearTimerRef.current = null
+          setActiveId(null)
+        }, 280)
+      }
     }
-    const clear = (): void => setActiveId(null)
+    const clear = (): void => activateStructure(null)
     window.addEventListener("pointermove", handleMove, { passive: true })
     window.addEventListener("blur", clear)
     return () => {
       window.removeEventListener("pointermove", handleMove)
       window.removeEventListener("blur", clear)
+      if (clearTimerRef.current !== null) window.clearTimeout(clearTimerRef.current)
     }
-  }, [])
+  }, [activateStructure])
 
   return (
     <div ref={overlayRef} className="paper-structure-overlay">
       {structures.map((structure) => {
         const preferredSide =
           structure.bounds.x + structure.bounds.width / 2 < pageWidth / 2 ? "left" : "right"
+        const leftSpace = structure.bounds.x
+        const rightSpace = pageWidth - structure.bounds.x - structure.bounds.width
+        const preferredSpace = preferredSide === "left" ? leftSpace : rightSpace
+        const compactActions =
+          (structure.kind === "figure" || structure.kind === "table") &&
+          (structure.bounds.width < 190 || preferredSpace < labelledObjectActionWidth)
+        const objectActionSide = resolveObjectActionSide(
+          preferredSide,
+          leftSpace,
+          rightSpace,
+          compactActions,
+        )
         const actionSide =
           equationPlacement?.id === structure.id ? equationPlacement.side : preferredSide
+        const regionStyle: StructureRegionStyle = {
+          left: structure.bounds.x,
+          top: structure.bounds.y,
+          width: Math.max(24, structure.bounds.width),
+          height: Math.max(18, structure.bounds.height),
+        }
         return (
           <div
             key={structure.id}
             className="structure-hover-region"
             data-structure-id={structure.id}
             data-kind={structure.kind}
+            data-compact-actions={compactActions}
             data-action-side={structure.kind === "equation" ? actionSide : undefined}
+            data-object-action-side={
+              structure.kind === "figure" || structure.kind === "table"
+                ? objectActionSide
+                : undefined
+            }
             data-active={activeId === structure.id}
-            style={{
-              left: structure.bounds.x,
-              top: structure.bounds.y,
-              width: Math.max(24, structure.bounds.width),
-              height: Math.max(18, structure.bounds.height),
-            }}
+            style={regionStyle}
           >
             <svg className="structure-screen-stroke" width="100%" height="100%" aria-hidden="true">
               <rect
@@ -148,105 +176,14 @@ export function PaperStructureOverlay({
                 vectorEffect="non-scaling-stroke"
               />
             </svg>
-            {structure.kind === "section" ? (
-              <button
-                type="button"
-                className="structure-ai-badge section-ai-badge"
-                aria-label={`${structure.title} AI 섹션 해설`}
-                title="AI 섹션 해설"
-                onPointerEnter={() => setActiveId(structure.id)}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  onTrigger(structure)
-                }}
-              >
-                <StructureIcon kind={structure.kind} />
-              </button>
-            ) : (
-              <div className="structure-action-cluster">
-                <button
-                  type="button"
-                  className="structure-ai-badge"
-                  aria-label={`${structure.title} ${actionLabel[structure.kind]}`}
-                  title={structure.kind === "equation" ? actionLabel[structure.kind] : undefined}
-                  onPointerEnter={() => setActiveId(structure.id)}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    onTrigger(structure)
-                  }}
-                >
-                  <StructureIcon kind={structure.kind} />
-                  {structure.kind === "equation" ? null : (
-                    <span>{actionLabel[structure.kind]}</span>
-                  )}
-                </button>
-                {activeId === structure.id &&
-                (structure.kind === "figure" ||
-                  structure.kind === "table" ||
-                  structure.kind === "equation") ? (
-                  <button
-                    type="button"
-                    className="structure-copy-badge"
-                    aria-label={`${structure.title} 복사`}
-                    title={structure.kind === "equation" ? "LaTeX 복사" : undefined}
-                    onPointerEnter={() => setActiveId(structure.id)}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      setCopyingId(structure.id)
-                      void onCopy(structure)
-                        .then(() => {
-                          setCopiedId(structure.id)
-                          setTimeout(
-                            () =>
-                              setCopiedId((current) => (current === structure.id ? null : current)),
-                            1500,
-                          )
-                        })
-                        .catch(() => setCopiedId(null))
-                        .finally(() => setCopyingId(null))
-                    }}
-                  >
-                    <Copy size={13} aria-hidden="true" />
-                    {structure.kind === "equation" ? null : (
-                      <span>
-                        {copyingId === structure.id
-                          ? "복사 중…"
-                          : copiedId === structure.id
-                            ? "복사됨"
-                            : structure.kind === "figure"
-                              ? "그림 복사"
-                              : "표 복사"}
-                      </span>
-                    )}
-                  </button>
-                ) : null}
-              </div>
-            )}
-            {activeId === structure.id && structure.kind === "citation" ? (
-              <div
-                className="citation-preview-popover"
-                role="dialog"
-                aria-label="인용 논문 미리보기"
-              >
-                <strong>{structure.reference?.title ?? structure.title}</strong>
-                <span className="citation-preview-secondary">
-                  {structure.reference?.authors ?? "인용 논문 메타정보를 확인하려면 클릭하세요."}
-                </span>
-                {structure.reference?.year ? (
-                  <span className="citation-preview-secondary">{structure.reference.year}</span>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    onTrigger(structure)
-                    setActiveId(null)
-                  }}
-                >
-                  <Plus size={12} /> Smart Citation 카드 만들기
-                </button>
-              </div>
-            ) : null}
+            <PaperStructureActions
+              structure={structure}
+              active={activeId === structure.id}
+              onActivate={() => activateStructure(structure.id)}
+              onTrigger={onTrigger}
+              onCopy={onCopy}
+              onCitationClose={() => activateStructure(null)}
+            />
           </div>
         )
       })}

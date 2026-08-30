@@ -20,6 +20,13 @@ type CitationStructureResult =
       readonly body: string
     }
 
+type CitationStructureAssessmentInput = {
+  readonly structure: DetectedStructure
+  readonly currentPaperTitle: string
+  readonly onAiRequest: (request: Omit<AiRequest, "documentId">) => Promise<string>
+  readonly onMetadata: (paper: CitationPaper) => void
+}
+
 function entryFor(structure: DetectedStructure): CitationIndexEntry {
   const reference = structure.reference
   return {
@@ -35,24 +42,25 @@ function entryFor(structure: DetectedStructure): CitationIndexEntry {
 }
 
 export async function assessCitationStructure(
-  structure: DetectedStructure,
-  currentPaperTitle: string,
-  onAiRequest: (request: Omit<AiRequest, "documentId">) => Promise<string>,
+  input: CitationStructureAssessmentInput,
 ): Promise<CitationStructureResult> {
-  const entry = entryFor(structure)
-  const lookup = await window.scourgify.lookupCitation(citationLookupRequest(entry))
+  const entry = entryFor(input.structure)
+  const lookup = await window.scourgify.lookupCitation(
+    citationLookupRequest(entry, input.currentPaperTitle),
+  )
   if (lookup.status !== "found") return { status: "not_found" }
+  input.onMetadata(lookup.paper)
   try {
-    const raw = await onAiRequest({
+    const raw = await input.onAiRequest({
       action: "citation_assessment",
-      page: structure.page,
-      quote: citationAssessmentInput(currentPaperTitle, entry, lookup.paper, lookup.match),
+      page: input.structure.page,
+      quote: citationAssessmentInput(input.currentPaperTitle, entry, lookup.paper, lookup.match),
       before: "",
       after: "",
       featureKind: "citation",
     })
     const ai = parseCitationAssessment(raw)
-    const ranked = rankCitationAssessments([{ id: structure.id, assessment: ai }])[0]
+    const ranked = rankCitationAssessments([{ id: input.structure.id, assessment: ai }])[0]
     if (!ranked) return { status: "metadata_only", paper: lookup.paper }
     const assessment = citationAssessmentResultSchema.parse({
       ...ai,
@@ -63,7 +71,22 @@ export async function assessCitationStructure(
       status: "assessed",
       paper: lookup.paper,
       assessment,
-      body: `[${readingTierLabel[ranked.tier]} · ${ranked.score}]\n${assessment.citationReason}\n${assessment.readingValue}`,
+      body: [
+        `## 읽기 판단`,
+        `- **권장 수준:** ${readingTierLabel[ranked.tier]}`,
+        `- **읽기 점수:** ${ranked.score}/100`,
+        "",
+        "## 현재 논문에서의 역할",
+        assessment.citationReason,
+        "",
+        "## 읽을 가치",
+        assessment.readingValue,
+        assessment.reasons.length
+          ? `\n## 근거\n${assessment.reasons.map((reason) => `- ${reason}`).join("\n")}`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
     }
   } catch {
     return { status: "metadata_only", paper: lookup.paper }

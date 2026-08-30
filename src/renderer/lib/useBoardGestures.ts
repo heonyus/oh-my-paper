@@ -5,7 +5,7 @@ import {
 } from "react"
 import type { Viewport } from "../../shared/schemas"
 import type { BoardTool } from "../types"
-import { panViewport, zoomViewportAt } from "./viewport"
+import { panViewport, wheelPanDelta, zoomViewportAt } from "./viewport"
 
 type UseBoardGesturesProps = {
   readonly viewport: Viewport
@@ -65,7 +65,9 @@ export function useBoardGestures({
         ),
       )
     } else {
-      onViewportChange(panViewport(viewport, { x: -event.deltaX, y: -event.deltaY }))
+      onViewportChange(
+        panViewport(viewport, wheelPanDelta({ x: event.deltaX, y: event.deltaY }, event.shiftKey)),
+      )
     }
   }
 

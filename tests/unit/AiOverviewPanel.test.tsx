@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { AiOverviewPanel } from "../../src/renderer/components/AiOverviewPanel"
@@ -37,9 +37,112 @@ describe("AiOverviewPanel", () => {
 
     expect(onAiRequest).not.toHaveBeenCalled()
     await userEvent.click(screen.getByRole("button", { name: "3줄 요약 다시 생성" }))
-    expect(await screen.findByText(/1\. 문제/u)).toBeVisible()
+    expect(await screen.findByText("문제")).toBeVisible()
     expect(onAiRequest.mock.lastCall?.[0]?.action).toBe("three_line_summary")
     await userEvent.click(screen.getByRole("button", { name: "3줄 요약 보드에 저장" }))
     expect(onSave).toHaveBeenCalledWith("3줄 요약", "1. 문제\n2. 방법\n3. 결과")
+  })
+
+  it("restores cached insights without another provider request", () => {
+    const onAiRequest = vi.fn(async () => "unused")
+    render(
+      <AiOverviewPanel
+        document={documentFixture}
+        currentPage={1}
+        provider={{ configured: true, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
+        cachedInsights={[
+          {
+            documentId: documentFixture.id,
+            kind: "summary",
+            value: "**캐시된 요약**",
+            updatedAt: "2026-08-28T00:00:00.000Z",
+          },
+        ]}
+        onAiRequest={onAiRequest}
+        onSave={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText("캐시된 요약").tagName).toBe("STRONG")
+    expect(onAiRequest).not.toHaveBeenCalled()
+  })
+
+  it("uses a quiet text disclosure and an empty discussion composer", async () => {
+    render(
+      <AiOverviewPanel
+        document={documentFixture}
+        currentPage={1}
+        provider={{ configured: true, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
+        cachedInsights={[
+          {
+            documentId: documentFixture.id,
+            kind: "summary",
+            value: "긴 요약 ".repeat(60),
+            updatedAt: "2026-08-28T00:00:00.000Z",
+          },
+        ]}
+        onAiRequest={vi.fn(async () => "unused")}
+        onSave={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByText("전체 보기")).not.toBeInTheDocument()
+    const titleToggle = screen.getByRole("button", { name: /^요약$/u })
+    expect(titleToggle).toHaveAttribute("aria-expanded", "true")
+    expect(titleToggle).toHaveAttribute("aria-controls")
+    const disclosure = screen.getByRole("button", { name: "요약 전체 내용 펼치기" })
+    expect(disclosure).toHaveTextContent("더 보기")
+    await userEvent.click(disclosure)
+    expect(screen.getByRole("button", { name: "요약 접기" })).toBeVisible()
+    const controlledId = titleToggle.getAttribute("aria-controls")
+    if (!controlledId) throw new Error("insight toggle must reference its body")
+    await userEvent.click(titleToggle)
+    expect(titleToggle).toHaveAttribute("aria-expanded", "false")
+    expect(document.getElementById(controlledId)).toHaveAttribute("hidden")
+    expect(screen.getByRole("textbox", { name: "논문 토론 질문" })).not.toHaveAttribute(
+      "placeholder",
+    )
+  })
+
+  it("generates all missing overview sections in parallel after AI mode activation", async () => {
+    const onAiRequest = vi.fn(
+      async (request: Omit<AiRequest, "documentId">) => `result:${request.action}`,
+    )
+    const onInsightChange = vi.fn()
+    render(
+      <AiOverviewPanel
+        document={documentFixture}
+        currentPage={1}
+        provider={{ configured: true, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
+        activationToken={1}
+        onAiRequest={onAiRequest}
+        onInsightChange={onInsightChange}
+        onSave={vi.fn()}
+      />,
+    )
+
+    await waitFor(() => expect(onAiRequest).toHaveBeenCalledTimes(3))
+    await waitFor(() => expect(onInsightChange).toHaveBeenCalledTimes(3))
+    expect(screen.queryByRole("button", { name: "생성하기" })).not.toBeInTheDocument()
+  })
+
+  it("distinguishes a configured provider request failure from missing setup", async () => {
+    render(
+      <AiOverviewPanel
+        document={documentFixture}
+        currentPage={1}
+        provider={{ configured: true, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
+        activationToken={1}
+        onAiRequest={vi.fn(async () => {
+          throw new Error("request failed")
+        })}
+        onSave={vi.fn()}
+      />,
+    )
+
+    expect(
+      await screen.findAllByText("요청을 완료하지 못했습니다. 다시 시도해주세요."),
+    ).toHaveLength(3)
+    expect(screen.queryByText("AI 설정을 확인해주세요.")).not.toBeInTheDocument()
   })
 })

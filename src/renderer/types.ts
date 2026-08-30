@@ -1,6 +1,6 @@
 import type { ScourgifyApi } from "../shared/ipc"
 
-export type BoardTool = "select" | "pan"
+export type BoardTool = "select" | "pan" | "sticky"
 
 export type {
   BoardCard,

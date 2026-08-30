@@ -10,6 +10,7 @@ playwright-report/
 .env.*
 !.env.example
 .DS_Store
+.venv-layout/
 .omo/
 .omc/
 .omx/runtime/

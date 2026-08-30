@@ -16,6 +16,7 @@ import {
   type providerStatusSchema,
 } from "../shared/ipc"
 import { DEFAULT_OPENROUTER_MODEL, isOpenRouterModel } from "../shared/providerModels"
+import { completionLimitParameters, routedModelForRequest } from "./aiCompletion"
 import { systemPromptFor, userInputFor } from "./aiPrompts"
 import { DEFAULT_OPENAI_MODEL, providerConfigFromEnvironment } from "./providerEnvironment"
 
@@ -63,13 +64,28 @@ export class ProviderService {
   }
 
   async #loadConfig(): Promise<ProviderConfig> {
+    const environment = providerConfigFromEnvironment(process.env)
     try {
       const encrypted = await readFile(this.configFile)
       const config = providerConfigSchema.parse(JSON.parse(safeStorage.decryptString(encrypted)))
+      if (
+        environment &&
+        (environment.provider !== config.provider ||
+          environment.model !== config.model ||
+          ("apiKey" in environment ? environment.apiKey : undefined) !==
+            ("apiKey" in config ? config.apiKey : undefined))
+      ) {
+        await this.saveConfig(environment)
+        return environment
+      }
       return config.provider === "openrouter" && !isOpenRouterModel(config.model)
         ? { ...config, model: DEFAULT_OPENROUTER_MODEL }
         : config
     } catch (error) {
+      if (environment) {
+        await this.saveConfig(environment)
+        return environment
+      }
       if (!missingFile(error)) throw error
       try {
         const legacy = await readFile(this.keyFile)
@@ -80,8 +96,6 @@ export class ProviderService {
         }
       } catch (legacyError) {
         if (missingFile(legacyError)) {
-          const environment = providerConfigFromEnvironment(process.env)
-          if (environment) return environment
           throw new ProviderConfigurationError("missing_key")
         }
         throw legacyError
@@ -95,7 +109,11 @@ export class ProviderService {
       return { configured: true, provider: config.provider, model: config.model }
     } catch (error) {
       if (error instanceof ProviderConfigurationError && error.kind === "missing_key") {
-        return { configured: false, provider: "openai", model: DEFAULT_OPENAI_MODEL }
+        return {
+          configured: false,
+          provider: "openrouter",
+          model: DEFAULT_OPENROUTER_MODEL,
+        }
       }
       throw error
     }
@@ -105,8 +123,12 @@ export class ProviderService {
     const request = aiRequestSchema.parse(value)
     const config = await this.#loadConfig()
     const client = new OpenAI({
-      apiKey: config.apiKey,
-      ...(config.provider === "openrouter" ? { baseURL: "https://openrouter.ai/api/v1" } : {}),
+      apiKey: "apiKey" in config ? config.apiKey : "local-opencodex",
+      ...(config.provider === "openrouter"
+        ? { baseURL: "https://openrouter.ai/api/v1" }
+        : config.provider === "opencodex"
+          ? { baseURL: "http://127.0.0.1:10100/v1" }
+          : {}),
     })
     const input = userInputFor(request)
     const userMessage: ChatCompletionUserMessageParam = request.imageDataUrl
@@ -125,8 +147,9 @@ export class ProviderService {
     ]
     try {
       const response = await client.chat.completions.create({
-        model: config.model,
+        model: routedModelForRequest(config.provider, config.model, request),
         messages,
+        ...completionLimitParameters(config.provider, request),
       })
       const text = response.choices[0]?.message.content
       if (!text) throw new ProviderConfigurationError("request_failed")

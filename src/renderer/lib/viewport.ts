@@ -12,6 +12,11 @@ export function panViewport(viewport: Viewport, delta: Point): Viewport {
   }
 }
 
+export function wheelPanDelta(delta: Point, shiftKey: boolean): Point {
+  if (shiftKey) return { x: -(delta.y || delta.x), y: 0 }
+  return Math.abs(delta.y) >= Math.abs(delta.x) ? { x: 0, y: -delta.y } : { x: -delta.x, y: 0 }
+}
+
 export function moveWorldPointByScreenDelta(point: Point, delta: Point, zoom: number): Point {
   return { x: point.x + delta.x / zoom, y: point.y + delta.y / zoom }
 }
@@ -34,7 +39,7 @@ export function focusWorldRect(
 ): Viewport {
   return {
     ...viewport,
-    x: available.width * 0.64 - rect.x * viewport.zoom,
+    x: available.width * 0.64 - (rect.x + rect.width / 2) * viewport.zoom,
     y: available.height * 0.12 - rect.y * viewport.zoom,
   }
 }

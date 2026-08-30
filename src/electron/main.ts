@@ -9,6 +9,8 @@ import {
   citationLookupResultSchema,
   documentBytesRequestSchema,
   documentBytesResultSchema,
+  documentLayoutRequestSchema,
+  documentLayoutResultSchema,
   importResultSchema,
   ipcChannels,
   openExternalRequestSchema,
@@ -19,11 +21,16 @@ import {
   workspaceReadResultSchema,
   workspaceSaveRequestSchema,
 } from "../shared/ipc"
-import { lookupCitation } from "./citationService"
+import { CitationLookupCache } from "./citationCache"
+import { DocumentLayoutService } from "./documentLayoutService"
 import { importDocument, readDocumentBytes } from "./documentService"
+import { externalHttpsUrl } from "./externalNavigation"
 import { resolveRendererIndex } from "./paths"
 import { ProviderService } from "./providerService"
 import { WorkspaceStore } from "./workspaceStore"
+
+const { SCOURGIFY_USER_DATA_DIR: configuredUserData } = process.env
+if (configuredUserData) app.setPath("userData", configuredUserData)
 
 const developmentOrigin = "http://localhost:5173"
 
@@ -59,6 +66,14 @@ async function chooseAndImport(event: IpcMainInvokeEvent): Promise<unknown> {
 function registerIpc(): void {
   const store = createStore()
   const provider = new ProviderService(join(app.getPath("userData"), "scourgify"))
+  const citations = new CitationLookupCache(store.root)
+  const { SCOURGIFY_LAYOUT_PYTHON: layoutPython } = process.env
+  const layout = new DocumentLayoutService({
+    appPath: app.getAppPath(),
+    resourcesPath: process.resourcesPath,
+    packaged: app.isPackaged,
+    python: layoutPython,
+  })
   ipcMain.handle(ipcChannels.workspaceRead, async () =>
     workspaceReadResultSchema.parse(await store.read()),
   )
@@ -80,7 +95,7 @@ function registerIpc(): void {
   })
   ipcMain.handle(ipcChannels.citationLookup, async (_event, value: unknown) => {
     const request = citationLookupRequestSchema.parse(value)
-    return citationLookupResultSchema.parse(await lookupCitation(request))
+    return citationLookupResultSchema.parse(await citations.lookup(request))
   })
   ipcMain.handle(ipcChannels.openExternal, async (_event, value: unknown) => {
     const request = openExternalRequestSchema.parse(value)
@@ -90,6 +105,10 @@ function registerIpc(): void {
     const request = documentBytesRequestSchema.parse(value)
     const bytes = await readDocumentBytes(request.id, store)
     return documentBytesResultSchema.parse(bytes.toString("base64"))
+  })
+  ipcMain.handle(ipcChannels.documentLayout, async (_event, value: unknown) => {
+    const request = documentLayoutRequestSchema.parse(value)
+    return documentLayoutResultSchema.parse(await layout.analyze(request.id, store))
   })
 }
 
@@ -108,9 +127,16 @@ function createWindow(): void {
       sandbox: true,
     },
   })
-  window.webContents.setWindowOpenHandler(() => ({ action: "deny" }))
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    const external = externalHttpsUrl(url)
+    if (external) void shell.openExternal(external)
+    return { action: "deny" }
+  })
   window.webContents.on("will-navigate", (event, url) => {
-    if (!url.startsWith("file:") && !url.startsWith(developmentOrigin)) event.preventDefault()
+    if (url.startsWith("file:") || url.startsWith(developmentOrigin)) return
+    event.preventDefault()
+    const external = externalHttpsUrl(url)
+    if (external) void shell.openExternal(external)
   })
   // biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket access for env index signatures.
   const developmentUrl = process.env["VITE_DEV_SERVER_URL"]

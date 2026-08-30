@@ -18,6 +18,9 @@ import type { CitationIndexEntry } from "./lib/pdfCitationIndex"
 import type { PdfOutlineEntry } from "./lib/pdfOutline"
 import { applyPreparedSummary, completedPreparation } from "./lib/preparationState"
 import { useBoardCardJump } from "./lib/researchSidebarActions"
+import { appShellStyle } from "./lib/uiFontScale"
+import { useDocumentInsights } from "./lib/useDocumentInsights"
+import { usePostItShortcut } from "./lib/usePostItShortcut"
 import { useWorkspaceHistory } from "./lib/useWorkspaceHistory"
 import type { BoardCard, BoardTool, Workspace } from "./types"
 
@@ -32,11 +35,12 @@ export function App(): JSX.Element {
   const [tool, setTool] = useState<BoardTool>("select")
   const [provider, setProvider] = useState<ProviderStatus>({
     configured: false,
-    provider: "openai",
-    model: "gpt-5",
+    provider: "openrouter",
+    model: "z-ai/glm-5.3-flash",
   })
   const [outline, setOutline] = useState<readonly PdfOutlineEntry[]>([])
   const [citations, setCitations] = useState<readonly CitationIndexEntry[]>([])
+  usePostItShortcut(setTool)
   const pageJumpRef = useRef<(page: number) => void>(() => {})
   const registerPageJump = useCallback((jump: (page: number) => void): void => {
     pageJumpRef.current = jump
@@ -80,6 +84,11 @@ export function App(): JSX.Element {
   const activeCards = useMemo(
     () => workspace?.cards.filter((card) => card.documentId === activeDocument?.id) ?? [],
     [workspace, activeDocument],
+  )
+  const { insights: activeInsights, update: updateInsight } = useDocumentInsights(
+    workspace,
+    activeDocument?.id,
+    setWorkspace,
   )
 
   const updateCards = useCallback(
@@ -133,8 +142,15 @@ export function App(): JSX.Element {
 
   if (!workspace) return <main className="loading-screen">Scourgify을 여는 중…</main>
 
+  const appStyle = appShellStyle(workspace.uiFontScale)
+
   return (
-    <main className="app-shell" data-outline-open={outlineOpen}>
+    <main
+      className="app-shell"
+      data-outline-open={outlineOpen}
+      data-theme={workspace.theme}
+      style={appStyle}
+    >
       <Topbar
         viewport={workspace.viewport}
         onViewportChange={(viewport) => setWorkspace({ ...workspace, viewport })}
@@ -155,6 +171,8 @@ export function App(): JSX.Element {
       />
       {outlineOpen ? (
         <OutlinePanel
+          width={workspace.outlineWidth}
+          onWidthChange={(width) => setWorkspace({ ...workspace, outlineWidth: width })}
           currentPage={currentPage}
           outline={outline}
           onClose={() => setOutlineOpen(false)}
@@ -173,20 +191,22 @@ export function App(): JSX.Element {
           onCardsChange={updateCards}
           onDocumentLoaded={finishPreparation}
           onPageActive={setCurrentPage}
+          currentPage={currentPage}
           onOutlineChange={updateOutline}
           onRegisterPageJump={registerPageJump}
           onAiRequest={runAi}
           tool={tool}
+          onToolChange={setTool}
+          minimapVisible={workspace.minimapVisible}
+          onMinimapVisibleChange={(minimapVisible) =>
+            setWorkspace({ ...workspace, minimapVisible })
+          }
         />
       ) : (
         <section className="empty-board">
           <div>
             <FolderOpen size={30} />
             <h1>논문을 연구 보드에 펼쳐보세요</h1>
-            <p>
-              가져온 PDF는 기기 안에서만 먼저 준비됩니다. AI나 네트워크 요청은 자동으로 실행되지
-              않습니다.
-            </p>
             <button type="button" className="primary-action" onClick={() => void importPdf()}>
               PDF 가져오기
             </button>
@@ -194,16 +214,21 @@ export function App(): JSX.Element {
         </section>
       )}
       <ResearchSidebar
+        key={activeDocument?.id ?? "no-document"}
         document={activeDocument}
         currentPage={currentPage}
         cards={activeCards}
         citations={citations}
+        insights={activeInsights}
         expanded={workspace.sidebarOpen}
+        width={workspace.researchSidebarWidth}
+        onWidthChange={(width) => setWorkspace({ ...workspace, researchSidebarWidth: width })}
         provider={provider}
         onToggle={() => setWorkspace({ ...workspace, sidebarOpen: !workspace.sidebarOpen })}
         onJumpToCard={jumpToCard}
         onCardsChange={updateCards}
         onAiRequest={runAi}
+        onInsightChange={updateInsight}
       />
       {preparation.length > 0 ? (
         <PreparationProgress updates={preparation} onClose={() => setPreparation([])} />
@@ -223,6 +248,10 @@ export function App(): JSX.Element {
       {settingsOpen ? (
         <SettingsModal
           status={provider}
+          fontScale={workspace.uiFontScale}
+          theme={workspace.theme}
+          onThemeChange={(theme) => setWorkspace({ ...workspace, theme })}
+          onFontScaleChange={(uiFontScale) => setWorkspace({ ...workspace, uiFontScale })}
           onClose={() => setSettingsOpen(false)}
           onSave={async (config) => {
             await window.scourgify.saveProviderConfig(config)

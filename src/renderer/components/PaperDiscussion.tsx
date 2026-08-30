@@ -1,6 +1,7 @@
-import { Send } from "lucide-react"
 import { type FormEvent, type JSX, useState } from "react"
 import type { AiHistoryMessage, ProviderStatus } from "../../shared/ipc"
+import { ChatComposer } from "./ChatComposer"
+import { MarkdownContent } from "./MarkdownContent"
 
 type ChatEntry = AiHistoryMessage & { readonly id: string }
 
@@ -53,34 +54,24 @@ export function PaperDiscussion({
         <span>{entries.length}</span>
       </header>
       <div className="discussion-messages" aria-live="polite">
-        {entries.length > 0 ? (
-          entries.map((entry) => (
-            <article key={entry.id} data-role={entry.role}>
-              <strong>{entry.role === "user" ? "나" : "Scourgify"}</strong>
-              <p>{entry.content}</p>
-            </article>
-          ))
-        ) : (
-          <p className="insight-muted">
-            방법의 타당성, 한계, 후속 연구를 논문 근거와 함께 물어보세요.
-          </p>
-        )}
+        {entries.length > 0
+          ? entries.map((entry) => (
+              <article key={entry.id} data-role={entry.role}>
+                <strong>{entry.role === "user" ? "나" : "Scourgify"}</strong>
+                <MarkdownContent source={entry.content} />
+              </article>
+            ))
+          : null}
       </div>
-      <form onSubmit={(event) => void submit(event)}>
-        <textarea
-          aria-label="논문 토론 질문"
-          value={input}
-          onChange={(event) => setInput(event.currentTarget.value)}
-          placeholder="무엇이든 질문하세요."
-          rows={2}
-        />
-        <div>
-          <span className="discussion-model">{provider.model}</span>
-          <button type="submit" disabled={!input.trim() || sending} aria-label="토론 질문 보내기">
-            <Send size={15} />
-          </button>
-        </div>
-      </form>
+      <ChatComposer
+        label="논문 토론 질문"
+        submitLabel="토론 질문 보내기"
+        value={input}
+        sending={sending}
+        model={provider.model}
+        onChange={setInput}
+        onSubmit={(event) => void submit(event)}
+      />
     </section>
   )
 }

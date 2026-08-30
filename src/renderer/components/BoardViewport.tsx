@@ -1,39 +1,22 @@
 import { type JSX, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type { AiRequest } from "../../shared/ipc"
-import { CARD_WIDTH, createSelectionCard, saveTranslationAsNote } from "../lib/board"
+import { CARD_WIDTH, createSelectionCard } from "../lib/board"
+import { askBoardCard } from "../lib/boardCardAi"
 import { type BoardTextSelection, captureNativeBoardTextSelection } from "../lib/boardSelection"
-import type { PdfOutlineEntry } from "../lib/pdfOutline"
+import { parsedCardResponse } from "../lib/cardPresentation"
+import { postItFromPointer } from "../lib/postItPlacement"
 import { useSelectionShortcuts } from "../lib/selectionActions"
+import { selectionAiRequest } from "../lib/selectionAiRequest"
 import { addSelectionContext } from "../lib/selectionContext"
 import { worldRectToScreen } from "../lib/selectionGeometry"
 import { createStructureActionHandler } from "../lib/structureActions"
 import { useBoardGestures } from "../lib/useBoardGestures"
 import { revealWorldRectHorizontally } from "../lib/viewport"
-import type { BoardCard, BoardTool, CardId, DocumentRecord, Viewport } from "../types"
-import { BoardCard as BoardCardView } from "./BoardCard"
-import {
-  ConnectorLayer,
-  collectHighlightFragments,
-  type SelectionAction,
-  SelectionToolbar,
-  SourceHighlights,
-} from "./BoardOverlays"
-import type { PreparedSummary } from "./PdfColumn"
+import type { BoardCard, CardId } from "../types"
+import { BoardCardsLayer } from "./BoardCardsLayer"
+import { BoardNavigationController } from "./BoardNavigationController"
+import * as BoardOverlays from "./BoardOverlays"
+import type { BoardViewportProps } from "./BoardViewportProps"
 import { PdfSurface } from "./PdfSurface"
-
-type BoardViewportProps = {
-  readonly document: DocumentRecord
-  readonly viewport: Viewport
-  readonly cards: readonly BoardCard[]
-  readonly onViewportChange: (viewport: Viewport) => void
-  readonly onCardsChange: (cards: readonly BoardCard[]) => void
-  readonly onDocumentLoaded: (summary: PreparedSummary) => void
-  readonly onPageActive: (page: number) => void
-  readonly onOutlineChange?: ((outline: readonly PdfOutlineEntry[]) => void) | undefined
-  readonly onRegisterPageJump?: ((jump: (page: number) => void) => void) | undefined
-  readonly onAiRequest: (request: Omit<AiRequest, "documentId">) => Promise<string>
-  readonly tool: BoardTool
-}
 
 export function BoardViewport(props: BoardViewportProps): JSX.Element {
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -42,6 +25,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
   const cardsRef = useRef(props.cards)
   const [selectionMenu, setSelectionMenu] = useState<BoardTextSelection | null>(null)
   const [activeCardId, setActiveCardId] = useState<CardId | null>(null)
+  const [createdStickyId, setCreatedStickyId] = useState<CardId | null>(null)
 
   const { startPan, movePan, endPan, handleWheel } = useBoardGestures({
     viewport: props.viewport,
@@ -55,10 +39,8 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
 
   useEffect(() => {
     viewportStateRef.current = props.viewport
-  }, [props.viewport])
-  useEffect(() => {
     cardsRef.current = props.cards
-  }, [props.cards])
+  }, [props.viewport, props.cards])
 
   const readNativeSelection = useCallback((): void => {
     if (props.tool === "pan") {
@@ -99,8 +81,6 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
     return () => document.removeEventListener("selectionchange", readNativeSelection)
   }, [readNativeSelection])
 
-  const activeCards = props.cards.filter((card) => card.id === activeCardId)
-
   const handlePageJump = useCallback(
     (_page: number, pageElement: HTMLElement): void => {
       const viewportElement = viewportRef.current
@@ -119,8 +99,9 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
   const persistentHighlights = props.cards
     .filter((card) => card.kind === "highlight")
     .flatMap((card) => card.anchor.fragments)
-  const highlightedFragments = collectHighlightFragments(
-    activeCards.filter((card) => card.kind !== "highlight"),
+  const activeCards = props.cards.filter((card) => card.id === activeCardId)
+  const highlightedFragments = BoardOverlays.collectHighlightFragments(
+    activeCards.filter((card) => card.kind !== "highlight" && card.kind !== "sticky"),
     persistentHighlights,
   )
 
@@ -130,10 +111,33 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
   }
 
   function updateCardBody(id: CardId, body: string): void {
-    commitCards(cardsRef.current.map((card) => (card.id === id ? { ...card, body } : card)))
+    commitCards(
+      cardsRef.current.map((card) => {
+        if (card.id !== id) return card
+        const parsed = parsedCardResponse(body, card.title)
+        return { ...card, ...parsed, loading: false }
+      }),
+    )
   }
 
-  function addCard(kind: SelectionAction): void {
+  function placePostIt(event: Parameters<typeof postItFromPointer>[0]): boolean {
+    const card = postItFromPointer(event, {
+      documentId: props.document.id,
+      page: props.currentPage,
+      viewport: props.viewport,
+      viewportElement: viewportRef.current,
+      enabled: props.tool === "sticky",
+    })
+    if (!card) return false
+    event.preventDefault()
+    commitCards([...cardsRef.current, card])
+    setActiveCardId(card.id)
+    setCreatedStickyId(card.id)
+    props.onToolChange("select")
+    return true
+  }
+
+  function addCard(kind: BoardOverlays.SelectionAction): void {
     if (!selectionMenu) return
     const card = createSelectionCard(props.document.id, selectionMenu, kind)
     if (!card) return
@@ -151,17 +155,12 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
     commitCards([...cardsRef.current, card])
     setSelectionMenu(null)
     window.getSelection()?.removeAllRanges()
-    if (kind !== "note" && kind !== "highlight") {
+    const request = selectionAiRequest(kind, selectionMenu)
+    if (request) {
       void props
-        .onAiRequest({
-          action: kind,
-          page: selectionMenu.page,
-          quote: selectionMenu.quote,
-          before: selectionMenu.context.before,
-          after: selectionMenu.context.after,
-        })
+        .onAiRequest(request)
         .then((body) => updateCardBody(card.id, body))
-        .catch(() => updateCardBody(card.id, "OpenAI API 키를 설정한 뒤 다시 실행하세요."))
+        .catch(() => updateCardBody(card.id, "AI 설정을 확인한 뒤 다시 실행하세요."))
     }
   }
 
@@ -192,7 +191,11 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
       ref={viewportRef}
       className="board-viewport"
       data-tool={props.tool}
-      onPointerDown={startPan}
+      onPointerDown={(event) => {
+        if (event.target instanceof Element && !event.target.closest(".board-card"))
+          setActiveCardId(null)
+        if (!placePostIt(event)) startPan(event)
+      }}
       onPointerMove={movePan}
       onPointerUp={endPan}
       onPointerCancel={endPan}
@@ -215,33 +218,36 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
           transform: `translate(${props.viewport.x}px, ${props.viewport.y}px) scale(${props.viewport.zoom})`,
         }}
       >
-        <ConnectorLayer cards={activeCards} />
-        <SourceHighlights fragments={highlightedFragments} />
-        {props.cards.map((card) => (
-          <BoardCardView
-            key={card.id}
-            card={card}
-            active={card.id === activeCardId}
-            zoom={props.viewport.zoom}
-            onActiveChange={setActiveCardId}
-            onMove={(id, x, y) =>
-              commitCards(cardsRef.current.map((c) => (c.id === id ? { ...c, x, y } : c)))
-            }
-            onDelete={(id) => {
-              if (activeCardId === id) setActiveCardId(null)
-              commitCards(cardsRef.current.filter((c) => c.id !== id))
-            }}
-            onConvertToNote={(id) =>
-              commitCards(cardsRef.current.map((c) => (c.id === id ? saveTranslationAsNote(c) : c)))
-            }
-            onJump={props.onPageActive}
-          />
-        ))}
+        <BoardOverlays.ConnectorLayer
+          cards={activeCards.filter((card) => card.kind !== "sticky" && card.kind !== "highlight")}
+        />
+        <BoardOverlays.SourceHighlights fragments={highlightedFragments} />
+        <BoardCardsLayer
+          cards={props.cards}
+          activeId={activeCardId}
+          autoEditId={createdStickyId}
+          zoom={props.viewport.zoom}
+          onActiveChange={setActiveCardId}
+          getCards={() => cardsRef.current}
+          commitCards={commitCards}
+          onJump={props.onPageActive}
+          onAsk={(card, question, history) =>
+            askBoardCard(card, question, history, props.onAiRequest)
+          }
+        />
       </div>
       {selectionMenu && menuPosition ? (
-        <SelectionToolbar position={menuPosition} onAction={addCard} />
+        <BoardOverlays.SelectionToolbar position={menuPosition} onAction={addCard} />
       ) : null}
-      <div className="board-hint">두 손가락으로 이동 · 핀치하여 확대/축소</div>
+      <BoardNavigationController
+        key={props.document.id}
+        viewport={props.viewport}
+        cards={props.cards}
+        currentPage={props.currentPage}
+        onViewportChange={props.onViewportChange}
+        visible={props.minimapVisible}
+        onVisibleChange={props.onMinimapVisibleChange}
+      />
     </div>
   )
 }
