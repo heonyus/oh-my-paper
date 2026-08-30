@@ -28,4 +28,17 @@ describe("useWorkspaceHistory", () => {
     act(() => result.current.redo())
     expect(result.current.workspace?.viewport.x).toBe(40)
   })
+
+  it("keeps transient viewport updates out of undo history", () => {
+    const { result } = renderHook(() => useWorkspaceHistory())
+    act(() => result.current.resetWorkspace(workspace))
+    act(() =>
+      result.current.setWorkspaceTransient((current) =>
+        current ? { ...current, viewport: { ...current.viewport, x: 80 } } : current,
+      ),
+    )
+
+    expect(result.current.workspace?.viewport.x).toBe(80)
+    expect(result.current.canUndo).toBe(false)
+  })
 })

@@ -20,7 +20,7 @@ describe("AiChatPanel", () => {
     await userEvent.type(composer, "핵심 기여가 뭐야?")
     await userEvent.click(screen.getByRole("button", { name: "보내기" }))
 
-    expect(onAsk).toHaveBeenCalledWith("핵심 기여가 뭐야?", [])
+    expect(onAsk).toHaveBeenCalledWith("핵심 기여가 뭐야?", [], expect.any(Function))
     expect(await screen.findByText("이 논문의 핵심 기여는 장기 EHR 추론입니다.")).toBeVisible()
   })
 })

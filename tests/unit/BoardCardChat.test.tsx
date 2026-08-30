@@ -34,7 +34,11 @@ describe("BoardCardChat", () => {
     await userEvent.click(screen.getByRole("button", { name: "후속 질문 보내기" }))
 
     await waitFor(() => expect(onChange).toHaveBeenCalledTimes(2))
-    expect(onAsk).toHaveBeenCalledWith("핵심 한계는?", [{ role: "user", content: "핵심 한계는?" }])
+    expect(onAsk).toHaveBeenCalledWith(
+      "핵심 한계는?",
+      [{ role: "user", content: "핵심 한계는?" }],
+      expect.any(Function),
+    )
     expect(onChange.mock.lastCall?.[0]).toEqual([
       { role: "user", content: "핵심 한계는?" },
       { role: "assistant", content: "근거 기반 답변" },

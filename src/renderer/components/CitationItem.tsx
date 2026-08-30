@@ -4,6 +4,7 @@ import type { CitationAssessmentResult, ReadingTier } from "../../shared/citatio
 import { citationAssessmentResultSchema } from "../../shared/citationAssessment"
 import type { RankedCitation } from "../lib/citationTriage"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
+import type { AiDeltaHandler } from "../types"
 import { ChatComposer } from "./ChatComposer"
 import type { CitationAnalysisState } from "./citationPanelTypes"
 import { MarkdownContent } from "./MarkdownContent"
@@ -44,7 +45,7 @@ export function CitationItem({
   readonly ranked: RankedCitation | undefined
   readonly onAnalyze: () => void
   readonly onSave: (assessment: CitationAssessmentResult) => void
-  readonly onAsk: (question: string) => Promise<string>
+  readonly onAsk: (question: string, onDelta?: AiDeltaHandler) => Promise<string>
 }): JSX.Element {
   const [question, setQuestion] = useState("")
   const [answer, setAnswer] = useState("")
@@ -54,8 +55,12 @@ export function CitationItem({
     event.preventDefault()
     if (!question.trim() || asking) return
     setAsking(true)
+    setAnswer("")
     try {
-      setAnswer(await onAsk(question.trim()))
+      const response = await onAsk(question.trim(), (delta) =>
+        setAnswer((current) => current + delta),
+      )
+      setAnswer(response)
       setQuestion("")
     } catch {
       setAnswer("AI 설정 또는 인용 논문 정보를 확인해주세요.")

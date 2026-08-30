@@ -8,6 +8,7 @@ export function BoardCardHeader({
   card,
   zoom,
   onMove,
+  onMoveEnd,
   onMinimize,
   onDelete,
   onRegenerateTitle,
@@ -15,17 +16,20 @@ export function BoardCardHeader({
   readonly card: BoardCard
   readonly zoom: number
   readonly onMove: (id: CardId, x: number, y: number) => void
+  readonly onMoveEnd: (id: CardId, x: number, y: number) => void
   readonly onMinimize: (id: CardId) => void
   readonly onDelete: (id: CardId) => void
   readonly onRegenerateTitle?: ((id: CardId) => void) | undefined
 }): JSX.Element {
   const start = useRef<{ x: number; y: number; cardX: number; cardY: number } | null>(null)
+  const latest = useRef<{ x: number; y: number } | null>(null)
   return (
     <header
       className="card-head"
       onPointerDown={(event) => {
         if (event.target instanceof Element && event.target.closest("button")) return
         start.current = { x: event.clientX, y: event.clientY, cardX: card.x, cardY: card.y }
+        latest.current = { x: card.x, y: card.y }
         event.currentTarget.setPointerCapture(event.pointerId)
       }}
       onPointerMove={(event) => {
@@ -36,10 +40,21 @@ export function BoardCardHeader({
           { x: event.clientX - state.x, y: event.clientY - state.y },
           zoom,
         )
+        latest.current = point
         onMove(card.id, point.x, point.y)
       }}
       onPointerUp={() => {
+        const point = latest.current
+        const state = start.current
         start.current = null
+        latest.current = null
+        if (point && state && (point.x !== state.cardX || point.y !== state.cardY)) {
+          onMoveEnd(card.id, point.x, point.y)
+        }
+      }}
+      onPointerCancel={() => {
+        start.current = null
+        latest.current = null
       }}
     >
       <GripVertical size={15} aria-hidden="true" />

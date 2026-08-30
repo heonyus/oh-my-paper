@@ -175,6 +175,12 @@ The paper column and cards transform together. Toolbar, rails, and metadata side
 - **Status:** the local provider is considered ready only after its `/v1/models` endpoint responds. It needs no API-key field; hosted providers continue to use encrypted key storage.
 - **Boundary:** ChatGPT subscription billing is not represented as an API entitlement. Scourgify only connects to the user's separately authenticated local OpenCodex proxy.
 
+### SettingsWindow
+- **Structure:** a 720px split-view sheet with a 176px macOS source-list sidebar and one focused content pane. The sidebar contains `일반`, `AI 모델`, and `읽기`; the current row uses a quiet selected surface rather than a colored dashboard tile. The content pane uses grouped preference rows with labels, values, and native-sized controls aligned on one baseline.
+- **Behavior:** appearance and reading preferences apply immediately and persist with the workspace. Provider credentials remain a deliberate form action and show a compact connection state beside the page title. Switching sections does not reset unsaved provider fields.
+- **Responsive:** below 680px the source list becomes a compact horizontal segmented row above the content. The sheet stays within `calc(100vw - 32px)` and `calc(100vh - 32px)` with only the content pane scrolling.
+- **Copy:** headings are nouns, not instructions. Implementation and privacy explanations are omitted; errors and connection state are concise and local to the affected group.
+
 ### SidebarCategoryPanel
 - **Structure:** macOS-style grouped list with a strong feature title and immediately readable content preview. Translation foregrounds translated text and source; explanation foregrounds a Markdown takeaway; visual analysis foregrounds structured nodes; notes foreground editable prose; highlights foreground the quotation; citations foreground identity and reading rationale.
 - **Constraint:** no blue icon tiles, colored left rails, oversized counters, or decorative gradients. Rail badges represent unread additions rather than lifetime totals, use compact 9–11px capsules, abbreviate counts above 99 as `99+`, and clear as soon as the user opens that mode.
@@ -214,6 +220,13 @@ The paper column and cards transform together. Toolbar, rails, and metadata side
 - **Constraint:** ChatGPT consumer subscriptions are not treated as API credentials. Provider calls occur only after an explicit AI action or chat send.
 - **Environment bootstrap:** a valid provider configuration supplied through `.env` or process environment replaces a stale or unreadable local provider value and is encrypted into the local provider store on first use. The secret never enters the app bundle; subsequent Finder launches reuse the encrypted copy.
 - **Reading-action latency:** explicit selection/section/figure/table/equation actions use the provider's low-reasoning mode with bounded completion budgets; citation assessment and open-ended research chat keep their deeper defaults. Section requests include a bounded excerpt following the detected heading instead of sending the heading alone.
+- **Streaming:** provider deltas cross a request-ID-scoped, Zod-validated IPC channel. The renderer coalesces visible text updates to one animation frame and commits the completed Markdown to workspace storage only once. The first token removes the slim loading track; cancellation or failure never leaves a partial response persisted as complete.
+- **Context budgets:** short translation and title actions receive the smallest bounded context/completion budgets; figure, table, section, and open-ended research requests retain the paper overview, current section, local evidence, and exact question in that priority order.
+
+### WorkspacePersistence
+- **Transient state:** pan, zoom, sidebar resize, outline resize, and in-progress card geometry update the live workspace without entering undo history. A completed semantic edit or final pointer release creates one history checkpoint.
+- **Storage:** rapid workspace changes are coalesced and the latest valid snapshot is saved after a short idle interval. Only one save may be in flight; a newer snapshot follows it rather than racing the database.
+- **Render budget:** AI streaming text is local component state until completion. PDF page rendering, Markdown parsing, workspace serialization, and database writes never run once per token.
 
 ### Paper Chat Agent
 - **Structure:** provider/model status, document-grounded message history, prompt input, send/close controls.

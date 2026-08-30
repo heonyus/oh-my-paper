@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import { saveTranslationAsNote } from "../lib/board"
 import { conciseCardTitle } from "../lib/cardPresentation"
-import type { BoardCard, CardId } from "../types"
+import type { AiDeltaHandler, BoardCard, CardId } from "../types"
 import { BoardCard as BoardCardView } from "./BoardCard"
 
 export function BoardCardsLayer({
@@ -12,9 +12,11 @@ export function BoardCardsLayer({
   onActiveChange,
   getCards,
   commitCards,
+  previewCards,
   onJump,
   onAsk,
   onRegenerateTitle,
+  streamingCardIds = new Set<string>(),
 }: {
   readonly cards: readonly BoardCard[]
   readonly activeId: CardId | null
@@ -23,9 +25,16 @@ export function BoardCardsLayer({
   readonly onActiveChange: (id: CardId | null) => void
   readonly getCards: () => readonly BoardCard[]
   readonly commitCards: (cards: readonly BoardCard[]) => void
+  readonly previewCards: (cards: readonly BoardCard[]) => void
   readonly onJump: (page: number) => void
-  readonly onAsk: (card: BoardCard, question: string, history: BoardCard["chat"]) => Promise<string>
+  readonly onAsk: (
+    card: BoardCard,
+    question: string,
+    history: BoardCard["chat"],
+    onDelta?: AiDeltaHandler,
+  ) => Promise<string>
   readonly onRegenerateTitle: (card: BoardCard) => Promise<string>
+  readonly streamingCardIds?: ReadonlySet<string> | undefined
 }): JSX.Element {
   return (
     <>
@@ -35,9 +44,13 @@ export function BoardCardsLayer({
           card={card}
           active={card.id === activeId}
           autoEdit={card.id === autoEditId}
+          streaming={streamingCardIds.has(card.id)}
           zoom={zoom}
           onActiveChange={onActiveChange}
           onMove={(id, x, y) =>
+            previewCards(getCards().map((item) => (item.id === id ? { ...item, x, y } : item)))
+          }
+          onMoveEnd={(id, x, y) =>
             commitCards(getCards().map((item) => (item.id === id ? { ...item, x, y } : item)))
           }
           onDelete={(id) => {
@@ -55,6 +68,15 @@ export function BoardCardsLayer({
             )
           }
           onResize={(id, width, height) =>
+            previewCards(
+              getCards().map((item) =>
+                item.id === id
+                  ? { ...item, width: Math.round(width), height: Math.round(height) }
+                  : item,
+              ),
+            )
+          }
+          onResizeEnd={(id, width, height) =>
             commitCards(
               getCards().map((item) =>
                 item.id === id

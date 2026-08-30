@@ -11,12 +11,12 @@ import {
   StickyNote,
 } from "lucide-react"
 import { type JSX, useState } from "react"
-import type { AiRequest, ProviderStatus } from "../../shared/ipc"
+import type { ProviderStatus } from "../../shared/ipc"
 import type { DocumentInsight, DocumentInsightKind } from "../../shared/schemas"
 import { researchSidebarLayout } from "../../shared/uiLayout"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
 import { saveCitationAssessment, saveSidebarInsight } from "../lib/sidebarCards"
-import type { BoardCard, CardId, DocumentRecord } from "../types"
+import type { AiRequestRunner, BoardCard, CardId, DocumentRecord } from "../types"
 import { AiOverviewPanel } from "./AiOverviewPanel"
 import { BoardIndexPanel } from "./BoardIndexPanel"
 import { CitationPanel } from "./CitationPanel"
@@ -63,7 +63,7 @@ export function ResearchSidebar({
   readonly onToggle: () => void
   readonly onJumpToCard: (id: CardId) => void
   readonly onCardsChange: (cards: readonly BoardCard[]) => void
-  readonly onAiRequest: (request: Omit<AiRequest, "documentId">) => Promise<string>
+  readonly onAiRequest: AiRequestRunner
   readonly width?: number | undefined
   readonly onWidthChange?: ((width: number) => void) | undefined
   readonly insights?: readonly DocumentInsight[] | undefined

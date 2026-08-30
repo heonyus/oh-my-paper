@@ -99,6 +99,14 @@ export const aiRequestSchema = z.object({
   history: z.array(aiHistoryMessageSchema).max(24).optional(),
 })
 export const aiResultSchema = z.object({ text: z.string().min(1), model: z.string().min(1) })
+export const aiStreamRequestSchema = z.object({
+  id: z.string().uuid(),
+  request: aiRequestSchema,
+})
+export const aiStreamDeltaSchema = z.object({
+  id: z.string().uuid(),
+  delta: z.string().min(1).max(32_000),
+})
 
 const httpsUrlSchema = z
   .string()
@@ -163,6 +171,8 @@ export const ipcChannels = {
   providerSaveConfig: "provider:save-config",
   providerStatus: "provider:status",
   aiRun: "ai:run",
+  aiStream: "ai:stream",
+  aiStreamDelta: "ai:stream-delta",
   citationLookup: "citation:lookup",
   openExternal: "external:open",
 } as const
@@ -172,6 +182,7 @@ export type PreparationUpdate = z.infer<typeof preparationUpdateSchema>
 export type AiAction = z.infer<typeof aiActionSchema>
 export type AiRequest = z.infer<typeof aiRequestSchema>
 export type AiHistoryMessage = z.infer<typeof aiHistoryMessageSchema>
+export type AiStreamDelta = z.infer<typeof aiStreamDeltaSchema>
 export type ProviderConfig = z.infer<typeof providerConfigSchema>
 export type ProviderStatus = z.infer<typeof providerStatusSchema>
 export type CitationLookupRequest = z.infer<typeof citationLookupRequestSchema>
@@ -191,6 +202,10 @@ export type ScourgifyApi = {
   readonly providerStatus: () => Promise<z.infer<typeof providerStatusSchema>>
   readonly runAi: (
     request: z.infer<typeof aiRequestSchema>,
+  ) => Promise<z.infer<typeof aiResultSchema>>
+  readonly streamAi: (
+    request: z.infer<typeof aiRequestSchema>,
+    onDelta: (delta: string) => void,
   ) => Promise<z.infer<typeof aiResultSchema>>
   readonly lookupCitation: (request: CitationLookupRequest) => Promise<CitationLookupResult>
   readonly openExternal: (request: z.infer<typeof openExternalRequestSchema>) => Promise<void>

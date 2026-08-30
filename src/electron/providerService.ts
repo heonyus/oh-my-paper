@@ -159,4 +159,55 @@ export class ProviderService {
       throw new ProviderConfigurationError("request_failed")
     }
   }
+
+  async runStream(value: AiRequest, onDelta: (delta: string) => void): Promise<AiResult> {
+    const request = aiRequestSchema.parse(value)
+    const config = await this.#loadConfig()
+    const client = new OpenAI({
+      apiKey: "apiKey" in config ? config.apiKey : "local-opencodex",
+      ...(config.provider === "openrouter"
+        ? { baseURL: "https://openrouter.ai/api/v1" }
+        : config.provider === "opencodex"
+          ? { baseURL: "http://127.0.0.1:10100/v1" }
+          : {}),
+    })
+    const input = userInputFor(request)
+    const userMessage: ChatCompletionUserMessageParam = request.imageDataUrl
+      ? {
+          role: "user",
+          content: [
+            { type: "text", text: input },
+            { type: "image_url", image_url: { url: request.imageDataUrl, detail: "high" } },
+          ],
+        }
+      : { role: "user", content: input }
+    const messages: ChatCompletionMessageParam[] = [
+      { role: "system", content: systemPromptFor(request.action) },
+      ...(request.history ?? []),
+      userMessage,
+    ]
+    const model = routedModelForRequest(config.provider, config.model, request)
+    try {
+      const stream = await client.chat.completions.create({
+        model,
+        messages,
+        stream: true,
+        ...completionLimitParameters(config.provider, request),
+      })
+      let text = ""
+      let responseModel = model
+      for await (const chunk of stream) {
+        responseModel = chunk.model || responseModel
+        const delta = chunk.choices[0]?.delta.content
+        if (!delta) continue
+        text += delta
+        onDelta(delta)
+      }
+      if (!text) throw new ProviderConfigurationError("request_failed")
+      return aiResultSchema.parse({ text, model: responseModel })
+    } catch (error) {
+      if (error instanceof ProviderConfigurationError) throw error
+      throw new ProviderConfigurationError("request_failed")
+    }
+  }
 }

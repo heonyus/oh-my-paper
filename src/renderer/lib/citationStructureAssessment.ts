@@ -1,5 +1,6 @@
 import { citationAssessmentResultSchema } from "../../shared/citationAssessment"
-import type { AiRequest, CitationPaper } from "../../shared/ipc"
+import type { CitationPaper } from "../../shared/ipc"
+import type { AiRequestRunner } from "../types"
 import {
   citationAssessmentInput,
   citationLookupRequest,
@@ -23,7 +24,7 @@ type CitationStructureResult =
 type CitationStructureAssessmentInput = {
   readonly structure: DetectedStructure
   readonly currentPaperTitle: string
-  readonly onAiRequest: (request: Omit<AiRequest, "documentId">) => Promise<string>
+  readonly onAiRequest: AiRequestRunner
   readonly onMetadata: (paper: CitationPaper) => void
 }
 

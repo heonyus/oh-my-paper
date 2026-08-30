@@ -1,15 +1,17 @@
 import { ExternalLink, Maximize2, StickyNote } from "lucide-react"
 import { type JSX, useEffect, useRef, useState } from "react"
 import { initialResearchCardHeight } from "../lib/board"
-import type { BoardCard as Card, CardId } from "../types"
+import type { AiDeltaHandler, BoardCard as Card, CardId } from "../types"
 import { BoardCardChat } from "./BoardCardChat"
 import { BoardCardCitationMeta } from "./BoardCardCitationMeta"
 import { BoardCardHeader } from "./BoardCardHeader"
+import { BoardCardResizeHandle } from "./BoardCardResizeHandle"
 import { MarkdownContent } from "./MarkdownContent"
 
 type BoardCardProps = {
   readonly card: Card
   readonly onMove: (id: CardId, x: number, y: number) => void
+  readonly onMoveEnd?: ((id: CardId, x: number, y: number) => void) | undefined
   readonly onDelete: (id: CardId) => void
   readonly onJump: (page: number) => void
   readonly onConvertToNote?: ((id: CardId) => void) | undefined
@@ -17,9 +19,16 @@ type BoardCardProps = {
   readonly onMinimize: (id: CardId) => void
   readonly onRegenerateTitle?: ((id: CardId) => void) | undefined
   readonly onResize: (id: CardId, width: number, height: number) => void
+  readonly onResizeEnd?: ((id: CardId, width: number, height: number) => void) | undefined
   readonly onChatChange: (id: CardId, messages: Card["chat"]) => void
-  readonly onAsk: (card: Card, question: string, history: Card["chat"]) => Promise<string>
+  readonly onAsk: (
+    card: Card,
+    question: string,
+    history: Card["chat"],
+    onDelta?: AiDeltaHandler,
+  ) => Promise<string>
   readonly autoEdit?: boolean | undefined
+  readonly streaming?: boolean | undefined
   readonly active: boolean
   readonly onActiveChange: (id: CardId | null) => void
   readonly zoom: number
@@ -27,6 +36,7 @@ type BoardCardProps = {
 export function BoardCard({
   card,
   onMove,
+  onMoveEnd,
   onDelete,
   onJump,
   onConvertToNote,
@@ -34,20 +44,16 @@ export function BoardCard({
   onMinimize,
   onRegenerateTitle,
   onResize,
+  onResizeEnd,
   onChatChange,
   onAsk,
   autoEdit = false,
+  streaming = false,
   active,
   onActiveChange,
   zoom,
 }: BoardCardProps): JSX.Element {
   const cardElement = useRef<HTMLElement>(null)
-  const resizeStart = useRef<{
-    readonly clientX: number
-    readonly clientY: number
-    readonly width: number
-    readonly height: number
-  } | null>(null)
   const editor = useRef<HTMLTextAreaElement>(null)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(card.body)
@@ -69,7 +75,11 @@ export function BoardCard({
     setEditing(false)
   }
 
-  const renderedBody = <MarkdownContent source={card.kind === "sticky" ? draft : card.body} />
+  const renderedBody = streaming ? (
+    <p className="streaming-copy">{card.body}</p>
+  ) : (
+    <MarkdownContent source={card.kind === "sticky" ? draft : card.body} />
+  )
   const supportsChat =
     card.kind === "explanation" || card.kind === "infographic" || card.kind === "citation"
   const sourceUrl =
@@ -93,6 +103,7 @@ export function BoardCard({
       data-active={active}
       data-kind={card.kind}
       data-minimized={card.minimized}
+      data-streaming={streaming}
       onPointerDown={() => onActiveChange(card.id)}
       onFocusCapture={() => onActiveChange(card.id)}
       onBlurCapture={(event) => {
@@ -108,6 +119,7 @@ export function BoardCard({
         card={card}
         zoom={zoom}
         onMove={onMove}
+        onMoveEnd={onMoveEnd ?? onMove}
         onMinimize={onMinimize}
         onDelete={onDelete}
         onRegenerateTitle={onRegenerateTitle}
@@ -194,43 +206,19 @@ export function BoardCard({
             <BoardCardChat
               card={card}
               onChange={(messages) => onChatChange(card.id, messages)}
-              onAsk={(question, history) => onAsk(card, question, history)}
+              onAsk={(question, history, onDelta) => onAsk(card, question, history, onDelta)}
             />
           ) : null}
         </div>
       ) : null}
       {!card.minimized ? (
-        <button
-          type="button"
-          className="card-resize-handle"
-          aria-label="카드 크기 조절"
-          onPointerDown={(event) => {
-            const bounds = cardElement.current?.getBoundingClientRect()
-            if (!bounds) return
-            resizeStart.current = {
-              clientX: event.clientX,
-              clientY: event.clientY,
-              width: card.width,
-              height: card.height ?? bounds.height / zoom,
-            }
-            event.currentTarget.setPointerCapture(event.pointerId)
-          }}
-          onPointerMove={(event) => {
-            const start = resizeStart.current
-            if (!start) return
-            const width = Math.min(
-              720,
-              Math.max(240, start.width + (event.clientX - start.clientX) / zoom),
-            )
-            const height = Math.min(
-              900,
-              Math.max(160, start.height + (event.clientY - start.clientY) / zoom),
-            )
-            onResize(card.id, width, height)
-          }}
-          onPointerUp={() => {
-            resizeStart.current = null
-          }}
+        <BoardCardResizeHandle
+          id={card.id}
+          width={card.width}
+          height={card.height ?? expandedHeight ?? 420}
+          zoom={zoom}
+          onResize={onResize}
+          onResizeEnd={onResizeEnd}
         />
       ) : null}
     </section>

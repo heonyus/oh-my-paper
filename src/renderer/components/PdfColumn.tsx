@@ -93,10 +93,10 @@ export function PdfColumn({
       const pageElement = viewer.getPageView(page - 1)?.div
       if (pageElement) onPageJump?.(page, pageElement)
     })
-    eventBus.on("pagechanging", ({ pageNumber }: { readonly pageNumber: number }) => {
+    const handlePageChanging = ({ pageNumber }: { readonly pageNumber: number }): void => {
       onPageActive(pageNumber)
-    })
-    eventBus.on("pagesinit", () => {
+    }
+    const handlePagesInit = (): void => {
       viewer.currentScale = zoomRef.current
       requestAnimationFrame(() => {
         syncViewerWidth(container, viewer)
@@ -105,7 +105,9 @@ export function PdfColumn({
       })
       window.setTimeout(refreshOverlays, 320)
       window.setTimeout(refreshOverlays, 1_000)
-    })
+    }
+    eventBus.on("pagechanging", handlePageChanging)
+    eventBus.on("pagesinit", handlePagesInit)
     const refreshOverlays = (): void => {
       for (const pageDiv of container.querySelectorAll<HTMLElement>(".page")) {
         const pageNumberText = pageDiv.getAttribute("data-page-number")
@@ -141,39 +143,37 @@ export function PdfColumn({
     overlayRefreshRef.current = scheduleOverlayRefresh
     eventBus.on("scalechanging", scheduleOverlayRefresh)
     eventBus.on("pagerendered", scheduleOverlayRefresh)
-    eventBus.on(
-      "textlayerrendered",
-      ({
+    const handleTextLayerRendered = ({
+      pageNumber,
+      source,
+    }: {
+      readonly pageNumber: number
+      readonly source: { readonly div?: HTMLElement }
+    }): void => {
+      const pageDiv = source.div
+      if (!(pageDiv instanceof HTMLElement)) return
+      void analyzePageOverlayInWorker(
+        layoutPool,
         pageNumber,
-        source,
-      }: {
-        readonly pageNumber: number
-        readonly source: { readonly div?: HTMLElement }
-      }) => {
-        const pageDiv = source.div
-        if (!(pageDiv instanceof HTMLElement)) return
-        void analyzePageOverlayInWorker(
-          layoutPool,
-          pageNumber,
-          pageDiv,
-          bibliographyRef.current,
-          layoutPagesRef.current.get(pageNumber),
-        ).then((pageState) => {
-          if (disposed || !pageState) return
-          for (const structure of pageState.structures) {
-            if (structure.kind !== "section") continue
-            const title = outlineTitle(structure.title)
-            if (!title) continue
-            outlineRef.current.set(`${structure.page}:${title}`, {
-              title,
-              page: structure.page,
-            })
-          }
-          onOutlineChange?.([...outlineRef.current.values()].sort((a, b) => a.page - b.page))
-          setPageOverlays((prev) => ({ ...prev, [pageNumber]: pageState }))
-        })
-      },
-    )
+        pageDiv,
+        bibliographyRef.current,
+        layoutPagesRef.current.get(pageNumber),
+      ).then((pageState) => {
+        if (disposed || !pageState) return
+        for (const structure of pageState.structures) {
+          if (structure.kind !== "section") continue
+          const title = outlineTitle(structure.title)
+          if (!title) continue
+          outlineRef.current.set(`${structure.page}:${title}`, {
+            title,
+            page: structure.page,
+          })
+        }
+        onOutlineChange?.([...outlineRef.current.values()].sort((a, b) => a.page - b.page))
+        setPageOverlays((prev) => ({ ...prev, [pageNumber]: pageState }))
+      })
+    }
+    eventBus.on("textlayerrendered", handleTextLayerRendered)
 
     void window.scourgify.readDocumentLayout(document.id).then((result) => {
       if (disposed || result.status !== "ready") return
@@ -213,6 +213,11 @@ export function PdfColumn({
       const activeSession = sessionRef.current?.viewer === viewer ? sessionRef.current : null
       if (activeSession) sessionRef.current = null
       viewer.cleanup()
+      eventBus.off("pagechanging", handlePageChanging)
+      eventBus.off("pagesinit", handlePagesInit)
+      eventBus.off("scalechanging", scheduleOverlayRefresh)
+      eventBus.off("pagerendered", scheduleOverlayRefresh)
+      eventBus.off("textlayerrendered", handleTextLayerRendered)
       layoutPool.dispose()
       container.removeEventListener("click", handlePdfUrlClick, true)
       overlayRefreshRef.current = null

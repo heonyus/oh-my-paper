@@ -1,6 +1,7 @@
 import { Bot, LayoutGrid, Sparkles } from "lucide-react"
 import { type FormEvent, type JSX, useState } from "react"
 import type { AiHistoryMessage, ProviderStatus } from "../../shared/ipc"
+import type { AiDeltaHandler } from "../types"
 import { ChatComposer } from "./ChatComposer"
 import { MarkdownContent } from "./MarkdownContent"
 
@@ -10,7 +11,11 @@ type AiChatPanelProps = {
   readonly page: number
   readonly provider: ProviderStatus
   readonly onClose: () => void
-  readonly onAsk: (question: string, history: readonly AiHistoryMessage[]) => Promise<string>
+  readonly onAsk: (
+    question: string,
+    history: readonly AiHistoryMessage[],
+    onDelta?: AiDeltaHandler,
+  ) => Promise<string>
 }
 
 export function AiChatPanel({ page, provider, onClose, onAsk }: AiChatPanelProps): JSX.Element {
@@ -24,24 +29,29 @@ export function AiChatPanel({ page, provider, onClose, onAsk }: AiChatPanelProps
     if (!question || sending) return
     const history = entries.map(({ role, content }) => ({ role, content }))
     const user: ChatEntry = { id: crypto.randomUUID(), role: "user", content: question }
-    setEntries((current) => [...current, user])
+    const answerId = crypto.randomUUID()
+    setEntries((current) => [...current, user, { id: answerId, role: "assistant", content: "" }])
     setInput("")
     setSending(true)
     try {
-      const answer = await onAsk(question, history)
-      setEntries((current) => [
-        ...current,
-        { id: crypto.randomUUID(), role: "assistant", content: answer },
-      ])
+      const answer = await onAsk(question, history, (delta) =>
+        setEntries((current) =>
+          current.map((entry) =>
+            entry.id === answerId ? { ...entry, content: entry.content + delta } : entry,
+          ),
+        ),
+      )
+      setEntries((current) =>
+        current.map((entry) => (entry.id === answerId ? { ...entry, content: answer } : entry)),
+      )
     } catch {
-      setEntries((current) => [
-        ...current,
-        {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: "AI provider 설정을 확인한 뒤 다시 보내주세요.",
-        },
-      ])
+      setEntries((current) =>
+        current.map((entry) =>
+          entry.id === answerId
+            ? { ...entry, content: "AI provider 설정을 확인한 뒤 다시 보내주세요." }
+            : entry,
+        ),
+      )
     } finally {
       setSending(false)
     }

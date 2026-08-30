@@ -1,5 +1,5 @@
 import { type FormEvent, type JSX, useState } from "react"
-import type { BoardCard } from "../types"
+import type { AiDeltaHandler, BoardCard } from "../types"
 import { ChatComposer } from "./ChatComposer"
 import { MarkdownContent } from "./MarkdownContent"
 
@@ -10,10 +10,15 @@ export function BoardCardChat({
 }: {
   readonly card: BoardCard
   readonly onChange: (messages: BoardCard["chat"]) => void
-  readonly onAsk: (question: string, history: BoardCard["chat"]) => Promise<string>
+  readonly onAsk: (
+    question: string,
+    history: BoardCard["chat"],
+    onDelta?: AiDeltaHandler,
+  ) => Promise<string>
 }): JSX.Element {
   const [input, setInput] = useState("")
   const [sending, setSending] = useState(false)
+  const [streamedAnswer, setStreamedAnswer] = useState("")
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
@@ -22,10 +27,14 @@ export function BoardCardChat({
     const withQuestion: BoardCard["chat"] = [...card.chat, { role: "user", content: question }]
     onChange(withQuestion)
     setInput("")
+    setStreamedAnswer("")
     setSending(true)
     try {
-      const answer = await onAsk(question, withQuestion)
+      const answer = await onAsk(question, withQuestion, (delta) =>
+        setStreamedAnswer((current) => current + delta),
+      )
       onChange([...withQuestion, { role: "assistant", content: answer }])
+      setStreamedAnswer("")
     } catch {
       onChange([
         ...withQuestion,
@@ -45,6 +54,13 @@ export function BoardCardChat({
               <MarkdownContent source={message.content} />
             </article>
           ))}
+        </div>
+      ) : null}
+      {streamedAnswer ? (
+        <div className="card-chat-history" aria-live="polite">
+          <article data-role="assistant" data-streaming="true">
+            <p>{streamedAnswer}</p>
+          </article>
         </div>
       ) : null}
       <ChatComposer

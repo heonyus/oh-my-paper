@@ -1,6 +1,7 @@
 import { type JSX, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { CARD_WIDTH, createSelectionCard } from "../lib/board"
 import { askBoardCard, regenerateBoardCardTitle } from "../lib/boardCardAi"
+import { boardHighlightState } from "../lib/boardHighlights"
 import { type BoardTextSelection, captureNativeBoardTextSelection } from "../lib/boardSelection"
 import { parsedCardResponse } from "../lib/cardPresentation"
 import { postItFromPointer } from "../lib/postItPlacement"
@@ -10,6 +11,7 @@ import { addSelectionContext } from "../lib/selectionContext"
 import { worldRectToScreen } from "../lib/selectionGeometry"
 import { createStructureActionHandler } from "../lib/structureActions"
 import { useBoardGestures } from "../lib/useBoardGestures"
+import { useCardStreams } from "../lib/useCardStreams"
 import { revealWorldRectHorizontally } from "../lib/viewport"
 import type { BoardCard, CardId } from "../types"
 import { BoardCardsLayer } from "./BoardCardsLayer"
@@ -26,6 +28,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
   const [selectionMenu, setSelectionMenu] = useState<BoardTextSelection | null>(null)
   const [activeCardId, setActiveCardId] = useState<CardId | null>(null)
   const [createdStickyId, setCreatedStickyId] = useState<CardId | null>(null)
+  const cardStreams = useCardStreams(props.cards)
 
   const { startPan, movePan, endPan, handleWheel } = useBoardGestures({
     viewport: props.viewport,
@@ -96,13 +99,9 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
     },
     [props.onViewportChange],
   )
-  const persistentHighlights = props.cards
-    .filter((card) => card.kind === "highlight")
-    .flatMap((card) => card.anchor.fragments)
-  const activeCards = props.cards.filter((card) => card.id === activeCardId)
-  const highlightedFragments = BoardOverlays.collectHighlightFragments(
-    activeCards.filter((card) => card.kind !== "highlight" && card.kind !== "sticky"),
-    persistentHighlights,
+  const { activeCards, fragments: highlightedFragments } = boardHighlightState(
+    props.cards,
+    activeCardId,
   )
 
   function commitCards(cards: readonly BoardCard[]): void {
@@ -158,9 +157,15 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
     const request = selectionAiRequest(kind, selectionMenu)
     if (request) {
       void props
-        .onAiRequest(request)
-        .then((body) => updateCardBody(card.id, body))
-        .catch(() => updateCardBody(card.id, "AI 설정을 확인한 뒤 다시 실행하세요."))
+        .onAiRequest(request, (delta) => cardStreams.append(card.id, delta))
+        .then((body) => {
+          updateCardBody(card.id, body)
+          cardStreams.clear(card.id)
+        })
+        .catch(() => {
+          cardStreams.clear(card.id)
+          updateCardBody(card.id, "AI 설정을 확인한 뒤 다시 실행하세요.")
+        })
     }
   }
 
@@ -176,6 +181,8 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
     commitCards,
     onViewportChange: props.onViewportChange,
     onCardActivated: setActiveCardId,
+    onCardStream: cardStreams.append,
+    onCardStreamEnd: cardStreams.clear,
     onAiRequest: props.onAiRequest,
   })
 
@@ -223,16 +230,18 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
         />
         <BoardOverlays.SourceHighlights fragments={highlightedFragments} />
         <BoardCardsLayer
-          cards={props.cards}
+          cards={cardStreams.displayCards}
           activeId={activeCardId}
           autoEditId={createdStickyId}
           zoom={props.viewport.zoom}
           onActiveChange={setActiveCardId}
           getCards={() => cardsRef.current}
           commitCards={commitCards}
+          previewCards={props.onCardsPreview}
+          streamingCardIds={cardStreams.streamingIds}
           onJump={props.onPageActive}
-          onAsk={(card, question, history) =>
-            askBoardCard(card, question, history, props.onAiRequest)
+          onAsk={(card, question, history, onDelta) =>
+            askBoardCard(card, question, history, props.onAiRequest, onDelta)
           }
           onRegenerateTitle={(card) => regenerateBoardCardTitle(card, props.onAiRequest)}
         />

@@ -1,7 +1,6 @@
 import { Quote, ScanSearch } from "lucide-react"
 import { type JSX, useMemo, useState } from "react"
 import type { CitationAssessmentResult } from "../../shared/citationAssessment"
-import type { AiRequest } from "../../shared/ipc"
 import {
   citationAssessmentInput,
   citationLookupRequest,
@@ -9,7 +8,7 @@ import {
   rankCitationAssessments,
 } from "../lib/citationTriage"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
-import type { DocumentRecord } from "../types"
+import type { AiDeltaHandler, AiRequestRunner, DocumentRecord } from "../types"
 import { CitationItem } from "./CitationItem"
 import type { CitationAnalysisState, CompleteCitationAnalysis } from "./citationPanelTypes"
 
@@ -21,7 +20,7 @@ export function CitationPanel({
 }: {
   readonly document: DocumentRecord
   readonly citations: readonly CitationIndexEntry[]
-  readonly onAiRequest: (request: Omit<AiRequest, "documentId">) => Promise<string>
+  readonly onAiRequest: AiRequestRunner
   readonly onSave: (
     entry: CitationIndexEntry,
     state: CompleteCitationAnalysis,
@@ -102,17 +101,24 @@ export function CitationPanel({
     setBatchRunning(false)
   }
 
-  async function ask(entry: CitationIndexEntry, question: string): Promise<string> {
+  async function ask(
+    entry: CitationIndexEntry,
+    question: string,
+    onDelta?: AiDeltaHandler,
+  ): Promise<string> {
     const state = states[entry.key]
     if (state?.status !== "complete") throw new Error("citation is not verified")
-    return onAiRequest({
-      action: "citation_chat",
-      page: entry.contexts[0]?.page ?? 1,
-      quote: question,
-      before: citationAssessmentInput(document.title, entry, state.paper, state.match),
-      after: "",
-      featureKind: "citation",
-    })
+    return onAiRequest(
+      {
+        action: "citation_chat",
+        page: entry.contexts[0]?.page ?? 1,
+        quote: question,
+        before: citationAssessmentInput(document.title, entry, state.paper, state.match),
+        after: "",
+        featureKind: "citation",
+      },
+      onDelta,
+    )
   }
 
   return (
@@ -145,7 +151,7 @@ export function CitationPanel({
                 onSave={(result) => {
                   if (state?.status === "complete") onSave(entry, state, result)
                 }}
-                onAsk={(question) => ask(entry, question)}
+                onAsk={(question, onDelta) => ask(entry, question, onDelta)}
               />
             )
           })}

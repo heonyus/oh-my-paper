@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { aiRequestSchema, providerConfigSchema } from "../../src/shared/ipc"
+import {
+  aiRequestSchema,
+  aiStreamDeltaSchema,
+  aiStreamRequestSchema,
+  providerConfigSchema,
+} from "../../src/shared/ipc"
 
 const base = {
   action: "figure",
@@ -75,5 +80,16 @@ describe("AI feature request boundary", () => {
         model: "openai/gpt-5",
       }).success,
     ).toBe(true)
+  })
+})
+
+describe("AI stream IPC boundary", () => {
+  it("binds every delta to a validated request id", () => {
+    const id = "68b62f6a-9547-4c25-9001-b7ec7cb8e69e"
+    const request = aiRequestSchema.parse({ ...base, action: "translation" })
+
+    expect(aiStreamRequestSchema.parse({ id, request }).id).toBe(id)
+    expect(aiStreamDeltaSchema.parse({ id, delta: "검" }).delta).toBe("검")
+    expect(() => aiStreamDeltaSchema.parse({ id, delta: "" })).toThrow()
   })
 })

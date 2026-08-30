@@ -2,6 +2,8 @@ import { contextBridge, ipcRenderer } from "electron"
 import {
   aiRequestSchema,
   aiResultSchema,
+  aiStreamDeltaSchema,
+  aiStreamRequestSchema,
   apiKeySchema,
   citationLookupRequestSchema,
   citationLookupResultSchema,
@@ -60,6 +62,24 @@ const api: ScourgifyApi = {
     aiResultSchema.parse(
       await ipcRenderer.invoke(ipcChannels.aiRun, aiRequestSchema.parse(request)),
     ),
+  streamAi: async (request, onDelta) => {
+    const id = crypto.randomUUID()
+    const handler = (_event: Electron.IpcRendererEvent, value: unknown): void => {
+      const update = aiStreamDeltaSchema.parse(value)
+      if (update.id === id) onDelta(update.delta)
+    }
+    ipcRenderer.on(ipcChannels.aiStreamDelta, handler)
+    try {
+      return aiResultSchema.parse(
+        await ipcRenderer.invoke(
+          ipcChannels.aiStream,
+          aiStreamRequestSchema.parse({ id, request: aiRequestSchema.parse(request) }),
+        ),
+      )
+    } finally {
+      ipcRenderer.removeListener(ipcChannels.aiStreamDelta, handler)
+    }
+  },
   lookupCitation: async (request) =>
     citationLookupResultSchema.parse(
       await ipcRenderer.invoke(

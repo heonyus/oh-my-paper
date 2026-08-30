@@ -4,6 +4,8 @@ import { app, BrowserWindow, dialog, type IpcMainInvokeEvent, ipcMain, shell } f
 import {
   aiRequestSchema,
   aiResultSchema,
+  aiStreamDeltaSchema,
+  aiStreamRequestSchema,
   apiKeySchema,
   citationLookupRequestSchema,
   citationLookupResultSchema,
@@ -92,6 +94,17 @@ function registerIpc(): void {
   )
   ipcMain.handle(ipcChannels.aiRun, async (_event, value: unknown) => {
     return aiResultSchema.parse(await provider.run(aiRequestSchema.parse(value)))
+  })
+  ipcMain.handle(ipcChannels.aiStream, async (event, value: unknown) => {
+    const streamRequest = aiStreamRequestSchema.parse(value)
+    return aiResultSchema.parse(
+      await provider.runStream(streamRequest.request, (delta) => {
+        event.sender.send(
+          ipcChannels.aiStreamDelta,
+          aiStreamDeltaSchema.parse({ id: streamRequest.id, delta }),
+        )
+      }),
+    )
   })
   ipcMain.handle(ipcChannels.citationLookup, async (_event, value: unknown) => {
     const request = citationLookupRequestSchema.parse(value)

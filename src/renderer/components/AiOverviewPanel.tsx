@@ -1,9 +1,9 @@
 import { Sparkles } from "lucide-react"
-import { type JSX, useEffect, useRef, useState } from "react"
-import type { AiAction, AiHistoryMessage, AiRequest, ProviderStatus } from "../../shared/ipc"
+import { type JSX, useCallback, useEffect, useRef, useState } from "react"
+import type { AiAction, AiHistoryMessage, ProviderStatus } from "../../shared/ipc"
 import type { DocumentInsight, DocumentInsightKind } from "../../shared/schemas"
 import { paperContextForQuestion, paperOverviewContext } from "../lib/pdfSearch"
-import type { DocumentRecord } from "../types"
+import type { AiDeltaHandler, AiRequestRunner, DocumentRecord } from "../types"
 import { PaperDiscussion } from "./PaperDiscussion"
 import { SidebarInsightSection } from "./SidebarInsightSection"
 
@@ -37,7 +37,7 @@ export function AiOverviewPanel({
   readonly document: DocumentRecord
   readonly currentPage: number
   readonly provider: ProviderStatus
-  readonly onAiRequest: (request: Omit<AiRequest, "documentId">) => Promise<string>
+  readonly onAiRequest: AiRequestRunner
   readonly onSave: (title: string, body: string) => void
   readonly cachedInsights?: readonly DocumentInsight[] | undefined
   readonly onInsightChange?: ((kind: DocumentInsightKind, value: string) => void) | undefined
@@ -54,43 +54,57 @@ export function AiOverviewPanel({
     ),
   }))
   const insightsRef = useRef(insights)
-  insightsRef.current = insights
+  useEffect(() => {
+    insightsRef.current = insights
+  }, [insights])
 
-  async function generate(key: InsightKey): Promise<void> {
-    if (running.current.has(key)) return
-    running.current.add(key)
-    setInsights((current) => ({
-      ...current,
-      [key]: { ...current[key], loading: true, error: "" },
-    }))
-    try {
-      const value = await onAiRequest({
-        action: config[key].action,
-        page: 1,
-        quote: document.title,
-        paperContext: paperOverviewContext(),
-        before: "",
-        after: "",
-      })
-      setInsights((current) => ({ ...current, [key]: { value, loading: false, error: "" } }))
-      onInsightChange?.(key, value)
-    } catch {
+  const generate = useCallback(
+    async (key: InsightKey): Promise<void> => {
+      if (running.current.has(key)) return
+      running.current.add(key)
       setInsights((current) => ({
         ...current,
-        [key]: {
-          ...current[key],
-          loading: false,
-          error: provider.configured
-            ? "요청을 완료하지 못했습니다. 다시 시도해주세요."
-            : "AI 설정을 확인해주세요.",
-        },
+        [key]: { value: "", loading: true, error: "" },
       }))
-    } finally {
-      running.current.delete(key)
-    }
-  }
+      try {
+        const value = await onAiRequest(
+          {
+            action: config[key].action,
+            page: 1,
+            quote: document.title,
+            paperContext: paperOverviewContext(),
+            before: "",
+            after: "",
+          },
+          (delta) =>
+            setInsights((current) => ({
+              ...current,
+              [key]: { value: current[key].value + delta, loading: true, error: "" },
+            })),
+        )
+        setInsights((current) => ({ ...current, [key]: { value, loading: false, error: "" } }))
+        onInsightChange?.(key, value)
+      } catch {
+        setInsights((current) => ({
+          ...current,
+          [key]: {
+            ...current[key],
+            loading: false,
+            error: provider.configured
+              ? "요청을 완료하지 못했습니다. 다시 시도해주세요."
+              : "AI 설정을 확인해주세요.",
+          },
+        }))
+      } finally {
+        running.current.delete(key)
+      }
+    },
+    [document.title, onAiRequest, onInsightChange, provider.configured],
+  )
   const generateRef = useRef(generate)
-  generateRef.current = generate
+  useEffect(() => {
+    generateRef.current = generate
+  }, [generate])
 
   useEffect(() => {
     if (activationToken <= 0) return
@@ -100,16 +114,23 @@ export function AiOverviewPanel({
     }
   }, [activationToken])
 
-  async function ask(question: string, history: readonly AiHistoryMessage[]): Promise<string> {
-    return onAiRequest({
-      action: "chat",
-      page: currentPage,
-      quote: question,
-      paperContext: paperContextForQuestion(question, currentPage),
-      before: "",
-      after: "",
-      history: [...history],
-    })
+  async function ask(
+    question: string,
+    history: readonly AiHistoryMessage[],
+    onDelta?: AiDeltaHandler,
+  ): Promise<string> {
+    return onAiRequest(
+      {
+        action: "chat",
+        page: currentPage,
+        quote: question,
+        paperContext: paperContextForQuestion(question, currentPage),
+        before: "",
+        after: "",
+        history: [...history],
+      },
+      onDelta,
+    )
   }
 
   return (

@@ -20,7 +20,9 @@ export function useSelectionShortcuts(
   onAction: (action: SelectionAction) => void,
 ): void {
   const onActionRef = useRef(onAction)
-  onActionRef.current = onAction
+  useEffect(() => {
+    onActionRef.current = onAction
+  }, [onAction])
   useEffect(() => {
     if (!selectionMenu) return
     const handleShortcut = (event: KeyboardEvent): void => {

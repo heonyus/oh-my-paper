@@ -1,32 +1,10 @@
 import { Highlighter, Languages, MessageSquareText, Palette, StickyNote } from "lucide-react"
 import type { CSSProperties, JSX } from "react"
+import type { HighlightFragment } from "../lib/boardHighlights"
 import type { SelectionAction } from "../lib/selectionActions"
-import type { BoardCard, SourceFragment } from "../types"
+import type { BoardCard } from "../types"
 
 export type { SelectionAction } from "../lib/selectionActions"
-
-type HighlightFragment = {
-  readonly key: string
-  readonly fragment: SourceFragment
-}
-
-export function collectHighlightFragments(
-  cards: readonly BoardCard[],
-  selection: readonly SourceFragment[],
-): readonly HighlightFragment[] {
-  return [
-    ...cards.flatMap((card) =>
-      card.anchor.fragments.map((fragment) => ({
-        key: `${card.id}-${fragment.x}-${fragment.y}-${fragment.width}-${fragment.height}`,
-        fragment,
-      })),
-    ),
-    ...selection.map((fragment) => ({
-      key: `selection-${fragment.x}-${fragment.y}-${fragment.width}-${fragment.height}`,
-      fragment,
-    })),
-  ]
-}
 
 export function SourceHighlights({
   fragments,

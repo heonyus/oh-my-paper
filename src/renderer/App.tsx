@@ -13,16 +13,25 @@ import type { PdfOutlineEntry } from "./lib/pdfOutline"
 import { applyPreparedSummary, completedPreparation } from "./lib/preparationState"
 import { useBoardCardJump } from "./lib/researchSidebarActions"
 import { appShellStyle } from "./lib/uiFontScale"
+import { useActiveCards } from "./lib/useActiveCards"
 import { useDocumentInsights } from "./lib/useDocumentInsights"
 import { usePaperAiRequest } from "./lib/usePaperAiRequest"
 import { usePostItShortcut } from "./lib/usePostItShortcut"
 import { useWorkspaceHistory } from "./lib/useWorkspaceHistory"
 import { useWorkspacePersistence } from "./lib/useWorkspacePersistence"
-import type { BoardCard, BoardTool, Workspace } from "./types"
+import type { BoardTool, Workspace } from "./types"
 
 export function App(): JSX.Element {
-  const { workspace, setWorkspace, resetWorkspace, undo, redo, canUndo, canRedo } =
-    useWorkspaceHistory()
+  const {
+    workspace,
+    setWorkspace,
+    setWorkspaceTransient,
+    resetWorkspace,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  } = useWorkspaceHistory()
   const [preparation, setPreparation] = useState<PreparationUpdate[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -47,9 +56,9 @@ export function App(): JSX.Element {
   }, [])
   const updateViewport = useCallback(
     (next: Workspace["viewport"]): void => {
-      setWorkspace((current) => (current ? { ...current, viewport: next } : current))
+      setWorkspaceTransient((current) => (current ? { ...current, viewport: next } : current))
     },
-    [setWorkspace],
+    [setWorkspaceTransient],
   )
 
   useEffect(() => {
@@ -74,31 +83,17 @@ export function App(): JSX.Element {
       workspace?.documents.find((document) => document.id === workspace.activeDocumentId) ?? null,
     [workspace],
   )
-  const activeCards = useMemo(
-    () => workspace?.cards.filter((card) => card.documentId === activeDocument?.id) ?? [],
-    [workspace, activeDocument],
-  )
+  const {
+    cards: activeCards,
+    update: updateCards,
+    preview: previewCards,
+  } = useActiveCards(workspace, activeDocument?.id ?? null, setWorkspace, setWorkspaceTransient)
   const { insights: activeInsights, update: updateInsight } = useDocumentInsights(
     workspace,
     activeDocument?.id,
     setWorkspace,
   )
   const runAi = usePaperAiRequest(activeDocument, activeInsights)
-
-  const updateCards = useCallback(
-    (cards: readonly BoardCard[]): void => {
-      const activeId = activeDocument?.id
-      if (!activeId) return
-      setWorkspace((current) => {
-        if (!current) return current
-        return {
-          ...current,
-          cards: [...current.cards.filter((card) => card.documentId !== activeId), ...cards],
-        }
-      })
-    },
-    [activeDocument?.id, setWorkspace],
-  )
 
   const finishPreparation = useCallback(
     (summary: PreparedSummary): void => {
@@ -136,7 +131,7 @@ export function App(): JSX.Element {
     >
       <Topbar
         viewport={workspace.viewport}
-        onViewportChange={(viewport) => setWorkspace({ ...workspace, viewport })}
+        onViewportChange={(viewport) => setWorkspaceTransient({ ...workspace, viewport })}
         tool={tool}
         onToolChange={setTool}
         canUndo={canUndo}
@@ -155,7 +150,7 @@ export function App(): JSX.Element {
       {outlineOpen ? (
         <OutlinePanel
           width={workspace.outlineWidth}
-          onWidthChange={(width) => setWorkspace({ ...workspace, outlineWidth: width })}
+          onWidthChange={(width) => setWorkspaceTransient({ ...workspace, outlineWidth: width })}
           currentPage={currentPage}
           outline={outline}
           onClose={() => setOutlineOpen(false)}
@@ -172,6 +167,7 @@ export function App(): JSX.Element {
           cards={activeCards}
           onViewportChange={updateViewport}
           onCardsChange={updateCards}
+          onCardsPreview={previewCards}
           onDocumentLoaded={finishPreparation}
           onPageActive={setCurrentPage}
           currentPage={currentPage}
@@ -182,7 +178,7 @@ export function App(): JSX.Element {
           onToolChange={setTool}
           minimapVisible={workspace.minimapVisible}
           onMinimapVisibleChange={(minimapVisible) =>
-            setWorkspace({ ...workspace, minimapVisible })
+            setWorkspaceTransient({ ...workspace, minimapVisible })
           }
         />
       ) : (
@@ -204,9 +200,13 @@ export function App(): JSX.Element {
         insights={activeInsights}
         expanded={workspace.sidebarOpen}
         width={workspace.researchSidebarWidth}
-        onWidthChange={(width) => setWorkspace({ ...workspace, researchSidebarWidth: width })}
+        onWidthChange={(width) =>
+          setWorkspaceTransient({ ...workspace, researchSidebarWidth: width })
+        }
         provider={provider}
-        onToggle={() => setWorkspace({ ...workspace, sidebarOpen: !workspace.sidebarOpen })}
+        onToggle={() =>
+          setWorkspaceTransient({ ...workspace, sidebarOpen: !workspace.sidebarOpen })
+        }
         onJumpToCard={jumpToCard}
         onCardsChange={updateCards}
         onAiRequest={runAi}
@@ -233,9 +233,13 @@ export function App(): JSX.Element {
         <SettingsModal
           status={provider}
           fontScale={workspace.uiFontScale}
+          minimapVisible={workspace.minimapVisible}
           theme={workspace.theme}
-          onThemeChange={(theme) => setWorkspace({ ...workspace, theme })}
-          onFontScaleChange={(uiFontScale) => setWorkspace({ ...workspace, uiFontScale })}
+          onThemeChange={(theme) => setWorkspaceTransient({ ...workspace, theme })}
+          onFontScaleChange={(uiFontScale) => setWorkspaceTransient({ ...workspace, uiFontScale })}
+          onMinimapVisibleChange={(minimapVisible) =>
+            setWorkspaceTransient({ ...workspace, minimapVisible })
+          }
           onClose={() => setSettingsOpen(false)}
           onSave={async (config) => {
             await window.scourgify.saveProviderConfig(config)

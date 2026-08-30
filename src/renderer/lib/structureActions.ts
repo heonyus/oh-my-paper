@@ -1,5 +1,5 @@
-import type { AiRequest } from "../../shared/ipc"
 import type { BoardCard, DocumentId, Viewport } from "../../shared/schemas"
+import type { AiRequestRunner } from "../types"
 import { CARD_WIDTH, createStructureCard } from "./board"
 import { parsedCardResponse } from "./cardPresentation"
 import { citationCardSource } from "./citationCardSource"
@@ -26,7 +26,9 @@ type StructureActionsInput = {
   readonly commitCards: (cards: readonly BoardCard[]) => void
   readonly onViewportChange: (viewport: Viewport) => void
   readonly onCardActivated: (id: BoardCard["id"]) => void
-  readonly onAiRequest: (request: Omit<AiRequest, "documentId">) => Promise<string>
+  readonly onCardStream: (id: BoardCard["id"], delta: string) => void
+  readonly onCardStreamEnd: (id: BoardCard["id"]) => void
+  readonly onAiRequest: AiRequestRunner
 }
 
 function patchCard(
@@ -187,6 +189,7 @@ export function createStructureActionHandler(
           : { paper: "", section: featureRequestContext(pageElement, structure.bounds) }
       const explanation = await input.onAiRequest(
         structureAiRequest(structure, imageDataUrl, requestContext),
+        (delta) => input.onCardStream(card.id, delta),
       )
       if (activeGenerations.get(card.id) !== currentGen) return
       input.commitCards(
@@ -196,8 +199,10 @@ export function createStructureActionHandler(
           loading: false,
         })),
       )
+      input.onCardStreamEnd(card.id)
     })().catch(() => {
       if (activeGenerations.get(card.id) !== currentGen) return
+      input.onCardStreamEnd(card.id)
       input.commitCards(
         patchCard(input.getCards(), card.id, (item) => ({
           ...item,

@@ -170,9 +170,9 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
       })
     const beforeAxisLock = await surfaceTranslation()
     await board.dispatchEvent("wheel", { deltaX: 7, deltaY: 100 })
+    await expect.poll(async () => (await surfaceTranslation()).y).toBeLessThan(beforeAxisLock.y)
     const afterAxisLock = await surfaceTranslation()
     expect(afterAxisLock.x).toBeCloseTo(beforeAxisLock.x)
-    expect(afterAxisLock.y).toBeLessThan(beforeAxisLock.y)
     await page.getByRole("button", { name: "첫 페이지로" }).click()
     const discussionInput = page.getByRole("textbox", { name: "논문 토론 질문" })
     await expect(discussionInput).toBeVisible()
@@ -286,6 +286,7 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
     await page.getByRole("button", { name: "미니맵" }).click()
     await expect(minimap).toBeVisible()
     await page.getByRole("button", { name: "설정" }).click()
+    await page.getByRole("button", { name: "일반" }).click()
     await page.getByLabel("화면 모드").selectOption("dark")
     await expect(page.locator(".app-shell")).toHaveAttribute("data-theme", "dark")
     expect(

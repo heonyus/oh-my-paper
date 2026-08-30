@@ -63,6 +63,7 @@ describe("SettingsModal", () => {
       />,
     )
 
+    await userEvent.click(screen.getByRole("button", { name: "일반" }))
     await userEvent.selectOptions(screen.getByLabelText("글자 크기"), "0.9")
 
     expect(onFontScaleChange).toHaveBeenCalledWith(0.9)
@@ -83,12 +84,36 @@ describe("SettingsModal", () => {
       />,
     )
 
+    await userEvent.click(screen.getByRole("button", { name: "AI 모델" }))
     await userEvent.selectOptions(screen.getByLabelText("Provider"), "opencodex")
     expect(screen.queryByLabelText("API 키")).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole("button", { name: "일반" }))
     await userEvent.selectOptions(screen.getByLabelText("화면 모드"), "dark")
+    await userEvent.click(screen.getByRole("button", { name: "AI 모델" }))
     await userEvent.click(screen.getByRole("button", { name: "암호화하여 저장" }))
 
     expect(onThemeChange).toHaveBeenCalledWith("dark")
     expect(onSave).toHaveBeenCalledWith({ provider: "opencodex", model: "gpt-5.6-sol" })
+  })
+
+  it("separates reading preferences in a source-list section", async () => {
+    const onMinimapVisibleChange = vi.fn()
+    render(
+      <SettingsModal
+        status={{ configured: true, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
+        fontScale={1}
+        minimapVisible={true}
+        onClose={vi.fn()}
+        onSave={vi.fn(async () => {})}
+        onFontScaleChange={vi.fn()}
+        onMinimapVisibleChange={onMinimapVisibleChange}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole("button", { name: "읽기" }))
+    await userEvent.click(screen.getByRole("checkbox", { name: "미니맵 표시" }))
+
+    expect(onMinimapVisibleChange).toHaveBeenCalledWith(false)
+    expect(screen.queryByLabelText("Provider")).not.toBeInTheDocument()
   })
 })

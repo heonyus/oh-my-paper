@@ -1,6 +1,11 @@
-import type { ScourgifyApi } from "../shared/ipc"
+import type { AiRequest, ScourgifyApi } from "../shared/ipc"
 
 export type BoardTool = "select" | "pan" | "sticky"
+export type AiDeltaHandler = (delta: string) => void
+export type AiRequestRunner = (
+  request: Omit<AiRequest, "documentId">,
+  onDelta?: AiDeltaHandler,
+) => Promise<string>
 
 export type {
   BoardCard,
