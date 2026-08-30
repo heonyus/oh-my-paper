@@ -1172,6 +1172,19 @@ button:focus-visible {
   place-items: center;
   background: var(--canvas);
 }
+.workspace-save-error {
+  position: fixed;
+  left: 72px;
+  bottom: 18px;
+  z-index: 70;
+  margin: 0;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--error) 45%, var(--line));
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--error);
+  font-size: var(--type-compact-size);
+}
 
 .modal-backdrop {
   position: fixed;

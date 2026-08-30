@@ -1,4 +1,3 @@
-import { FolderOpen } from "lucide-react"
 import { type JSX, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   type AiRequest,
@@ -7,11 +6,11 @@ import {
   preparationSteps,
 } from "../shared/ipc"
 import { LeftRail, Topbar } from "./components/AppChrome"
+import { AppStatusOverlays } from "./components/AppStatusOverlays"
 import { BoardViewport } from "./components/BoardViewport"
 import { LibraryPanel } from "./components/LibraryPanel"
 import { OutlinePanel } from "./components/OutlinePanel"
 import type { PreparedSummary } from "./components/PdfColumn"
-import { PreparationProgress } from "./components/PreparationProgress"
 import { ResearchSidebar } from "./components/ResearchSidebar"
 import { SettingsModal } from "./components/SettingsModal"
 import type { CitationIndexEntry } from "./lib/pdfCitationIndex"
@@ -22,6 +21,7 @@ import { appShellStyle } from "./lib/uiFontScale"
 import { useDocumentInsights } from "./lib/useDocumentInsights"
 import { usePostItShortcut } from "./lib/usePostItShortcut"
 import { useWorkspaceHistory } from "./lib/useWorkspaceHistory"
+import { useWorkspacePersistence } from "./lib/useWorkspacePersistence"
 import type { BoardCard, BoardTool, Workspace } from "./types"
 
 export function App(): JSX.Element {
@@ -41,6 +41,7 @@ export function App(): JSX.Element {
   const [outline, setOutline] = useState<readonly PdfOutlineEntry[]>([])
   const [citations, setCitations] = useState<readonly CitationIndexEntry[]>([])
   usePostItShortcut(setTool)
+  const workspaceSaveFailed = useWorkspacePersistence(workspace)
   const pageJumpRef = useRef<(page: number) => void>(() => {})
   const registerPageJump = useCallback((jump: (page: number) => void): void => {
     pageJumpRef.current = jump
@@ -62,10 +63,6 @@ export function App(): JSX.Element {
       setPreparation((current) => [...current.filter((item) => item.step !== update.step), update])
     })
   }, [resetWorkspace])
-
-  useEffect(() => {
-    if (workspace) void window.scourgify.saveWorkspace(workspace)
-  }, [workspace])
 
   useEffect(() => {
     const complete =
@@ -205,7 +202,6 @@ export function App(): JSX.Element {
       ) : (
         <section className="empty-board">
           <div>
-            <FolderOpen size={30} />
             <h1>논문을 연구 보드에 펼쳐보세요</h1>
             <button type="button" className="primary-action" onClick={() => void importPdf()}>
               PDF 가져오기
@@ -230,9 +226,11 @@ export function App(): JSX.Element {
         onAiRequest={runAi}
         onInsightChange={updateInsight}
       />
-      {preparation.length > 0 ? (
-        <PreparationProgress updates={preparation} onClose={() => setPreparation([])} />
-      ) : null}
+      <AppStatusOverlays
+        preparation={preparation}
+        saveFailed={workspaceSaveFailed}
+        onPreparationClose={() => setPreparation([])}
+      />
       {libraryOpen ? (
         <LibraryPanel
           documents={workspace.documents}

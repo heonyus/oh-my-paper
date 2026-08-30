@@ -7,15 +7,6 @@ export async function askBoardCard(
   history: BoardCard["chat"],
   onAiRequest: (request: Omit<AiRequest, "documentId">) => Promise<string>,
 ): Promise<string> {
-  if (question === "현재 카드 내용의 간결한 제목만 작성해줘.") {
-    return onAiRequest({
-      action: "card_title",
-      page: card.anchor.page,
-      quote: card.body,
-      before: card.anchor.quote,
-      after: "",
-    })
-  }
   return onAiRequest({
     action: "chat",
     page: card.anchor.page,
@@ -23,5 +14,18 @@ export async function askBoardCard(
     before: `CARD: ${card.title}\n${card.body}\nSOURCE: ${card.anchor.quote}`,
     after: "",
     history: [...history],
+  })
+}
+
+export async function regenerateBoardCardTitle(
+  card: BoardCard,
+  onAiRequest: (request: Omit<AiRequest, "documentId">) => Promise<string>,
+): Promise<string> {
+  return onAiRequest({
+    action: "card_title",
+    page: card.anchor.page,
+    quote: card.body,
+    before: card.anchor.quote,
+    after: "",
   })
 }

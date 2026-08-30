@@ -14,6 +14,7 @@ export function BoardCardsLayer({
   commitCards,
   onJump,
   onAsk,
+  onRegenerateTitle,
 }: {
   readonly cards: readonly BoardCard[]
   readonly activeId: CardId | null
@@ -24,6 +25,7 @@ export function BoardCardsLayer({
   readonly commitCards: (cards: readonly BoardCard[]) => void
   readonly onJump: (page: number) => void
   readonly onAsk: (card: BoardCard, question: string, history: BoardCard["chat"]) => Promise<string>
+  readonly onRegenerateTitle: (card: BoardCard) => Promise<string>
 }): JSX.Element {
   return (
     <>
@@ -71,7 +73,7 @@ export function BoardCardsLayer({
             commitCards(
               getCards().map((item) => (item.id === id ? { ...item, loading: true } : item)),
             )
-            void onAsk(target, "현재 카드 내용의 간결한 제목만 작성해줘.", [])
+            void onRegenerateTitle(target)
               .then((title) =>
                 commitCards(
                   getCards().map((item) =>

@@ -1,4 +1,4 @@
-import type { PreparationUpdate } from "../../shared/ipc"
+import { type PreparationUpdate, preparationSteps } from "../../shared/ipc"
 import type { DocumentId, Workspace } from "../../shared/schemas"
 import type { PreparedSummary } from "../components/PdfColumn"
 
@@ -14,10 +14,10 @@ const labels: Readonly<Record<PreparationUpdate["step"], string>> = {
 }
 
 export function completedPreparation(summary: PreparedSummary): readonly PreparationUpdate[] {
-  return Object.entries(labels).map(([step, message]) => ({
-    step: step as PreparationUpdate["step"],
+  return preparationSteps.map((step) => ({
+    step,
     state: step === "quality" && summary.needsOcr ? "warning" : "complete",
-    message,
+    message: labels[step],
   }))
 }
 

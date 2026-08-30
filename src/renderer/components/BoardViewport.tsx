@@ -1,6 +1,6 @@
 import { type JSX, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { CARD_WIDTH, createSelectionCard } from "../lib/board"
-import { askBoardCard } from "../lib/boardCardAi"
+import { askBoardCard, regenerateBoardCardTitle } from "../lib/boardCardAi"
 import { type BoardTextSelection, captureNativeBoardTextSelection } from "../lib/boardSelection"
 import { parsedCardResponse } from "../lib/cardPresentation"
 import { postItFromPointer } from "../lib/postItPlacement"
@@ -234,6 +234,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
           onAsk={(card, question, history) =>
             askBoardCard(card, question, history, props.onAiRequest)
           }
+          onRegenerateTitle={(card) => regenerateBoardCardTitle(card, props.onAiRequest)}
         />
       </div>
       {selectionMenu && menuPosition ? (

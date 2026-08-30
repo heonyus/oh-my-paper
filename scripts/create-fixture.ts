@@ -1,36 +1,12 @@
 import { promises as fs } from "node:fs"
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
-import { PDFDocument, type PDFFont, type PDFPage, rgb, StandardFonts } from "pdf-lib"
+import { PDFDocument, type PDFPage, rgb, StandardFonts } from "pdf-lib"
+import { drawFixtureHeaderFooter, type FixturePageContext } from "./fixture-page-shared"
+import { renderFixturePage1 } from "./fixture-page1"
+import type { FixtureGenerationResult, FixtureMetadata, FixtureOptions } from "./fixture-types"
 
-export type FixtureDocumentId = string & { readonly __brand: unique symbol }
-
-export type FixtureMetadata = {
-  readonly title: string
-  readonly author: string
-  readonly subject: string
-  readonly keywords: readonly string[]
-  readonly producer: string
-  readonly creator: string
-  readonly creationDate: Date
-  readonly modificationDate: Date
-}
-
-export type FixtureOptions = {
-  readonly title?: string
-  readonly author?: string
-  readonly subject?: string
-  readonly keywords?: readonly string[]
-  readonly creationDate?: Date
-  readonly modificationDate?: Date
-}
-
-export type FixtureGenerationResult = {
-  readonly outputPath: string
-  readonly byteLength: number
-  readonly pageCount: number
-  readonly metadata: FixtureMetadata
-}
+export type { FixtureDocumentId } from "./fixture-types"
 
 export const DEFAULT_FIXTURE_PATH = path.resolve(process.cwd(), "tests/fixtures/sample-paper.pdf")
 
@@ -45,104 +21,8 @@ export const DEFAULT_FIXTURE_METADATA: FixtureMetadata = {
   modificationDate: new Date("2026-08-26T00:00:00.000Z"),
 }
 
-type Ctx = { readonly regular: PDFFont; readonly bold: PDFFont; readonly mono: PDFFont }
-
-function drawHeaderFooter(page: PDFPage, num: number, ctx: Ctx): void {
-  const { width } = page.getSize()
-  page.drawText("Scourgify Technical Report — Deterministic Test Fixture", {
-    x: 50,
-    y: 800,
-    size: 8.5,
-    font: ctx.regular,
-    color: rgb(0.4, 0.4, 0.4),
-  })
-  page.drawLine({
-    start: { x: 50, y: 792 },
-    end: { x: width - 50, y: 792 },
-    thickness: 0.5,
-    color: rgb(0.75, 0.75, 0.75),
-  })
-  page.drawText(`Page ${num} of 3`, {
-    x: width / 2 - 25,
-    y: 35,
-    size: 8.5,
-    font: ctx.regular,
-    color: rgb(0.4, 0.4, 0.4),
-  })
-}
-
-function renderPage1(page: PDFPage, ctx: Ctx): void {
-  drawHeaderFooter(page, 1, ctx)
-  page.drawText("Scourgify: Deterministic Spatial PDF Fixture", {
-    x: 50,
-    y: 750,
-    size: 16,
-    font: ctx.bold,
-    color: rgb(0.1, 0.1, 0.1),
-  })
-  page.drawText("Scourgify Research Team • Spatial Computing & Document Intelligence", {
-    x: 50,
-    y: 730,
-    size: 9.5,
-    font: ctx.regular,
-    color: rgb(0.3, 0.3, 0.3),
-  })
-  page.drawRectangle({
-    x: 50,
-    y: 630,
-    width: 495,
-    height: 80,
-    borderWidth: 0.75,
-    borderColor: rgb(0.8, 0.8, 0.85),
-    color: rgb(0.96, 0.97, 0.99),
-  })
-  page.drawText("Abstract", {
-    x: 60,
-    y: 695,
-    size: 10,
-    font: ctx.bold,
-    color: rgb(0.15, 0.15, 0.15),
-  })
-  const abstract = [
-    "Scourgify is a local-first spatial canvas engineered for rigorous scientific document reading,",
-    "bidirectional card linking, and offline annotation. This deterministic multi-page fixture guarantees",
-    "reproducible ingestion, robust text coordinate extraction, and structured tabular validation.",
-  ]
-  abstract.forEach((l, i) => {
-    page.drawText(l, {
-      x: 60,
-      y: 678 - i * 13,
-      size: 8.5,
-      font: ctx.regular,
-      color: rgb(0.2, 0.2, 0.2),
-    })
-  })
-  page.drawText("1. Introduction and Architectural Motivation", {
-    x: 50,
-    y: 595,
-    size: 12,
-    font: ctx.bold,
-    color: rgb(0.1, 0.1, 0.1),
-  })
-  const intro = [
-    "Scientific inquiry demands seamless cross-referencing between hypotheses, mathematical derivations,",
-    "and tabular empirical evidence. Traditional linear PDF viewers constrain cognitive synthesis.",
-    "Scourgify treats document pages as spatially addressable artifacts on an infinite vector canvas.",
-    "Users excerpt verbatim passages into atomic cards, cluster findings, and preserve provenance links.",
-  ]
-  intro.forEach((l, i) => {
-    page.drawText(l, {
-      x: 50,
-      y: 575 - i * 14,
-      size: 9,
-      font: ctx.regular,
-      color: rgb(0.2, 0.2, 0.2),
-    })
-  })
-}
-
-function renderPage2(page: PDFPage, ctx: Ctx): void {
-  drawHeaderFooter(page, 2, ctx)
+function renderPage2(page: PDFPage, ctx: FixturePageContext): void {
+  drawFixtureHeaderFooter(page, 2, ctx)
   page.drawText("2. Mathematical Formulations & Coordinate Transformations", {
     x: 50,
     y: 750,
@@ -211,8 +91,8 @@ function renderPage2(page: PDFPage, ctx: Ctx): void {
   })
 }
 
-function renderPage3(page: PDFPage, ctx: Ctx): void {
-  drawHeaderFooter(page, 3, ctx)
+function renderPage3(page: PDFPage, ctx: FixturePageContext): void {
+  drawFixtureHeaderFooter(page, 3, ctx)
   page.drawText("3. Empirical Performance & Benchmark Results", {
     x: 50,
     y: 750,
@@ -317,11 +197,11 @@ export async function buildFixturePdf(options?: FixtureOptions): Promise<Uint8Ar
   const regular = await doc.embedFont(StandardFonts.Helvetica)
   const bold = await doc.embedFont(StandardFonts.HelveticaBold)
   const mono = await doc.embedFont(StandardFonts.Courier)
-  const ctx: Ctx = { regular, bold, mono }
+  const ctx: FixturePageContext = { regular, bold, mono }
 
   const pageSize: [number, number] = [595.28, 841.89]
   const p1 = doc.addPage(pageSize)
-  renderPage1(p1, ctx)
+  renderFixturePage1(p1, ctx)
   const p2 = doc.addPage(pageSize)
   renderPage2(p2, ctx)
   const p3 = doc.addPage(pageSize)
