@@ -1,6 +1,7 @@
 import {
   type PointerEvent as ReactPointerEvent,
   type WheelEvent as ReactWheelEvent,
+  useEffect,
   useRef,
 } from "react"
 import type { Viewport } from "../../shared/schemas"
@@ -21,6 +22,28 @@ export function useBoardGestures({
   tool,
 }: UseBoardGesturesProps) {
   const dragOrigin = useRef<{ x: number; y: number; viewport: Viewport } | null>(null)
+  const wheelFrame = useRef<number | null>(null)
+  const pendingViewport = useRef(viewport)
+
+  useEffect(() => {
+    if (wheelFrame.current === null) pendingViewport.current = viewport
+  }, [viewport])
+
+  useEffect(
+    () => () => {
+      if (wheelFrame.current !== null) cancelAnimationFrame(wheelFrame.current)
+    },
+    [],
+  )
+
+  function queueWheelViewport(next: Viewport): void {
+    pendingViewport.current = next
+    if (wheelFrame.current !== null) return
+    wheelFrame.current = requestAnimationFrame(() => {
+      wheelFrame.current = null
+      onViewportChange(pendingViewport.current)
+    })
+  }
 
   function startPan(event: ReactPointerEvent<HTMLDivElement>): void {
     if (event.button !== 0 || !(event.target instanceof HTMLElement)) return
@@ -57,16 +80,19 @@ export function useBoardGestures({
     if (event.ctrlKey || event.metaKey) {
       const rect = event.currentTarget.getBoundingClientRect()
       const factor = Math.exp(-event.deltaY * 0.006)
-      onViewportChange(
+      queueWheelViewport(
         zoomViewportAt(
-          viewport,
+          pendingViewport.current,
           { x: event.clientX - rect.left, y: event.clientY - rect.top },
-          viewport.zoom * factor,
+          pendingViewport.current.zoom * factor,
         ),
       )
     } else {
-      onViewportChange(
-        panViewport(viewport, wheelPanDelta({ x: event.deltaX, y: event.deltaY }, event.shiftKey)),
+      queueWheelViewport(
+        panViewport(
+          pendingViewport.current,
+          wheelPanDelta({ x: event.deltaX, y: event.deltaY }, event.shiftKey),
+        ),
       )
     }
   }

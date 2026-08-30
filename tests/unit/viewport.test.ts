@@ -26,7 +26,8 @@ describe("board viewport", () => {
   it("clamps zoom to the design contract", () => {
     // Given / When / Then
     expect(clampZoom(0.1)).toBe(0.38)
-    expect(clampZoom(2)).toBe(1.5)
+    expect(clampZoom(2)).toBe(2)
+    expect(clampZoom(8)).toBe(4)
   })
 
   it("pans in screen pixels without changing zoom", () => {

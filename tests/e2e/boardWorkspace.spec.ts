@@ -300,6 +300,28 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
         "actual-dark-1536x1024.png",
       ),
     })
+    const rapidZoom = await board.evaluate(async (element) => {
+      for (let index = 0; index < 12; index += 1) {
+        element.dispatchEvent(
+          new WheelEvent("wheel", { ctrlKey: true, deltaY: -12, bubbles: true, cancelable: true }),
+        )
+      }
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      )
+      const surface = element.querySelector<HTMLElement>(".pdf-surface")
+      return {
+        requested: Number(surface?.getAttribute("data-zoom")),
+        rendered: Number(surface?.getAttribute("data-rendered-zoom")),
+      }
+    })
+    expect(rapidZoom.requested).toBeGreaterThan(1.5)
+    expect(rapidZoom.rendered).toBeLessThan(rapidZoom.requested)
+    await expect
+      .poll(async () =>
+        Number(await page.locator(".pdf-surface").getAttribute("data-rendered-zoom")),
+      )
+      .toBeCloseTo(rapidZoom.requested, 2)
   } finally {
     await application.close()
     await rm(temporaryRoot, { recursive: true, force: true })

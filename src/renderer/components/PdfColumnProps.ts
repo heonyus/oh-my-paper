@@ -12,4 +12,5 @@ export type PdfColumnProps = {
   readonly onRegisterPageJump?: ((jump: (page: number) => void) => void) | undefined
   readonly onPageJump?: ((page: number, pageElement: HTMLElement) => void) | undefined
   readonly onStructureTrigger?: ((structure: DetectedStructure) => void) | undefined
+  readonly onScaleCommitted?: ((zoom: number) => void) | undefined
 }

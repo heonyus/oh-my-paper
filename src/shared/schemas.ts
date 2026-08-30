@@ -18,7 +18,7 @@ export const pointSchema = z.object({
 })
 
 export const viewportSchema = pointSchema.extend({
-  zoom: z.number().min(0.38).max(1.5),
+  zoom: z.number().min(0.38).max(4),
 })
 
 export const documentRecordSchema = z.object({

@@ -1,4 +1,4 @@
-import type { JSX } from "react"
+import { type JSX, useState } from "react"
 import type { PdfOutlineEntry } from "../lib/pdfOutline"
 import { alignedDevicePixel } from "../lib/pdfRenderQuality"
 import type { DetectedStructure } from "../lib/structureDetector"
@@ -28,6 +28,7 @@ export function PdfSurface({
   onPageJump,
   onStructureTrigger,
 }: PdfSurfaceProps): JSX.Element {
+  const [renderedZoom, setRenderedZoom] = useState(viewport.zoom)
   const pixelRatio = window.devicePixelRatio || 1
   const x = alignedDevicePixel(viewport.x + PAPER_ORIGIN.x * viewport.zoom, pixelRatio)
   const y = alignedDevicePixel(viewport.y + PAPER_ORIGIN.y * viewport.zoom, pixelRatio)
@@ -35,8 +36,11 @@ export function PdfSurface({
     <div
       className="pdf-surface"
       style={{
-        transform: `translate(${x}px, ${y}px)`,
+        transform: `translate(${x}px, ${y}px) scale(${viewport.zoom / renderedZoom})`,
+        transformOrigin: "0 0",
       }}
+      data-zoom={viewport.zoom}
+      data-rendered-zoom={renderedZoom}
     >
       <PdfColumn
         document={document}
@@ -47,6 +51,7 @@ export function PdfSurface({
         onRegisterPageJump={onRegisterPageJump}
         onPageJump={onPageJump}
         onStructureTrigger={onStructureTrigger}
+        onScaleCommitted={setRenderedZoom}
       />
     </div>
   )

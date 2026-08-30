@@ -14,6 +14,7 @@ import { nextOverlayState, syncViewerWidth } from "../lib/pdfOverlayRefresh"
 import { analyzePageOverlayInWorker } from "../lib/pdfOverlayWorkerAnalysis"
 import { pdfCanvasDimensionLimit, pdfCanvasPixelBudget } from "../lib/pdfRenderQuality"
 import type { BibliographyMap } from "../lib/structureDetector"
+import { usePdfZoomCommit } from "../lib/usePdfZoomCommit"
 import type { PdfColumnProps } from "./PdfColumnProps"
 import { PdfOverlayLayer } from "./PdfOverlayLayer"
 
@@ -30,6 +31,7 @@ export function PdfColumn({
   onRegisterPageJump,
   onPageJump,
   onStructureTrigger,
+  onScaleCommitted,
 }: PdfColumnProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<HTMLDivElement>(null)
@@ -42,6 +44,13 @@ export function PdfColumn({
   const overlayRefreshRef = useRef<(() => void) | null>(null)
   const [pageOverlays, setPageOverlays] = useState<Readonly<Record<number, PageOverlayState>>>({})
   const [error, setError] = useState<string | null>(null)
+  usePdfZoomCommit({
+    zoom,
+    sessionRef,
+    containerRef,
+    overlayRefreshRef,
+    onScaleCommitted,
+  })
 
   useEffect(() => {
     zoomRef.current = zoom
@@ -91,6 +100,7 @@ export function PdfColumn({
       viewer.currentScale = zoomRef.current
       requestAnimationFrame(() => {
         syncViewerWidth(container, viewer)
+        onScaleCommitted?.(zoomRef.current)
         scheduleOverlayRefresh()
       })
       window.setTimeout(refreshOverlays, 320)
@@ -218,19 +228,8 @@ export function PdfColumn({
     onPageActive,
     onRegisterPageJump,
     onPageJump,
+    onScaleCommitted,
   ])
-
-  useEffect(() => {
-    const session = sessionRef.current
-    const container = containerRef.current
-    if (session && container) {
-      session.viewer.currentScale = zoom
-      requestAnimationFrame(() => {
-        syncViewerWidth(container, session.viewer)
-        overlayRefreshRef.current?.()
-      })
-    }
-  }, [zoom])
 
   return (
     <div ref={containerRef} className="pdf-viewer-container">

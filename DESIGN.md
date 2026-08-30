@@ -67,7 +67,7 @@ Base unit: 4px. Allowed intent tokens: 4, 8, 12, 16, 20, 24, 32, 40.
 - Research sidebar: 300px default content pane plus a 40px mode rail; user-resizable from 260–520px and persisted locally. It collapses to the 40px mode rail.
 - Board viewport: remaining bounded region; owns pan/zoom gestures and never document scroll.
 - Paper column: all pages share one X coordinate, ordered vertically with 12–20px gaps.
-- Board world: minimum 4800×6400 logical pixels, expandable from rendered page and card extents; zoom 38–150%. Navigation bounds mirror the larger occupied side around the paper column and reserve at least 720 logical pixels on both left and right, so cards can live on either side without leaving the opposite side as a hard edge.
+- Board world: minimum 4800×6400 logical pixels, expandable from rendered page and card extents; zoom 38–400%. Navigation bounds mirror the larger occupied side around the paper column and reserve at least 720 logical pixels on both left and right, so cards can live on either side without leaving the opposite side as a hard edge.
 - Pan: two-finger/trackpad wheel and hand-tool drag. Pinch or `Ctrl`/`Meta` wheel zooms around cursor. Rendered pages and cards define a finite navigation extent with 40px screen-space outer padding, so persisted or live gestures cannot strand all content beyond an unlimited blank region.
 - Cards: 280–340px default width, movable in board coordinates, never docked in metadata sidebar.
 - FigJam-style post-its: 240px default width, square-cornered 4px radius, `--note` paper tone, created at the clicked board coordinate and focused for immediate editing.
@@ -84,6 +84,7 @@ The paper column and cards transform together. Toolbar, rails, and metadata side
 - **Scroll ownership:** wheel/trackpad gestures over the board pan the board; scrollable sidebar/card bodies keep their own bounded scroll. Minimap pointer and wheel events never leak into board panning.
 - **Trackpad axis intent:** ordinary wheel gestures lock to their dominant axis, so vertical reading never accumulates incidental horizontal drift. `Shift` plus wheel intentionally pans horizontally. Pinch zoom remains focal-point anchored.
 - **Boundary stability:** finite board bounds are applied before paint. Repeated wheel or trackpad input at the top, bottom, left, or right edge never renders an overscrolled frame and snaps back, so the paper and cards do not vibrate at navigation limits.
+- **Zoom performance:** wheel/pinch updates are coalesced to at most one viewport commit per animation frame. The paper uses a temporary compositor scale during active zoom and commits the expensive PDF.js page scale only after 140ms of inactivity, so long papers do not rerender every page for every wheel delta.
 
 ### BoardMinimap
 - **Structure:** 160px token-driven surface, one continuous document strip spanning the paper's real world bounds, one current-page marker, labelled card markers, and a high-contrast live viewport rectangle. Do not render every page as a bordered miniature: long papers must remain a legible document silhouette rather than a dense ladder of page lines. The header shows the page count, and a compact switch turns the minimap on or off with workspace persistence.
