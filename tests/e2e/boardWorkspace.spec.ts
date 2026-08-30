@@ -232,8 +232,9 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
       await page.mouse.down()
       await page.mouse.move(handleBox.x + 64, handleBox.y + 54, { steps: 6 })
       await page.mouse.up()
-      const afterResize = await explanationCard.boundingBox()
-      expect(afterResize?.width ?? 0).toBeGreaterThan(beforeResize.width)
+      await expect
+        .poll(async () => (await explanationCard.boundingBox())?.width ?? 0)
+        .toBeGreaterThan(beforeResize.width)
     }
     await expect(explanationCard.getByLabel("카드에 후속 질문")).toBeVisible()
     await page.getByRole("button", { name: "포스트잇 도구" }).click()

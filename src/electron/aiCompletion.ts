@@ -1,6 +1,7 @@
 import type { AiRequest, ProviderConfig } from "../shared/ipc"
 
 const readingTokenLimits: Readonly<Partial<Record<AiRequest["action"], number>>> = {
+  citation_assessment: 768,
   explanation: 512,
   infographic: 512,
   section: 320,

@@ -87,4 +87,22 @@ describe("board pan gestures", () => {
     const zoom = Number(board.textContent?.split(",")[2])
     expect(zoom).toBeGreaterThan(1.3)
   })
+
+  it("locks a diagonal trackpad burst to its initial dominant axis", () => {
+    const frames: FrameRequestCallback[] = []
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      frames.push(callback)
+      return frames.length
+    })
+    render(<Harness />)
+    const board = screen.getByTestId("board")
+
+    fireEvent.wheel(board, { deltaX: 7, deltaY: 100 })
+    act(() => frames.shift()?.(0))
+    expect(board).toHaveTextContent("0,-100,1")
+
+    fireEvent.wheel(board, { deltaX: 9, deltaY: 8 })
+    act(() => frames.shift()?.(16))
+    expect(board).toHaveTextContent("0,-108,1")
+  })
 })

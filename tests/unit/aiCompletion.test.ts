@@ -22,9 +22,18 @@ describe("AI completion budget", () => {
     expect(completionTokenLimit(request)).toBe(64)
   })
 
-  it("leaves deep citation assessment unrestricted", () => {
+  it("bounds citation assessment for interactive reading", () => {
     // Given / When / Then
-    expect(completionTokenLimit({ ...request, action: "citation_assessment" })).toBeUndefined()
+    const assessment = { ...request, action: "citation_assessment" } satisfies AiRequest
+    expect(completionTokenLimit(assessment)).toBe(768)
+    expect(completionLimitParameters("openrouter", assessment)).toEqual({
+      max_tokens: 768,
+      reasoning_effort: "low",
+      temperature: 0,
+    })
+    expect(routedModelForRequest("openrouter", "z-ai/glm-5.3-flash", assessment)).toBe(
+      "z-ai/glm-5.3-flash:nitro",
+    )
   })
 
   it("bounds section explanations for interactive reading", () => {

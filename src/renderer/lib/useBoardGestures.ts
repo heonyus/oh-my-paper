@@ -6,7 +6,7 @@ import {
 } from "react"
 import type { Viewport } from "../../shared/schemas"
 import type { BoardTool } from "../types"
-import { panViewport, wheelPanDelta, zoomViewportAt } from "./viewport"
+import { panViewport, zoomViewportAt } from "./viewport"
 
 type UseBoardGesturesProps = {
   readonly viewport: Viewport
@@ -23,6 +23,8 @@ export function useBoardGestures({
 }: UseBoardGesturesProps) {
   const dragOrigin = useRef<{ x: number; y: number; viewport: Viewport } | null>(null)
   const wheelFrame = useRef<number | null>(null)
+  const wheelAxis = useRef<"x" | "y" | null>(null)
+  const wheelAxisTimer = useRef<number | null>(null)
   const pendingViewport = useRef(viewport)
 
   useEffect(() => {
@@ -32,9 +34,27 @@ export function useBoardGestures({
   useEffect(
     () => () => {
       if (wheelFrame.current !== null) cancelAnimationFrame(wheelFrame.current)
+      if (wheelAxisTimer.current !== null) window.clearTimeout(wheelAxisTimer.current)
     },
     [],
   )
+
+  function resetWheelAxisAfterIdle(): void {
+    if (wheelAxisTimer.current !== null) window.clearTimeout(wheelAxisTimer.current)
+    wheelAxisTimer.current = window.setTimeout(() => {
+      wheelAxis.current = null
+      wheelAxisTimer.current = null
+    }, 160)
+  }
+
+  function lockedWheelDelta(delta: { readonly x: number; readonly y: number }): {
+    readonly x: number
+    readonly y: number
+  } {
+    wheelAxis.current ??= Math.abs(delta.y) >= Math.abs(delta.x) ? "y" : "x"
+    resetWheelAxisAfterIdle()
+    return wheelAxis.current === "y" ? { x: 0, y: -delta.y } : { x: -delta.x, y: 0 }
+  }
 
   function queueWheelViewport(next: Viewport): void {
     pendingViewport.current = next
@@ -78,6 +98,7 @@ export function useBoardGestures({
   function handleWheel(event: ReactWheelEvent<HTMLDivElement>): void {
     event.preventDefault()
     if (event.ctrlKey || event.metaKey) {
+      wheelAxis.current = null
       const rect = event.currentTarget.getBoundingClientRect()
       const factor = Math.exp(-event.deltaY * 0.006)
       queueWheelViewport(
@@ -88,12 +109,10 @@ export function useBoardGestures({
         ),
       )
     } else {
-      queueWheelViewport(
-        panViewport(
-          pendingViewport.current,
-          wheelPanDelta({ x: event.deltaX, y: event.deltaY }, event.shiftKey),
-        ),
-      )
+      const delta = event.shiftKey
+        ? { x: -(event.deltaY || event.deltaX), y: 0 }
+        : lockedWheelDelta({ x: event.deltaX, y: event.deltaY })
+      queueWheelViewport(panViewport(pendingViewport.current, delta))
     }
   }
 
