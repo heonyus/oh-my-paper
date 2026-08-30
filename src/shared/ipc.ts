@@ -90,6 +90,8 @@ export const aiRequestSchema = z.object({
   quote: z.string().min(1).max(AI_CONTEXT_MAX_CHARACTERS),
   before: z.string().max(AI_CONTEXT_MAX_CHARACTERS),
   after: z.string().max(3_000),
+  paperContext: z.string().max(AI_CONTEXT_MAX_CHARACTERS).optional(),
+  sectionContext: z.string().max(4_000).optional(),
   featureKind: z
     .enum(["heading", "subheading", "figure", "table", "equation", "citation"])
     .optional(),

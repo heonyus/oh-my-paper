@@ -15,7 +15,8 @@ export function paperQuestionRequest(
     action: "chat",
     page: currentPage,
     quote: question,
-    before: `Active paper: ${document.title}\n${paperContextForQuestion(question, currentPage)}`,
+    paperContext: `${document.title}\n${paperContextForQuestion(question, currentPage)}`,
+    before: "",
     after: "",
     history: [...history],
   }

@@ -22,6 +22,7 @@ type PositionedText = {
   readonly text: string
   readonly left: number
   readonly top: number
+  readonly width: number
   readonly height: number
 }
 
@@ -34,6 +35,7 @@ function positionedText(page: HTMLElement): readonly PositionedText[] {
         text: span.textContent?.trim() ?? "",
         left: rect.left - pageRect.left,
         top: rect.top - pageRect.top,
+        width: rect.width,
         height: rect.height,
       }
     })
@@ -106,4 +108,33 @@ export function sectionRequestContext(input: SectionRequestContextInput): {
       maximumSectionContextCharacters,
     ),
   }
+}
+
+function intersectsBounds(span: PositionedText, bounds: Bounds): boolean {
+  return (
+    span.left < bounds.x + bounds.width &&
+    span.left + span.width > bounds.x &&
+    span.top < bounds.y + bounds.height &&
+    span.top + span.height > bounds.y
+  )
+}
+
+export function featureRequestContext(page: HTMLElement, bounds: Bounds): string {
+  const spans = positionedText(page)
+  const bodyHeights = spans.map((span) => span.height).filter((height) => height >= 7)
+  const sortedHeights = [...bodyHeights].sort((left, right) => left - right)
+  const medianHeight = sortedHeights[Math.floor(sortedHeights.length / 2)] ?? 12
+  const headings = spans.filter(
+    (span) => span.height >= medianHeight * 1.25 && span.text.length <= 180,
+  )
+  const preceding = headings.filter((span) => span.top < bounds.y).at(-1)
+  const following = headings.find((span) => span.top > bounds.y + bounds.height)
+  const minimumTop = preceding?.top ?? Math.max(0, bounds.y - 500)
+  const maximumTop = following?.top ?? bounds.y + bounds.height + 500
+  const prose = spans
+    .filter((span) => span.top >= minimumTop && span.top < maximumTop)
+    .filter((span) => !intersectsBounds(span, bounds))
+    .map((span) => span.text)
+    .join(" ")
+  return normalizeExtractedPdfText(prose).slice(0, maximumSectionContextCharacters)
 }

@@ -29,7 +29,8 @@ describe("board card AI routing", () => {
       action: "card_title",
       page: 3,
       quote: "카드 본문",
-      before: "원문 문맥",
+      sectionContext: "원문 문맥",
+      before: "",
       after: "",
     })
   })

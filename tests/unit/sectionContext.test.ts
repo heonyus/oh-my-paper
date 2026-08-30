@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { sectionRequestContext } from "../../src/renderer/lib/sectionContext"
+import { featureRequestContext, sectionRequestContext } from "../../src/renderer/lib/sectionContext"
 
 type Box = {
   readonly left: number
@@ -100,5 +100,43 @@ describe("section request context", () => {
     expect(context.section).toContain("standardizes tasks into executable environments")
     expect(context.section).not.toContain("MIMIC-III 9,318")
     expect(context.section).not.toContain("CODING ENVIRONMENT")
+  })
+
+  it("collects nearby section prose and caption while excluding labels inside a figure", () => {
+    const page = makePage(2)
+    addSpan(page, "4.2 RESULTS", { left: 80, top: 100, width: 180, height: 22 })
+    addSpan(page, "The figure compares proprietary and open-source model performance.", {
+      left: 80,
+      top: 135,
+      width: 560,
+      height: 14,
+    })
+    addSpan(page, "Success Rate 0.8 0.6 0.4", {
+      left: 180,
+      top: 250,
+      width: 240,
+      height: 10,
+    })
+    addSpan(page, "Figure 1: Overall leaderboard evaluation in MedAgentGym.", {
+      left: 100,
+      top: 510,
+      width: 540,
+      height: 13,
+    })
+    addSpan(page, "The result supports the training environment's effectiveness.", {
+      left: 80,
+      top: 545,
+      width: 560,
+      height: 14,
+    })
+    addSpan(page, "5 TRAINING", { left: 80, top: 700, width: 180, height: 22 })
+
+    const context = featureRequestContext(page, { x: 100, y: 180, width: 540, height: 310 })
+
+    expect(context).toContain("4.2 RESULTS")
+    expect(context).toContain("Overall leaderboard evaluation")
+    expect(context).toContain("supports the training environment")
+    expect(context).not.toContain("Success Rate 0.8")
+    expect(context).not.toContain("5 TRAINING")
   })
 })

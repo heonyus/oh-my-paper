@@ -11,7 +11,8 @@ export async function askBoardCard(
     action: "chat",
     page: card.anchor.page,
     quote: question,
-    before: `CARD: ${card.title}\n${card.body}\nSOURCE: ${card.anchor.quote}`,
+    sectionContext: `CARD: ${card.title}\n${card.body}\nSOURCE: ${card.anchor.quote}`,
+    before: "",
     after: "",
     history: [...history],
   })
@@ -25,7 +26,8 @@ export async function regenerateBoardCardTitle(
     action: "card_title",
     page: card.anchor.page,
     quote: card.body,
-    before: card.anchor.quote,
+    sectionContext: card.anchor.quote,
+    before: "",
     after: "",
   })
 }

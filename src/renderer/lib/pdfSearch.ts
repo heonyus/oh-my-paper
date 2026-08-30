@@ -59,3 +59,13 @@ export function paperOverviewContext(): string {
 }
 
 import { AI_CONTEXT_MAX_CHARACTERS } from "../../shared/ipc"
+
+const paperOverviewCache = new Map<string, string>()
+
+export function cachedPaperOverviewContext(documentId: string): string {
+  const cached = paperOverviewCache.get(documentId)
+  if (cached) return cached
+  const context = paperOverviewContext()
+  if (context) paperOverviewCache.set(documentId, context)
+  return context
+}

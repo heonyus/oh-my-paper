@@ -1,12 +1,13 @@
-import type { AiAction, AiRequest } from "../../shared/ipc"
+import type { AiRequest } from "../../shared/ipc"
 import type { BoardCard, DocumentId, Viewport } from "../../shared/schemas"
 import { CARD_WIDTH, createStructureCard } from "./board"
 import { parsedCardResponse } from "./cardPresentation"
 import { citationCardSource } from "./citationCardSource"
 import { assessCitationStructure } from "./citationStructureAssessment"
 import { cropFeatureImage } from "./pdfFeatureDom"
-import { sectionRequestContext } from "./sectionContext"
+import { featureRequestContext, sectionRequestContext } from "./sectionContext"
 import { rectsToElementSpace } from "./selectionGeometry"
+import { structureAiRequest } from "./structureAiRequest"
 import {
   shouldRegenerateStructureCard,
   structureSourceKey,
@@ -26,18 +27,6 @@ type StructureActionsInput = {
   readonly onViewportChange: (viewport: Viewport) => void
   readonly onCardActivated: (id: BoardCard["id"]) => void
   readonly onAiRequest: (request: Omit<AiRequest, "documentId">) => Promise<string>
-}
-
-function actionFor(structure: DetectedStructure): AiAction {
-  switch (structure.kind) {
-    case "citation":
-    case "figure":
-    case "table":
-    case "equation":
-      return structure.kind
-    case "section":
-      return "section"
-  }
 }
 
 function patchCard(
@@ -186,7 +175,7 @@ export function createStructureActionHandler(
               sourceSpanIds: [],
             })
           : null
-      const sectionContext =
+      const requestContext =
         structure.kind === "section"
           ? sectionRequestContext({
               viewer,
@@ -195,17 +184,9 @@ export function createStructureActionHandler(
               bounds: structure.bounds,
               paperTitle: input.currentPaperTitle,
             })
-          : null
-      const baseRequest = {
-        action: actionFor(structure),
-        page: structure.page,
-        quote: structure.quote,
-        before: sectionContext?.paper ?? "",
-        after: sectionContext?.section ?? "",
-        featureKind: structure.kind === "section" ? "heading" : structure.kind,
-      } satisfies Omit<AiRequest, "documentId" | "imageDataUrl">
+          : { paper: "", section: featureRequestContext(pageElement, structure.bounds) }
       const explanation = await input.onAiRequest(
-        imageDataUrl ? { ...baseRequest, imageDataUrl } : baseRequest,
+        structureAiRequest(structure, imageDataUrl, requestContext),
       )
       if (activeGenerations.get(card.id) !== currentGen) return
       input.commitCards(

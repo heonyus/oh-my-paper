@@ -123,6 +123,8 @@ The paper column and cards transform together. Toolbar, rails, and metadata side
 - **Structure:** feature-kind label, source title/caption, grounded Korean explanation, source-jump action.
 - **States:** loading, complete, failed.
 - **Behavior:** image-bearing targets send only the cropped local feature image plus page caption/context after explicit click; text targets send only the detected block and minimal context.
+- **Research context contract:** every AI request has four explicit evidence slots: cached paper overview, current section, local before/after text, and the exact user question or target. Existing AI paper summaries are injected when available; otherwise a locally extracted paper overview is cached by document ID and reused without a network request.
+- **Figure/Table interpretation:** Figure, Table, and display-equation actions are multimodal. They send the local image crop plus full nearby caption/section prose and paper overview. Responses lead with the scientific finding or decision-relevant comparison; crop, OCR, truncation, and tool disclaimers never lead the answer and appear only as one specific `확인 필요` note when they materially affect interpretation.
 
 ### SelectionActions
 - **Variants:** translate, explain, visualize, highlight, note.

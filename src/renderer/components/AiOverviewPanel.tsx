@@ -67,8 +67,9 @@ export function AiOverviewPanel({
       const value = await onAiRequest({
         action: config[key].action,
         page: 1,
-        quote: paperOverviewContext(),
-        before: `Paper: ${document.title}`,
+        quote: document.title,
+        paperContext: paperOverviewContext(),
+        before: "",
         after: "",
       })
       setInsights((current) => ({ ...current, [key]: { value, loading: false, error: "" } }))
@@ -104,7 +105,8 @@ export function AiOverviewPanel({
       action: "chat",
       page: currentPage,
       quote: question,
-      before: `Paper: ${document.title}\n${paperContextForQuestion(question, currentPage)}`,
+      paperContext: paperContextForQuestion(question, currentPage),
+      before: "",
       after: "",
       history: [...history],
     })

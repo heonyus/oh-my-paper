@@ -1,10 +1,5 @@
 import { type JSX, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import {
-  type AiRequest,
-  type PreparationUpdate,
-  type ProviderStatus,
-  preparationSteps,
-} from "../shared/ipc"
+import { type PreparationUpdate, type ProviderStatus, preparationSteps } from "../shared/ipc"
 import { LeftRail, Topbar } from "./components/AppChrome"
 import { AppStatusOverlays } from "./components/AppStatusOverlays"
 import { BoardViewport } from "./components/BoardViewport"
@@ -19,6 +14,7 @@ import { applyPreparedSummary, completedPreparation } from "./lib/preparationSta
 import { useBoardCardJump } from "./lib/researchSidebarActions"
 import { appShellStyle } from "./lib/uiFontScale"
 import { useDocumentInsights } from "./lib/useDocumentInsights"
+import { usePaperAiRequest } from "./lib/usePaperAiRequest"
 import { usePostItShortcut } from "./lib/usePostItShortcut"
 import { useWorkspaceHistory } from "./lib/useWorkspaceHistory"
 import { useWorkspacePersistence } from "./lib/useWorkspacePersistence"
@@ -87,6 +83,7 @@ export function App(): JSX.Element {
     activeDocument?.id,
     setWorkspace,
   )
+  const runAi = usePaperAiRequest(activeDocument, activeInsights)
 
   const updateCards = useCallback(
     (cards: readonly BoardCard[]): void => {
@@ -124,15 +121,6 @@ export function App(): JSX.Element {
     if (!result) return
     const current = await window.scourgify.readWorkspace()
     resetWorkspace({ ...current, activeDocumentId: result.document.id })
-  }
-
-  async function runAi(request: Omit<AiRequest, "documentId">): Promise<string> {
-    if (!activeDocument) throw new Error("active document is missing")
-    const result = await window.scourgify.runAi({
-      ...request,
-      documentId: activeDocument.id,
-    })
-    return result.text
   }
 
   const jumpToCard = useBoardCardJump(activeCards, setWorkspace, setCurrentPage)

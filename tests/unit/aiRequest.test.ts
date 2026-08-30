@@ -21,6 +21,17 @@ describe("AI feature request boundary", () => {
     expect(result.success).toBe(true)
   })
 
+  it("accepts explicit paper and section context alongside a multimodal figure", () => {
+    const result = aiRequestSchema.safeParse({
+      ...base,
+      paperContext: "cached paper summary",
+      sectionContext: "nearby results section",
+      imageDataUrl: "data:image/png;base64,aG90ZWJvb2s=",
+    })
+
+    expect(result.success).toBe(true)
+  })
+
   it("rejects non-image data payloads", () => {
     const result = aiRequestSchema.safeParse({
       ...base,
