@@ -94,6 +94,7 @@ button:focus-visible {
   display: grid;
   grid-template: 60px minmax(0, 1fr) / 48px minmax(0, 1fr) auto;
   background: var(--canvas);
+  color: var(--ink);
 }
 .app-shell[data-outline-open="true"] {
   grid-template-columns: 48px auto minmax(0, 1fr) auto;

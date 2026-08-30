@@ -285,6 +285,9 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
     await page.getByRole("button", { name: "설정" }).click()
     await page.getByLabel("화면 모드").selectOption("dark")
     await expect(page.locator(".app-shell")).toHaveAttribute("data-theme", "dark")
+    expect(
+      await page.locator(".app-shell").evaluate((element) => getComputedStyle(element).color),
+    ).toBe("rgb(242, 242, 244)")
     await page.screenshot({
       path: join(
         process.cwd(),
