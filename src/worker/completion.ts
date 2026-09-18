@@ -52,7 +52,7 @@ export async function completeDocumentRequest(
           ...(input.history ?? []),
           { role: "user", content: userContent },
         ],
-        ...completionLimitParameters(credential.provider, input),
+        ...completionLimitParameters(credential.provider, credential.model, input),
       }),
       signal: AbortSignal.timeout(90_000),
     },

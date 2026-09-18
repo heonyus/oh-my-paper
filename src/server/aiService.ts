@@ -50,7 +50,7 @@ export class WebAiService {
     return providerStatusSchema.parse({
       configured: false,
       provider: "openrouter",
-      model: "z-ai/glm-5.3-flash",
+      model: "google/gemini-2.5-flash-lite",
     })
   }
 
@@ -88,7 +88,11 @@ export class WebAiService {
           request,
         ),
         messages,
-        parameters: completionLimitParameters(this.#providerConfig.provider, request),
+        parameters: completionLimitParameters(
+          this.#providerConfig.provider,
+          this.#providerConfig.model,
+          request,
+        ),
       })
       return aiResultSchema.parse(completion)
     } catch (error) {
@@ -117,7 +121,11 @@ export class WebAiService {
       const completion = await streamChat(client, {
         model,
         messages,
-        parameters: completionLimitParameters(this.#providerConfig.provider, request),
+        parameters: completionLimitParameters(
+          this.#providerConfig.provider,
+          this.#providerConfig.model,
+          request,
+        ),
         onDelta,
         ...(signal ? { signal } : {}),
       })

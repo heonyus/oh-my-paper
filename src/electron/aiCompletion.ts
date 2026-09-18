@@ -30,8 +30,15 @@ export function completionTokenLimit(request: AiRequest): number | undefined {
   return undefined
 }
 
+const nitroBaseModel = "z-ai/glm-5.3-flash"
+
+function usesReasoningEffort(model: string): boolean {
+  return model === nitroBaseModel || model === `${nitroBaseModel}:nitro`
+}
+
 export function completionLimitParameters(
   provider: ProviderConfig["provider"],
+  model: string,
   request: AiRequest,
 ): {
   readonly max_tokens?: number
@@ -57,7 +64,12 @@ export function completionLimitParameters(
           }
         : {}
   if (provider === "openrouter")
-    return { max_tokens: limit, reasoning_effort: "low", temperature: 0, ...structured }
+    return {
+      max_tokens: limit,
+      ...(usesReasoningEffort(model) ? { reasoning_effort: "low" as const } : {}),
+      temperature: 0,
+      ...structured,
+    }
   if (provider === "groq")
     return { max_completion_tokens: limit, reasoning_effort: "low", temperature: 0, ...structured }
   if (provider === "gemini")
@@ -72,8 +84,6 @@ export function completionLimitParameters(
     }
   return { max_completion_tokens: limit, ...structured }
 }
-
-const nitroBaseModel = "z-ai/glm-5.3-flash"
 
 export function routedModelForRequest(
   provider: ProviderConfig["provider"],

@@ -8,7 +8,7 @@ export const initialProviderStatus: ProviderStatus = {
   mode: "chatgpt",
   configured: false,
   provider: "openrouter",
-  model: "z-ai/glm-5.3-flash",
+  model: "google/gemini-2.5-flash-lite",
 }
 
 export const initialOcrProviderStatus: DocumentOcrProviderStatus = {

@@ -26,6 +26,7 @@ export const GEMINI_MODEL_OPTIONS = [
 ] as const
 
 export const OPENROUTER_MODEL_OPTIONS = [
+  "google/gemini-2.5-flash-lite",
   "z-ai/glm-5.3-flash",
   "deepseek/deepseek-v4-flash-0731",
   "anthropic/claude-3.7-sonnet",

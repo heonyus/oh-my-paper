@@ -40,12 +40,12 @@ describe("SettingsModal", () => {
     )
     await userEvent.click(screen.getByRole("button", { name: "암호화하여 저장" }))
 
-    expect(screen.getByLabelText("모델 ID")).toHaveValue("z-ai/glm-5.3-flash")
+    expect(screen.getByLabelText("모델 ID")).toHaveValue("google/gemini-2.5-flash-lite")
     expect(screen.queryByText(/ChatGPT Plus/)).not.toBeInTheDocument()
     expect(onSave).toHaveBeenCalledWith({
       provider: "openrouter",
       apiKey: "sk-or-example-key-at-least-twenty-characters",
-      model: "z-ai/glm-5.3-flash",
+      model: "google/gemini-2.5-flash-lite",
     })
   })
 
@@ -61,7 +61,7 @@ describe("SettingsModal", () => {
     )
 
     const model = screen.getByLabelText("모델 ID")
-    expect(model).toHaveValue("z-ai/glm-5.3-flash")
+    expect(model).toHaveValue("google/gemini-2.5-flash-lite")
     await userEvent.selectOptions(model, "deepseek/deepseek-v4-flash-0731")
     expect(model).toHaveValue("deepseek/deepseek-v4-flash-0731")
   })

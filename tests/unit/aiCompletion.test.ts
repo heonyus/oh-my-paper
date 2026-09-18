@@ -25,15 +25,19 @@ describe("AI completion budget", () => {
   it("bounds mapped page-translation batches for low-latency streaming", () => {
     expect(completionTokenLimit({ ...request, action: "page_translation" })).toBe(2_048)
     expect(
-      completionLimitParameters("openrouter", { ...request, action: "page_translation" })
-        .response_format?.json_schema.name,
+      completionLimitParameters("openrouter", "z-ai/glm-5.3-flash", {
+        ...request,
+        action: "page_translation",
+      }).response_format?.json_schema.name,
     ).toBe("page_translation")
   })
 
   it("requests strict structured output for multimodal page structure", () => {
     expect(
-      completionLimitParameters("openrouter", { ...request, action: "page_structure" })
-        .response_format?.json_schema.name,
+      completionLimitParameters("openrouter", "z-ai/glm-5.3-flash", {
+        ...request,
+        action: "page_structure",
+      }).response_format?.json_schema.name,
     ).toBe("page_structure")
   })
 
@@ -45,7 +49,7 @@ describe("AI completion budget", () => {
     // Given / When / Then
     const assessment = { ...request, action: "citation_assessment" } satisfies AiRequest
     expect(completionTokenLimit(assessment)).toBe(768)
-    expect(completionLimitParameters("openrouter", assessment)).toEqual({
+    expect(completionLimitParameters("openrouter", "z-ai/glm-5.3-flash", assessment)).toEqual({
       max_tokens: 768,
       reasoning_effort: "low",
       temperature: 0,
@@ -58,7 +62,12 @@ describe("AI completion budget", () => {
   it("bounds section explanations for interactive reading", () => {
     // Given / When / Then
     expect(completionTokenLimit({ ...request, action: "section" })).toBe(1_536)
-    expect(completionLimitParameters("openrouter", { ...request, action: "section" })).toEqual({
+    expect(
+      completionLimitParameters("openrouter", "z-ai/glm-5.3-flash", {
+        ...request,
+        action: "section",
+      }),
+    ).toEqual({
       max_tokens: 1_536,
       reasoning_effort: "low",
       temperature: 0,
@@ -73,7 +82,7 @@ describe("AI completion budget", () => {
 
   it("uses the OpenRouter-compatible output limit field", () => {
     // Given / When / Then
-    expect(completionLimitParameters("openrouter", request)).toEqual({
+    expect(completionLimitParameters("openrouter", "z-ai/glm-5.3-flash", request)).toEqual({
       max_tokens: 64,
       reasoning_effort: "low",
       temperature: 0,
@@ -82,20 +91,20 @@ describe("AI completion budget", () => {
 
   it("uses the current OpenAI output limit field for direct requests", () => {
     // Given / When / Then
-    expect(completionLimitParameters("openai", request)).toEqual({
+    expect(completionLimitParameters("openai", "gpt-4.1-mini", request)).toEqual({
       max_completion_tokens: 64,
     })
   })
 
   it("uses minimal reasoning for direct Gemini translation", () => {
-    const parameters = completionLimitParameters("gemini", request)
+    const parameters = completionLimitParameters("gemini", "gemini-2.5-flash", request)
     expect(parameters).toMatchObject({
       max_completion_tokens: 64,
       reasoning_effort: "minimal",
       temperature: 0,
     })
     expect(parameters.response_format).toBeUndefined()
-    const pageParameters = completionLimitParameters("gemini", {
+    const pageParameters = completionLimitParameters("gemini", "gemini-2.5-flash", {
       ...request,
       action: "page_translation",
     })
@@ -106,9 +115,27 @@ describe("AI completion budget", () => {
   })
 
   it("uses low reasoning for the Groq speed fallback", () => {
-    expect(completionLimitParameters("groq", request)).toEqual({
+    expect(completionLimitParameters("groq", "openai/gpt-oss-20b", request)).toEqual({
       max_completion_tokens: 64,
       reasoning_effort: "low",
+      temperature: 0,
+    })
+  })
+
+  it("omits reasoning effort for non-reasoning OpenRouter models", () => {
+    // Given: a model without a reasoning phase. Sending reasoning_effort would
+    // enable a thinking budget that starves small completion caps.
+    // When / Then
+    expect(
+      completionLimitParameters("openrouter", "google/gemini-2.5-flash-lite", request),
+    ).toEqual({
+      max_tokens: 64,
+      temperature: 0,
+    })
+    expect(
+      completionLimitParameters("openrouter", "deepseek/deepseek-v4-flash-0731", request),
+    ).toEqual({
+      max_tokens: 64,
       temperature: 0,
     })
   })

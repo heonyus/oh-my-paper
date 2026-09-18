@@ -44,7 +44,7 @@ function configuredProvider(
 function defaultModel(provider: z.infer<typeof providerSchema> | null): string | null {
   if (provider === "gemini") return "gemini-3.5-flash-lite"
   if (provider === "groq") return "openai/gpt-oss-20b"
-  if (provider === "openrouter") return "z-ai/glm-5.3-flash"
+  if (provider === "openrouter") return "google/gemini-2.5-flash-lite"
   if (provider === "openai") return "gpt-4.1-mini"
   return null
 }

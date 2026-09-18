@@ -90,7 +90,7 @@ export class ProviderService {
       const completion = await completeChat(client, {
         model: routedModelForRequest(config.provider, config.model, request),
         messages,
-        parameters: completionLimitParameters(config.provider, request),
+        parameters: completionLimitParameters(config.provider, config.model, request),
       })
       return aiResultSchema.parse(completion)
     } catch (error) {
@@ -130,7 +130,7 @@ export class ProviderService {
       const completion = await streamChat(client, {
         model,
         messages,
-        parameters: completionLimitParameters(config.provider, request),
+        parameters: completionLimitParameters(config.provider, config.model, request),
         onDelta,
         ...(signal ? { signal } : {}),
       })
