@@ -1,0 +1,110 @@
+.connections-workspace {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+}
+.connections-scope {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
+}
+.connections-scope button,
+.connections-start button,
+.connections-start input {
+  min-height: var(--research-control-height, 36px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--type-toolbar-size);
+}
+.connections-scope button {
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.connections-scope button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--ink);
+}
+.connections-content {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.connections-content > .knowledge-shell,
+.connections-content > .scholarly-graph {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+}
+
+.connections-content[hidden] {
+  display: none;
+}
+.connections-start {
+  flex: 1 1 auto;
+  width: min(100%, 640px);
+  min-width: 0;
+  align-self: flex-start;
+  margin: clamp(24px, 9vh, 100px) auto;
+  padding: var(--space-6);
+}
+.connections-start h1 {
+  max-width: 100%;
+  margin: 0 0 var(--space-3);
+  font-size: calc(var(--type-title-size) * 1.35);
+  line-height: 1.4;
+  word-break: keep-all;
+}
+.connections-start p {
+  color: var(--ink-muted);
+  font-size: var(--type-body-size);
+  line-height: 1.7;
+}
+.connections-start form {
+  margin-block: var(--space-6);
+}
+.connections-start label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--type-compact-size);
+}
+.connections-start form > div {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.connections-start input {
+  min-width: 0;
+  flex: 1 1 240px;
+}
+.connections-start button[type="submit"] {
+  background: var(--action);
+  color: var(--surface);
+  cursor: pointer;
+}
+.connections-start .connections-search {
+  border: 0;
+  padding-inline: 0;
+  text-decoration: underline;
+  background: transparent;
+  cursor: pointer;
+}
+.connections-start .connections-source-note {
+  font-size: var(--type-compact-size);
+}
+.connections-workspace button:focus-visible,
+.connections-workspace input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}

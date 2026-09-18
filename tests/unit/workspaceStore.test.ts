@@ -3,6 +3,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 import { defaultWorkspace, WorkspaceStore } from "../../src/electron/workspaceStore"
+import { documentRecordSchema } from "../../src/shared/schemas"
 
 const temporaryRoots: string[] = []
 
@@ -15,7 +16,12 @@ afterEach(async () => {
 describe("WorkspaceStore", () => {
   it("uses the compact research sidebar width for new workspaces", () => {
     expect(defaultWorkspace().researchSidebarWidth).toBe(300)
-    expect(defaultWorkspace()).toMatchObject({ theme: "system", minimapVisible: true })
+    expect(defaultWorkspace()).toMatchObject({
+      theme: "system",
+      uiFontFamily: "wanted",
+      uiFontScale: 1,
+      minimapVisible: true,
+    })
   })
 
   it("migrates the former default sidebar width once", async () => {
@@ -70,7 +76,7 @@ describe("WorkspaceStore", () => {
     const workspace = await new WorkspaceStore(root).read()
 
     expect(workspace.cards).toHaveLength(1)
-    expect(workspace.cards[0]?.anchor.fragments).toEqual([{ x: 420, y: 180, width: 1, height: 1 }])
+    expect(workspace.cards[0]?.anchor.fragments).toEqual([])
   })
 
   it("serializes rapid workspace saves without losing the newest state", async () => {
@@ -86,5 +92,34 @@ describe("WorkspaceStore", () => {
     ])
 
     expect((await store.read()).viewport.zoom).toBe(1.25)
+  })
+
+  it("does not erase a newly imported document when a stale renderer snapshot saves", async () => {
+    const root = await mkdtemp(join(tmpdir(), "scourgify-workspace-"))
+    temporaryRoots.push(root)
+    const store = new WorkspaceStore(root)
+    const stale = defaultWorkspace()
+    const imported = documentRecordSchema.parse({
+      id: "aabbccddeeff0011",
+      name: "paper.pdf",
+      hash: "a".repeat(64),
+      bytes: 1024,
+      importedAt: "2026-08-30T00:00:00.000Z",
+      pageCount: 12,
+      title: "Imported Paper",
+      authors: [],
+      year: null,
+      doi: null,
+      overview: "Prepared overview",
+      quality: { textCharacters: 2000, needsOcr: false, warnings: [] },
+    })
+
+    await store.save(stale)
+    await store.addDocument(imported)
+    await store.save({ ...stale, viewport: { ...stale.viewport, zoom: 1.2 } })
+
+    const current = await store.read()
+    expect(current.documents.map((document) => document.id)).toContain(imported.id)
+    expect(current.viewport.zoom).toBe(1.2)
   })
 })

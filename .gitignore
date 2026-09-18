@@ -1,6 +1,7 @@
 node_modules/
 dist/
 dist-electron/
+dist-web/
 release/
 coverage/
 test-results/
@@ -9,6 +10,9 @@ playwright-report/
 .env
 .env.*
 !.env.example
+.dev.vars*
+!.dev.vars.example
+.wrangler/
 .DS_Store
 .venv-layout/
 .omo/
@@ -18,3 +22,5 @@ recording-review-*/
 AGENTS.md
 .debug-journal.md
 output/
+__pycache__/
+*.py[cod]

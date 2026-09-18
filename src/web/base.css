@@ -1,0 +1,299 @@
+:root {
+  --type-onboarding-display: 60px;
+  --type-title-size: 18px;
+  --type-body-size: 14px;
+  --type-compact-size: 12px;
+  --type-toolbar-size: 13px;
+  --type-onboarding-body: 17px;
+  color: var(--ink);
+  background: var(--canvas);
+  font-family: var(--ui-font-family);
+  font-synthesis: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  background: var(--canvas);
+}
+button,
+input {
+  font: inherit;
+}
+button {
+  color: inherit;
+}
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.loading-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+.loading-screen {
+  color: var(--ink-muted);
+  font-size: var(--type-body-size);
+}
+.primary-button,
+.secondary-button,
+.text-button,
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 0;
+  cursor: pointer;
+}
+.primary-button {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 8px;
+  background: var(--action);
+  color: var(--surface);
+  font-weight: 620;
+}
+.primary-button.compact {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: var(--type-compact-size);
+}
+.secondary-button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.text-button {
+  padding: 4px;
+  background: transparent;
+  color: var(--action);
+  font-size: var(--type-compact-size);
+  font-weight: 600;
+}
+.icon-button {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: transparent;
+}
+.icon-button:hover {
+  background: var(--surface-muted);
+}
+button:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+.web-shell {
+  min-height: 100vh;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--ui-font-family);
+}
+.web-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.topbar-leading,
+.account-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.web-brand-mark {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+.topbar-document {
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+  color: var(--ink-muted);
+  font-size: var(--type-toolbar-size);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-group {
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+}
+.web-shell[data-theme="dark"] .web-brand-mark {
+  filter: brightness(0) invert(1);
+}
+@media (prefers-color-scheme: dark) {
+  .web-shell[data-theme="system"] .web-brand-mark {
+    filter: brightness(0) invert(1);
+  }
+}
+.web-settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(4 15 15 / 34%);
+}
+.web-settings {
+  width: min(620px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  backdrop-filter: blur(24px) saturate(1.1);
+  box-shadow: 0 28px 72px rgb(4 15 15 / 28%);
+}
+.web-settings > header {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--line);
+}
+.web-settings h2 {
+  margin: 0;
+  font-size: var(--type-title-size);
+}
+.web-settings-body {
+  display: grid;
+  gap: 0;
+  padding: 20px;
+}
+.web-settings-body > label {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  background: var(--surface);
+  font-size: var(--type-toolbar-size);
+}
+.web-settings-body > label:first-child {
+  border-radius: 8px 8px 0 0;
+}
+.web-settings-body select {
+  width: min(250px, 60%);
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-muted);
+  color: var(--ink);
+}
+.web-settings-range > span:first-child {
+  display: grid;
+}
+.web-settings-range small {
+  color: var(--ink-muted);
+}
+.web-settings-range > span:last-child {
+  width: min(290px, 62%);
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 44px;
+  align-items: center;
+  gap: 10px;
+}
+.web-settings-range input {
+  width: 100%;
+  accent-color: var(--action);
+}
+.web-settings-range output {
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.web-settings-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.web-settings-presets legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.web-settings-presets button {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.web-settings-presets button[aria-pressed="true"] {
+  border-color: var(--focus);
+  background: var(--action-subtle);
+  color: var(--ink);
+}
+.web-settings-preview {
+  display: grid;
+  gap: 8px;
+  padding: 18px 14px;
+  border: 1px solid var(--line);
+  border-top: 0;
+  border-radius: 0 0 8px 14px;
+  background: var(--surface-muted);
+  line-height: 1.55;
+}
+.web-settings-preview p {
+  margin: 0;
+}
+
+@keyframes travel {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(400%);
+  }
+}
+@keyframes pulse {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (max-width: 620px) {
+  .web-topbar {
+    padding: 0 12px;
+  }
+  .account-name {
+    display: none;
+  }
+}

@@ -1,0 +1,74 @@
+# Scholarly search core
+
+Task 21 exposes a main-process TypeScript function, `searchScholarly`, and a separate Electron
+IPC adapter for explicit read-only metadata search. Importing or opening a PDF does not call it.
+
+## Contract
+
+`searchScholarly(request, options)` searches one or more of `crossref`, `arxiv`, and `openalex`.
+The request accepts a non-empty query, optional publication-year bounds, page 1–100, and a
+display page size of 1–100. A page is requested independently from each selected provider and
+the returned provider pages are interleaved into at most the requested display size.
+
+Every item retains its provider record ID and available DOI, versioned arXiv ID, or OpenAlex ID.
+Entries from different providers are not merged, even when an identifier agrees but metadata
+conflicts. Metadata, abstract, and full-text access are separate states. A metadata result does
+not mean that Scourgify downloaded or read the paper.
+
+Every provider has its own success or error state. A successful empty response is distinct from
+a malformed response. Rate limits include a parsed `Retry-After` delay when supplied. There are
+no automatic retries, paid fallbacks, API credentials, imports, or PDF downloads.
+
+## Transport limits
+
+- At most two provider requests run concurrently.
+- Each request has a 15-second timeout.
+- Response bodies are streamed and stopped above 5 MiB.
+- Redirects are disabled.
+- Cancellation prevents undispatched provider requests from starting.
+- Search text and returned content are not logged.
+
+The default transport uses the installed `undici` dependency. Tests can inject a synthetic
+transport or wire stream without weakening the production limits.
+
+## Provider details
+
+- Crossref uses `query.bibliographic`, `rows`, `offset`, publication-date filters, and selected
+  metadata fields. Crossref documents public access without registration and deprecates
+  `query.title` in favor of `query.bibliographic`.
+- arXiv uses the Atom query API with `start`, `max_results`, relevance sorting, and an optional
+  submitted-date range. Scourgify makes one arXiv request per explicit search action; clients
+  should avoid rapidly repeating page requests because arXiv asks callers to pace consecutive
+  requests.
+- OpenAlex uses works search with basic page/per-page pagination and selected metadata fields.
+  No API key is attached; current OpenAlex documentation permits casual basic queries without
+  one and caps `per_page` at 100.
+
+Primary references:
+
+- [Crossref REST API](https://www.crossref.org/documentation/retrieve-metadata/rest-api/)
+- [Crossref REST API documentation repository](https://github.com/CrossRef/rest-api-doc)
+- [arXiv API user manual](https://github.com/arXiv/arxiv-docs/blob/develop/source/help/api/user-manual.md)
+- [OpenAlex authentication and limits](https://help.openalex.org/api/authentication/)
+
+## Integration boundary
+
+Root wiring is intentionally separate. Main integration should:
+
+1. Call `registerScholarlyIpc({ knowledge: store.repository })` and dispose its returned cleanup.
+2. Expose `createDiscoveryPreload()` as the `discovery` field of the root preload API.
+3. Render `SearchView` with that API. Pass the existing safe external-link callback through
+   `onOpenExternal`; the component never navigates directly.
+
+The search IPC keys active abort controllers by renderer and job ID. A cancel request can only
+cancel a job owned by the same renderer, and cleanup aborts all remaining jobs. Metadata save is
+an explicit second action with an in-UI confirmation. It reuses the existing knowledge
+repository `createNode`, keeps DOI/arXiv/OpenAlex identities as exact aliases and metadata, and
+returns an existing paper when an identifier matches. Saved nodes have an empty body and
+`fullTextReviewed: false`; no PDF is fetched or imported.
+
+The existing single-citation service keeps its found/not-found response shape. Provider HTTP,
+transport, and malformed-response failures are now retained in `CitationLookupProvidersError`
+instead of being converted to `not_found`, so the negative cache cannot persist a provider
+outage as a confirmed absence. A later provider may still return a valid match after an earlier
+provider fails.

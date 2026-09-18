@@ -1,7 +1,8 @@
 import { normalizeExtractedPdfText } from "./pdfTextLines"
+import { hierarchicalSectionContext, nearestSectionAnchor } from "./sectionHierarchy"
 
-const maximumSectionContextCharacters = 1_800
-const maximumPaperContextCharacters = 900
+const maximumSectionContextCharacters = 7_800
+const maximumPaperContextCharacters = 1_600
 
 type Bounds = {
   readonly x: number
@@ -43,28 +44,6 @@ function positionedText(page: HTMLElement): readonly PositionedText[] {
     .sort((left, right) => left.top - right.top || left.left - right.left)
 }
 
-function proseFromPage(page: HTMLElement, minimumTop: number, minimumTextHeight: number): string {
-  const pageHeight = page.getBoundingClientRect().height
-  const selected: string[] = []
-  for (const span of positionedText(page)) {
-    if (span.top < minimumTop || span.top < pageHeight * 0.065) continue
-    if (span.top > pageHeight * 0.93) continue
-    if (span.height < minimumTextHeight) continue
-    if (selected.length > 0 && /^\d+(?:\.\d+)+$/u.test(span.text)) break
-    selected.push(span.text)
-  }
-  return normalizeExtractedPdfText(selected.join(" "))
-}
-
-function followingPage(page: HTMLElement): HTMLElement | null {
-  let sibling = page.nextElementSibling
-  while (sibling) {
-    if (sibling instanceof HTMLElement && sibling.classList.contains("page")) return sibling
-    sibling = sibling.nextElementSibling
-  }
-  return null
-}
-
 function paperOverview(viewer: HTMLElement, paperTitle: string): string {
   const firstPage = viewer.querySelector<HTMLElement>('.page[data-page-number="1"]')
   if (!firstPage) return paperTitle
@@ -93,20 +72,21 @@ export function sectionRequestContext(input: SectionRequestContextInput): {
   readonly paper: string
   readonly section: string
 } {
-  const minimumTextHeight = Math.max(8, input.bounds.height * 0.58)
-  const current = proseFromPage(
-    input.page,
-    input.bounds.y + input.bounds.height - 2,
-    minimumTextHeight,
-  )
-  const nextPage = followingPage(input.page)
-  const continuation = nextPage ? proseFromPage(nextPage, 0, minimumTextHeight) : ""
+  const anchor = {
+    page: input.page,
+    heading: input.heading,
+    top: input.bounds.y,
+    left: input.bounds.x,
+    width: input.bounds.width,
+    height: input.bounds.height,
+  }
   return {
     paper: paperOverview(input.viewer, input.paperTitle),
-    section: normalizeExtractedPdfText(`${current} ${continuation}`).slice(
-      0,
-      maximumSectionContextCharacters,
-    ),
+    section: hierarchicalSectionContext({
+      viewer: input.viewer,
+      anchor,
+      maximumCharacters: maximumSectionContextCharacters,
+    }),
   }
 }
 
@@ -119,7 +99,11 @@ function intersectsBounds(span: PositionedText, bounds: Bounds): boolean {
   )
 }
 
-export function featureRequestContext(page: HTMLElement, bounds: Bounds): string {
+export function featureRequestContext(
+  page: HTMLElement,
+  bounds: Bounds,
+  viewer?: HTMLElement,
+): string {
   const spans = positionedText(page)
   const bodyHeights = spans.map((span) => span.height).filter((height) => height >= 7)
   const sortedHeights = [...bodyHeights].sort((left, right) => left - right)
@@ -136,5 +120,17 @@ export function featureRequestContext(page: HTMLElement, bounds: Bounds): string
     .filter((span) => !intersectsBounds(span, bounds))
     .map((span) => span.text)
     .join(" ")
-  return normalizeExtractedPdfText(prose).slice(0, maximumSectionContextCharacters)
+  const local = normalizeExtractedPdfText(prose)
+  if (!viewer) return local.slice(0, maximumSectionContextCharacters)
+  const anchor = nearestSectionAnchor(viewer, page, bounds.y)
+  if (!anchor) return local.slice(0, maximumSectionContextCharacters)
+  const section = hierarchicalSectionContext({
+    viewer,
+    anchor,
+    maximumCharacters: maximumSectionContextCharacters - Math.min(local.length, 1_800) - 40,
+  })
+  return `[근처 문맥] ${local.slice(0, 1_800)}\n\n[현재 절 전체] ${section}`.slice(
+    0,
+    maximumSectionContextCharacters,
+  )
 }

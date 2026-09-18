@@ -33,4 +33,17 @@ describe("reference extraction", () => {
     expect(references["guo-2025"]?.title).not.toContain("Figure 16")
     expect(Object.values(references).filter((reference) => reference.year === 2025)).toHaveLength(1)
   })
+
+  it("parses a long year-at-end bibliography within the interaction budget", () => {
+    const unfinishedEntry =
+      "Researcher Name. Reliable clinical agent benchmark with reproducible evaluation details and no terminal publication year. "
+    const source = `R EFERENCES\n${unfinishedEntry.repeat(700)}`
+
+    const started = performance.now()
+    const references = extractReferencesFromText(source)
+    const elapsed = performance.now() - started
+
+    expect(elapsed).toBeLessThan(250)
+    expect(Object.keys(references)).toHaveLength(0)
+  })
 })

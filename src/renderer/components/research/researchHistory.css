@@ -1,0 +1,46 @@
+.research-history {
+  width: min(100%, 72ch);
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+}
+
+.research-history h2 {
+  margin: 0;
+  font-size: var(--type-title-size);
+}
+
+.research-history ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.research-history li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.research-history li > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.research-history li strong {
+  overflow-wrap: anywhere;
+}
+
+.research-history li span {
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+}

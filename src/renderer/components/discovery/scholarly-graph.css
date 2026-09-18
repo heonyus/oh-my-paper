@@ -1,0 +1,455 @@
+.scholarly-graph {
+  --scholarly-selection-color: color-mix(in srgb, var(--action) 34%, #4f70b6);
+  --scholarly-reference-color: #3b88b0;
+  --scholarly-cited-color: #31968f;
+  --scholarly-related-color: #9a73af;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-4);
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+.scholarly-graph-header,
+.scholarly-graph-toolbar,
+.scholarly-graph-layout {
+  width: min(1440px, 100%);
+  margin-inline: auto;
+}
+
+.scholarly-graph-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-block-end: var(--space-4);
+}
+
+.scholarly-graph-header h1 {
+  margin: 0;
+  font-size: var(--type-title-size);
+  letter-spacing: -0.02em;
+}
+.scholarly-graph-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+  padding-block: var(--space-2);
+  border-block: 1px solid var(--line);
+}
+.scholarly-graph-provenance,
+.scholarly-graph-limit {
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+}
+.scholarly-graph-legend {
+  display: flex;
+  gap: 12px;
+  font-size: var(--type-compact-size);
+  color: var(--ink-muted);
+}
+.scholarly-graph-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.scholarly-graph-legend > span::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--scholarly-reference-color);
+}
+.scholarly-graph-legend > [data-direction="cited_by"]::before {
+  background: var(--scholarly-cited-color);
+}
+.scholarly-graph-legend > [data-direction="related"]::before {
+  background: var(--scholarly-related-color);
+}
+.scholarly-graph-limit {
+  margin-inline-start: auto;
+  color: var(--warning);
+}
+.scholarly-graph-status {
+  width: min(1440px, 100%);
+  margin: var(--space-4) auto;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field);
+  background: var(--surface);
+}
+.scholarly-graph-error {
+  color: var(--error);
+}
+
+.scholarly-graph-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(min(300px, 100%), 360px);
+  gap: var(--space-4);
+  flex: 1;
+  min-height: 0;
+  padding-block: var(--space-3) var(--space-4);
+}
+.scholarly-graph-stage {
+  position: relative;
+  min-width: 0;
+  min-height: 320px;
+  height: auto;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface-muted);
+  cursor: grab;
+  touch-action: none;
+}
+.scholarly-graph-stage:active {
+  cursor: grabbing;
+}
+.scholarly-graph-svg {
+  user-select: none;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+.scholarly-graph-controls {
+  position: absolute;
+  z-index: 1;
+  top: var(--space-3);
+  right: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+}
+.scholarly-graph-controls .discovery-icon-button {
+  min-width: 30px;
+  min-height: 30px;
+}
+.scholarly-graph-controls span {
+  min-width: 40px;
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+  text-align: center;
+}
+.scholarly-graph-axis {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.scholarly-graph-axis-label {
+  fill: var(--ink-muted);
+  font-size: var(--type-body-size);
+}
+.scholarly-graph-edge {
+  stroke: color-mix(in srgb, var(--ink-muted) 45%, transparent);
+  stroke-width: 1.5;
+  opacity: 0.44;
+}
+.scholarly-graph-edge[data-adjacent="true"] {
+  stroke: var(--scholarly-selection-color);
+  stroke-width: 2.6;
+  opacity: 0.92;
+}
+.scholarly-graph-edge-related {
+  stroke: var(--action);
+  stroke-dasharray: 6 5;
+}
+.scholarly-graph-edge-related[data-adjacent="true"] {
+  stroke: var(--action);
+}
+.scholarly-graph-node {
+  cursor: pointer;
+}
+.scholarly-graph-node-button {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  margin: 12px;
+  place-items: center;
+  padding: 0;
+  border: 2px solid var(--ink-muted);
+  border-radius: 50%;
+  background: var(--surface);
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+.scholarly-graph-node-button span {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: transparent;
+}
+.scholarly-graph-node[data-direction="references"] .scholarly-graph-node-button {
+  background: var(--scholarly-reference-color);
+  border-color: var(--surface);
+}
+.scholarly-graph-node[data-direction="cited_by"] .scholarly-graph-node-button {
+  background: var(--scholarly-cited-color);
+  border-color: var(--surface);
+}
+.scholarly-graph-node[data-direction="related"] .scholarly-graph-node-button {
+  background: var(--scholarly-related-color);
+  border-color: var(--surface);
+}
+.scholarly-graph-node[data-selected="true"] .scholarly-graph-node-button {
+  border: 4px solid var(--surface);
+  background: var(--scholarly-selection-color);
+  box-shadow: 0 0 0 2px var(--scholarly-selection-color);
+}
+.scholarly-graph-node[data-seed="true"] .scholarly-graph-node-button {
+  border-color: var(--action);
+  background: var(--surface);
+}
+.scholarly-graph-node[data-seed="true"] .scholarly-graph-node-button span {
+  background: var(--action);
+}
+.scholarly-graph-node[data-seed="true"][data-selected="true"] .scholarly-graph-node-button {
+  background: var(--scholarly-selection-color);
+}
+.scholarly-graph-node[data-selected="true"] .scholarly-graph-node-button span {
+  background: var(--surface);
+}
+.scholarly-graph-node-button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.scholarly-graph-node[data-adjacent="false"] {
+  opacity: 0.3;
+}
+.scholarly-graph-node-button:active {
+  transform: scale(0.95);
+}
+.scholarly-graph-node-title,
+.scholarly-graph-node-meta {
+  pointer-events: none;
+  text-anchor: middle;
+}
+.scholarly-graph-node-title {
+  fill: var(--ink);
+  font-size: var(--type-toolbar-size);
+  font-weight: 650;
+}
+.scholarly-graph-node-meta {
+  fill: var(--ink-muted);
+  font-size: var(--type-body-size);
+  paint-order: stroke;
+  stroke: var(--surface-muted);
+  stroke-width: 3px;
+}
+.scholarly-graph-list {
+  position: absolute;
+  bottom: var(--space-3);
+  left: var(--space-3);
+  max-width: min(360px, calc(100% - var(--space-6)));
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+}
+.scholarly-graph-list summary {
+  padding: var(--space-2) var(--space-3);
+  color: var(--ink-muted);
+  cursor: pointer;
+  font-size: var(--type-compact-size);
+}
+.scholarly-graph-list ol {
+  max-height: 240px;
+  margin: 0;
+  padding: 0 var(--space-2) var(--space-2) var(--space-7);
+  overflow: auto;
+}
+.scholarly-graph-list li {
+  padding-block: var(--space-1);
+}
+.scholarly-graph-list button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: var(--space-1);
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--type-compact-size);
+  text-align: left;
+  cursor: pointer;
+}
+.scholarly-graph-list button[data-selected="true"] {
+  color: var(--scholarly-selection-color);
+  font-weight: 650;
+}
+.scholarly-graph-list small {
+  color: var(--ink-muted);
+  font-size: calc(var(--type-compact-size) * 0.92);
+}
+
+.scholarly-graph-inspector {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.scholarly-graph-inspector-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-5);
+}
+.scholarly-graph-inspector .scholarly-graph-inspector-explore {
+  flex-shrink: 0;
+  max-height: 65%;
+  overflow: auto;
+  margin: 0;
+  padding: var(--space-3) var(--space-5);
+}
+.scholarly-graph-inspector-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  color: var(--scholarly-selection-color);
+  font-size: var(--type-compact-size);
+  font-weight: 650;
+}
+.scholarly-graph-inspector-heading span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.scholarly-graph-inspector-heading small {
+  color: var(--ink-muted);
+  font-weight: 500;
+}
+.scholarly-graph-inspector h2 {
+  margin: var(--space-4) 0 var(--space-2);
+  overflow-wrap: anywhere;
+  font-size: var(--type-title-size);
+  line-height: 1.35;
+}
+.scholarly-graph-inspector-byline,
+.scholarly-graph-inspector-section p,
+.scholarly-graph-note {
+  color: var(--ink-muted);
+  line-height: 1.6;
+}
+.scholarly-graph-inspector-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+.scholarly-graph-inspector-meta div {
+  min-width: 0;
+}
+.scholarly-graph-inspector-meta dt {
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+}
+.scholarly-graph-inspector-meta dd {
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+  font-size: var(--type-compact-size);
+}
+.scholarly-graph-inspector-actions,
+.scholarly-graph-expansion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.scholarly-graph-inspector-section {
+  display: grid;
+  gap: var(--space-2);
+  margin-block-start: var(--space-5);
+  padding-block-start: var(--space-4);
+  border-top: 1px solid var(--line);
+}
+.scholarly-graph-inspector-section h3 {
+  margin: 0;
+  font-size: var(--type-title-size);
+}
+.scholarly-graph-inspector-explore h3 {
+  font-size: var(--type-toolbar-size);
+}
+.scholarly-graph-inspector-section p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+.scholarly-graph-note {
+  margin: var(--space-4) 0 0;
+  font-size: var(--type-compact-size);
+}
+.scholarly-graph-saved {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2);
+  border-radius: var(--radius-field);
+  background: var(--action-subtle);
+  color: var(--action);
+  font-size: var(--type-compact-size);
+}
+.scholarly-graph-spinner {
+  animation: scholarly-graph-spin 700ms linear infinite;
+}
+@keyframes scholarly-graph-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scholarly-graph-node circle {
+    transition: none;
+  }
+  .scholarly-graph-spinner {
+    animation: none;
+  }
+}
+@media (max-width: 1000px) {
+  .scholarly-graph-stage {
+    height: 520px;
+  }
+  .scholarly-graph {
+    overflow: auto;
+  }
+  .scholarly-graph-layout {
+    grid-template-columns: minmax(0, 1fr);
+    flex: none;
+  }
+  .scholarly-graph-inspector {
+    max-height: none;
+  }
+}
+@media (min-width: 1001px) {
+  [data-large-text="true"] .scholarly-graph-layout {
+    grid-template-columns: minmax(0, 1fr) 480px;
+  }
+}
+@media (max-width: 720px) {
+  .scholarly-graph-stage,
+  .scholarly-graph-svg {
+    min-height: 460px;
+    height: min(65vh, 560px);
+  }
+  .scholarly-graph-inspector-meta {
+    grid-template-columns: 1fr;
+  }
+  .scholarly-graph-limit {
+    margin-inline-start: 0;
+  }
+}

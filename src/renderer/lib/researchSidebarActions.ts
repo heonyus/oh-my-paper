@@ -22,6 +22,27 @@ export function paperQuestionRequest(
   }
 }
 
+function focusRectForCard(card: BoardCard): {
+  readonly x: number
+  readonly y: number
+  readonly width: number
+  readonly height: number
+} {
+  if (card.kind !== "highlight" || card.anchor.fragments.length === 0) {
+    return {
+      x: card.x,
+      y: card.y,
+      width: card.minimized ? 240 : card.width,
+      height: card.minimized ? MINIMIZED_CARD_HEIGHT : (card.height ?? 220),
+    }
+  }
+  const x = Math.min(...card.anchor.fragments.map((fragment) => fragment.x))
+  const y = Math.min(...card.anchor.fragments.map((fragment) => fragment.y))
+  const right = Math.max(...card.anchor.fragments.map((fragment) => fragment.x + fragment.width))
+  const bottom = Math.max(...card.anchor.fragments.map((fragment) => fragment.y + fragment.height))
+  return { x, y, width: right - x, height: bottom - y }
+}
+
 export function focusWorkspaceOnCard(
   workspace: Workspace,
   card: BoardCard,
@@ -29,12 +50,7 @@ export function focusWorkspaceOnCard(
 ): Workspace {
   return {
     ...workspace,
-    viewport: focusWorldRect(workspace.viewport, available, {
-      x: card.x,
-      y: card.y,
-      width: card.minimized ? 240 : card.width,
-      height: card.minimized ? MINIMIZED_CARD_HEIGHT : (card.height ?? 220),
-    }),
+    viewport: focusWorldRect(workspace.viewport, available, focusRectForCard(card)),
   }
 }
 

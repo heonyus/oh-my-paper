@@ -47,11 +47,11 @@ describe("BoardIndexPanel", () => {
     const highlight = card(
       "88bdf14a-eace-4d70-80be-45ea55e8dd06",
       "highlight",
-      "하이라이트",
+      "번역 주석",
       "saved",
       "This is the highlighted evidence.",
     )
-    const { rerender } = render(
+    const { container, rerender } = render(
       <BoardIndexPanel cards={[translation]} kind="translation" label="번역" onJump={onJump} />,
     )
 
@@ -70,8 +70,11 @@ describe("BoardIndexPanel", () => {
     rerender(
       <BoardIndexPanel cards={[highlight]} kind="highlight" label="하이라이트" onJump={onJump} />,
     )
+    expect(screen.getByText("saved")).toBeVisible()
     expect(screen.getByText("This is the highlighted evidence.")).toBeVisible()
     expect(screen.getByText("원문 위치 보기")).toBeVisible()
+    expect(screen.queryByText("번역 주석")).not.toBeInTheDocument()
+    expect(container.querySelectorAll(".board-index-icon")).toHaveLength(0)
   })
 
   it("gives AI cards, notes, and empty highlights distinct readable states", () => {
@@ -104,6 +107,7 @@ describe("BoardIndexPanel", () => {
     rerender(<BoardIndexPanel cards={[note]} kind="note" label="노트" onJump={vi.fn()} />)
     expect(screen.getByText("메모와 연결된 원문을 다시 찾습니다.")).toBeVisible()
     expect(screen.getByText("검증 가능한 메모")).toBeVisible()
+    expect(screen.queryByText("보드에서 편집")).not.toBeInTheDocument()
     rerender(<BoardIndexPanel cards={[]} kind="highlight" label="하이라이트" onJump={vi.fn()} />)
     expect(screen.getByText("아직 저장된 항목이 없습니다.")).toBeVisible()
     expect(screen.getByText(/PDF 문장을 선택해 하이라이트/u)).toBeVisible()

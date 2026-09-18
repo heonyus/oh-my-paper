@@ -7,6 +7,7 @@ import {
   Palette,
   PanelRightClose,
   Quote,
+  Search,
   Sparkles,
   StickyNote,
 } from "lucide-react"
@@ -14,19 +15,29 @@ import { type JSX, useState } from "react"
 import type { ProviderStatus } from "../../shared/ipc"
 import type { DocumentInsight, DocumentInsightKind } from "../../shared/schemas"
 import { researchSidebarLayout } from "../../shared/uiLayout"
+import { togglePageTranslation } from "../lib/pageTranslationToggle"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
 import { saveCitationAssessment, saveSidebarInsight } from "../lib/sidebarCards"
-import type { AiRequestRunner, BoardCard, CardId, DocumentRecord } from "../types"
+import type {
+  AiRequestRunner,
+  BoardCard,
+  BoardTool,
+  CardId,
+  DocumentRecord,
+  Viewport,
+} from "../types"
 import { AiOverviewPanel } from "./AiOverviewPanel"
+import { AutoHighlightControls } from "./AutoHighlightControls"
 import { BoardIndexPanel } from "./BoardIndexPanel"
 import { CitationPanel } from "./CitationPanel"
+import { PageTranslationPortal } from "./PageTranslationPortal"
+import { ScholarSearchPanel } from "./ScholarSearchPanel"
 import { SidebarResizeHandle } from "./SidebarResizeHandle"
 
-type CardMode = Exclude<BoardCard["kind"], "citation">
-type ResearchMode = "ai" | "citations" | CardMode
+type CardMode = Exclude<BoardCard["kind"], "citation" | "translation">
+type ResearchMode = "ai" | "citations" | "translation" | "scholar" | CardMode
 
 const cardModeLabels: Readonly<Record<CardMode, string>> = {
-  translation: "번역",
   explanation: "AI 설명",
   infographic: "AI 카드",
   note: "노트",
@@ -35,7 +46,7 @@ const cardModeLabels: Readonly<Record<CardMode, string>> = {
 }
 
 function isCardMode(mode: ResearchMode): mode is CardMode {
-  return mode !== "ai" && mode !== "citations"
+  return mode !== "ai" && mode !== "citations" && mode !== "translation" && mode !== "scholar"
 }
 
 export function ResearchSidebar({
@@ -53,6 +64,10 @@ export function ResearchSidebar({
   onWidthChange,
   insights = [],
   onInsightChange,
+  tool,
+  onToolChange,
+  viewport,
+  onViewportChange,
 }: {
   readonly document: DocumentRecord | null
   readonly currentPage: number
@@ -60,6 +75,7 @@ export function ResearchSidebar({
   readonly citations: readonly CitationIndexEntry[]
   readonly expanded: boolean
   readonly provider: ProviderStatus
+  readonly documentReady?: boolean | undefined
   readonly onToggle: () => void
   readonly onJumpToCard: (id: CardId) => void
   readonly onCardsChange: (cards: readonly BoardCard[]) => void
@@ -68,9 +84,13 @@ export function ResearchSidebar({
   readonly onWidthChange?: ((width: number) => void) | undefined
   readonly insights?: readonly DocumentInsight[] | undefined
   readonly onInsightChange?: ((kind: DocumentInsightKind, value: string) => void) | undefined
+  readonly tool: BoardTool
+  readonly onToolChange: (tool: BoardTool) => void
+  readonly viewport?: Viewport | undefined
+  readonly onViewportChange?: ((viewport: Viewport) => void) | undefined
 }): JSX.Element {
   const [mode, setMode] = useState<ResearchMode>("ai")
-  const [aiActivationToken, setAiActivationToken] = useState(0)
+  const [flyout, setFlyout] = useState<"hover" | "open" | "pinned">("hover")
   const [seenCounts, setSeenCounts] = useState<Partial<Record<ResearchMode, number>>>({})
   const modes: readonly {
     readonly id: ResearchMode
@@ -116,105 +136,178 @@ export function ResearchSidebar({
       icon: <Highlighter size={18} />,
     },
     { id: "citations", label: "인용", count: citations.length, icon: <Quote size={18} /> },
+    { id: "scholar", label: "논문 탐색", icon: <Search size={18} /> },
   ]
+  const translationPortal = document ? (
+    <PageTranslationPortal
+      document={document}
+      currentPage={currentPage}
+      citations={citations}
+      provider={provider}
+      onAiRequest={onAiRequest}
+      viewport={viewport}
+      onViewportChange={onViewportChange}
+    />
+  ) : null
   if (!expanded) {
     return (
-      <aside className="research-sidebar is-collapsed" aria-label="연구 사이드바 접힘">
-        <nav className="research-mode-rail">
-          <button type="button" onClick={onToggle} aria-label="연구 사이드바 펼치기">
-            <ChevronLeft size={18} />
-          </button>
-        </nav>
-      </aside>
+      <>
+        {translationPortal}
+        <aside className="research-sidebar is-collapsed" aria-label="연구 사이드바 접힘">
+          <nav className="research-mode-rail">
+            <button
+              type="button"
+              onClick={() => {
+                setFlyout("open")
+                onToggle()
+              }}
+              aria-label="연구 사이드바 펼치기"
+              aria-expanded={false}
+            >
+              <ChevronLeft size={18} />
+            </button>
+          </nav>
+        </aside>
+      </>
     )
   }
   return (
-    <aside
-      className="research-sidebar"
-      aria-label="연구 사이드바"
-      style={{
-        width: width + researchSidebarLayout.railWidth,
-        minWidth: width + researchSidebarLayout.railWidth,
-        gridTemplateColumns: `${width}px ${researchSidebarLayout.railWidth}px`,
-      }}
-    >
-      {onWidthChange ? (
-        <SidebarResizeHandle
-          label="연구 사이드바 너비 조절"
-          width={width}
-          minimum={researchSidebarLayout.contentMinimum}
-          maximum={researchSidebarLayout.contentMaximum}
-          edge="start"
-          onWidthChange={onWidthChange}
-        />
-      ) : null}
-      <div className="research-sidebar-content">
-        {!document ? (
-          <p className="mode-empty">열려 있는 논문이 없습니다.</p>
-        ) : mode === "ai" ? (
-          <AiOverviewPanel
-            key={document.id}
-            document={document}
-            currentPage={currentPage}
-            provider={provider}
-            onAiRequest={onAiRequest}
-            cachedInsights={insights}
-            onInsightChange={onInsightChange}
-            activationToken={aiActivationToken}
-            onSave={(title, body) =>
-              onCardsChange(saveSidebarInsight(cards, document, title, body))
-            }
-          />
-        ) : isCardMode(mode) ? (
-          <BoardIndexPanel
-            cards={cards}
-            kind={mode}
-            label={cardModeLabels[mode]}
-            onJump={onJumpToCard}
-          />
-        ) : (
-          <CitationPanel
-            document={document}
-            citations={citations}
-            onAiRequest={onAiRequest}
-            onSave={(entry, state, result) =>
-              onCardsChange(saveCitationAssessment(cards, document, entry, state.paper, result))
-            }
-          />
-        )}
-      </div>
-      <nav className="research-mode-rail" aria-label="연구 사이드바 모드">
-        <button type="button" onClick={onToggle} aria-label="연구 사이드바 접기">
-          <PanelRightClose size={18} />
-        </button>
-        <span className="mode-rail-divider" />
-        {modes.map((item) => (
+    <>
+      {translationPortal}
+      <aside
+        className="research-sidebar"
+        aria-label="연구 사이드바"
+        data-mode={mode}
+        data-flyout={flyout}
+        onPointerLeave={() => setFlyout((current) => (current === "pinned" ? current : "hover"))}
+        style={{
+          width: researchSidebarLayout.railWidth,
+          minWidth: researchSidebarLayout.railWidth,
+        }}
+      >
+        <div className="research-sidebar-flyout" style={{ width }}>
+          {onWidthChange ? (
+            <SidebarResizeHandle
+              label="연구 사이드바 너비 조절"
+              width={width}
+              minimum={researchSidebarLayout.contentMinimum}
+              maximum={researchSidebarLayout.contentMaximum}
+              edge="start"
+              onWidthChange={onWidthChange}
+            />
+          ) : null}
+          <div className="research-sidebar-content">
+            {!document ? (
+              <p className="mode-empty">열려 있는 논문이 없습니다.</p>
+            ) : mode === "ai" ? (
+              <AiOverviewPanel
+                key={document.id}
+                document={document}
+                currentPage={currentPage}
+                provider={provider}
+                onAiRequest={onAiRequest}
+                cachedInsights={insights}
+                onInsightChange={onInsightChange}
+                onSave={(title, body) =>
+                  onCardsChange(saveSidebarInsight(cards, document, title, body))
+                }
+              />
+            ) : mode === "translation" ? (
+              <BoardIndexPanel
+                cards={cards}
+                kind="translation"
+                label="번역"
+                onJump={onJumpToCard}
+              />
+            ) : mode === "highlight" ? (
+              <>
+                <AutoHighlightControls
+                  document={document}
+                  cards={cards}
+                  provider={provider}
+                  onCardsChange={onCardsChange}
+                  onAiRequest={onAiRequest}
+                />
+                <BoardIndexPanel
+                  cards={cards}
+                  kind="highlight"
+                  label={cardModeLabels.highlight}
+                  onJump={onJumpToCard}
+                />
+              </>
+            ) : isCardMode(mode) ? (
+              <BoardIndexPanel
+                cards={cards}
+                kind={mode}
+                label={cardModeLabels[mode]}
+                onJump={onJumpToCard}
+              />
+            ) : mode === "scholar" ? (
+              <ScholarSearchPanel document={document} />
+            ) : (
+              <CitationPanel
+                document={document}
+                citations={citations}
+                onAiRequest={onAiRequest}
+                onSave={(entry, state, result) =>
+                  onCardsChange(saveCitationAssessment(cards, document, entry, state.paper, result))
+                }
+              />
+            )}
+          </div>
+        </div>
+        <nav className="research-mode-rail" aria-label="연구 사이드바 모드">
           <button
             type="button"
-            key={item.id}
-            data-active={mode === item.id}
-            aria-pressed={mode === item.id}
-            aria-label={item.id === "ai" ? "AI 개요 열기" : `${item.label} 모드`}
-            title={item.label}
             onClick={() => {
-              setMode(item.id)
-              if (item.count) {
-                setSeenCounts((current) => ({ ...current, [item.id]: item.count }))
-              }
-              if (item.id === "ai") setAiActivationToken((value) => value + 1)
+              setFlyout("hover")
+              onToggle()
             }}
+            aria-label="연구 사이드바 접기"
+            aria-expanded
           >
-            {item.icon}
-            {item.count && item.count > (seenCounts[item.id] ?? 0) ? (
-              <span className="mode-count">
-                {item.count - (seenCounts[item.id] ?? 0) > 99
-                  ? "99+"
-                  : item.count - (seenCounts[item.id] ?? 0)}
-              </span>
-            ) : null}
+            <PanelRightClose size={18} />
           </button>
-        ))}
-      </nav>
-    </aside>
+          <span className="mode-rail-divider" />
+          {modes.map((item) => (
+            <button
+              type="button"
+              key={item.id}
+              data-active={mode === item.id}
+              aria-pressed={mode === item.id}
+              aria-expanded={mode === item.id && flyout !== "hover" && mode !== "translation"}
+              aria-description={
+                mode === item.id && flyout === "pinned" ? "고정됨" : "한 번 열기, 다시 누르면 고정"
+              }
+              aria-label={item.id === "ai" ? "AI 개요 열기" : `${item.label} 모드`}
+              title={item.label}
+              onClick={() => {
+                if (mode === item.id && flyout !== "hover") {
+                  setFlyout("pinned")
+                  return
+                }
+                setFlyout("open")
+                if (item.id === "translation") togglePageTranslation(currentPage)
+                if (item.id === "sticky") onToolChange("sticky")
+                else if (tool === "sticky") onToolChange("select")
+                setMode(item.id)
+                if (item.count) {
+                  setSeenCounts((current) => ({ ...current, [item.id]: item.count }))
+                }
+              }}
+            >
+              {item.icon}
+              {item.count && item.count > (seenCounts[item.id] ?? 0) ? (
+                <span className="mode-count">
+                  {item.count - (seenCounts[item.id] ?? 0) > 99
+                    ? "99+"
+                    : item.count - (seenCounts[item.id] ?? 0)}
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </nav>
+      </aside>
+    </>
   )
 }

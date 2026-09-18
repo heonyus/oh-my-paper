@@ -125,27 +125,18 @@
   color: var(--error);
 }
 .discussion-section {
-  padding-top: 18px;
+  padding: 0 0 18px 23px;
 }
-.discussion-section > header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.discussion-section h3 {
-  margin: 0;
-  font-size: var(--type-body-size);
-}
-.discussion-section header > span {
-  color: var(--ink-muted);
-  font-size: var(--type-compact-size);
+.summary-discussion-flow .insight-section {
+  padding-bottom: 8px;
+  border-bottom: 0;
 }
 .discussion-messages {
   display: grid;
   gap: 8px;
   max-height: 300px;
   overflow-y: auto;
-  padding: 12px 0;
+  padding: 0 0 8px;
 }
 .discussion-messages article {
   padding: 10px;

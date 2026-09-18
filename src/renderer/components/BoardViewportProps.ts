@@ -1,9 +1,12 @@
+import type { EvidenceNavigationTarget } from "../../shared/knowledgeTypes"
+import type { PreparedSummary } from "../lib/pdfDocumentFeatures"
 import type { PdfOutlineEntry } from "../lib/pdfOutline"
 import type { AiRequestRunner, BoardCard, BoardTool, DocumentRecord, Viewport } from "../types"
-import type { PreparedSummary } from "./PdfColumn"
 
 export type BoardViewportProps = {
   readonly document: DocumentRecord
+  readonly evidenceFocus?: EvidenceNavigationTarget | null
+  readonly onDismissEvidence?: () => void
   readonly viewport: Viewport
   readonly cards: readonly BoardCard[]
   readonly onViewportChange: (viewport: Viewport) => void

@@ -1,9 +1,15 @@
 import type { DocumentLayoutBox, DocumentLayoutPage } from "../../shared/documentLayout"
 import type { PdfFeature, PdfFeatureRect, PdfTextSpan } from "./pdfFeatureDetection"
+import { refinePdfFeatures } from "./pdfFeatureRefinement"
 import { normalizedHeadingText } from "./pdfHeadingClassifier"
-import { type ScoredFigureRect, selectFigureGroup } from "./pdfModelFigureGrouping"
+import {
+  relatedPanelTitleRects,
+  type ScoredFigureRect,
+  selectFigureGroup,
+} from "./pdfModelFigureGrouping"
 
 type VisualKind = "figure" | "table"
+type ModelVisualKind = VisualKind | "mixed"
 
 export type AppliedModelLayout = {
   readonly features: readonly PdfFeature[]
@@ -14,16 +20,25 @@ export function pdfFeatureKey(feature: PdfFeature): string {
   return `${feature.kind}:${feature.sourceSpanIds[0] ?? feature.label}`
 }
 
-function visualKind(label: DocumentLayoutBox["label"]): VisualKind | null {
+function visualKind(label: DocumentLayoutBox["label"]): ModelVisualKind | null {
   switch (label) {
     case "chart":
     case "image":
       return "figure"
     case "table":
-      return "table"
+      return "mixed"
     case "doc_title":
     case "paragraph_title":
     case "figure_title":
+    case "text":
+    case "equation":
+    case "code":
+    case "list":
+    case "header":
+    case "footer":
+    case "page_number":
+    case "aside_text":
+    case "page_footnote":
       return null
   }
 }
@@ -51,6 +66,16 @@ function unionRects(rects: readonly PdfFeatureRect[]): PdfFeatureRect | null {
   const right = Math.max(...rects.map((rect) => rect.x + rect.width))
   const bottom = Math.max(...rects.map((rect) => rect.y + rect.height))
   return { x, y, width: right - x, height: bottom - y }
+}
+
+function panelTitleRects(
+  layoutPage: DocumentLayoutPage,
+  pageWidth: number,
+  pageHeight: number,
+): readonly PdfFeatureRect[] {
+  return layoutPage.boxes
+    .filter((box) => box.label === "paragraph_title" && box.score >= 0.5)
+    .map((box) => scaledRect(box, layoutPage, pageWidth, pageHeight))
 }
 
 function horizontalOverlap(left: PdfFeatureRect, right: PdfFeatureRect): number {
@@ -162,40 +187,49 @@ export function applyModelLayoutBounds(
   const assignments = new Map<string, PdfFeatureRect[]>()
   const figureCandidates = new Map<string, ScoredFigureRect[]>()
   const assignmentScores = new Map<string, number>()
+  const modelPanelTitles = panelTitleRects(layoutPage, pageWidth, pageHeight)
   for (const box of layoutPage.boxes) {
-    if (box.score < 0.55) continue
+    if (box.score < 0.5) continue
     const kind = visualKind(box.label)
     if (!kind) continue
     const visual = scaledRect(box, layoutPage, pageWidth, pageHeight)
     const candidates = visualFeatures
-      .filter((feature) => feature.kind === kind)
+      .filter((feature) => kind === "mixed" || feature.kind === kind)
       .flatMap((feature) => {
+        const candidateKind = feature.kind === "table" ? "table" : "figure"
         const captionId = feature.sourceSpanIds[0]
         const caption = captionId ? byId.get(captionId) : undefined
         return caption
-          ? [{ feature, score: captionScore(kind, visual, caption, pageHeight), caption }]
+          ? [
+              {
+                feature,
+                kind: candidateKind,
+                score: captionScore(candidateKind, visual, caption, pageHeight),
+                caption,
+              },
+            ]
           : []
       })
-      .filter(({ caption }) => {
+      .filter(({ caption, kind: candidateKind }) => {
         const distance = Math.min(
           Math.abs(caption.y - (visual.y + visual.height)),
           Math.abs(visual.y - (caption.y + caption.height)),
         )
-        const maximumDistance = kind === "figure" ? pageHeight * 0.55 : pageHeight * 0.3
+        const maximumDistance = candidateKind === "figure" ? pageHeight * 0.55 : pageHeight * 0.3
         return distance <= maximumDistance
       })
-    const directionMatched =
-      kind === "figure"
-        ? candidates.filter(({ caption }) => visual.y <= caption.y + caption.height)
-        : candidates
+    const directionMatched = candidates.filter(
+      ({ caption, kind: candidateKind }) =>
+        candidateKind !== "figure" || visual.y <= caption.y + caption.height,
+    )
     const ranked = [...(directionMatched.length > 0 ? directionMatched : candidates)].sort(
       (left, right) => right.score - left.score,
     )
-    const owner = ranked[0]?.feature
+    const owner = ranked[0]
     const ownerScore = ranked[0]?.score ?? -2
     if (!owner || ownerScore < -1.2) continue
-    const key = pdfFeatureKey(owner)
-    if (kind === "table") {
+    const key = pdfFeatureKey(owner.feature)
+    if (owner.kind === "table") {
       if (ownerScore > (assignmentScores.get(key) ?? Number.NEGATIVE_INFINITY)) {
         assignments.set(key, [visual])
         assignmentScores.set(key, ownerScore)
@@ -207,7 +241,8 @@ export function applyModelLayoutBounds(
     figureCandidates.set(key, candidatesForOwner)
   }
   for (const [key, candidates] of figureCandidates) {
-    assignments.set(key, [...selectFigureGroup(candidates)])
+    const selected = [...selectFigureGroup(candidates)]
+    assignments.set(key, [...selected, ...relatedPanelTitleRects(selected, modelPanelTitles)])
   }
   const boundFeatureKeys = new Set(assignments.keys())
   const modelBoundFeatures = features.map((feature) => {
@@ -215,11 +250,12 @@ export function applyModelLayoutBounds(
     const rect = assigned ? unionRects(assigned) : null
     return rect ? { ...feature, rect } : feature
   })
+  const withModelHeadings = [
+    ...modelBoundFeatures,
+    ...modelHeadingFeatures(layoutPage, spans, modelBoundFeatures, pageWidth, pageHeight),
+  ]
   return {
-    features: [
-      ...modelBoundFeatures,
-      ...modelHeadingFeatures(layoutPage, spans, modelBoundFeatures, pageWidth, pageHeight),
-    ],
+    features: refinePdfFeatures(withModelHeadings, spans, pageWidth),
     boundFeatureKeys,
   }
 }

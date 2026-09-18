@@ -139,4 +139,171 @@ describe("section request context", () => {
     expect(context).not.toContain("Success Rate 0.8")
     expect(context).not.toContain("5 TRAINING")
   })
+
+  it("includes every numbered subsection until the next top-level section", () => {
+    const viewer = document.createElement("div")
+    const page3 = makePage(3)
+    addSpan(page3, "3 METHOD", { left: 80, top: 100, width: 160, height: 22 })
+    addSpan(page3, "The method builds an executable training environment.", {
+      left: 80,
+      top: 140,
+      width: 520,
+      height: 14,
+    })
+    addSpan(page3, "3.1 PROBLEM FORMULATION", {
+      left: 80,
+      top: 250,
+      width: 260,
+      height: 20,
+    })
+    addSpan(page3, "Tasks map a problem to executable code and verified output.", {
+      left: 80,
+      top: 285,
+      width: 540,
+      height: 14,
+    })
+    const page4 = makePage(4)
+    addSpan(page4, "3.2 DATA CONSTRUCTION", {
+      left: 80,
+      top: 100,
+      width: 240,
+      height: 20,
+    })
+    addSpan(page4, "Datasets are standardized into a unified benchmark.", {
+      left: 80,
+      top: 135,
+      width: 520,
+      height: 14,
+    })
+    addSpan(page4, "4 EVALUATION", { left: 80, top: 500, width: 180, height: 22 })
+    addSpan(page4, "This text belongs to the next top-level section.", {
+      left: 80,
+      top: 535,
+      width: 500,
+      height: 14,
+    })
+    viewer.append(page3, page4)
+
+    const context = sectionRequestContext({
+      viewer,
+      page: page3,
+      heading: "3 METHOD",
+      bounds: { x: 80, y: 100, width: 160, height: 22 },
+      paperTitle: "Paper",
+    })
+
+    expect(context.section).toContain("3.1 PROBLEM FORMULATION")
+    expect(context.section).toContain("3.2 DATA CONSTRUCTION")
+    expect(context.section).toContain("unified benchmark")
+    expect(context.section).not.toContain("next top-level section")
+  })
+
+  it("includes nested children but stops at the next sibling subsection", () => {
+    const viewer = document.createElement("div")
+    const page = makePage(3)
+    addSpan(page, "3.1 PROBLEM FORMULATION", {
+      left: 80,
+      top: 100,
+      width: 260,
+      height: 20,
+    })
+    addSpan(page, "The subsection defines the executable reasoning objective.", {
+      left: 80,
+      top: 135,
+      width: 540,
+      height: 14,
+    })
+    addSpan(page, "3.1.1 VERIFIER", { left: 80, top: 250, width: 180, height: 18 })
+    addSpan(page, "The verifier checks generated outputs.", {
+      left: 80,
+      top: 280,
+      width: 420,
+      height: 14,
+    })
+    addSpan(page, "3.2 DATA CONSTRUCTION", {
+      left: 80,
+      top: 500,
+      width: 240,
+      height: 20,
+    })
+    addSpan(page, "Sibling content must not leak into 3.1.", {
+      left: 80,
+      top: 535,
+      width: 440,
+      height: 14,
+    })
+    viewer.append(page)
+
+    const context = sectionRequestContext({
+      viewer,
+      page,
+      heading: "3.1 PROBLEM FORMULATION",
+      bounds: { x: 80, y: 100, width: 260, height: 20 },
+      paperTitle: "Paper",
+    })
+
+    expect(context.section).toContain("3.1.1 VERIFIER")
+    expect(context.section).toContain("checks generated outputs")
+    expect(context.section).not.toContain("Sibling content")
+  })
+
+  it("keeps every action when an unnumbered run-in section ends near the page footer", () => {
+    const viewer = document.createElement("div")
+    const page = makePage(5)
+    addSpan(page, "Agent Scaffolds.", { left: 80, top: 800, width: 140, height: 16 })
+    addSpan(page, "Following CodeAct, interactions are modeled as a POMDP.", {
+      left: 230,
+      top: 800,
+      width: 490,
+      height: 16,
+    })
+    addSpan(page, "(a) request_info retrieves EHR data;", {
+      left: 80,
+      top: 835,
+      width: 320,
+      height: 16,
+    })
+    addSpan(page, "(b) terminal manages dependencies;", {
+      left: 80,
+      top: 870,
+      width: 320,
+      height: 16,
+    })
+    addSpan(page, "(c) code_execution runs generated code;", {
+      left: 80,
+      top: 920,
+      width: 360,
+      height: 16,
+    })
+    addSpan(page, "(d) debugging translates execution errors for LLM comprehension.", {
+      left: 80,
+      top: 955,
+      width: 560,
+      height: 16,
+    })
+    addSpan(page, "5", { left: 395, top: 985, width: 10, height: 12 })
+    const next = makePage(6)
+    addSpan(next, "Tasks and Datasets.", { left: 80, top: 100, width: 180, height: 16 })
+    addSpan(next, "This belongs to the following experiment setup paragraph.", {
+      left: 270,
+      top: 100,
+      width: 440,
+      height: 16,
+    })
+    viewer.append(page, next)
+
+    const context = sectionRequestContext({
+      viewer,
+      page,
+      heading: "Agent Scaffolds.",
+      bounds: { x: 80, y: 800, width: 140, height: 16 },
+      paperTitle: "MedAgentGym",
+    })
+
+    expect(context.section).toContain("request_info")
+    expect(context.section).toContain("terminal")
+    expect(context.section).toContain("code_execution")
+    expect(context.section).toContain("debugging translates execution errors")
+    expect(context.section).not.toContain("following experiment setup")
+  })
 })

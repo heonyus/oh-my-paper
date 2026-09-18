@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   centerViewportOnWorldPoint,
   constrainViewportToBounds,
+  hasCompletePageSet,
   intersectWorldRects,
   mapMinimapPointToWorld,
   mergeWorldRects,
@@ -11,6 +12,20 @@ import {
 } from "../../src/renderer/lib/boardNavigation"
 
 describe("board navigation", () => {
+  it("does not constrain panning from a partial page measurement", () => {
+    expect(hasCompletePageSet([{ x: 300, y: 64, width: 816, height: 1_056 }], 3)).toBe(false)
+    expect(
+      hasCompletePageSet(
+        [
+          { x: 300, y: 64, width: 816, height: 1_056 },
+          { x: 300, y: 1_136, width: 816, height: 1_056 },
+          { x: 300, y: 2_208, width: 816, height: 1_056 },
+        ],
+        3,
+      ),
+    ).toBe(true)
+  })
+
   it("merges paper pages and cards into one finite navigation extent", () => {
     const bounds = mergeWorldRects([
       { x: 300, y: 64, width: 816, height: 1056 },

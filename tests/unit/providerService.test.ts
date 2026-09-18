@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -26,25 +26,26 @@ afterEach(async () => {
   )
 })
 
-describe("ProviderService environment bootstrap", () => {
-  it("encrypts the first environment configuration for later app launches", async () => {
+describe("ProviderService saved configuration", () => {
+  it("does not configure or persist inherited environment credentials", async () => {
     const root = await mkdtemp(join(tmpdir(), "scourgify-provider-"))
     temporaryRoots.push(root)
     vi.stubEnv("OPENROUTER_API_KEY", "sk-or-example-key-at-least-twenty-characters")
+    vi.stubEnv("SCOURGIFY_AI_PROVIDER", "openrouter")
+    vi.stubEnv("SCOURGIFY_AI_MODEL", "deepseek/deepseek-v4-flash-0731")
     const service = new ProviderService(root)
 
     expect(await service.status()).toMatchObject({
-      configured: true,
+      configured: false,
       provider: "openrouter",
       model: "z-ai/glm-5.3-flash",
     })
-
-    vi.unstubAllEnvs()
-    expect(await new ProviderService(root).status()).toMatchObject({ configured: true })
-    expect((await readFile(join(root, "provider-config.bin"))).length).toBeGreaterThan(0)
+    await expect(access(join(root, "provider-config.bin"))).rejects.toMatchObject({
+      code: "ENOENT",
+    })
   })
 
-  it("replaces a stale encrypted configuration with the explicit environment", async () => {
+  it("preserves saved user configuration instead of overwriting with environment defaults", async () => {
     const root = await mkdtemp(join(tmpdir(), "scourgify-provider-"))
     temporaryRoots.push(root)
     const service = new ProviderService(root)
@@ -58,29 +59,70 @@ describe("ProviderService environment bootstrap", () => {
     expect(await service.status()).toMatchObject({
       configured: true,
       provider: "openrouter",
-      model: "z-ai/glm-5.3-flash",
+      model: "deepseek/deepseek-v4-flash-0731",
     })
 
     vi.unstubAllEnvs()
     expect(await new ProviderService(root).status()).toMatchObject({
       configured: true,
-      model: "z-ai/glm-5.3-flash",
+      model: "deepseek/deepseek-v4-flash-0731",
     })
   })
 
-  it("recovers an unreadable encrypted configuration from the explicit environment", async () => {
+  it("preserves the legacy saved key when inherited credentials exist", async () => {
+    const root = await mkdtemp(join(tmpdir(), "scourgify-provider-"))
+    temporaryRoots.push(root)
+    await writeFile(
+      join(root, "openai-key.bin"),
+      Buffer.from("sk-legacy-saved-key-at-least-twenty-characters"),
+    )
+    vi.stubEnv("OPENAI_API_KEY", "sk-inherited-key-at-least-twenty-characters")
+
+    expect(await new ProviderService(root).status()).toEqual({
+      configured: true,
+      provider: "openai",
+      model: "gpt-5",
+    })
+    expect(await readFile(join(root, "openai-key.bin"), "utf8")).toBe(
+      "sk-legacy-saved-key-at-least-twenty-characters",
+    )
+  })
+
+  it("does not share inherited credentials between account roots", async () => {
+    const firstRoot = await mkdtemp(join(tmpdir(), "scourgify-provider-account-a-"))
+    const secondRoot = await mkdtemp(join(tmpdir(), "scourgify-provider-account-b-"))
+    temporaryRoots.push(firstRoot, secondRoot)
+    vi.stubEnv("OPENAI_API_KEY", "sk-example-key-at-least-twenty-characters")
+    vi.stubEnv("SCOURGIFY_AI_PROVIDER", "openai")
+    vi.stubEnv("SCOURGIFY_AI_MODEL", "gpt-5")
+
+    const first = new ProviderService(firstRoot)
+    const second = new ProviderService(secondRoot)
+    expect((await first.status()).configured).toBe(false)
+    expect((await second.status()).configured).toBe(false)
+
+    await first.saveConfig({
+      provider: "openai",
+      apiKey: "sk-saved-account-a-key-at-least-twenty-characters",
+      model: "gpt-5",
+    })
+
+    expect((await first.status()).configured).toBe(true)
+    expect((await second.status()).configured).toBe(false)
+    await expect(access(join(secondRoot, "provider-config.bin"))).rejects.toMatchObject({
+      code: "ENOENT",
+    })
+  })
+
+  it("produces a recovery error when encrypted configuration is corrupt rather than silently overwriting", async () => {
     const root = await mkdtemp(join(tmpdir(), "scourgify-provider-"))
     temporaryRoots.push(root)
     await writeFile(join(root, "provider-config.bin"), "unreadable", "utf8")
     vi.stubEnv("OPENROUTER_API_KEY", "sk-or-current-key-at-least-twenty-characters")
 
-    expect(await new ProviderService(root).status()).toMatchObject({
-      configured: true,
-      provider: "openrouter",
-      model: "z-ai/glm-5.3-flash",
+    await expect(new ProviderService(root).status()).rejects.toMatchObject({
+      name: "ProviderConfigurationError",
+      kind: "corrupt_config",
     })
-
-    vi.unstubAllEnvs()
-    expect(await new ProviderService(root).status()).toMatchObject({ configured: true })
   })
 })

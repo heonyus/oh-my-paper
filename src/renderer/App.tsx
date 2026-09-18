@@ -1,252 +1,249 @@
-import { type JSX, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { type PreparationUpdate, type ProviderStatus, preparationSteps } from "../shared/ipc"
-import { LeftRail, Topbar } from "./components/AppChrome"
+import { type JSX, lazy, Suspense, useState } from "react"
+import { LibraryTopbar, Topbar, type WebAccount } from "./components/AppChrome"
 import { AppStatusOverlays } from "./components/AppStatusOverlays"
-import { BoardViewport } from "./components/BoardViewport"
-import { LibraryPanel } from "./components/LibraryPanel"
-import { OutlinePanel } from "./components/OutlinePanel"
-import type { PreparedSummary } from "./components/PdfColumn"
-import { ResearchSidebar } from "./components/ResearchSidebar"
-import { SettingsModal } from "./components/SettingsModal"
-import type { CitationIndexEntry } from "./lib/pdfCitationIndex"
-import type { PdfOutlineEntry } from "./lib/pdfOutline"
-import { applyPreparedSummary, completedPreparation } from "./lib/preparationState"
-import { useBoardCardJump } from "./lib/researchSidebarActions"
+import type { HostedCredentialSettingsProps } from "./components/HostedCredentialSettings"
+import { LibraryWorkspace } from "./components/LibraryWorkspace"
+import { ResearchNavigation } from "./components/ResearchNavigation"
+import { WorkspaceSections } from "./components/WorkspaceSections"
 import { appShellStyle } from "./lib/uiFontScale"
-import { useActiveCards } from "./lib/useActiveCards"
-import { useDocumentInsights } from "./lib/useDocumentInsights"
-import { usePaperAiRequest } from "./lib/usePaperAiRequest"
-import { usePostItShortcut } from "./lib/usePostItShortcut"
-import { useWorkspaceHistory } from "./lib/useWorkspaceHistory"
-import { useWorkspacePersistence } from "./lib/useWorkspacePersistence"
-import type { BoardTool, Workspace } from "./types"
+import { useAppWorkspace } from "./lib/useAppWorkspace"
+import type { DocumentId } from "./types"
 
-export function App(): JSX.Element {
+const ReaderWorkspace = lazy(() =>
+  import("./components/ReaderWorkspace").then((module) => ({ default: module.ReaderWorkspace })),
+)
+const AppSettingsDialog = lazy(() =>
+  import("./components/AppSettingsDialog").then((module) => ({
+    default: module.AppSettingsDialog,
+  })),
+)
+const DataExchangeDialog = lazy(() =>
+  import("./components/DataExchangeDialog").then((module) => ({
+    default: module.DataExchangeDialog,
+  })),
+)
+const KnowledgeProposalDialog = lazy(() =>
+  import("./components/KnowledgeProposalDialog").then((module) => ({
+    default: module.KnowledgeProposalDialog,
+  })),
+)
+
+export function App({
+  platform = "desktop",
+  account,
+  hostedCredentials,
+}: {
+  readonly platform?: "desktop" | "web"
+  readonly account?: WebAccount | undefined
+  readonly hostedCredentials?: HostedCredentialSettingsProps | undefined
+}): JSX.Element {
+  const app = useAppWorkspace()
+  const workspace = app.workspace
   const {
-    workspace,
-    setWorkspace,
-    setWorkspaceTransient,
-    resetWorkspace,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-  } = useWorkspaceHistory()
-  const [preparation, setPreparation] = useState<PreparationUpdate[]>([])
-  const [currentPage, setCurrentPage] = useState(1)
+    preparation,
+    currentPage,
+    setCurrentPage,
+    updateDocumentPage,
+    outlineOpen,
+    setOutlineOpen,
+    viewMode,
+    selectedKnowledgeNodeId,
+    documentReady,
+    tool,
+    provider,
+    ocrStatus,
+    bootstrapError,
+    outline,
+    citations,
+    workspaceSaveFailed,
+    documentAnalysisJobs,
+    knowledgeClientOps,
+    evidence,
+    activeDocument,
+    activeCards,
+    updateCards,
+    previewCards,
+    activeInsights,
+    updateInsight,
+    runAi,
+    importProgress,
+    importPdf,
+    importDroppedPdfs,
+    finishPreparation,
+    jumpToCard,
+    updateOutline,
+    updateViewport,
+    readerMode,
+    libraryView,
+  } = app
+  const jumpToEvidence = evidence.navigate
+  const pageJumpRef = evidence.jump
+  const registerPageJump = evidence.registerPageJump
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [outlineOpen, setOutlineOpen] = useState(false)
-  const [libraryOpen, setLibraryOpen] = useState(false)
-  const [tool, setTool] = useState<BoardTool>("select")
-  const [provider, setProvider] = useState<ProviderStatus>({
-    configured: false,
-    provider: "openrouter",
-    model: "z-ai/glm-5.3-flash",
-  })
-  const [outline, setOutline] = useState<readonly PdfOutlineEntry[]>([])
-  const [citations, setCitations] = useState<readonly CitationIndexEntry[]>([])
-  usePostItShortcut(setTool)
-  const workspaceSaveFailed = useWorkspacePersistence(workspace)
-  const pageJumpRef = useRef<(page: number) => void>(() => {})
-  const registerPageJump = useCallback((jump: (page: number) => void): void => {
-    pageJumpRef.current = jump
-  }, [])
-  const updateOutline = useCallback((next: readonly PdfOutlineEntry[]): void => {
-    setOutline(next)
-  }, [])
-  const updateViewport = useCallback(
-    (next: Workspace["viewport"]): void => {
-      setWorkspaceTransient((current) => (current ? { ...current, viewport: next } : current))
-    },
-    [setWorkspaceTransient],
-  )
-
-  useEffect(() => {
-    void window.scourgify.readWorkspace().then(resetWorkspace)
-    void window.scourgify.providerStatus().then(setProvider)
-    return window.scourgify.onPreparation((update) => {
-      setPreparation((current) => [...current.filter((item) => item.step !== update.step), update])
-    })
-  }, [resetWorkspace])
-
-  useEffect(() => {
-    const complete =
-      preparation.length === preparationSteps.length &&
-      preparation.every((update) => update.state === "complete")
-    if (!complete) return
-    const timer = window.setTimeout(() => setPreparation([]), 1_600)
-    return () => window.clearTimeout(timer)
-  }, [preparation])
-
-  const activeDocument = useMemo(
-    () =>
-      workspace?.documents.find((document) => document.id === workspace.activeDocumentId) ?? null,
-    [workspace],
-  )
-  const {
-    cards: activeCards,
-    update: updateCards,
-    preview: previewCards,
-  } = useActiveCards(workspace, activeDocument?.id ?? null, setWorkspace, setWorkspaceTransient)
-  const { insights: activeInsights, update: updateInsight } = useDocumentInsights(
-    workspace,
-    activeDocument?.id,
-    setWorkspace,
-  )
-  const runAi = usePaperAiRequest(activeDocument, activeInsights)
-
-  const finishPreparation = useCallback(
-    (summary: PreparedSummary): void => {
-      const activeId = activeDocument?.id
-      if (!activeId) return
-      setWorkspace((current) =>
-        current ? applyPreparedSummary(current, activeId, summary) : current,
-      )
-      setPreparation([...completedPreparation(summary)])
-      setCitations(summary.citations ?? [])
-    },
-    [activeDocument?.id, setWorkspace],
-  )
-
-  async function importPdf(): Promise<void> {
-    setPreparation([])
-    setOutline([])
-    setCitations([])
-    const result = await window.scourgify.importDocument()
-    if (!result) return
-    const current = await window.scourgify.readWorkspace()
-    resetWorkspace({ ...current, activeDocumentId: result.document.id })
-  }
-
-  const jumpToCard = useBoardCardJump(activeCards, setWorkspace, setCurrentPage)
+  const [dataExchangeOpen, setDataExchangeOpen] = useState(false)
+  const [proposalOpen, setProposalOpen] = useState(false)
 
   if (!workspace) return <main className="loading-screen">Scourgify을 여는 중…</main>
+
+  const openDocument = (id: DocumentId): void => {
+    const selected = workspace.documents.find((document) => document.id === id)
+    if (!selected) return
+    evidence.dismiss()
+    app.setWorkspace({ ...workspace, activeDocumentId: id })
+    setCurrentPage(selected.lastReadPage ?? 1)
+    app.setDocumentReady(Boolean(selected.overview))
+    app.setViewMode("reader")
+    app.setLibraryOpen(false)
+  }
 
   return (
     <main
       className="app-shell"
-      data-outline-open={outlineOpen}
+      data-navigation="research"
       data-theme={workspace.theme}
-      style={appShellStyle(workspace.uiFontScale)}
+      data-large-text={workspace.uiFontScale >= 1.5}
+      style={appShellStyle(workspace.uiFontScale, workspace.uiFontFamily)}
     >
-      <Topbar
-        viewport={workspace.viewport}
-        onViewportChange={(viewport) => setWorkspaceTransient({ ...workspace, viewport })}
-        tool={tool}
-        onToolChange={setTool}
-        canUndo={canUndo}
-        canRedo={canRedo}
-        onUndo={undo}
-        onRedo={redo}
-        outlineOpen={outlineOpen}
-        onToggleOutline={() => setOutlineOpen((open) => !open)}
-      />
-      <LeftRail
-        active={libraryOpen ? "library" : "documents"}
-        onLibrary={() => setLibraryOpen(true)}
-        onDocuments={() => setLibraryOpen(false)}
+      <LibraryTopbar account={account} />
+      <ResearchNavigation
+        active={libraryView ? "library" : "documents"}
+        viewMode={viewMode}
+        onViewModeChange={(next) => {
+          app.setViewMode(next)
+          if (next !== "reader") setOutlineOpen(false)
+        }}
+        onLibrary={() => {
+          evidence.dismiss()
+          app.setViewMode("reader")
+          app.setLibraryOpen(true)
+        }}
         onSettings={() => setSettingsOpen(true)}
+        onDataExchange={() => setDataExchangeOpen(true)}
+        onPropose={() => setProposalOpen(true)}
       />
-      {outlineOpen ? (
-        <OutlinePanel
-          width={workspace.outlineWidth}
-          onWidthChange={(width) => setWorkspaceTransient({ ...workspace, outlineWidth: width })}
-          currentPage={currentPage}
-          outline={outline}
-          onClose={() => setOutlineOpen(false)}
-          onJump={(page) => {
-            setCurrentPage(page)
-            pageJumpRef.current(page)
+      <div style={{ display: libraryView ? "contents" : "none" }}>
+        <LibraryWorkspace
+          clientOps={knowledgeClientOps}
+          active={libraryView}
+          onOpenNode={(id) => {
+            app.setSelectedKnowledgeNodeId(id)
+            app.setViewMode("knowledge")
           }}
+          onOpenGraph={() => app.setViewMode("graph")}
+          onOpenSearch={() => app.setViewMode("search")}
+          documents={workspace.documents}
+          activeId={workspace.activeDocumentId}
+          recentDocumentId={activeDocument?.id}
+          recentPage={activeDocument?.lastReadPage}
+          onImport={() => void importPdf()}
+          onFileDrop={(files) => void importDroppedPdfs(files)}
+          importLabel={platform === "web" ? "PDF 업로드 및 분석" : "PDF 가져오기"}
+          importProgress={importProgress}
+          analysisJobs={documentAnalysisJobs}
+          onSelect={openDocument}
         />
-      ) : null}
-      {activeDocument ? (
-        <BoardViewport
-          document={activeDocument}
-          viewport={workspace.viewport}
-          cards={activeCards}
-          onViewportChange={updateViewport}
-          onCardsChange={updateCards}
-          onCardsPreview={previewCards}
-          onDocumentLoaded={finishPreparation}
-          onPageActive={setCurrentPage}
-          currentPage={currentPage}
-          onOutlineChange={updateOutline}
-          onRegisterPageJump={registerPageJump}
-          onAiRequest={runAi}
-          tool={tool}
-          onToolChange={setTool}
-          minimapVisible={workspace.minimapVisible}
-          onMinimapVisibleChange={(minimapVisible) =>
-            setWorkspaceTransient({ ...workspace, minimapVisible })
-          }
-        />
-      ) : (
-        <section className="empty-board">
-          <div>
-            <h1>논문을 연구 보드에 펼쳐보세요</h1>
-            <button type="button" className="primary-action" onClick={() => void importPdf()}>
-              PDF 가져오기
-            </button>
-          </div>
-        </section>
-      )}
-      <ResearchSidebar
-        key={activeDocument?.id ?? "no-document"}
+      </div>
+      <WorkspaceSections
+        mode={viewMode}
+        clientOps={knowledgeClientOps}
+        nodeId={selectedKnowledgeNodeId}
+        onNodeSelect={app.setSelectedKnowledgeNodeId}
+        onNavigate={app.setViewMode}
+        onEvidence={jumpToEvidence}
         document={activeDocument}
-        currentPage={currentPage}
         cards={activeCards}
-        citations={citations}
-        insights={activeInsights}
-        expanded={workspace.sidebarOpen}
-        width={workspace.researchSidebarWidth}
-        onWidthChange={(width) =>
-          setWorkspaceTransient({ ...workspace, researchSidebarWidth: width })
-        }
-        provider={provider}
-        onToggle={() =>
-          setWorkspaceTransient({ ...workspace, sidebarOpen: !workspace.sidebarOpen })
-        }
-        onJumpToCard={jumpToCard}
-        onCardsChange={updateCards}
-        onAiRequest={runAi}
-        onInsightChange={updateInsight}
       />
+      {readerMode && !libraryView ? (
+        <section className="reader-workspace" data-outline-open={outlineOpen} aria-label="리더">
+          <Topbar
+            documents={workspace.documents}
+            activeDocumentId={activeDocument?.id ?? null}
+            onDocumentChange={openDocument}
+            viewport={workspace.viewport}
+            onViewportChange={updateViewport}
+            tool={tool}
+            onToolChange={app.setTool}
+            canUndo={app.canUndo}
+            canRedo={app.canRedo}
+            onUndo={app.undo}
+            onRedo={app.redo}
+            outlineOpen={outlineOpen}
+            onToggleOutline={() => setOutlineOpen((open) => !open)}
+          />
+          <Suspense fallback={<p role="status">논문을 여는 중…</p>}>
+            <ReaderWorkspace
+              key={activeDocument?.id ?? "empty"}
+              document={activeDocument}
+              workspace={workspace}
+              updateWorkspace={app.setWorkspaceTransient}
+              updateViewport={updateViewport}
+              currentPage={currentPage}
+              setPage={setCurrentPage}
+              updateDocumentPage={updateDocumentPage}
+              cards={activeCards}
+              updateCards={updateCards}
+              previewCards={previewCards}
+              citations={citations}
+              insights={activeInsights}
+              updateInsight={updateInsight}
+              provider={provider}
+              documentReady={documentReady}
+              jumpToCard={jumpToCard}
+              runAi={runAi}
+              tool={tool}
+              setTool={app.setTool}
+              onPrepared={finishPreparation}
+              outline={outline}
+              outlineOpen={outlineOpen}
+              closeOutline={() => setOutlineOpen(false)}
+              updateOutline={updateOutline}
+              jumpToPage={(page) => pageJumpRef.current(page)}
+              registerPageJump={registerPageJump}
+              evidence={evidence.target}
+              dismissEvidence={evidence.dismiss}
+              importPdf={() => void importPdf()}
+            />
+          </Suspense>
+        </section>
+      ) : null}
       <AppStatusOverlays
         preparation={preparation}
         saveFailed={workspaceSaveFailed}
-        onPreparationClose={() => setPreparation([])}
+        bootstrapError={bootstrapError}
+        onPreparationClose={() => app.setPreparation([])}
       />
-      {libraryOpen ? (
-        <LibraryPanel
-          documents={workspace.documents}
-          activeId={workspace.activeDocumentId}
-          onSelect={(id) => {
-            setWorkspace({ ...workspace, activeDocumentId: id })
-            setLibraryOpen(false)
-          }}
-          onImport={() => void importPdf()}
-          onClose={() => setLibraryOpen(false)}
-        />
-      ) : null}
-      {settingsOpen ? (
-        <SettingsModal
-          status={provider}
-          fontScale={workspace.uiFontScale}
-          minimapVisible={workspace.minimapVisible}
-          theme={workspace.theme}
-          onThemeChange={(theme) => setWorkspaceTransient({ ...workspace, theme })}
-          onFontScaleChange={(uiFontScale) => setWorkspaceTransient({ ...workspace, uiFontScale })}
-          onMinimapVisibleChange={(minimapVisible) =>
-            setWorkspaceTransient({ ...workspace, minimapVisible })
-          }
-          onClose={() => setSettingsOpen(false)}
-          onSave={async (config) => {
-            await window.scourgify.saveProviderConfig(config)
-            setProvider(await window.scourgify.providerStatus())
-          }}
-        />
-      ) : null}
+      <Suspense fallback={<p role="status">설정을 여는 중…</p>}>
+        {dataExchangeOpen ? (
+          <DataExchangeDialog
+            onClose={() => setDataExchangeOpen(false)}
+            onNodeOpen={(id) => {
+              app.setSelectedKnowledgeNodeId(id)
+              app.setViewMode("knowledge")
+              setDataExchangeOpen(false)
+            }}
+          />
+        ) : null}
+        {proposalOpen ? (
+          <KnowledgeProposalDialog
+            onClose={() => setProposalOpen(false)}
+            onJumpToEvidence={jumpToEvidence}
+          />
+        ) : null}
+        {settingsOpen ? (
+          <AppSettingsDialog
+            open={settingsOpen}
+            status={provider}
+            ocrStatus={ocrStatus}
+            workspace={workspace}
+            onWorkspaceChange={app.setWorkspaceTransient}
+            onProviderChange={app.setProvider}
+            onOcrStatusChange={app.setOcrStatus}
+            onClose={() => setSettingsOpen(false)}
+            appearanceOnly={false}
+            hostedCredentials={platform === "web" ? hostedCredentials : undefined}
+          />
+        ) : null}
+      </Suspense>
     </main>
   )
 }

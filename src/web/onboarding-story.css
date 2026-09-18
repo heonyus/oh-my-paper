@@ -1,0 +1,122 @@
+.onboarding-story {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.onboarding-chapter {
+  min-height: 100svh;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.82fr) minmax(420px, 1.18fr);
+  align-items: center;
+  gap: clamp(48px, 8vw, 112px);
+  padding: clamp(80px, 11vh, 128px) max(40px, calc((100vw - 1120px) / 2));
+}
+
+.onboarding-chapter-translation {
+  background: var(--ink);
+  color: var(--surface);
+}
+
+.onboarding-chapter-notes {
+  background: var(--surface-muted);
+}
+
+.onboarding-story-copy {
+  max-width: 31rem;
+}
+
+.onboarding-chapter-translation .onboarding-story-copy {
+  order: 2;
+}
+
+.onboarding-chapter-translation .onboarding-demo {
+  order: 1;
+}
+
+.onboarding-story-copy > span,
+.onboarding-final-copy > span {
+  display: block;
+  margin-bottom: 16px;
+  color: var(--focus);
+  font-size: var(--type-compact-size);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.onboarding-chapter-translation .onboarding-story-copy > span {
+  color: var(--note);
+}
+
+.onboarding-story-copy h2,
+.onboarding-final-copy h2 {
+  margin: 0;
+  font-size: clamp(38px, 4.7vw, 64px);
+  font-weight: 620;
+  line-height: 1.08;
+  letter-spacing: -0.05em;
+  text-wrap: balance;
+}
+
+.onboarding-story-copy p,
+.onboarding-final-copy p {
+  max-width: 34rem;
+  margin: 24px 0 0;
+  color: var(--ink-muted);
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+  font-size: 18px;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+
+.onboarding-chapter-translation .onboarding-story-copy p {
+  color: color-mix(in srgb, var(--surface) 72%, transparent);
+}
+
+.onboarding-final {
+  min-height: 76svh;
+  display: grid;
+  place-items: center;
+  padding: 80px 24px;
+  background: var(--ink);
+  color: var(--surface);
+  text-align: center;
+}
+
+.onboarding-final-copy {
+  max-width: 760px;
+}
+
+.onboarding-final-copy p {
+  margin-inline: auto;
+  color: color-mix(in srgb, var(--surface) 68%, transparent);
+}
+
+.onboarding-final-copy button {
+  min-height: 48px;
+  margin-top: 32px;
+  padding: 0 20px;
+}
+
+@media (max-width: 760px) {
+  .onboarding-chapter {
+    min-height: 100svh;
+    grid-template-columns: 1fr;
+    gap: 40px;
+    padding: 80px 20px;
+  }
+
+  .onboarding-chapter-translation .onboarding-story-copy,
+  .onboarding-chapter-translation .onboarding-demo {
+    order: initial;
+  }
+
+  .onboarding-story-copy h2,
+  .onboarding-final-copy h2 {
+    font-size: 38px;
+  }
+
+  .onboarding-story-copy p,
+  .onboarding-final-copy p {
+    font-size: var(--type-body-size);
+  }
+}

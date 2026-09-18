@@ -1,0 +1,58 @@
+.research-sources {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.research-sources h2 {
+  margin: 0;
+  font-size: var(--type-title-size);
+}
+
+.research-sources ol {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: 24px;
+}
+
+.research-sources li {
+  min-width: 0;
+}
+
+.research-sources a,
+.research-sources .research-source-link,
+.research-sources strong,
+.research-sources span,
+.research-sources code {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.research-sources .research-source-link {
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: underline;
+  background: transparent;
+  cursor: pointer;
+}
+
+.research-sources span,
+.research-sources code {
+  margin-top: var(--space-1);
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+}
+
+.research-sources code {
+  overflow-wrap: anywhere;
+}
+
+.research-sources p {
+  margin: var(--space-1) 0 0;
+  font-size: var(--type-toolbar-size);
+}

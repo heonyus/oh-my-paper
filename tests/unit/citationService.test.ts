@@ -1,4 +1,4 @@
-import { lookupCitation } from "../../src/electron/citationService"
+import { CitationLookupProvidersError, lookupCitation } from "../../src/electron/citationService"
 
 describe("lookupCitation", () => {
   it("returns the first structured Semantic Scholar match", async () => {
@@ -42,23 +42,29 @@ describe("lookupCitation", () => {
     expect(result).toEqual({ status: "not_found", paper: null, query: "[99]" })
   })
 
-  it("fails closed for malformed or unavailable responses", async () => {
-    const result = await lookupCitation({ key: "[1]", title: "Unknown paper" }, async () => ({
+  it("reports unavailable providers instead of caching false not_found", async () => {
+    const lookup = lookupCitation({ key: "[1]", title: "Unknown paper" }, async () => ({
       statusCode: 503,
       body: "unavailable",
     }))
 
-    expect(result.status).toBe("not_found")
-    expect(result.paper).toBeNull()
+    await expect(lookup).rejects.toBeInstanceOf(CitationLookupProvidersError)
+    await expect(lookup).rejects.toMatchObject({
+      failures: expect.arrayContaining([
+        expect.objectContaining({ kind: "http_error", httpStatus: 503 }),
+      ]),
+    })
   })
 
-  it("fails closed when Semantic Scholar returns malformed JSON", async () => {
-    const result = await lookupCitation({ key: "[1]", title: "Unknown paper" }, async () => ({
+  it("reports malformed provider responses instead of false not_found", async () => {
+    const lookup = lookupCitation({ key: "[1]", title: "Unknown paper" }, async () => ({
       statusCode: 200,
       body: "not-json",
     }))
 
-    expect(result).toEqual({ status: "not_found", paper: null, query: "Unknown paper" })
+    await expect(lookup).rejects.toMatchObject({
+      failures: expect.arrayContaining([expect.objectContaining({ provider: "semantic_scholar" })]),
+    })
   })
 
   it("falls back to Crossref when Semantic Scholar is rate limited", async () => {
@@ -92,6 +98,33 @@ describe("lookupCitation", () => {
       expect(result.paper.title).toBe("Attention Is All You Need")
       expect(result.paper.authors).toEqual(["Ashish Vaswani"])
     }
+  })
+
+  it("falls back after a malformed earlier provider response", async () => {
+    const result = await lookupCitation(
+      { key: "fallback", title: "Recovered through Crossref" },
+      async (url) =>
+        url.includes("semanticscholar")
+          ? { statusCode: 200, body: "not-json" }
+          : {
+              statusCode: 200,
+              body: JSON.stringify({
+                message: {
+                  items: [
+                    {
+                      DOI: "10.1000/recovered",
+                      title: ["Recovered through Crossref"],
+                      author: [],
+                      published: { "date-parts": [[2025]] },
+                      "container-title": [],
+                    },
+                  ],
+                },
+              }),
+            },
+    )
+
+    expect(result.status).toBe("found")
   })
 
   it("selects the verified title match instead of the first search result", async () => {

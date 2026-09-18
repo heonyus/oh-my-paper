@@ -2,8 +2,9 @@ import { createHash } from "node:crypto"
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { homedir, tmpdir } from "node:os"
 import { basename, join } from "node:path"
-import { _electron as electron, expect, test } from "@playwright/test"
+import { expect, test } from "@playwright/test"
 import { documentIdSchema } from "../../src/shared/schemas"
+import { launchSimulatedAuthenticatedApplication } from "../support/electron/launchSimulatedAuthenticatedApplication"
 
 test("figure and table actions stay outside PDF content", async () => {
   const temporaryRoot = await mkdtemp(join(tmpdir(), "scourgify-e2e-"))
@@ -41,16 +42,15 @@ test("figure and table actions stay outside PDF content", async () => {
       activeDocumentId: id,
     }),
   )
-  const application = await electron.launch({
-    args: ["."],
-    env: {
-      ...process.env,
+  const qa = await launchSimulatedAuthenticatedApplication({
+    userDataRoot: userData,
+    environment: {
       SCOURGIFY_LAYOUT_PYTHON: join(homedir(), ".scourgify", "layout-runtime", "bin", "python"),
-      SCOURGIFY_USER_DATA_DIR: userData,
     },
   })
   try {
-    const page = await application.firstWindow()
+    const page = await qa.application.firstWindow()
+    await page.getByRole("button", { name: "Scourgify deterministic fixture 열기" }).click()
     const layout = await page.evaluate(
       async (value) => window.scourgify.readDocumentLayout(value),
       documentId,
@@ -149,7 +149,7 @@ test("figure and table actions stay outside PDF content", async () => {
       "true",
     )
   } finally {
-    await application.close()
+    await qa.close()
     await rm(temporaryRoot, { recursive: true, force: true })
   }
 })

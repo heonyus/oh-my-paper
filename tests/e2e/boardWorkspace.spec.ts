@@ -2,7 +2,8 @@ import { createHash } from "node:crypto"
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { basename, join } from "node:path"
-import { _electron as electron, expect, test } from "@playwright/test"
+import { expect, test } from "@playwright/test"
+import { launchSimulatedAuthenticatedApplication } from "../support/electron/launchSimulatedAuthenticatedApplication"
 
 test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", async () => {
   const temporaryRoot = await mkdtemp(join(tmpdir(), "scourgify-board-e2e-"))
@@ -78,23 +79,31 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
       activeDocumentId: id,
     }),
   )
-  const application = await electron.launch({
-    args: ["."],
-    env: { ...process.env, SCOURGIFY_USER_DATA_DIR: userData },
-  })
+  const qa = await launchSimulatedAuthenticatedApplication({ userDataRoot: userData })
+  const application = qa.application
   try {
     const page = await application.firstWindow()
+    await expect(page.getByRole("region", { name: "PDF 라이브러리" })).toBeVisible()
+    await page.getByRole("button", { name: "Scourgify deterministic fixture 열기" }).click()
     await page.waitForSelector(".pdfViewer .page canvas", { timeout: 30_000 })
-    await expect(page.getByText("캐시된 논문 요약")).toBeVisible()
     const board = page.locator(".board-viewport")
+    const researchRail = page.getByRole("navigation", { name: "연구 사이드바 모드" })
+    const researchFlyout = page.locator(".research-sidebar-flyout")
+    await expect(researchFlyout).toHaveCSS("visibility", "hidden")
+    await researchRail.hover()
+    await expect(researchFlyout).toHaveCSS("visibility", "visible")
+    await expect(page.getByText("캐시된 논문 요약")).toBeVisible()
+    await board.hover({ position: { x: 24, y: 24 } })
+    await expect(researchFlyout).toHaveCSS("visibility", "hidden")
     const minimap = page.getByLabel("보드 미니맵")
     const minimapMap = page.getByLabel("미니맵 탐색")
     await expect(minimap).toBeVisible()
     await expect(minimapMap).toHaveAttribute("viewBox", "0 0 100 100")
-    expect(
-      (await page.getByRole("button", { name: "첫 페이지로" }).locator("svg").boundingBox())
-        ?.width ?? Number.POSITIVE_INFINITY,
-    ).toBeLessThanOrEqual(16)
+    const homeIcon = page.getByRole("button", { name: "첫 페이지로" }).locator("svg")
+    await expect(homeIcon).toBeVisible()
+    expect((await homeIcon.boundingBox())?.width ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(
+      16,
+    )
     const citationActionWinsPointerHit = await page.evaluate(() => {
       const root = document.createElement("div")
       root.style.cssText =
@@ -174,6 +183,71 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
     const afterAxisLock = await surfaceTranslation()
     expect(afterAxisLock.x).toBeCloseTo(beforeAxisLock.x)
     await page.getByRole("button", { name: "첫 페이지로" }).click()
+    await page.keyboard.press("Meta+f")
+    const retrieval = page.getByRole("dialog", { name: "문서 연관 검색" })
+    await expect(retrieval).toBeVisible()
+    const retrievalInput = retrieval.getByRole("searchbox", { name: "현재 문서 검색" })
+    await expect(retrievalInput).toBeFocused()
+    await retrievalInput.fill("document")
+    await expect.poll(async () => retrieval.getByRole("option").count()).toBeGreaterThanOrEqual(3)
+    await page.locator(".document-retrieval-layer").evaluate(async (element) => {
+      await Promise.all(
+        element.getAnimations({ subtree: true }).map((animation) => animation.finished),
+      )
+    })
+    await mkdir(join(process.cwd(), ".omo", "evidence", "document-retrieval"), {
+      recursive: true,
+    })
+    await page.screenshot({
+      path: join(process.cwd(), ".omo", "evidence", "document-retrieval", "actual-1536x1024.png"),
+    })
+    const browserWindow = await application.browserWindow(page)
+    const originalViewport = await browserWindow.evaluate((window) => {
+      const [width, height] = window.getContentSize()
+      return { width, height }
+    })
+    await browserWindow.evaluate((window) => window.setContentSize(1280, 800))
+    await expect.poll(async () => page.evaluate(() => window.innerWidth)).toBe(1280)
+    await expect(retrieval).toBeVisible()
+    expect((await retrieval.boundingBox())?.width ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(
+      1240,
+    )
+    await page.screenshot({
+      path: join(process.cwd(), ".omo", "evidence", "document-retrieval", "actual-1280x800.png"),
+    })
+    await browserWindow.evaluate((window) => window.setContentSize(920, 640))
+    await expect.poll(async () => page.evaluate(() => window.innerWidth)).toBe(920)
+    await expect(retrieval.getByRole("option").first()).toBeVisible()
+    expect((await retrieval.boundingBox())?.width ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(
+      880,
+    )
+    await page.screenshot({
+      path: join(process.cwd(), ".omo", "evidence", "document-retrieval", "actual-920x640.png"),
+    })
+    await browserWindow.evaluate(
+      (window, size) => window.setContentSize(size.width, size.height),
+      originalViewport,
+    )
+    await browserWindow.dispose()
+    await retrievalInput.fill("retrieval likelihood")
+    await expect(retrieval.getByRole("option")).toHaveCount(1)
+    await expect(retrieval.getByRole("option").first()).toContainText("p. 2")
+    await retrievalInput.press("Enter")
+    await expect(retrieval).toBeHidden()
+    await expect
+      .poll(
+        async () => (await page.locator('.pdfViewer .page[data-page-number="2"]').boundingBox())?.y,
+      )
+      .toBeGreaterThan(60)
+    await expect
+      .poll(async () => page.locator(".document-retrieval-hit").count())
+      .toBeGreaterThan(0)
+    await page.keyboard.press("Meta+f")
+    await expect(retrieval).toBeVisible()
+    await page.keyboard.press("Escape")
+    await expect(retrieval).toBeHidden()
+    await page.getByRole("button", { name: "첫 페이지로" }).click()
+    await researchRail.hover()
     const discussionInput = page.getByRole("textbox", { name: "논문 토론 질문" })
     await expect(discussionInput).toBeVisible()
     await expect(discussionInput).not.toHaveAttribute("placeholder")
@@ -191,6 +265,63 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
     ).toBe("light")
     const explanationCard = page.locator('.board-card[data-kind="explanation"]')
     await expect(explanationCard).toBeVisible()
+    await page.getByRole("button", { name: "번역 모드" }).click()
+    const pageTranslation = page.getByRole("region", { name: "페이지 번역" })
+    await expect(pageTranslation).toBeVisible()
+    expect(
+      await pageTranslation.evaluate((element) => element.parentElement?.className ?? ""),
+    ).toContain("board-world")
+    const translationLayer = await pageTranslation.evaluate((element) =>
+      Number.parseInt(getComputedStyle(element).zIndex, 10),
+    )
+    const cardLayer = await explanationCard.evaluate((element) =>
+      Number.parseInt(getComputedStyle(element).zIndex, 10),
+    )
+    expect(cardLayer).toBeGreaterThan(translationLayer)
+    const cardWinsOverlap = await page.evaluate(() => {
+      const card = document.querySelector<HTMLElement>('.board-card[data-kind="explanation"]')
+      const translation = document.querySelector<HTMLElement>(".page-translation-pane")
+      if (!card || !translation) return false
+      const originalLeft = translation.style.left
+      const originalTop = translation.style.top
+      translation.style.left = card.style.left
+      translation.style.top = card.style.top
+      const cardRect = card.getBoundingClientRect()
+      const translationRect = translation.getBoundingClientRect()
+      const left = Math.max(cardRect.left, translationRect.left)
+      const top = Math.max(cardRect.top, translationRect.top)
+      const right = Math.min(cardRect.right, translationRect.right)
+      const bottom = Math.min(cardRect.bottom, translationRect.bottom)
+      const cardWins =
+        right > left &&
+        bottom > top &&
+        Boolean(
+          document.elementFromPoint((left + right) / 2, (top + bottom) / 2)?.closest(".board-card"),
+        )
+      translation.style.left = originalLeft
+      translation.style.top = originalTop
+      return cardWins
+    })
+    expect(cardWinsOverlap).toBe(true)
+    const firstPageBeforeTranslationZoom = await firstPage.boundingBox()
+    const translationBeforeZoom = await pageTranslation.boundingBox()
+    await page.getByRole("button", { name: "확대" }).click()
+    await expect
+      .poll(async () => (await pageTranslation.boundingBox())?.width ?? 0)
+      .toBeGreaterThan(translationBeforeZoom?.width ?? 0)
+    const firstPageAfterTranslationZoom = await firstPage.boundingBox()
+    const translationAfterZoom = await pageTranslation.boundingBox()
+    const translationZoom = Number(await page.locator(".pdf-surface").getAttribute("data-zoom"))
+    const translatedGap =
+      (translationAfterZoom?.x ?? 0) -
+      (firstPageAfterTranslationZoom?.x ?? 0) -
+      (firstPageAfterTranslationZoom?.width ?? 0)
+    expect(translatedGap).toBeCloseTo(16 * translationZoom, 0)
+    await page.getByRole("button", { name: "축소" }).click()
+    await expect
+      .poll(async () => (await firstPage.boundingBox())?.width ?? 0)
+      .toBeCloseTo(firstPageBeforeTranslationZoom?.width ?? 0, 0)
+    await page.getByRole("button", { name: "AI 설명 모드" }).click()
     const beforeCardWheel = await surfaceTranslation()
     await explanationCard.locator(".card-body").dispatchEvent("wheel", { deltaY: 120 })
     expect(await surfaceTranslation()).toEqual(beforeCardWheel)
@@ -237,7 +368,7 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
         .toBeGreaterThan(beforeResize.width)
     }
     await expect(explanationCard.getByLabel("카드에 후속 질문")).toBeVisible()
-    await page.getByRole("button", { name: "포스트잇 도구" }).click()
+    await page.getByRole("button", { name: "포스트잇 모드" }).click()
     await page.locator(".board-viewport").click({ position: { x: 620, y: 720 } })
     const editor = page.getByRole("textbox", { name: "포스트잇 내용" })
     await editor.fill("**검토 메모**\n\n$$E = mc^2$$")
@@ -246,6 +377,7 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
     await expect(stickyCard.getByText("검토 메모", { exact: true })).toBeVisible()
     await expect(stickyCard.locator(".katex-display")).toBeVisible()
 
+    await researchRail.hover()
     const resize = page.getByRole("separator", { name: "연구 사이드바 너비 조절" })
     await resize.focus()
     await resize.press("ArrowRight")
@@ -325,7 +457,7 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
       )
       .toBeCloseTo(rapidZoom.requested, 2)
   } finally {
-    await application.close()
+    await qa.close()
     await rm(temporaryRoot, { recursive: true, force: true })
   }
 })

@@ -1,0 +1,281 @@
+.onboarding-shell {
+  position: relative;
+  min-height: 100dvh;
+  overflow-x: clip;
+  background: var(--ink);
+  color: var(--surface);
+  font-family:
+    "Geist Variable", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+}
+
+.onboarding-hero {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.onboarding-scene-shift {
+  position: absolute;
+  inset: -16px;
+  overflow: hidden;
+}
+
+.onboarding-scene-shift::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ink) 2%, transparent) 30%,
+    color-mix(in srgb, var(--ink) 18%, transparent) 68%,
+    color-mix(in srgb, var(--ink) 78%, transparent) 100%
+  );
+  content: "";
+}
+
+.onboarding-scene-image,
+.onboarding-scene-light,
+.onboarding-scene-mist {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.onboarding-scene-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  animation: onboarding-breathe 18s ease-in-out infinite alternate;
+}
+
+.onboarding-scene-light {
+  background: radial-gradient(
+    circle at 77% 8%,
+    color-mix(in srgb, var(--note) 22%, transparent),
+    transparent 38%
+  );
+  mix-blend-mode: screen;
+  animation: onboarding-light 12s ease-in-out infinite alternate;
+}
+
+.onboarding-scene-mist {
+  inset: 8% -8% -10% 18%;
+  background:
+    radial-gradient(
+      ellipse at 28% 42%,
+      color-mix(in srgb, var(--surface) 20%, transparent),
+      transparent 45%
+    ),
+    radial-gradient(
+      ellipse at 65% 62%,
+      color-mix(in srgb, var(--canvas) 13%, transparent),
+      transparent 42%
+    );
+  animation: onboarding-mist 16s ease-in-out infinite alternate;
+}
+
+.onboarding-entry {
+  position: absolute;
+  right: clamp(24px, 5vw, 72px);
+  bottom: clamp(32px, 7vh, 68px);
+  left: clamp(24px, 5vw, 72px);
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 620px) minmax(220px, 300px);
+  align-items: end;
+  justify-content: space-between;
+  gap: 40px;
+  animation: onboarding-enter 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.onboarding-copy {
+  min-width: 0;
+}
+
+.onboarding-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.onboarding-brand-mark {
+  width: 56px;
+  height: 76px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: visible;
+}
+
+.onboarding-brand-mark img {
+  width: 96px;
+  height: 96px;
+  max-width: none;
+  object-fit: contain;
+  filter: brightness(2.15) saturate(1.08)
+    drop-shadow(0 0 1px color-mix(in srgb, var(--note) 78%, transparent))
+    drop-shadow(0 4px 14px color-mix(in srgb, var(--ink) 22%, transparent));
+}
+
+.onboarding-category {
+  margin: 0 0 5px;
+  color: var(--action-subtle);
+  font-size: var(--type-compact-size);
+  font-weight: 650;
+  letter-spacing: 0.08em;
+}
+
+.onboarding-brand h1 {
+  margin: 0;
+  color: var(--surface);
+  font-size: var(--type-onboarding-display);
+  font-weight: 600;
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+  text-shadow: 0 2px 24px color-mix(in srgb, var(--ink) 38%, transparent);
+  white-space: nowrap;
+}
+
+.onboarding-description {
+  max-width: 32rem;
+  margin: 16px 0 0 64px;
+  color: color-mix(in srgb, var(--surface) 88%, transparent);
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+  font-size: var(--type-onboarding-body);
+  font-weight: 500;
+  line-height: 1.5;
+  text-wrap: balance;
+}
+
+.onboarding-action {
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+}
+
+.onboarding-primary-action {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+  border: 1px solid color-mix(in srgb, var(--surface) 42%, transparent);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 650;
+  cursor: pointer;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 22%, transparent);
+  transition:
+    transform 120ms ease,
+    background-color 120ms ease;
+}
+
+.onboarding-primary-action:hover {
+  background: var(--action-subtle);
+  transform: translateY(-1px);
+}
+
+.onboarding-primary-action:active {
+  transform: scale(0.98);
+}
+
+.onboarding-primary-action:disabled {
+  cursor: default;
+  opacity: 0.72;
+  transform: none;
+}
+
+.onboarding-action p {
+  max-width: 270px;
+  margin: 0;
+  color: color-mix(in srgb, var(--surface) 72%, transparent);
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+  font-size: var(--type-compact-size);
+  line-height: 1.45;
+  text-align: right;
+  text-wrap: pretty;
+}
+
+.onboarding-scroll-cue {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: color-mix(in srgb, var(--surface) 68%, transparent);
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+  font-size: var(--type-compact-size);
+  text-decoration: none;
+  transform: translateX(-50%);
+  transition: color 120ms ease;
+}
+
+.onboarding-scroll-cue:hover,
+.onboarding-scroll-cue:focus-visible {
+  color: var(--surface);
+}
+
+@media (min-width: 721px) and (max-width: 900px) {
+  .onboarding-description {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .onboarding-shell {
+    --type-onboarding-display: 44px;
+    --type-onboarding-body: var(--type-body-size);
+  }
+
+  .onboarding-entry {
+    right: 20px;
+    bottom: 58px;
+    left: 20px;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .onboarding-brand-mark {
+    width: 42px;
+    height: 58px;
+  }
+
+  .onboarding-brand-mark img {
+    width: 72px;
+    height: 72px;
+  }
+
+  .onboarding-description {
+    margin: 12px 0 0 50px;
+  }
+
+  .onboarding-action {
+    justify-items: stretch;
+  }
+
+  .onboarding-action button {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  .onboarding-scroll-cue {
+    right: 20px;
+    bottom: 14px;
+    left: auto;
+    transform: none;
+  }
+
+  .onboarding-action p {
+    max-width: none;
+    text-align: left;
+  }
+
+  .onboarding-scene-image {
+    object-position: 62% center;
+  }
+}

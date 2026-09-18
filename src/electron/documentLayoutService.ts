@@ -10,6 +10,7 @@ import {
 } from "../shared/documentLayout"
 import type { DocumentId } from "../shared/schemas"
 import { resolveDocumentPath } from "./documentService"
+import { buildOfflineSubprocessEnv } from "./offlineSubprocessEnvironment"
 import type { WorkspaceStore } from "./workspaceStore"
 
 const executeFile = promisify(execFile)
@@ -100,7 +101,13 @@ export class DocumentLayoutService {
       await mkdir(cacheDirectory, { recursive: true })
       const pdfPath = await resolveDocumentPath(id, store)
       await executeFile(python, [script, pdfPath, temporaryFile], {
-        env: { ...process.env, PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK: "True" },
+        env: buildOfflineSubprocessEnv({
+          HF_HUB_OFFLINE: "1",
+          TRANSFORMERS_OFFLINE: "1",
+          PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK: "True",
+          PADDLE_PDX_CACHE_HOME: join(this.#options.home ?? homedir(), ".paddlex"),
+          HF_HOME: join(this.#options.home ?? homedir(), ".cache", "huggingface"),
+        }),
         timeout: 600_000,
         maxBuffer: 16 * 1024 * 1024,
       })

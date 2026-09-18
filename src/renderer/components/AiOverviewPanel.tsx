@@ -9,8 +9,9 @@ import { SidebarInsightSection } from "./SidebarInsightSection"
 
 type InsightKey = DocumentInsightKind
 type InsightState = { readonly value: string; readonly loading: boolean; readonly error: string }
+type InsightRecord = Record<InsightKey, InsightState>
 
-const initialState: Readonly<Record<InsightKey, InsightState>> = {
+const initialState: InsightRecord = {
   keywords: { value: "", loading: false, error: "" },
   threeLines: { value: "", loading: false, error: "" },
   summary: { value: "", loading: false, error: "" },
@@ -22,7 +23,23 @@ const config: Readonly<Record<InsightKey, { readonly title: string; readonly act
     threeLines: { title: "3줄 요약", action: "three_line_summary" },
     summary: { title: "요약", action: "paper_summary" },
   }
-const insightKeys: readonly InsightKey[] = ["keywords", "threeLines", "summary"]
+const leadingInsightKeys: readonly InsightKey[] = ["keywords", "threeLines"]
+const overviewRequests = new Map<string, Promise<string>>()
+const emptyCachedInsights: readonly DocumentInsight[] = []
+
+function mergeCachedInsights(
+  current: InsightRecord,
+  cached: readonly DocumentInsight[],
+): InsightRecord {
+  let next = current
+  for (const insight of cached) {
+    const state = current[insight.kind]
+    if (state.value === insight.value && !state.loading && !state.error) continue
+    if (next === current) next = { ...current }
+    next[insight.kind] = { value: insight.value, loading: false, error: "" }
+  }
+  return next
+}
 
 export function AiOverviewPanel({
   document,
@@ -30,9 +47,8 @@ export function AiOverviewPanel({
   provider,
   onAiRequest,
   onSave,
-  cachedInsights = [],
+  cachedInsights = emptyCachedInsights,
   onInsightChange,
-  activationToken = 0,
 }: {
   readonly document: DocumentRecord
   readonly currentPage: number
@@ -44,19 +60,18 @@ export function AiOverviewPanel({
   readonly activationToken?: number | undefined
 }): JSX.Element {
   const running = useRef(new Set<InsightKey>())
-  const [insights, setInsights] = useState(() => ({
-    ...initialState,
-    ...Object.fromEntries(
-      cachedInsights.map((insight) => [
-        insight.kind,
-        { value: insight.value, loading: false, error: "" },
-      ]),
-    ),
-  }))
+  const [insights, setInsights] = useState(() => mergeCachedInsights(initialState, cachedInsights))
   const insightsRef = useRef(insights)
   useEffect(() => {
     insightsRef.current = insights
   }, [insights])
+  useEffect(() => {
+    setInsights((current) => {
+      const next = mergeCachedInsights(current, cachedInsights)
+      insightsRef.current = next
+      return next
+    })
+  }, [cachedInsights])
 
   const generate = useCallback(
     async (key: InsightKey): Promise<void> => {
@@ -67,21 +82,27 @@ export function AiOverviewPanel({
         [key]: { value: "", loading: true, error: "" },
       }))
       try {
-        const value = await onAiRequest(
-          {
-            action: config[key].action,
-            page: 1,
-            quote: document.title,
-            paperContext: paperOverviewContext(),
-            before: "",
-            after: "",
-          },
-          (delta) =>
-            setInsights((current) => ({
-              ...current,
-              [key]: { value: current[key].value + delta, loading: true, error: "" },
-            })),
-        )
+        const requestKey = `${document.id}:${key}`
+        const activeRequest = overviewRequests.get(requestKey)
+        const request =
+          activeRequest ??
+          onAiRequest(
+            {
+              action: config[key].action,
+              page: 1,
+              quote: document.title,
+              paperContext: paperOverviewContext(),
+              before: "",
+              after: "",
+            },
+            (delta) =>
+              setInsights((current) => ({
+                ...current,
+                [key]: { value: current[key].value + delta, loading: true, error: "" },
+              })),
+          )
+        if (!activeRequest) overviewRequests.set(requestKey, request)
+        const value = await request
         setInsights((current) => ({ ...current, [key]: { value, loading: false, error: "" } }))
         onInsightChange?.(key, value)
       } catch {
@@ -96,28 +117,17 @@ export function AiOverviewPanel({
           },
         }))
       } finally {
+        overviewRequests.delete(`${document.id}:${key}`)
         running.current.delete(key)
       }
     },
-    [document.title, onAiRequest, onInsightChange, provider.configured],
+    [document.id, document.title, onAiRequest, onInsightChange, provider.configured],
   )
-  const generateRef = useRef(generate)
-  useEffect(() => {
-    generateRef.current = generate
-  }, [generate])
-
-  useEffect(() => {
-    if (activationToken <= 0) return
-    for (const key of insightKeys) {
-      const state = insightsRef.current[key]
-      if (!state.value && !state.loading) void generateRef.current(key)
-    }
-  }, [activationToken])
-
   async function ask(
     question: string,
     history: readonly AiHistoryMessage[],
     onDelta?: AiDeltaHandler,
+    signal?: AbortSignal,
   ): Promise<string> {
     return onAiRequest(
       {
@@ -130,6 +140,7 @@ export function AiOverviewPanel({
         history: [...history],
       },
       onDelta,
+      signal,
     )
   }
 
@@ -142,7 +153,7 @@ export function AiOverviewPanel({
         </div>
       </header>
       <div className="ai-overview-scroll">
-        {insightKeys.map((key) => (
+        {leadingInsightKeys.map((key) => (
           <SidebarInsightSection
             key={key}
             title={config[key].title}
@@ -153,7 +164,17 @@ export function AiOverviewPanel({
             onSave={() => onSave(config[key].title, insights[key].value)}
           />
         ))}
-        <PaperDiscussion provider={provider} onAsk={ask} />
+        <div className="summary-discussion-flow">
+          <SidebarInsightSection
+            title={config.summary.title}
+            value={insights.summary.value}
+            loading={insights.summary.loading}
+            error={insights.summary.error}
+            onGenerate={() => void generate("summary")}
+            onSave={() => onSave(config.summary.title, insights.summary.value)}
+          />
+          <PaperDiscussion provider={provider} documentId={document.id} onAsk={ask} />
+        </div>
       </div>
     </section>
   )

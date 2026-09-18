@@ -22,8 +22,8 @@ export function usePdfZoomCommit({
     if (!session || !container) return
     if (timerRef.current !== null) window.clearTimeout(timerRef.current)
     timerRef.current = window.setTimeout(() => {
-      session.viewer.currentScale = zoom
       requestAnimationFrame(() => {
+        session.viewer.currentScale = zoom
         syncViewerWidth(container, session.viewer)
         onScaleCommitted?.(zoom)
         overlayRefreshRef.current?.()

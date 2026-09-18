@@ -1,0 +1,93 @@
+@font-face {
+  font-family: "Wanted Sans Variable";
+  src: url("../../assets/fonts/WantedSansVariable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Pretendard Variable";
+  src: url("../../assets/fonts/PretendardVariable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "SUIT Variable";
+  src: url("../../assets/fonts/SUIT-Variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Variable";
+  src: url("../../assets/fonts/Geist-Variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root {
+  --ui-font-family: "Wanted Sans Variable", "Apple SD Gothic Neo", sans-serif;
+  --canvas: #e8e9dc;
+  --canvas-dot: #d9cfb5;
+  --surface: #fffdf7;
+  --surface-muted: #eee7d5;
+  --surface-raised: #fffdf7;
+  --ink: #0c1e20;
+  --ink-muted: #716745;
+  --line: #d8ccae;
+  --action: #735a26;
+  --action-hover: #5e4919;
+  --focus: #ad7015;
+  --action-subtle: #f4e4b8;
+  --note: #ffe398;
+  --success: #394134;
+  --warning: #ad7015;
+  --error: #9c4634;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #040f0f;
+  --canvas-dot: #1f3131;
+  --surface: #0c1e20;
+  --surface-muted: #1f3131;
+  --surface-raised: #1f3131;
+  --ink: #f4f0e4;
+  --ink-muted: #b8b49d;
+  --line: #394134;
+  --action: #efc245;
+  --action-hover: #ffe398;
+  --focus: #efc245;
+  --action-subtle: #394134;
+  --note: #716745;
+  --success: #9aaa7f;
+  --warning: #efc245;
+  --error: #e98b7a;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="system"] {
+    color-scheme: dark;
+    --canvas: #040f0f;
+    --canvas-dot: #1f3131;
+    --surface: #0c1e20;
+    --surface-muted: #1f3131;
+    --surface-raised: #1f3131;
+    --ink: #f4f0e4;
+    --ink-muted: #b8b49d;
+    --line: #394134;
+    --action: #efc245;
+    --action-hover: #ffe398;
+    --focus: #efc245;
+    --action-subtle: #394134;
+    --note: #716745;
+    --success: #9aaa7f;
+    --warning: #efc245;
+    --error: #e98b7a;
+  }
+}

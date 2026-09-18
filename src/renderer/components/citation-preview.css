@@ -1,0 +1,49 @@
+.citation-focus-trigger {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 3px;
+  white-space: nowrap;
+  color: transparent;
+  background: transparent;
+  font: inherit;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.citation-focus-trigger:focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: 1px;
+}
+.citation-preview-popover {
+  animation: citation-preview-enter 110ms ease-out;
+}
+.citation-preview-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.citation-preview-heading svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--ink-muted);
+}
+@keyframes citation-preview-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .citation-preview-popover {
+    animation: none;
+  }
+}

@@ -26,6 +26,7 @@ export function selectionAiRequest(
         quote: selection.quote,
         before: selection.context.before,
         after: selection.context.after,
+        ...(selection.context.section ? { sectionContext: selection.context.section } : {}),
       }
   }
 }

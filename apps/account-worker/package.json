@@ -1,0 +1,23 @@
+{
+  "name": "@scourgify/account-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typegen": "wrangler types",
+    "typecheck": "wrangler types --check && tsc --noEmit",
+    "test": "vitest run",
+    "dev:local": "wrangler dev --local",
+    "db:migrate:local": "wrangler d1 migrations apply scourgify-account-local --local"
+  },
+  "dependencies": {
+    "jose": "^6.2.10",
+    "zod": "^4.5.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0",
+    "wrangler": "^4.128.0"
+  }
+}

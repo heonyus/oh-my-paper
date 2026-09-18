@@ -43,5 +43,23 @@ describe("workspace boundary", () => {
 
     // Then
     expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.uiFontFamily).toBe("wanted")
+      expect(result.data.uiFontScale).toBe(1)
+    }
+  })
+
+  it("accepts the full UI scale range and rejects values outside it", () => {
+    const base = {
+      documents: [],
+      cards: [],
+      sidebarOpen: true,
+      viewport: { x: 0, y: 0, zoom: 0.72 },
+      activeDocumentId: null,
+    }
+
+    expect(workspaceSchema.parse({ ...base, uiFontScale: 0.5 }).uiFontScale).toBe(0.5)
+    expect(workspaceSchema.parse({ ...base, uiFontScale: 2 }).uiFontScale).toBe(2)
+    expect(workspaceSchema.safeParse({ ...base, uiFontScale: 0.45 }).success).toBe(false)
   })
 })

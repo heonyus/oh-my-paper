@@ -5,9 +5,18 @@ export const documentLayoutLabelSchema = z.enum([
   "table",
   "chart",
   "image",
+  "text",
+  "equation",
+  "code",
+  "list",
   "paragraph_title",
   "doc_title",
   "figure_title",
+  "header",
+  "footer",
+  "page_number",
+  "aside_text",
+  "page_footnote",
 ])
 
 export const documentLayoutBoxSchema = z.object({
@@ -17,21 +26,32 @@ export const documentLayoutBoxSchema = z.object({
   y: z.number().nonnegative().finite(),
   width: z.number().positive().finite(),
   height: z.number().positive().finite(),
+  order: z.number().int().nonnegative().optional(),
+  content: z.string().max(40_000).optional(),
 })
 
 export const documentLayoutPageSchema = z.object({
   pageNumber: z.number().int().positive(),
   width: z.number().positive().finite(),
   height: z.number().positive().finite(),
+  parser: z.literal("mineru").optional(),
   boxes: z.array(documentLayoutBoxSchema),
 })
 
-export const documentLayoutSchema = z.object({
-  version: z.literal(2),
-  model: z.literal("PP-DocLayout_plus-L"),
-  sourceHash: sha256Schema,
-  pages: z.array(documentLayoutPageSchema),
-})
+export const documentLayoutSchema = z
+  .object({
+    version: z.union([z.literal(2), z.literal(3)]),
+    model: z.enum(["PP-DocLayout_plus-L", "MinerU2.5-Pro-2605-1.2B"]),
+    sourceHash: sha256Schema,
+    pages: z.array(documentLayoutPageSchema),
+  })
+  .superRefine((layout, context) => {
+    const validPair =
+      (layout.version === 2 && layout.model === "PP-DocLayout_plus-L") ||
+      (layout.version === 3 && layout.model === "MinerU2.5-Pro-2605-1.2B")
+    if (!validPair)
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "invalid layout model" })
+  })
 
 export const documentLayoutRequestSchema = z.object({ id: documentIdSchema })
 export const documentLayoutResultSchema = z.discriminatedUnion("status", [

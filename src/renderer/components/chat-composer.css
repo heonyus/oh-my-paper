@@ -3,7 +3,7 @@
   gap: 4px;
   padding: 8px;
   border: 1px solid transparent;
-  border-radius: 16px;
+  border-radius: 8px;
   background: var(--surface-muted);
   transition:
     border-color 120ms ease,
@@ -12,6 +12,36 @@
 .chat-composer:focus-within {
   border-color: color-mix(in srgb, var(--ink-muted) 24%, var(--line));
   background: var(--surface);
+}
+.chat-response-status {
+  min-height: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px 0;
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+  line-height: 1.4;
+}
+.chat-response-status[data-active="false"] {
+  display: none;
+}
+.chat-response-status-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: currentColor;
+  animation: chat-response-pulse 1.2s ease-in-out infinite;
+}
+@keyframes chat-response-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.9;
+  }
 }
 .chat-composer textarea {
   width: 100%;
@@ -68,9 +98,26 @@
   cursor: default;
   opacity: 0.72;
 }
+.chat-composer .chat-cancel-button {
+  background: var(--action);
+}
+.chat-composer .chat-cancel-button:hover {
+  background: var(--ink);
+}
+.card-chat > .chat-composer {
+  padding: 10px 12px;
+  border-color: var(--line);
+  border-radius: 12px;
+}
 .ai-chat-sidebar > .chat-composer {
   margin: 12px 14px 14px;
 }
 .discussion-section > .chat-composer {
   margin-top: 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-response-status-dot {
+    animation: none;
+    opacity: 0.65;
+  }
 }

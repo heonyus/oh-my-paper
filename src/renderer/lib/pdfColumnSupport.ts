@@ -1,5 +1,6 @@
 import type { PDFDocumentLoadingTask, PDFDocumentProxy } from "pdfjs-dist/legacy/build/pdf.mjs"
 import type { PDFViewer } from "pdfjs-dist/legacy/web/pdf_viewer.mjs"
+import type { ScourgifyApi } from "../../shared/ipc"
 
 const PDF_URL_PATTERN = /https:\/\/[^\s<>"')]+/iu
 
@@ -7,6 +8,13 @@ export type ViewerSession = {
   readonly viewer: PDFViewer
   readonly pdf: PDFDocumentProxy
   readonly loadingTask: PDFDocumentLoadingTask
+  readonly preparation?: Promise<void>
+}
+
+export function disposeViewerSession(session: ViewerSession): void {
+  void (session.preparation ?? Promise.resolve())
+    .catch(() => undefined)
+    .then(() => session.loadingTask.destroy())
 }
 
 export function urlFromPdfText(value: string): string | null {
@@ -27,4 +35,31 @@ export function urlFromPdfClickTarget(_target: EventTarget | null): string | nul
   }
   const textLeaf = _target.closest<HTMLElement>(".textLayer span, .pdf-link-text")
   return textLeaf ? urlFromPdfText(textLeaf.textContent ?? "") : null
+}
+
+export function bindPdfExternalLinks(
+  container: HTMLElement,
+  openExternal: ScourgifyApi["openExternal"],
+): () => void {
+  const handleClick = (event: MouseEvent): void => {
+    const url = urlFromPdfClickTarget(event.target)
+    if (!url) return
+    event.preventDefault()
+    event.stopPropagation()
+    void openExternal({ url })
+  }
+  container.addEventListener("click", handleClick, true)
+  return () => container.removeEventListener("click", handleClick, true)
+}
+
+export function pageJumpHandler(
+  viewer: PDFViewer,
+  onPageJump?: ((page: number, pageElement: HTMLElement) => void) | undefined,
+): (page: number) => void {
+  return (page) => {
+    viewer.currentPageNumber = page
+    viewer.scrollPageIntoView({ pageNumber: page })
+    const pageElement = viewer.getPageView(page - 1)?.div
+    if (pageElement) onPageJump?.(page, pageElement)
+  }
 }

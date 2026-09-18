@@ -1,0 +1,206 @@
+import { AI_CONTEXT_MAX_CHARACTERS } from "../../shared/ipc"
+import { parsePageTranslationResponse } from "./pageTranslationJson"
+import { bindPageTranslationSpans, sourceElementMatchesBlock } from "./pageTranslationSpanMapping"
+import { normalizeExtractedPdfText } from "./pdfTextLines"
+
+export type PageSourceBlock = {
+  readonly id: string
+  readonly kind: "heading" | "body"
+  readonly source: string
+  readonly parsedBlockId?: string
+  readonly sourceBounds?: {
+    readonly x: number
+    readonly y: number
+    readonly width: number
+    readonly height: number
+  }
+  readonly sourcePageWidth?: number
+  readonly sourcePageHeight?: number
+}
+
+export type PageTranslationBlock = PageSourceBlock & { readonly translation: string }
+
+type SourceRun = {
+  readonly element: HTMLElement
+  readonly text: string
+  readonly size: number
+  readonly weight: number
+  readonly left: number
+  readonly top: number
+  readonly width: number
+  readonly height: number
+}
+
+const translationChunkLimit = AI_CONTEXT_MAX_CHARACTERS - 800
+
+function median(values: readonly number[]): number {
+  if (values.length === 0) return 0
+  const ordered = [...values].sort((left, right) => left - right)
+  return ordered[Math.floor(ordered.length / 2)] ?? 0
+}
+
+function joinedSource(runs: readonly SourceRun[]): string {
+  const value = runs.reduce((joined, run, index) => {
+    const previous = runs[index - 1]
+    if (!previous) return run.text
+    const sameLine =
+      Math.abs(run.top - previous.top) <= Math.max(run.height, previous.height) * 0.55
+    const gap = run.left - (previous.left + previous.width)
+    const touchingGlyphs = sameLine && gap <= Math.max(2, Math.min(run.size, previous.size) * 0.16)
+    const hyphenatedLine = !sameLine && /\p{Ll}-$/u.test(joined) && /^\p{Ll}/u.test(run.text)
+    const prefix = hyphenatedLine ? joined.slice(0, -1) : joined
+    return `${prefix}${touchingGlyphs || hyphenatedLine ? "" : " "}${run.text}`
+  }, "")
+  return normalizeExtractedPdfText(value)
+    .replaceAll("ﬁ", "fi")
+    .replaceAll("ﬂ", "fl")
+    .replace(/(?<=\p{Ll})-\s+(?=\p{Ll})/gu, "")
+}
+
+function sentenceEnds(value: string): boolean {
+  return /[.!?](?:[”’"')\]])?(?:\s*\d+(?:[–,-]\d+)*)?$/u.test(value)
+}
+
+export function clearPageSourceMapping(pageNumber: number): void {
+  const page = document.querySelector<HTMLElement>(`.page[data-page-number="${pageNumber}"]`)
+  for (const span of page?.querySelectorAll<HTMLElement>("[data-page-translation-block]") ?? []) {
+    span.removeAttribute("data-page-translation-block")
+    span.removeAttribute("data-page-translation-active")
+  }
+  const overlay = document.querySelector<HTMLElement>(
+    `.paper-structure-host > [data-page-number="${pageNumber}"]`,
+  )
+  for (const bound of overlay?.querySelectorAll<HTMLElement>(".page-translation-source-bound") ??
+    [])
+    bound.remove()
+}
+
+export function bindPageSourceBounds(pageNumber: number, blocks: readonly PageSourceBlock[]): void {
+  clearPageSourceMapping(pageNumber)
+  const page = document.querySelector<HTMLElement>(`.page[data-page-number="${pageNumber}"]`)
+  const matched = bindPageTranslationSpans(page, blocks)
+  const overlay = document.querySelector<HTMLElement>(
+    `.paper-structure-host > [data-page-number="${pageNumber}"]`,
+  )
+  if (!overlay) return
+  for (const block of blocks) {
+    if (matched.has(block.id)) continue
+    if (!block.sourceBounds || !block.sourcePageWidth || !block.sourcePageHeight) continue
+    const bound = document.createElement("div")
+    bound.className = "page-translation-source-bound"
+    bound.setAttribute("data-page-translation-block", block.id)
+    bound.style.left = `${(block.sourceBounds.x / block.sourcePageWidth) * 100}%`
+    bound.style.top = `${(block.sourceBounds.y / block.sourcePageHeight) * 100}%`
+    bound.style.width = `${(block.sourceBounds.width / block.sourcePageWidth) * 100}%`
+    bound.style.height = `${(block.sourceBounds.height / block.sourcePageHeight) * 100}%`
+    overlay.append(bound)
+  }
+}
+
+export function setPageSourceActive(pageNumber: number, blockId: string, active: boolean): void {
+  const page = document.querySelector<HTMLElement>(`.page[data-page-number="${pageNumber}"]`)
+  const overlay = document.querySelector<HTMLElement>(
+    `.paper-structure-host > [data-page-number="${pageNumber}"]`,
+  )
+  const elements = [
+    ...(page?.querySelectorAll<HTMLElement>("[data-page-translation-block]") ?? []),
+    ...(overlay?.querySelectorAll<HTMLElement>("[data-page-translation-block]") ?? []),
+  ]
+  for (const span of elements) {
+    if (!sourceElementMatchesBlock(span, blockId)) continue
+    if (active) span.setAttribute("data-page-translation-active", "true")
+    else span.removeAttribute("data-page-translation-active")
+  }
+}
+
+export function extractPageSourceBlocks(pageNumber: number): readonly PageSourceBlock[] | null {
+  const page = document.querySelector<HTMLElement>(`.page[data-page-number="${pageNumber}"]`)
+  if (!page) return null
+  clearPageSourceMapping(pageNumber)
+  const runs = [...page.querySelectorAll<HTMLElement>(".textLayer span")].flatMap((element) => {
+    const text = element.textContent?.trim() ?? ""
+    const rect = element.getBoundingClientRect()
+    if (!text || rect.width <= 0 || rect.height <= 0) return []
+    const style = getComputedStyle(element)
+    const weight = Number.parseInt(style.fontWeight, 10)
+    return [
+      {
+        element,
+        text,
+        size: Number.parseFloat(style.fontSize) || rect.height,
+        weight,
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+      },
+    ]
+  })
+  if (runs.length === 0) return null
+  const bodySize = median(runs.filter((run) => run.text.length >= 12).map((run) => run.size))
+  const blocks: PageSourceBlock[] = []
+  let parts: SourceRun[] = []
+  let kind: PageSourceBlock["kind"] = "body"
+  const flush = (): void => {
+    const source = joinedSource(parts)
+    if (!source) return
+    const id = `p${pageNumber}-b${blocks.length + 1}`
+    blocks.push({ id, kind, source })
+    for (const part of parts) part.element.setAttribute("data-page-translation-block", id)
+    parts = []
+    kind = "body"
+  }
+  for (const run of runs) {
+    const heading =
+      run.text.length <= 160 && (run.size >= Math.max(12, bodySize * 1.14) || run.weight >= 650)
+    const previous = parts.at(-1)
+    const visualGap = previous ? run.top - (previous.top + previous.height) : 0
+    const nextKind = heading ? "heading" : "body"
+    if (
+      parts.length > 0 &&
+      (nextKind !== kind || visualGap > Math.max(run.height, previous?.height ?? 0) * 0.9)
+    )
+      flush()
+    kind = nextKind
+    parts.push(run)
+    const source = joinedSource(parts)
+    if ((!heading && sentenceEnds(source)) || source.length >= 360) flush()
+  }
+  flush()
+  return blocks.length > 0 ? blocks : null
+}
+
+export function pageTranslationBatches(
+  blocks: readonly PageSourceBlock[],
+): readonly (readonly PageSourceBlock[])[] {
+  const batches: PageSourceBlock[][] = []
+  let current: PageSourceBlock[] = []
+  let characters = 0
+  for (const block of blocks) {
+    const size = block.source.length + block.id.length + 40
+    if (current.length > 0 && characters + size > translationChunkLimit) {
+      batches.push(current)
+      current = []
+      characters = 0
+    }
+    current.push(block)
+    characters += size
+  }
+  if (current.length > 0) batches.push(current)
+  return batches
+}
+
+export function pageTranslationRequest(blocks: readonly PageSourceBlock[]): string {
+  return JSON.stringify({ blocks: blocks.map(({ id, kind, source }) => ({ id, kind, source })) })
+}
+
+export function parsePageTranslationStream(value: string): ReadonlyMap<string, string> {
+  const parsed = parsePageTranslationResponse(value)
+  return new Map(
+    parsed?.translations.map((translation) => [translation.id, translation.markdown]) ?? [],
+  )
+}
+
+export function pageTranslationBlockIds(value: string): readonly string[] {
+  return parsePageTranslationResponse(value)?.translations.map(({ id }) => id) ?? []
+}

@@ -1,9 +1,14 @@
-import { type JSX, useState } from "react"
+import { type JSX, useCallback, useState } from "react"
+import { flushSync } from "react-dom"
+import { paperOrigin } from "../../shared/uiLayout"
+import type { PreparedSummary } from "../lib/pdfDocumentFeatures"
 import type { PdfOutlineEntry } from "../lib/pdfOutline"
 import { alignedDevicePixel } from "../lib/pdfRenderQuality"
+import type { PdfRetrievalRuntime } from "../lib/pdfRetrievalRuntime"
 import type { DetectedStructure } from "../lib/structureDetector"
 import type { DocumentRecord, Viewport } from "../types"
-import { PdfColumn, type PreparedSummary } from "./PdfColumn"
+import { DocumentRetrievalSwitcher } from "./DocumentRetrievalSwitcher"
+import { PdfColumn } from "./PdfColumn"
 
 type PdfSurfaceProps = {
   readonly document: DocumentRecord
@@ -16,8 +21,6 @@ type PdfSurfaceProps = {
   readonly onStructureTrigger?: (structure: DetectedStructure) => void
 }
 
-export const PAPER_ORIGIN = { x: 300, y: 64 } as const
-
 export function PdfSurface({
   document,
   viewport,
@@ -29,30 +32,38 @@ export function PdfSurface({
   onStructureTrigger,
 }: PdfSurfaceProps): JSX.Element {
   const [renderedZoom, setRenderedZoom] = useState(viewport.zoom)
+  const [retrievalRuntime, setRetrievalRuntime] = useState<PdfRetrievalRuntime | null>(null)
+  const commitRenderedZoom = useCallback((nextZoom: number): void => {
+    flushSync(() => setRenderedZoom(nextZoom))
+  }, [])
   const pixelRatio = window.devicePixelRatio || 1
-  const x = alignedDevicePixel(viewport.x + PAPER_ORIGIN.x * viewport.zoom, pixelRatio)
-  const y = alignedDevicePixel(viewport.y + PAPER_ORIGIN.y * viewport.zoom, pixelRatio)
+  const x = alignedDevicePixel(viewport.x + paperOrigin.x * viewport.zoom, pixelRatio)
+  const y = alignedDevicePixel(viewport.y + paperOrigin.y * viewport.zoom, pixelRatio)
   return (
-    <div
-      className="pdf-surface"
-      style={{
-        transform: `translate(${x}px, ${y}px) scale(${viewport.zoom / renderedZoom})`,
-        transformOrigin: "0 0",
-      }}
-      data-zoom={viewport.zoom}
-      data-rendered-zoom={renderedZoom}
-    >
-      <PdfColumn
-        document={document}
-        zoom={viewport.zoom}
-        onLoaded={onLoaded}
-        onPageActive={onPageActive}
-        onOutlineChange={onOutlineChange}
-        onRegisterPageJump={onRegisterPageJump}
-        onPageJump={onPageJump}
-        onStructureTrigger={onStructureTrigger}
-        onScaleCommitted={setRenderedZoom}
-      />
-    </div>
+    <>
+      <div
+        className="pdf-surface"
+        style={{
+          transform: `translate(${x}px, ${y}px) scale(${viewport.zoom / renderedZoom})`,
+          transformOrigin: "0 0",
+        }}
+        data-zoom={viewport.zoom}
+        data-rendered-zoom={renderedZoom}
+      >
+        <PdfColumn
+          document={document}
+          zoom={viewport.zoom}
+          onLoaded={onLoaded}
+          onPageActive={onPageActive}
+          onOutlineChange={onOutlineChange}
+          onRegisterPageJump={onRegisterPageJump}
+          onPageJump={onPageJump}
+          onStructureTrigger={onStructureTrigger}
+          onRetrievalReady={setRetrievalRuntime}
+          onScaleCommitted={commitRenderedZoom}
+        />
+      </div>
+      <DocumentRetrievalSwitcher key={document.id} runtime={retrievalRuntime} />
+    </>
   )
 }

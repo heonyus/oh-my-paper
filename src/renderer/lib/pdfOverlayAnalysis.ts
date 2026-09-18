@@ -29,6 +29,44 @@ export type CapturedPageOverlay = {
   readonly spans: readonly PdfTextSpan[]
 }
 
+function boundsArea(bounds: DetectedStructure["bounds"]): number {
+  return bounds.width * bounds.height
+}
+
+function boundsIntersection(
+  left: DetectedStructure["bounds"],
+  right: DetectedStructure["bounds"],
+): number {
+  const width = Math.max(
+    0,
+    Math.min(left.x + left.width, right.x + right.width) - Math.max(left.x, right.x),
+  )
+  const height = Math.max(
+    0,
+    Math.min(left.y + left.height, right.y + right.height) - Math.max(left.y, right.y),
+  )
+  return width * height
+}
+
+function structuresDuplicate(parsed: DetectedStructure, detected: DetectedStructure): boolean {
+  if (parsed.kind !== detected.kind) return false
+  const smaller = Math.min(boundsArea(parsed.bounds), boundsArea(detected.bounds))
+  if (smaller <= 0) return false
+  return boundsIntersection(parsed.bounds, detected.bounds) / smaller > 0.4
+}
+
+export function mergeOverlayStructures(
+  parsed: readonly DetectedStructure[],
+  detected: readonly DetectedStructure[],
+): readonly DetectedStructure[] {
+  const additions = detected.filter(
+    (candidate) => !parsed.some((existing) => structuresDuplicate(existing, candidate)),
+  )
+  return [...parsed, ...additions].sort(
+    (left, right) => left.bounds.y - right.bounds.y || left.bounds.x - right.bounds.x,
+  )
+}
+
 export function analyzePageOverlay(
   pageNumber: number,
   pageDiv: HTMLElement,

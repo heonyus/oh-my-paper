@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { BoardCard } from "../../src/renderer/components/BoardCard"
 import { boardCardSchema } from "../../src/shared/schemas"
@@ -49,6 +49,7 @@ describe("BoardCard controls", () => {
         onMove={onMove}
         onDelete={onDelete}
         onJump={vi.fn()}
+        onRegenerateTitle={vi.fn()}
         onActiveChange={vi.fn()}
       />,
     )
@@ -62,7 +63,7 @@ describe("BoardCard controls", () => {
   })
 
   it("offers a direct translation-to-note action", () => {
-    const onConvertToNote = vi.fn()
+    const onSaveAsAnnotation = vi.fn()
     render(
       <BoardCard
         {...advancedControls}
@@ -72,14 +73,115 @@ describe("BoardCard controls", () => {
         onMove={vi.fn()}
         onDelete={vi.fn()}
         onJump={vi.fn()}
-        onConvertToNote={onConvertToNote}
+        onSaveAsAnnotation={onSaveAsAnnotation}
         onActiveChange={vi.fn()}
       />,
     )
 
     fireEvent.click(screen.getByRole("button", { name: "번역을 주석으로 저장" }))
 
-    expect(onConvertToNote).toHaveBeenCalledWith(translationCard.id)
+    expect(onSaveAsAnnotation).toHaveBeenCalledWith(translationCard.id)
+  })
+
+  it("keeps the source jump in a separated card-bottom footer", () => {
+    render(
+      <BoardCard
+        {...advancedControls}
+        card={translationCard}
+        active={false}
+        zoom={1}
+        onMove={vi.fn()}
+        onDelete={vi.fn()}
+        onJump={vi.fn()}
+        onSaveAsAnnotation={vi.fn()}
+        onActiveChange={vi.fn()}
+      />,
+    )
+
+    const sourceJump = screen.getByRole("button", { name: "p. 1 원문으로 이동" })
+    expect(sourceJump.closest("footer")).toHaveClass("card-source-footer")
+    expect(sourceJump.closest(".card-body")).toBeNull()
+  })
+
+  it("copies a completed AI output from the card footer", async () => {
+    const writeClipboardText = vi.fn(async () => undefined)
+    Object.defineProperty(window, "scourgify", {
+      configurable: true,
+      value: { writeClipboardText },
+    })
+    const explanation = boardCardSchema.parse({
+      ...card,
+      kind: "explanation",
+      title: "Agent Scaffolds",
+      body: "네 가지 행동은 request_info, terminal, code_execution, debugging입니다.",
+    })
+    render(
+      <BoardCard
+        {...advancedControls}
+        card={explanation}
+        active={false}
+        zoom={1}
+        onMove={vi.fn()}
+        onDelete={vi.fn()}
+        onJump={vi.fn()}
+        onActiveChange={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "카드 내용 복사" }))
+
+    await waitFor(() => expect(writeClipboardText).toHaveBeenCalledWith(explanation.body))
+    expect(screen.getByRole("button", { name: "카드 내용 복사됨" })).toBeVisible()
+  })
+
+  it("waits for streaming to finish before showing the copy action", () => {
+    const explanation = boardCardSchema.parse({
+      ...card,
+      kind: "explanation",
+      body: "아직 생성 중인 응답",
+      loading: false,
+    })
+    render(
+      <BoardCard
+        {...advancedControls}
+        card={explanation}
+        streaming
+        active={false}
+        zoom={1}
+        onMove={vi.fn()}
+        onDelete={vi.fn()}
+        onJump={vi.fn()}
+        onActiveChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByRole("button", { name: "카드 내용 복사" })).not.toBeInTheDocument()
+  })
+
+  it("renders Markdown structure while an AI card is streaming", () => {
+    const explanation = boardCardSchema.parse({
+      ...card,
+      kind: "explanation",
+      body: "# 실시간 제목\n\n**굵은 근거**\n\n$$x = 1$$",
+      loading: false,
+    })
+    render(
+      <BoardCard
+        {...advancedControls}
+        card={explanation}
+        streaming
+        active={false}
+        zoom={1}
+        onMove={vi.fn()}
+        onDelete={vi.fn()}
+        onJump={vi.fn()}
+        onActiveChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole("heading", { name: "실시간 제목" })).toBeVisible()
+    expect(screen.getByText("굵은 근거").tagName).toBe("STRONG")
+    expect(document.querySelector(".katex-display")).toBeInTheDocument()
   })
 
   it("opens a short selection translation as a compact card", () => {
@@ -101,6 +203,32 @@ describe("BoardCard controls", () => {
     expect(screen.getByLabelText("페이지 번역, 1 페이지 연결 카드")).toHaveStyle({
       height: "180px",
     })
+  })
+
+  it("renders a word-only title and a bold primary meaning in a numbered list", () => {
+    const wordCard = boardCardSchema.parse({
+      ...translationCard,
+      title: "indicates",
+      body: "1. **나타내다**\n2. 시사하다\n3. 가리키다",
+      anchor: { ...translationCard.anchor, quote: "indicates" },
+    })
+    render(
+      <BoardCard
+        {...advancedControls}
+        card={wordCard}
+        active={false}
+        zoom={1}
+        onMove={vi.fn()}
+        onDelete={vi.fn()}
+        onJump={vi.fn()}
+        onActiveChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByLabelText("indicates, 1 페이지 연결 카드")).toBeVisible()
+    expect(screen.getByRole("list")).toBeVisible()
+    expect(screen.getByText("나타내다").tagName).toBe("STRONG")
+    expect(screen.queryByRole("button", { name: "카드 제목 다시 생성" })).not.toBeInTheDocument()
   })
 
   it("edits a post-it as Markdown and commits on command-enter", () => {

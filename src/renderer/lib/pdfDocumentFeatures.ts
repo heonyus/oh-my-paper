@@ -1,5 +1,7 @@
 import type { PDFDocumentProxy } from "pdfjs-dist/legacy/build/pdf.mjs"
 import { z } from "zod"
+import { detectDocumentKind } from "../../shared/documentKind"
+import type { DocumentKind } from "../../shared/schemas"
 import { buildCitationIndex, type CitationIndexEntry } from "./pdfCitationIndex"
 import type { PdfFeature, PdfTextSpan } from "./pdfFeatureDetection"
 import {
@@ -15,7 +17,14 @@ export type PreparedSummary = {
   readonly textCharacters: number
   readonly anchorCount: number
   readonly needsOcr: boolean
+  readonly kind: DocumentKind
   readonly citations?: readonly CitationIndexEntry[]
+}
+
+export type PdfDocumentAnalysis = {
+  readonly summary: PreparedSummary
+  readonly bibliography: BibliographyMap
+  readonly pageTexts: readonly string[]
 }
 
 function stableFeatureId(feature: PdfFeature): string {
@@ -87,7 +96,7 @@ export function featureToStructure(
 export async function analyzePdfDocument(
   pdf: PDFDocumentProxy,
   fallbackTitle: string,
-): Promise<{ readonly summary: PreparedSummary; readonly bibliography: BibliographyMap }> {
+): Promise<PdfDocumentAnalysis> {
   const metadata = await pdf.getMetadata()
   const metadataResult = metadataTitleSchema.safeParse(metadata.info)
   const metadataTitle = metadataResult.success ? metadataResult.data.Title?.trim() : undefined
@@ -116,8 +125,10 @@ export async function analyzePdfDocument(
       textCharacters,
       anchorCount,
       needsOcr: textCharacters < pdf.numPages * 24,
+      kind: detectDocumentKind(fullText, pdf.numPages),
       citations: buildCitationIndex(bibliography, pageTexts),
     },
     bibliography,
+    pageTexts,
   }
 }

@@ -67,6 +67,40 @@ describe("AiOverviewPanel", () => {
     expect(onAiRequest).not.toHaveBeenCalled()
   })
 
+  it("adopts insights cached while the panel is mounted", () => {
+    const onAiRequest = vi.fn(async () => "unused")
+    const { rerender } = render(
+      <AiOverviewPanel
+        document={documentFixture}
+        currentPage={1}
+        provider={{ configured: true, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
+        onAiRequest={onAiRequest}
+        onSave={vi.fn()}
+      />,
+    )
+
+    rerender(
+      <AiOverviewPanel
+        document={documentFixture}
+        currentPage={1}
+        provider={{ configured: true, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
+        cachedInsights={[
+          {
+            documentId: documentFixture.id,
+            kind: "summary",
+            value: "**뒤늦게 저장된 요약**",
+            updatedAt: "2026-08-30T00:00:00.000Z",
+          },
+        ]}
+        onAiRequest={onAiRequest}
+        onSave={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText("뒤늦게 저장된 요약")).toBeVisible()
+    expect(onAiRequest).not.toHaveBeenCalled()
+  })
+
   it("uses a quiet text disclosure and an empty discussion composer", async () => {
     render(
       <AiOverviewPanel
@@ -102,9 +136,10 @@ describe("AiOverviewPanel", () => {
     expect(screen.getByRole("textbox", { name: "논문 토론 질문" })).not.toHaveAttribute(
       "placeholder",
     )
+    expect(screen.queryByRole("heading", { name: "토론" })).not.toBeInTheDocument()
   })
 
-  it("generates all missing overview sections in parallel after AI mode activation", async () => {
+  it("generates missing overview sections only after explicit actions", async () => {
     const onAiRequest = vi.fn(
       async (request: Omit<AiRequest, "documentId">) => `result:${request.action}`,
     )
@@ -114,13 +149,15 @@ describe("AiOverviewPanel", () => {
         document={documentFixture}
         currentPage={1}
         provider={{ configured: true, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
-        activationToken={1}
         onAiRequest={onAiRequest}
         onInsightChange={onInsightChange}
         onSave={vi.fn()}
       />,
     )
 
+    for (const label of ["키워드 사전", "3줄 요약", "요약"]) {
+      await userEvent.click(screen.getByRole("button", { name: `${label} 다시 생성` }))
+    }
     await waitFor(() => expect(onAiRequest).toHaveBeenCalledTimes(3))
     await waitFor(() => expect(onInsightChange).toHaveBeenCalledTimes(3))
     expect(screen.queryByRole("button", { name: "생성하기" })).not.toBeInTheDocument()
@@ -132,7 +169,6 @@ describe("AiOverviewPanel", () => {
         document={documentFixture}
         currentPage={1}
         provider={{ configured: true, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
-        activationToken={1}
         onAiRequest={vi.fn(async () => {
           throw new Error("request failed")
         })}
@@ -140,6 +176,9 @@ describe("AiOverviewPanel", () => {
       />,
     )
 
+    for (const label of ["키워드 사전", "3줄 요약", "요약"]) {
+      await userEvent.click(screen.getByRole("button", { name: `${label} 다시 생성` }))
+    }
     expect(
       await screen.findAllByText("요청을 완료하지 못했습니다. 다시 시도해주세요."),
     ).toHaveLength(3)

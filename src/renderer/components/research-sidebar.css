@@ -1,18 +1,52 @@
 .research-sidebar {
-  position: relative;
-  width: 340px;
-  min-width: 300px;
-  height: 100%;
-  display: grid;
-  grid-template-columns: minmax(0, 300px) 40px;
-  overflow: hidden;
-  border-left: 1px solid var(--line);
-  background: var(--surface);
+  position: fixed;
+  inset: 60px 0 0 auto;
+  z-index: 60;
+  width: 40px;
+  min-width: 40px;
+  height: auto;
+  overflow: visible;
+  background: transparent;
+  pointer-events: none;
 }
 .research-sidebar.is-collapsed {
   width: 40px;
   min-width: 40px;
-  grid-template-columns: 40px;
+}
+.research-sidebar-flyout {
+  position: absolute;
+  inset: 0 40px 0 auto;
+  z-index: 1;
+  min-width: 260px;
+  max-width: 520px;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: -12px 0 28px rgb(25 35 45 / 10%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateX(calc(100% + 40px));
+  transition:
+    transform 140ms cubic-bezier(0.2, 0.8, 0.2, 1) 120ms,
+    opacity 100ms ease 120ms,
+    visibility 0s linear 260ms;
+}
+.research-sidebar[data-flyout="open"] .research-sidebar-flyout,
+.research-sidebar[data-flyout="pinned"] .research-sidebar-flyout,
+.research-sidebar:hover .research-sidebar-flyout,
+.research-sidebar:has(.research-mode-rail button:focus-visible) .research-sidebar-flyout,
+.research-sidebar:has(.research-sidebar-flyout:focus-within) .research-sidebar-flyout {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateX(0);
+  transition-delay: 0s;
+}
+.research-sidebar[data-mode="translation"] .research-sidebar-flyout {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateX(calc(100% + 40px));
 }
 .research-sidebar-content {
   min-width: 0;
@@ -20,6 +54,10 @@
   overflow: hidden;
 }
 .research-mode-rail {
+  position: absolute;
+  inset: 0 0 0 auto;
+  z-index: 2;
+  width: 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -27,6 +65,7 @@
   padding: 10px 5px;
   border-left: 1px solid var(--line);
   background: var(--surface);
+  pointer-events: auto;
 }
 .is-collapsed .research-mode-rail {
   border-left: 0;
@@ -66,7 +105,7 @@
   border-radius: 999px;
   background: var(--ink);
   color: var(--surface);
-  font-size: 9px;
+  font-size: calc(var(--type-compact-size) * 0.75);
   line-height: 1;
 }
 .sidebar-mode-panel {
@@ -116,4 +155,68 @@
   color: var(--ink-muted);
   font-size: var(--type-toolbar-size);
   text-align: center;
+}
+.scholar-search-panel {
+  height: 100%;
+  padding: 16px;
+  overflow-y: auto;
+}
+.scholar-search-heading {
+  margin: 0 0 4px;
+  font-size: var(--type-title-size);
+}
+.scholar-search-query {
+  margin: 0 0 16px;
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+  word-break: break-all;
+}
+.scholar-search-providers {
+  margin: 0 0 12px;
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+  line-height: 1.5;
+}
+.scholar-search-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.scholar-search-item {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.scholar-search-title {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--action);
+  font-size: var(--type-toolbar-size);
+  font-weight: 500;
+  text-decoration: none;
+}
+.scholar-search-title:hover {
+  text-decoration: underline;
+}
+.scholar-search-meta {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+}
+@media (prefers-reduced-motion: reduce) {
+  .research-sidebar-flyout {
+    transform: none;
+    transition:
+      opacity 100ms ease,
+      visibility 0s linear 100ms;
+  }
+  .research-sidebar[data-flyout="open"] .research-sidebar-flyout,
+  .research-sidebar[data-flyout="pinned"] .research-sidebar-flyout,
+  .research-sidebar:hover .research-sidebar-flyout,
+  .research-sidebar:has(.research-mode-rail button:focus-visible) .research-sidebar-flyout,
+  .research-sidebar:has(.research-sidebar-flyout:focus-within) .research-sidebar-flyout {
+    transition-delay: 0s;
+  }
 }

@@ -1,0 +1,128 @@
+.bibliography-panel {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card, 18px);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.bibliography-panel > header,
+.bibliography-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.bibliography-panel h2,
+.bibliography-panel p {
+  margin: 0;
+}
+
+.bibliography-panel header p,
+.bibliography-help {
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+}
+
+.bibliography-panel form,
+.bibliography-panel label {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.bibliography-panel form {
+  gap: var(--space-3);
+}
+
+.bibliography-panel label {
+  min-width: 0;
+  flex: 1;
+  font-size: var(--type-compact-size);
+  font-weight: 600;
+}
+
+.bibliography-panel input,
+.bibliography-panel select,
+.bibliography-panel textarea,
+.bibliography-panel button {
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field, 8px);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+
+.bibliography-panel input,
+.bibliography-panel select,
+.bibliography-panel textarea {
+  width: 100%;
+  padding: var(--space-2);
+}
+
+.bibliography-panel textarea {
+  min-height: 72px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.bibliography-panel button {
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-control, 12px);
+  cursor: pointer;
+}
+
+.bibliography-panel button:focus-visible,
+.bibliography-panel input:focus-visible,
+.bibliography-panel select:focus-visible,
+.bibliography-panel textarea:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.bibliography-save {
+  justify-self: end;
+  border-color: var(--action);
+  background: var(--action);
+  color: var(--surface);
+  font-weight: 600;
+}
+
+.bibliography-duplicates {
+  padding: var(--space-3);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-control, 12px);
+  background: var(--note);
+  font-size: var(--type-compact-size);
+}
+
+.bibliography-duplicates ul {
+  margin: var(--space-2) 0;
+  padding-inline-start: var(--space-5);
+}
+
+.bibliography-error {
+  color: var(--error);
+}
+
+.bibliography-panel pre {
+  max-height: 14rem;
+  margin: 0;
+  padding: var(--space-3);
+  overflow: auto;
+  border-radius: var(--radius-field, 8px);
+  background: var(--surface-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 44rem) {
+  .bibliography-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

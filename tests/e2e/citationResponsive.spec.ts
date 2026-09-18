@@ -1,16 +1,16 @@
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { _electron as electron, expect, test } from "@playwright/test"
+import { expect, test } from "@playwright/test"
+import { launchSimulatedAuthenticatedApplication } from "../support/electron/launchSimulatedAuthenticatedApplication"
 
 test("citation cards reflow without clipping across the sidebar range", async () => {
   const temporaryRoot = await mkdtemp(join(tmpdir(), "scourgify-citation-e2e-"))
-  const application = await electron.launch({
-    args: ["."],
-    env: { ...process.env, SCOURGIFY_USER_DATA_DIR: join(temporaryRoot, "user-data") },
+  const qa = await launchSimulatedAuthenticatedApplication({
+    userDataRoot: join(temporaryRoot, "user-data"),
   })
   try {
-    const page = await application.firstWindow()
+    const page = await qa.application.firstWindow()
     await page.waitForSelector(".app-shell")
     const layout = await page.evaluate(() => {
       const host = document.createElement("section")
@@ -56,7 +56,7 @@ test("citation cards reflow without clipping across the sidebar range", async ()
     expect(layout.wide.overflow).toBeLessThanOrEqual(0.5)
     expect(layout.wide.detailsBelowKey).toBe(false)
   } finally {
-    await application.close()
+    await qa.close()
     await rm(temporaryRoot, { recursive: true, force: true })
   }
 })

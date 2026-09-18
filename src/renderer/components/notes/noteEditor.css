@@ -1,0 +1,549 @@
+.note-editor {
+  position: relative;
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  color: var(--ink);
+}
+
+.note-editor-insert {
+  order: -1;
+}
+
+.note-editor-insert > summary {
+  width: fit-content;
+  min-height: 2rem;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  color: var(--ink-muted);
+  cursor: pointer;
+  font-size: var(--type-compact-size);
+  line-height: 1.75rem;
+}
+
+.note-editor-insert[open] > summary {
+  color: var(--ink);
+}
+
+.note-editor-toolbar,
+.note-editor-mode {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.note-editor-mode-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.note-editor-mode-row button {
+  min-height: 2rem;
+  padding-inline: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--type-compact-size);
+  cursor: pointer;
+}
+
+.note-editor-mode-row button:hover,
+.note-editor-mode-row button[aria-pressed="true"] {
+  background: var(--action-subtle);
+}
+
+.note-editor-toolbar {
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.note-editor-format-toolbar {
+  order: -2;
+  min-height: 3.25rem;
+  padding: var(--space-2) var(--space-3);
+}
+
+.note-editor-format-label {
+  min-width: 5rem;
+  padding-inline: var(--space-2);
+  color: var(--ink-muted);
+  font-size: var(--type-body-size);
+}
+
+.note-editor-format-toolbar button {
+  width: 2.25rem;
+  padding: 0;
+  font-size: calc(var(--type-body-size) * 1.05);
+}
+
+.note-editor-mode {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.note-editor-mode legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.note-editor-toolbar button,
+.note-editor-completions button,
+.note-rich-math,
+.note-rich-image {
+  min-height: 2rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.note-editor-toolbar button {
+  padding-inline: var(--space-3);
+}
+
+.note-editor-toolbar button:hover:not(:disabled),
+.note-editor-toolbar button[aria-pressed="true"],
+.note-editor-completions button:hover,
+.note-editor-completions button:focus-visible {
+  background: var(--action-subtle);
+}
+
+.note-editor-toolbar button[aria-pressed="true"] {
+  border-color: var(--action);
+  color: var(--action);
+}
+
+.note-editor-toolbar button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.note-editor-host {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.note-editor-document .note-editor-host {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.note-editor .cm-editor {
+  min-height: 12rem;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--type-body-size);
+}
+
+.note-editor .cm-editor.cm-focused {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.note-editor .cm-scroller {
+  min-height: 12rem;
+  overflow: auto;
+  font-family: var(--ui-font-family);
+  line-height: 1.6;
+}
+
+.note-editor .cm-content {
+  width: min(100%, 72ch);
+  min-height: 12rem;
+  padding: var(--space-4);
+  caret-color: var(--ink);
+}
+
+.note-editor .cm-line {
+  padding-inline: 0;
+}
+
+.note-live-heading {
+  margin-block: var(--space-2) var(--space-1);
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.note-live-heading-1 {
+  font-size: var(--type-title-size);
+}
+
+.note-live-heading-2,
+.note-live-heading-3 {
+  font-size: calc(var(--type-title-size) - 2px);
+}
+
+.note-live-block {
+  padding-inline-start: var(--space-3);
+}
+
+.note-live-quote {
+  border-inline-start: 3px solid var(--line);
+  color: var(--ink-muted);
+}
+
+.note-rich-list-marker {
+  display: inline-block;
+  min-width: var(--space-4);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.note-editor .note-rich-hidden-line {
+  height: 0;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.note-rich-code {
+  padding: 0 var(--space-1);
+  border-radius: 4px;
+  background: var(--surface-muted);
+  font-family: "SF Mono", ui-monospace, monospace;
+}
+
+.note-rich-strong {
+  font-weight: 700;
+}
+
+.note-rich-link {
+  color: var(--action);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.note-rich-math {
+  display: inline-flex;
+  max-width: 100%;
+  min-height: auto;
+  padding: var(--space-1);
+  overflow-x: auto;
+  vertical-align: middle;
+}
+
+.note-rich-math-display {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  margin-block: var(--space-2);
+  padding: var(--space-3);
+}
+
+.note-rich-image {
+  display: block;
+  width: min(100%, 72ch);
+  padding: var(--space-2);
+}
+
+.note-rich-image img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 32rem;
+  margin: auto;
+  object-fit: contain;
+}
+
+.note-rich-table-wrap {
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: text;
+}
+
+.note-rich-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.note-rich-table-wrap th,
+.note-rich-table-wrap td {
+  padding: var(--space-2) var(--space-3);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.note-rich-table-wrap th {
+  background: var(--surface-muted);
+  font-weight: 650;
+}
+
+.note-editor-completions {
+  position: absolute;
+  z-index: 4;
+  top: 100%;
+  display: grid;
+  width: min(100%, 28rem);
+  max-height: 14rem;
+  overflow: auto;
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 2px 8px rgba(13, 31, 22, 0.06);
+}
+
+.note-editor-completions button {
+  padding: var(--space-2);
+  border: 0;
+  text-align: left;
+}
+
+.note-editor-completions span,
+.note-editor-error {
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+}
+
+.note-editor-error {
+  margin: 0;
+  color: var(--error);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .note-editor *,
+  .note-editor *::before,
+  .note-editor *::after {
+    scroll-behavior: auto;
+    transition: none;
+  }
+}
+
+.knowledge-card:has(> .note-editor) {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.knowledge-card:has(> .note-editor) > label {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.knowledge-card:has(> .note-editor) > .knowledge-input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding-inline: var(--space-3);
+}
+
+.knowledge-card:has(> .note-editor) > label[for="node-body-input"] {
+  margin-top: var(--space-2);
+}
+
+.note-editor-toolbar {
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.note-editor-toolbar button {
+  min-height: 2.5rem;
+  padding-inline: var(--space-3);
+}
+
+.note-editor-toolbar > span {
+  flex-basis: 100%;
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+  line-height: 1.4;
+}
+
+.note-editor-toolbar > span ~ button {
+  min-height: 2.25rem;
+  border-color: transparent;
+  background: var(--surface-muted);
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.note-editor-toolbar > span ~ button:hover:not(:disabled),
+.note-editor-toolbar > span ~ button:focus-visible {
+  border-color: var(--line);
+  background: var(--action-subtle);
+  color: var(--ink);
+}
+
+.note-editor-document .cm-editor,
+.note-editor-document .cm-scroller {
+  background: transparent;
+}
+
+.note-editor-document .cm-content {
+  width: 100%;
+  max-width: none;
+  margin-inline: auto;
+  padding-inline: 0;
+}
+
+.note-editor-document .note-editor-mode-row,
+.note-editor-document .note-editor-insert {
+  width: 100%;
+}
+
+.note-editor-document .note-editor-mode-row {
+  gap: var(--space-2);
+}
+
+.note-editor-document .note-editor-mode-row button {
+  min-height: 2rem;
+  padding-inline: var(--space-2);
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink-muted);
+}
+
+.note-editor-document .note-editor-mode-row button:hover,
+.note-editor-document .note-editor-mode-row button[aria-pressed="true"] {
+  border-color: var(--line);
+  background: var(--surface-muted);
+  color: var(--ink);
+}
+
+.note-editor-document .note-editor-insert > summary {
+  min-height: 2rem;
+  padding: var(--space-1) 0;
+  border-color: transparent;
+  background: transparent;
+}
+
+.note-editor-document .note-editor-insert[open] > summary {
+  color: var(--ink);
+}
+
+.note-editor-document .note-editor-toolbar {
+  width: fit-content;
+  max-width: 100%;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.note-editor-document .note-editor-toolbar button {
+  min-height: 2rem;
+  padding-inline: var(--space-2);
+  border-color: transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.note-editor-document .note-editor-toolbar button:hover:not(:disabled),
+.note-editor-document .note-editor-toolbar button:focus-visible {
+  border-color: var(--line);
+  background: var(--surface-muted);
+  color: var(--ink);
+}
+
+.note-editor-document .note-rich-math {
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.note-editor-document .note-rich-math-display {
+  margin-block: var(--space-3);
+}
+
+.note-editor-document .note-rich-table-wrap {
+  background: transparent;
+}
+
+.note-editor-document .note-editor-mode-row button:focus-visible,
+.note-editor-document .note-editor-insert > summary:focus-visible,
+.note-editor-document .note-rich-math:focus-visible,
+.note-editor-document .note-rich-image:focus-visible,
+.note-editor-document .note-rich-table-wrap:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.note-editor-document .note-editor-format-toolbar {
+  display: flex;
+  width: 100%;
+  max-width: 800px;
+  min-height: 3rem;
+  align-items: center;
+  gap: var(--space-1);
+  margin-inline: auto;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+}
+
+.note-editor-document .note-editor-format-toolbar > span {
+  flex: 0 0 auto;
+  min-width: 4.5rem;
+  padding-inline: var(--space-2);
+  color: var(--ink-muted);
+  font-size: var(--type-body-size);
+}
+
+.note-editor-document .note-editor-format-toolbar > span ~ button {
+  width: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0;
+  color: var(--ink);
+  font-size: var(--type-body-size);
+}
+
+.note-editor-document .note-editor-format-toolbar > span ~ button:hover:not(:disabled),
+.note-editor-document .note-editor-format-toolbar > span ~ button:focus-visible {
+  border-color: var(--line);
+  background: var(--action-subtle);
+}
+
+.note-editor-document .note-editor-host {
+  width: 100%;
+  max-width: 800px;
+  min-height: 10rem;
+  margin-inline: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.note-editor-document .note-editor-host .cm-content {
+  min-height: 10rem;
+  padding: var(--space-5) var(--space-4);
+}
+
+.note-editor-document .note-editor-mode-row,
+.note-editor-document .note-editor-insert {
+  max-width: 800px;
+  margin-inline: auto;
+}

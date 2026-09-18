@@ -186,7 +186,7 @@ export function createStructureActionHandler(
               bounds: structure.bounds,
               paperTitle: input.currentPaperTitle,
             })
-          : { paper: "", section: featureRequestContext(pageElement, structure.bounds) }
+          : { paper: "", section: featureRequestContext(pageElement, structure.bounds, viewer) }
       const explanation = await input.onAiRequest(
         structureAiRequest(structure, imageDataUrl, requestContext),
         (delta) => input.onCardStream(card.id, delta),

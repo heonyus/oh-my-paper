@@ -29,13 +29,80 @@ export function collectPdfTextSpans(pageElement: HTMLElement): readonly PdfTextS
   )
 }
 
-function expandedSearchRect(candidate: PdfFeatureRect, pageWidth: number): PdfFeatureRect {
-  const padX = Math.min(8, Math.max(4, candidate.width * 0.03))
-  const padTop = Math.min(10, Math.max(4, candidate.height * 0.04))
+function expandedSearchRect(
+  candidate: PdfFeatureRect,
+  pageWidth: number,
+  pageHeight: number,
+): PdfFeatureRect {
+  const padX = Math.min(18, Math.max(4, candidate.width * 0.04))
+  const padY = Math.min(18, Math.max(4, candidate.height * 0.04))
   const x = Math.max(0, candidate.x - padX)
-  const y = Math.max(0, candidate.y - padTop)
+  const y = Math.max(0, candidate.y - padY)
   const right = Math.min(pageWidth, candidate.x + candidate.width + padX)
-  return { x, y, width: right - x, height: candidate.y + candidate.height - y }
+  const bottom = Math.min(pageHeight, candidate.y + candidate.height + padY)
+  return { x, y, width: right - x, height: bottom - y }
+}
+
+function clampVisualBounds(
+  bounds: PdfFeatureRect,
+  pageWidth: number,
+  pageHeight: number,
+): PdfFeatureRect {
+  const x = Math.max(0, Math.min(pageWidth, bounds.x))
+  const y = Math.max(0, Math.min(pageHeight, bounds.y))
+  const right = Math.max(x, Math.min(pageWidth, bounds.x + bounds.width))
+  const bottom = Math.max(y, Math.min(pageHeight, bounds.y + bounds.height))
+  return { x, y, width: right - x, height: bottom - y }
+}
+
+function overlapArea(left: PdfFeatureRect, right: PdfFeatureRect): number {
+  const width = Math.max(
+    0,
+    Math.min(left.x + left.width, right.x + right.width) - Math.max(left.x, right.x),
+  )
+  const height = Math.max(
+    0,
+    Math.min(left.y + left.height, right.y + right.height) - Math.max(left.y, right.y),
+  )
+  return width * height
+}
+
+export function adoptRefinedVisualBounds(
+  candidate: PdfFeatureRect,
+  refined: PdfFeatureRect | null,
+  pageWidth: number,
+  pageHeight: number,
+  minimumAreaRatio = 0.2,
+): PdfFeatureRect {
+  const safeCandidate = clampVisualBounds(candidate, pageWidth, pageHeight)
+  if (!refined) return safeCandidate
+  const safeRefined = clampVisualBounds(refined, pageWidth, pageHeight)
+  const candidateArea = safeCandidate.width * safeCandidate.height
+  const refinedArea = safeRefined.width * safeRefined.height
+  const sharedArea = overlapArea(safeCandidate, safeRefined)
+  if (
+    safeRefined.width < 24 ||
+    safeRefined.height < 16 ||
+    refinedArea < candidateArea * minimumAreaRatio ||
+    refinedArea > candidateArea * 1.5 ||
+    sharedArea < Math.min(candidateArea, refinedArea) * 0.55
+  )
+    return safeCandidate
+  return safeRefined
+}
+
+export function adoptParsedVisualBounds(
+  pageElement: HTMLElement,
+  candidate: PdfFeatureRect,
+): PdfFeatureRect {
+  const pageRect = pageElement.getBoundingClientRect()
+  return adoptRefinedVisualBounds(
+    candidate,
+    refineVisualBounds(pageElement, candidate),
+    pageRect.width,
+    pageRect.height,
+    0.7,
+  )
 }
 
 export function refineVisualBounds(
@@ -45,7 +112,7 @@ export function refineVisualBounds(
   const canvas = pageElement.querySelector<HTMLCanvasElement>(".canvasWrapper canvas")
   if (!canvas) return null
   const pageRect = pageElement.getBoundingClientRect()
-  const search = expandedSearchRect(candidate, pageRect.width)
+  const search = expandedSearchRect(candidate, pageRect.width, pageRect.height)
   const scaleX = canvas.width / pageRect.width
   const scaleY = canvas.height / pageRect.height
   const x0 = Math.max(0, Math.floor(search.x * scaleX))
@@ -60,8 +127,8 @@ export function refineVisualBounds(
   let minY = y1 - y0
   let maxX = -1
   let maxY = -1
-  for (let y = 0; y < y1 - y0; y += 2) {
-    for (let x = 0; x < x1 - x0; x += 2) {
+  for (let y = 0; y < y1 - y0; y += 1) {
+    for (let x = 0; x < x1 - x0; x += 1) {
       const index = (y * (x1 - x0) + x) * 4
       const red = pixels[index] ?? 255
       const green = pixels[index + 1] ?? 255
@@ -79,11 +146,11 @@ export function refineVisualBounds(
   }
   if (maxX < minX || maxY < minY) return null
   const top = search.y + minY / scaleY
-  const bottom = Math.min(candidate.y + candidate.height, search.y + (maxY + 2) / scaleY)
+  const bottom = search.y + (maxY + 1) / scaleY
   return {
     x: search.x + minX / scaleX,
     y: top,
-    width: (maxX - minX + 2) / scaleX,
+    width: (maxX - minX + 1) / scaleX,
     height: Math.max(20, bottom - top),
   }
 }
@@ -92,13 +159,13 @@ export function adoptVisualBounds(
   pageElement: HTMLElement,
   candidate: PdfFeatureRect,
 ): PdfFeatureRect {
-  const refined = refineVisualBounds(pageElement, candidate)
-  if (!refined) return candidate
-  const candidateArea = candidate.width * candidate.height
-  const refinedArea = refined.width * refined.height
-  if (refined.width < 24 || refined.height < 16 || refinedArea < candidateArea * 0.2)
-    return candidate
-  return refined
+  const pageRect = pageElement.getBoundingClientRect()
+  return adoptRefinedVisualBounds(
+    candidate,
+    refineVisualBounds(pageElement, candidate),
+    pageRect.width,
+    pageRect.height,
+  )
 }
 
 export function cropFeatureImage(pageElement: HTMLElement, feature: PdfFeature): string | null {
@@ -107,10 +174,11 @@ export function cropFeatureImage(pageElement: HTMLElement, feature: PdfFeature):
   const pageRect = pageElement.getBoundingClientRect()
   const scaleX = source.width / pageRect.width
   const scaleY = source.height / pageRect.height
-  const x = Math.max(0, Math.floor(feature.rect.x * scaleX))
-  const y = Math.max(0, Math.floor(feature.rect.y * scaleY))
-  const width = Math.min(source.width - x, Math.ceil(feature.rect.width * scaleX))
-  const height = Math.min(source.height - y, Math.ceil(feature.rect.height * scaleY))
+  const safe = clampVisualBounds(feature.rect, pageRect.width, pageRect.height)
+  const x = Math.max(0, Math.floor(safe.x * scaleX))
+  const y = Math.max(0, Math.floor(safe.y * scaleY))
+  const width = Math.min(source.width - x, Math.ceil(safe.width * scaleX))
+  const height = Math.min(source.height - y, Math.ceil(safe.height * scaleY))
   if (width <= 1 || height <= 1) return null
   const target = document.createElement("canvas")
   target.width = width

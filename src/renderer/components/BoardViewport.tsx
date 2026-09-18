@@ -1,9 +1,9 @@
-import { type JSX, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { type JSX, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { CARD_WIDTH, createSelectionCard } from "../lib/board"
 import { askBoardCard, regenerateBoardCardTitle } from "../lib/boardCardAi"
 import { boardHighlightState } from "../lib/boardHighlights"
 import { type BoardTextSelection, captureNativeBoardTextSelection } from "../lib/boardSelection"
-import { parsedCardResponse } from "../lib/cardPresentation"
+import { parsedCardResponse, parsedTranslationResponse } from "../lib/cardPresentation"
 import { postItFromPointer } from "../lib/postItPlacement"
 import { useSelectionShortcuts } from "../lib/selectionActions"
 import { selectionAiRequest } from "../lib/selectionAiRequest"
@@ -11,8 +11,11 @@ import { addSelectionContext } from "../lib/selectionContext"
 import { worldRectToScreen } from "../lib/selectionGeometry"
 import { createStructureActionHandler } from "../lib/structureActions"
 import { useBoardGestures } from "../lib/useBoardGestures"
+import { useBoardPanPreview } from "../lib/useBoardPanPreview"
 import { useCardStreams } from "../lib/useCardStreams"
-import { revealWorldRectHorizontally } from "../lib/viewport"
+import { usePageJump } from "../lib/usePageJump"
+import { usePanConstraint } from "../lib/usePanConstraint"
+import { mostVisiblePage, revealWorldRectHorizontally } from "../lib/viewport"
 import type { BoardCard, CardId } from "../types"
 import { BoardCardsLayer } from "./BoardCardsLayer"
 import { BoardNavigationController } from "./BoardNavigationController"
@@ -24,26 +27,74 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
   const viewportRef = useRef<HTMLDivElement>(null)
   const worldRef = useRef<HTMLDivElement>(null)
   const viewportStateRef = useRef(props.viewport)
+  const visiblePageFrameRef = useRef<number | null>(null)
+  const pageReportPendingRef = useRef(false)
   const cardsRef = useRef(props.cards)
   const [selectionMenu, setSelectionMenu] = useState<BoardTextSelection | null>(null)
   const [activeCardId, setActiveCardId] = useState<CardId | null>(null)
   const [createdStickyId, setCreatedStickyId] = useState<CardId | null>(null)
   const cardStreams = useCardStreams(props.cards)
+  const panConstraint = usePanConstraint()
+  const handlePageJump = usePageJump(viewportStateRef, viewportRef, props.onViewportChange)
+  const previewPan = useBoardPanPreview(viewportStateRef, worldRef, viewportRef)
+  const reportVisiblePage = useCallback((): void => {
+    if (visiblePageFrameRef.current !== null)
+      window.cancelAnimationFrame(visiblePageFrameRef.current)
+    visiblePageFrameRef.current = window.requestAnimationFrame(() => {
+      visiblePageFrameRef.current = null
+      const board = viewportRef.current
+      if (!board) return
+      const boardRect = board.getBoundingClientRect()
+      const pages = [...board.querySelectorAll<HTMLElement>(".pdfViewer .page")].flatMap((page) => {
+        const pageNumber = Number(page.getAttribute("data-page-number"))
+        if (!Number.isInteger(pageNumber) || pageNumber < 1) return []
+        const rect = page.getBoundingClientRect()
+        return [{ page: pageNumber, top: rect.top, bottom: rect.bottom }]
+      })
+      const bestPage = mostVisiblePage(boardRect.top, boardRect.bottom, pages)
+      if (bestPage !== null) props.onPageActive(bestPage)
+    })
+  }, [props.onPageActive])
 
-  const { startPan, movePan, endPan, handleWheel } = useBoardGestures({
+  const markPageReportPending = useCallback((): void => {
+    pageReportPendingRef.current = true
+  }, [])
+
+  const { startPan, movePan, endPan, panning } = useBoardGestures({
+    wheelTargetRef: viewportRef,
     viewport: props.viewport,
     onViewportChange: props.onViewportChange,
+    onPanPreview: previewPan,
+    onPanCommit: markPageReportPending,
+    constrainPan: panConstraint.constrain,
     onClearSelection: () => {
       setSelectionMenu(null)
       setActiveCardId(null)
     },
     tool: props.tool,
   })
+  const displayViewport = panning ? viewportStateRef.current : props.viewport
+
+  useLayoutEffect(() => {
+    // DOM page geometry must be sampled after this viewport has committed.
+    void props.viewport
+    if (!pageReportPendingRef.current || panning) return
+    pageReportPendingRef.current = false
+    reportVisiblePage()
+  }, [panning, props.viewport, reportVisiblePage])
 
   useEffect(() => {
     viewportStateRef.current = props.viewport
     cardsRef.current = props.cards
   }, [props.viewport, props.cards])
+
+  useEffect(
+    () => () => {
+      if (visiblePageFrameRef.current !== null)
+        window.cancelAnimationFrame(visiblePageFrameRef.current)
+    },
+    [],
+  )
 
   const readNativeSelection = useCallback((): void => {
     if (props.tool === "pan") {
@@ -84,21 +135,6 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
     return () => document.removeEventListener("selectionchange", readNativeSelection)
   }, [readNativeSelection])
 
-  const handlePageJump = useCallback(
-    (_page: number, pageElement: HTMLElement): void => {
-      const viewportElement = viewportRef.current
-      if (!viewportElement) return
-      const viewportRect = viewportElement.getBoundingClientRect()
-      const pageRect = pageElement.getBoundingClientRect()
-      const targetTop = viewportRect.top + Math.min(80, viewportRect.height * 0.12)
-      const currentViewport = viewportStateRef.current
-      props.onViewportChange({
-        ...currentViewport,
-        y: currentViewport.y + targetTop - pageRect.top,
-      })
-    },
-    [props.onViewportChange],
-  )
   const { activeCards, fragments: highlightedFragments } = boardHighlightState(
     props.cards,
     activeCardId,
@@ -113,7 +149,10 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
     commitCards(
       cardsRef.current.map((card) => {
         if (card.id !== id) return card
-        const parsed = parsedCardResponse(body, card.title)
+        const parsed =
+          card.kind === "translation"
+            ? parsedTranslationResponse(body, card.anchor.quote)
+            : parsedCardResponse(body, card.title)
         return { ...card, ...parsed, loading: false }
       }),
     )
@@ -157,7 +196,9 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
     const request = selectionAiRequest(kind, selectionMenu)
     if (request) {
       void props
-        .onAiRequest(request, (delta) => cardStreams.append(card.id, delta))
+        .onAiRequest(request, (delta) => {
+          if (kind !== "translation") cardStreams.append(card.id, delta)
+        })
         .then((body) => {
           updateCardBody(card.id, body)
           cardStreams.clear(card.id)
@@ -198,6 +239,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
       ref={viewportRef}
       className="board-viewport"
       data-tool={props.tool}
+      data-document-hash={props.document.hash}
       onPointerDown={(event) => {
         if (event.target instanceof Element && !event.target.closest(".board-card"))
           setActiveCardId(null)
@@ -206,11 +248,10 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
       onPointerMove={movePan}
       onPointerUp={endPan}
       onPointerCancel={endPan}
-      onWheel={handleWheel}
     >
       <PdfSurface
         document={props.document}
-        viewport={props.viewport}
+        viewport={displayViewport}
         onLoaded={props.onDocumentLoaded}
         onPageActive={props.onPageActive}
         onOutlineChange={props.onOutlineChange}
@@ -222,13 +263,19 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
         ref={worldRef}
         className="board-world"
         style={{
-          transform: `translate(${props.viewport.x}px, ${props.viewport.y}px) scale(${props.viewport.zoom})`,
+          transform: `translate(${displayViewport.x}px, ${displayViewport.y}px) scale(${displayViewport.zoom})`,
         }}
       >
         <BoardOverlays.ConnectorLayer
           cards={activeCards.filter((card) => card.kind !== "sticky" && card.kind !== "highlight")}
         />
         <BoardOverlays.SourceHighlights fragments={highlightedFragments} />
+        <BoardOverlays.SourceHighlights
+          fragments={(props.evidenceFocus?.fragments ?? []).map((fragment, index) => ({
+            key: `evidence-${index}`,
+            fragment,
+          }))}
+        />
         <BoardCardsLayer
           cards={cardStreams.displayCards}
           activeId={activeCardId}
@@ -249,14 +296,30 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
       {selectionMenu && menuPosition ? (
         <BoardOverlays.SelectionToolbar position={menuPosition} onAction={addCard} />
       ) : null}
+      {props.evidenceFocus ? (
+        <div className="evidence-return" role="status">
+          <span>
+            {props.evidenceFocus.page}페이지 ·{" "}
+            {props.evidenceFocus.fragments.length > 0
+              ? "연결된 원문 구절"
+              : "원문 페이지 · 구절 위치 정보 없음"}
+          </span>
+          <button type="button" onClick={props.onDismissEvidence}>
+            표시 닫기
+          </button>
+        </div>
+      ) : null}
       <BoardNavigationController
         key={props.document.id}
         viewport={props.viewport}
         cards={props.cards}
         currentPage={props.currentPage}
+        pageCount={props.document.pageCount}
         onViewportChange={props.onViewportChange}
         visible={props.minimapVisible}
         onVisibleChange={props.onMinimapVisibleChange}
+        panning={panning}
+        panConstraintRef={panConstraint.constraintRef}
       />
     </div>
   )

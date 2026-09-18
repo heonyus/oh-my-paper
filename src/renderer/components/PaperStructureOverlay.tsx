@@ -64,6 +64,7 @@ export function PaperStructureOverlay({
   }, [])
 
   useEffect(() => {
+    const pointerOptions = { passive: true, capture: true } as const
     const handleMove = (event: PointerEvent): void => {
       const overlay = overlayRef.current
       if (!overlay) return
@@ -115,10 +116,10 @@ export function PaperStructureOverlay({
       }
     }
     const clear = (): void => activateStructure(null)
-    window.addEventListener("pointermove", handleMove, { passive: true })
+    window.addEventListener("pointermove", handleMove, pointerOptions)
     window.addEventListener("blur", clear)
     return () => {
-      window.removeEventListener("pointermove", handleMove)
+      window.removeEventListener("pointermove", handleMove, pointerOptions)
       window.removeEventListener("blur", clear)
       if (clearTimerRef.current !== null) window.clearTimeout(clearTimerRef.current)
     }

@@ -62,14 +62,19 @@ function authorBoundary(entry: string): number {
 }
 
 function addYearAtEndReferences(text: string, map: Record<string, ReferenceItem>): void {
-  const entryPattern =
-    /([\s\S]*?)(?:,\s*|\.\s*)(20\d{2}[a-z]?)\.(?:\s+Accessed:\s*[^.]+\.)?(?=\s+[A-Z]|\s*$)/gu
-  for (const match of text.matchAll(entryPattern)) {
-    const raw = match[0]
+  const yearTerminator =
+    /(?:,\s*|\.\s*)(20\d{2}[a-z]?)\.(?:\s+Accessed:\s*[^.]+\.)?(?=\s+[A-Z]|\s*$)/gu
+  let entryStart = 0
+  for (const match of text.matchAll(yearTerminator)) {
+    if (match.index === undefined) continue
+    const entryEnd = match.index + match[0].length
+    const raw = text
+      .slice(entryStart, entryEnd)
       .replace(/\s+/gu, " ")
       .replace(/^(?:Preprint\s+)?\d{1,3}\s+/u, "")
       .trim()
-    const yearText = match[2]
+    entryStart = entryEnd
+    const yearText = match[1]
     if (!yearText || raw.length < 24) continue
     const boundary = authorBoundary(raw)
     if (boundary < 0) continue

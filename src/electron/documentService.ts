@@ -1,11 +1,21 @@
 import { createHash } from "node:crypto"
-import { copyFile, mkdir, readFile } from "node:fs/promises"
+import { mkdir, readFile } from "node:fs/promises"
 import { basename, join } from "node:path"
-import { PDFDocument } from "pdf-lib"
+import type { SourceDocumentAst } from "../shared/documentAst"
 import type { ImportResult } from "../shared/ipc"
-import type { DocumentId, DocumentRecord } from "../shared/schemas"
-import { documentRecordSchema } from "../shared/schemas"
+import {
+  type DocumentId,
+  type DocumentRecord,
+  documentRecordSchema,
+  sha256Schema,
+} from "../shared/schemas"
+import { replaceDurably } from "./collectionJournal"
+import { resolveCollectionPath } from "./collectionPaths"
+import { createAstFingerprint, DocumentAstStore, DocumentAstStoreError } from "./documentAstStore"
 import type { WorkspaceStore } from "./workspaceStore"
+
+const sourceAstExtractorVersion = "pdfjs-6-source-1"
+const sourceAstConfigVersion = "source-only-v1"
 
 export class DocumentImportError extends Error {
   readonly name = "DocumentImportError"
@@ -18,41 +28,45 @@ export class DocumentImportError extends Error {
   }
 }
 
-function extractDoi(subject: string | undefined): string | null {
-  return subject?.match(/10\.\d{4,9}\/[\w.()/:;-]+/iu)?.[0] ?? null
+function preparationErrorKind(error: unknown): DocumentImportError["kind"] | null {
+  if (!(error instanceof Error) || error.name !== "PdfPreparationError") return null
+  if (error.message === "invalid_pdf") return "invalid_pdf"
+  if (error.message === "password_required") return "password_required"
+  return "read_failed"
 }
 
-function extractAuthors(author: string | undefined): readonly string[] {
-  return (
-    author
-      ?.split(/[;,]/u)
-      .map((value) => value.trim())
-      .filter((value) => value.length > 0) ?? []
-  )
+type InspectedDocument = {
+  readonly document: DocumentRecord
+  readonly sourceAst: SourceDocumentAst
 }
 
-async function inspectDocument(bytes: Uint8Array, sourcePath: string): Promise<DocumentRecord> {
+async function inspectDocument(bytes: Uint8Array, sourcePath: string): Promise<InspectedDocument> {
   if (bytes.length < 5 || new TextDecoder().decode(bytes.slice(0, 5)) !== "%PDF-") {
     throw new DocumentImportError("invalid_pdf")
   }
   try {
-    const pdf = await PDFDocument.load(bytes, { updateMetadata: false })
-    const hash = createHash("sha256").update(bytes).digest("hex")
-    return documentRecordSchema.parse({
-      id: hash.slice(0, 16),
+    const { preparePdf } = await import("./preparePdf")
+    const prepared = await preparePdf(new Uint8Array(bytes), basename(sourcePath))
+    const document = documentRecordSchema.parse({
+      id: prepared.hash.slice(0, 16),
       name: basename(sourcePath),
-      hash,
+      hash: prepared.hash,
       bytes: bytes.length,
       importedAt: new Date().toISOString(),
-      pageCount: pdf.getPageCount(),
-      title: pdf.getTitle()?.trim() || basename(sourcePath).replace(/\.pdf$/iu, ""),
-      authors: extractAuthors(pdf.getAuthor()),
-      year: pdf.getCreationDate()?.getFullYear() ?? null,
-      doi: extractDoi(pdf.getSubject()),
-      quality: { textCharacters: 0, needsOcr: false, warnings: [] },
+      pageCount: prepared.pageCount,
+      title: prepared.title,
+      authors: prepared.authors,
+      year: prepared.year,
+      doi: prepared.doi,
+      kind: prepared.kind,
+      overview: prepared.overview,
+      quality: prepared.quality,
     })
+    return { document, sourceAst: prepared.sourceAst }
   } catch (error) {
     if (error instanceof DocumentImportError) throw error
+    const preparationKind = preparationErrorKind(error)
+    if (preparationKind) throw new DocumentImportError(preparationKind, error)
     if (error instanceof Error && /encrypt|password/iu.test(error.message)) {
       throw new DocumentImportError("password_required")
     }
@@ -65,19 +79,54 @@ export async function importDocument(
   store: WorkspaceStore,
 ): Promise<ImportResult> {
   const bytes = await readFile(sourcePath)
-  const document = await inspectDocument(bytes, sourcePath)
-  const workspace = await store.read()
-  const existing = workspace.documents.find((candidate) => candidate.hash === document.hash)
-  if (existing) return { document: existing, duplicate: true }
-
-  await mkdir(store.documentsDirectory, { recursive: true })
-  await copyFile(sourcePath, join(store.documentsDirectory, `${document.hash}.pdf`))
-  await store.save({
-    ...workspace,
-    documents: [...workspace.documents, document],
-    activeDocumentId: document.id,
+  const inspected = await inspectDocument(bytes, sourcePath)
+  const inspectedHash = hashBytes(bytes)
+  if (inspectedHash !== inspected.document.hash) {
+    throw new DocumentImportError("read_failed")
+  }
+  const originalPath = await resolveOriginalPath(store, inspected.document.hash)
+  await ensureOriginal(originalPath, bytes, inspected.document.hash)
+  const fingerprint = createAstFingerprint({
+    sourceHash: inspected.document.hash,
+    extractorVersion: sourceAstExtractorVersion,
+    configVersion: sourceAstConfigVersion,
   })
-  return { document, duplicate: false }
+  try {
+    await new DocumentAstStore(store.root).write(inspected.sourceAst, fingerprint)
+  } catch (error) {
+    if (error instanceof DocumentAstStoreError) {
+      throw new DocumentImportError("read_failed", error)
+    }
+    throw error
+  }
+  return await store.addDocument(inspected.document)
+}
+
+async function resolveOriginalPath(store: WorkspaceStore, hash: string): Promise<string> {
+  await mkdir(store.root, { recursive: true })
+  const relativePath = `${basename(store.documentsDirectory)}/${hash}.pdf`
+  return (await resolveCollectionPath(store.root, relativePath)).path
+}
+
+async function ensureOriginal(path: string, bytes: Uint8Array, hash: string): Promise<void> {
+  try {
+    const existing = await readFile(path)
+    if (hashBytes(existing) !== hash) throw new DocumentImportError("read_failed")
+    return
+  } catch (error) {
+    if (!isMissing(error)) throw error
+  }
+  await replaceDurably(path, bytes)
+  const persisted = await readFile(path)
+  if (hashBytes(persisted) !== hash) throw new DocumentImportError("read_failed")
+}
+
+function hashBytes(bytes: Uint8Array): string {
+  return sha256Schema.parse(createHash("sha256").update(bytes).digest("hex"))
+}
+
+function isMissing(error: unknown): boolean {
+  return error instanceof Error && "code" in error && error.code === "ENOENT"
 }
 
 export async function readDocumentBytes(id: DocumentId, store: WorkspaceStore): Promise<Buffer> {

@@ -1,9 +1,24 @@
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { SettingsModal } from "../../src/renderer/components/SettingsModal"
 
 describe("SettingsModal", () => {
+  it("closes through the native Escape cancel event", () => {
+    const onClose = vi.fn()
+    render(
+      <SettingsModal
+        status={{ configured: false, provider: "openai", model: "gpt-5" }}
+        fontScale={1}
+        onClose={onClose}
+        onSave={vi.fn(async () => {})}
+        onFontScaleChange={vi.fn()}
+      />,
+    )
+    fireEvent(screen.getByRole("dialog", { name: "설정" }), new Event("cancel"))
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
   it("saves an encrypted OpenRouter configuration", async () => {
     const onSave = vi.fn(async () => {})
     const onFontScaleChange = vi.fn()
@@ -51,22 +66,81 @@ describe("SettingsModal", () => {
     expect(model).toHaveValue("deepseek/deepseek-v4-flash-0731")
   })
 
-  it("changes the persisted UI font scale", async () => {
-    const onFontScaleChange = vi.fn()
+  it("saves Gemini Flash-Lite as a first-class provider", async () => {
+    const onSave = vi.fn(async () => {})
     render(
       <SettingsModal
         status={{ configured: false, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
         fontScale={1}
         onClose={vi.fn()}
+        onSave={onSave}
+        onFontScaleChange={vi.fn()}
+      />,
+    )
+
+    await userEvent.selectOptions(screen.getByLabelText("Provider"), "gemini")
+    await userEvent.type(
+      screen.getByLabelText("API 키"),
+      "gemini-example-key-at-least-twenty-characters",
+    )
+    await userEvent.click(screen.getByRole("button", { name: "암호화하여 저장" }))
+
+    expect(onSave).toHaveBeenCalledWith({
+      provider: "gemini",
+      model: "gemini-3.5-flash-lite",
+      apiKey: "gemini-example-key-at-least-twenty-characters",
+    })
+  })
+
+  it("keeps the internally configured Mistral key out of desktop settings", async () => {
+    const onOcrSave = vi.fn(async () => {})
+    render(
+      <SettingsModal
+        status={{ configured: true, provider: "gemini", model: "gemini-3.5-flash-lite" }}
+        ocrStatus={{ configured: false, provider: "mistral", model: "mistral-ocr-4-1" }}
+        fontScale={1}
+        onClose={vi.fn()}
+        onSave={vi.fn(async () => {})}
+        onOcrSave={onOcrSave}
+        onFontScaleChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByLabelText("Mistral OCR API 키")).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "OCR 키 저장" })).not.toBeInTheDocument()
+    expect(onOcrSave).not.toHaveBeenCalled()
+  })
+
+  it("changes the persisted UI font scale", async () => {
+    const onFontScaleChange = vi.fn()
+    const onFontFamilyChange = vi.fn()
+    render(
+      <SettingsModal
+        status={{ configured: false, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
+        fontScale={1}
+        fontFamily="wanted"
+        onClose={vi.fn()}
         onSave={vi.fn(async () => {})}
         onFontScaleChange={onFontScaleChange}
+        onFontFamilyChange={onFontFamilyChange}
       />,
     )
 
     await userEvent.click(screen.getByRole("button", { name: "일반" }))
-    await userEvent.selectOptions(screen.getByLabelText("글자 크기"), "0.9")
+    await userEvent.click(screen.getByRole("button", { name: /Pretendard/ }))
+    await userEvent.click(screen.getByRole("button", { name: "75%" }))
 
-    expect(onFontScaleChange).toHaveBeenCalledWith(0.9)
+    expect(onFontFamilyChange).toHaveBeenCalledWith("pretendard")
+    expect(onFontScaleChange).toHaveBeenCalledWith(0.75)
+    expect(
+      screen.getAllByText("읽은 것은 남고, 필요한 것은 다시 찾을 수 있어야 합니다."),
+    ).toHaveLength(5)
+    expect(
+      screen.getAllByText(
+        "What we read should remain, and what we need should be easy to find again.",
+      ),
+    ).toHaveLength(5)
+    expect(screen.queryByRole("button", { name: "100%로 초기화" })).not.toBeInTheDocument()
   })
 
   it("connects to local OpenCodex without requesting an API key", async () => {
@@ -115,5 +189,22 @@ describe("SettingsModal", () => {
 
     expect(onMinimapVisibleChange).toHaveBeenCalledWith(false)
     expect(screen.queryByLabelText("Provider")).not.toBeInTheDocument()
+  })
+
+  it("keeps hosted credentials out of the web appearance-only settings", () => {
+    render(
+      <SettingsModal
+        status={{ configured: true, provider: "gemini", model: "gemini-3.5-flash-lite" }}
+        fontScale={1}
+        appearanceOnly={true}
+        onClose={vi.fn()}
+        onSave={vi.fn(async () => {})}
+        onFontScaleChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole("button", { name: "일반" })).toBeVisible()
+    expect(screen.queryByRole("button", { name: "AI 모델" })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("API 키")).not.toBeInTheDocument()
   })
 })

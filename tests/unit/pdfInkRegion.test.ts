@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { adoptRefinedVisualBounds } from "../../src/renderer/lib/pdfFeatureDom"
 import {
   captionInkSearchRegion,
   expandBoundsWithinPage,
@@ -43,5 +44,25 @@ describe("caption ink search region", () => {
       width: 87,
       height: 20,
     })
+  })
+
+  it("clamps visual bounds and rejects unrelated pixel regions", () => {
+    const candidate = { x: -10, y: 20, width: 220, height: 180 }
+
+    expect(adoptRefinedVisualBounds(candidate, null, 200, 200)).toEqual({
+      x: 0,
+      y: 20,
+      width: 200,
+      height: 180,
+    })
+    expect(
+      adoptRefinedVisualBounds(candidate, { x: 160, y: 160, width: 40, height: 40 }, 200, 200),
+    ).toEqual({ x: 0, y: 20, width: 200, height: 180 })
+    expect(
+      adoptRefinedVisualBounds(candidate, { x: 12, y: 34, width: 176, height: 150 }, 200, 200),
+    ).toEqual({ x: 12, y: 34, width: 176, height: 150 })
+    expect(
+      adoptRefinedVisualBounds(candidate, { x: 12, y: 34, width: 176, height: 120 }, 200, 200, 0.7),
+    ).toEqual({ x: 0, y: 20, width: 200, height: 180 })
   })
 })

@@ -1,13 +1,25 @@
 import type { AiRequest, ProviderConfig } from "../shared/ipc"
+import { pageStructureResponseFormat } from "../shared/pageStructure"
+import {
+  geminiPageTranslationResponseFormat,
+  pageTranslationResponseFormat,
+} from "../shared/pageTranslationProtocol"
 
 const readingTokenLimits: Readonly<Partial<Record<AiRequest["action"], number>>> = {
+  keywords: 224,
+  three_line_summary: 192,
+  paper_summary: 384,
   citation_assessment: 768,
-  explanation: 512,
-  infographic: 512,
-  section: 320,
-  figure: 768,
-  table: 768,
-  equation: 512,
+  explanation: 1_024,
+  infographic: 896,
+  section: 1_536,
+  figure: 1_280,
+  table: 1_280,
+  equation: 1_024,
+  citation: 1_024,
+  auto_highlight: 1_024,
+  page_structure: 8_192,
+  page_translation: 2_048,
 }
 
 export function completionTokenLimit(request: AiRequest): number | undefined {
@@ -24,23 +36,51 @@ export function completionLimitParameters(
 ): {
   readonly max_tokens?: number
   readonly max_completion_tokens?: number
-  readonly reasoning_effort?: "low"
+  readonly reasoning_effort?: "minimal" | "low"
   readonly temperature?: 0
+  readonly response_format?:
+    | typeof pageStructureResponseFormat
+    | typeof geminiPageTranslationResponseFormat
+    | typeof pageTranslationResponseFormat
 } {
   const limit = completionTokenLimit(request)
   if (!limit) return {}
-  return provider === "openrouter"
-    ? { max_tokens: limit, reasoning_effort: "low", temperature: 0 }
-    : { max_completion_tokens: limit }
+  const structured =
+    request.action === "page_structure"
+      ? { response_format: pageStructureResponseFormat }
+      : request.action === "page_translation"
+        ? {
+            response_format:
+              provider === "gemini"
+                ? geminiPageTranslationResponseFormat
+                : pageTranslationResponseFormat,
+          }
+        : {}
+  if (provider === "openrouter")
+    return { max_tokens: limit, reasoning_effort: "low", temperature: 0, ...structured }
+  if (provider === "groq")
+    return { max_completion_tokens: limit, reasoning_effort: "low", temperature: 0, ...structured }
+  if (provider === "gemini")
+    return {
+      max_completion_tokens: limit,
+      reasoning_effort:
+        request.action === "translation" || request.action === "page_translation"
+          ? "minimal"
+          : "low",
+      temperature: 0,
+      ...structured,
+    }
+  return { max_completion_tokens: limit, ...structured }
 }
+
+const nitroBaseModel = "z-ai/glm-5.3-flash"
 
 export function routedModelForRequest(
   provider: ProviderConfig["provider"],
   model: string,
   request: AiRequest,
 ): string {
-  const variantIndex = model.indexOf(":", model.lastIndexOf("/"))
-  return provider === "openrouter" && completionTokenLimit(request) && variantIndex < 0
-    ? `${model}:nitro`
-    : model
+  if (provider !== "openrouter" || model !== nitroBaseModel) return model
+  if (completionTokenLimit(request) === undefined) return model
+  return `${model}:nitro`
 }

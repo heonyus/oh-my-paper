@@ -6,7 +6,11 @@ export type BoardTextSelection = {
   readonly quote: string
   readonly fragments: readonly SourceFragment[]
   readonly cardPosition: Point
-  readonly context: { readonly before: string; readonly after: string }
+  readonly context: {
+    readonly before: string
+    readonly after: string
+    readonly section?: string | undefined
+  }
 }
 
 type BoardSelectionInput = {

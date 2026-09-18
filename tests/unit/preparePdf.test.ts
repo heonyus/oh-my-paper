@@ -39,6 +39,7 @@ describe("local PDF preparation", () => {
     expect(prepared.quality.needsOcr).toBe(false)
     expect(prepared.anchors.length).toBeGreaterThan(0)
     expect(prepared.pages[0]?.text).toContain("searchable text")
+    expect(prepared.overview).toContain("Page 1: Local preparation extracts searchable text.")
   })
 
   it("rejects non-PDF input", async () => {

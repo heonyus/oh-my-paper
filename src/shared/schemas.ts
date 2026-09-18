@@ -21,6 +21,15 @@ export const viewportSchema = pointSchema.extend({
   zoom: z.number().min(0.38).max(4),
 })
 
+export const documentKindSchema = z.enum([
+  "research_paper",
+  "report",
+  "manual",
+  "contract",
+  "presentation",
+  "document",
+])
+
 export const documentRecordSchema = z.object({
   id: documentIdSchema,
   name: z.string().min(1),
@@ -32,6 +41,9 @@ export const documentRecordSchema = z.object({
   authors: z.array(z.string().min(1)),
   year: z.number().int().min(1000).max(9999).nullable(),
   doi: z.string().min(1).nullable(),
+  kind: documentKindSchema.default("document"),
+  overview: z.string().max(8_000).default(""),
+  lastReadPage: z.number().int().positive().optional(),
   quality: z.object({
     textCharacters: z.number().int().nonnegative(),
     needsOcr: z.boolean(),
@@ -60,6 +72,8 @@ export const preparedPdfSchema = z.object({
   authors: z.array(z.string().min(1)),
   year: z.number().int().min(1000).max(9999).nullable(),
   doi: z.string().min(1).nullable(),
+  kind: documentKindSchema.default("document"),
+  overview: z.string().max(8_000).default(""),
   pages: z.array(preparedPageSchema),
   anchors: z.array(preparedAnchorSchema),
   quality: documentRecordSchema.shape.quality,
@@ -79,8 +93,17 @@ export const sourceAnchorSchema = z.object({
         height: z.number().positive(),
       }),
     )
-    .min(1)
     .max(128),
+  astRanges: z
+    .array(
+      z.object({
+        sourceItemId: z.string().regex(/^item:[a-zA-Z0-9._-]+$/),
+        start: z.number().int().nonnegative(),
+        end: z.number().int().positive(),
+      }),
+    )
+    .max(128)
+    .optional(),
 })
 
 export const boardCardSchema = z.object({
@@ -138,7 +161,19 @@ export const documentInsightSchema = z.object({
   updatedAt: z.string().datetime(),
 })
 
+export const uiFontFamilySchema = z.enum(["wanted", "pretendard", "suit", "geist-wanted", "system"])
+export const appearanceThemeSchema = z.enum(["system", "light", "dark"])
+export const appearancePreferencesSchema = z.object({
+  uiFontFamily: uiFontFamilySchema.default("wanted"),
+  uiFontScale: z.number().min(0.5).max(2).default(1),
+  theme: appearanceThemeSchema.default("system"),
+})
+
 export const workspaceSchema = z.object({
+  revision: z.number().int().nonnegative().optional(),
+  baseRevision: z.number().int().nonnegative().optional(),
+  snapshotToken: sha256Schema.optional(),
+  baseSnapshotToken: sha256Schema.optional(),
   documents: z.array(documentRecordSchema),
   cards: z.array(boardCardSchema),
   insights: z.array(documentInsightSchema).default([]),
@@ -149,22 +184,28 @@ export const workspaceSchema = z.object({
     .min(researchSidebarLayout.contentMinimum)
     .max(researchSidebarLayout.contentMaximum)
     .default(researchSidebarLayout.contentDefault),
-  uiFontScale: z.number().min(0.9).max(1.2).default(1),
-  theme: z.enum(["system", "light", "dark"]).default("system"),
+  uiFontFamily: uiFontFamilySchema.default("wanted"),
+  uiFontScale: z.number().min(0.5).max(2).default(1),
+  theme: appearanceThemeSchema.default("system"),
   minimapVisible: z.boolean().default(true),
   viewport: viewportSchema,
   activeDocumentId: documentIdSchema.nullable(),
 })
 
 export type DocumentId = z.infer<typeof documentIdSchema>
+export type Sha256 = z.infer<typeof sha256Schema>
 export type CardId = z.infer<typeof cardIdSchema>
 export type Point = z.infer<typeof pointSchema>
 export type Viewport = z.infer<typeof viewportSchema>
 export type DocumentRecord = z.infer<typeof documentRecordSchema>
+export type DocumentKind = z.infer<typeof documentKindSchema>
 export type PreparedPdf = z.infer<typeof preparedPdfSchema>
 export type SourceAnchor = z.infer<typeof sourceAnchorSchema>
 export type SourceFragment = SourceAnchor["fragments"][number]
 export type BoardCard = z.infer<typeof boardCardSchema>
 export type DocumentInsight = z.infer<typeof documentInsightSchema>
 export type DocumentInsightKind = z.infer<typeof documentInsightKindSchema>
+export type UiFontFamily = z.infer<typeof uiFontFamilySchema>
+export type AppearanceTheme = z.infer<typeof appearanceThemeSchema>
+export type AppearancePreferences = z.infer<typeof appearancePreferencesSchema>
 export type Workspace = z.infer<typeof workspaceSchema>

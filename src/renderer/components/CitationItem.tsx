@@ -162,6 +162,7 @@ export function CitationItem({
             submitLabel="인용 논문 질문 보내기"
             value={question}
             sending={asking}
+            responseStarted={answer.length > 0}
             onChange={setQuestion}
             onSubmit={(event) => void submit(event)}
           />

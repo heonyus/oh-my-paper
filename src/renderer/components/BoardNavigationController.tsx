@@ -1,15 +1,26 @@
-import { type JSX, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import {
+  type JSX,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
+import { paperOrigin } from "../../shared/uiLayout"
 import { CARD_WIDTH, initialResearchCardHeight, MINIMIZED_CARD_HEIGHT } from "../lib/board"
 import {
   centerViewportOnWorldPoint,
   constrainViewportToBounds,
+  hasCompletePageSet,
   symmetricBoardBounds,
+  type ViewportConstraint,
   type ViewportSize,
   type WorldRect,
 } from "../lib/boardNavigation"
 import type { BoardCard, Viewport } from "../types"
 import { BoardMinimap } from "./BoardMinimap"
-import { PAPER_ORIGIN } from "./PdfSurface"
 
 const navigationPadding = 40
 const minimumBoardSideSpace = 720
@@ -18,9 +29,12 @@ type BoardNavigationControllerProps = {
   readonly viewport: Viewport
   readonly cards: readonly BoardCard[]
   readonly currentPage: number
+  readonly pageCount: number
   readonly onViewportChange: (viewport: Viewport) => void
   readonly visible: boolean
   readonly onVisibleChange: (visible: boolean) => void
+  readonly panning: boolean
+  readonly panConstraintRef: RefObject<ViewportConstraint>
 }
 
 function equalRects(left: readonly WorldRect[], right: readonly WorldRect[]): boolean {
@@ -54,9 +68,12 @@ export function BoardNavigationController({
   viewport,
   cards,
   currentPage,
+  pageCount,
   onViewportChange,
   visible,
   onVisibleChange,
+  panning,
+  panConstraintRef,
 }: BoardNavigationControllerProps): JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewportRef = useRef(viewport)
@@ -76,13 +93,16 @@ export function BoardNavigationController({
     const next = Array.from(viewer.querySelectorAll<HTMLElement>(".page")).map((page) => {
       const rect = page.getBoundingClientRect()
       return {
-        x: PAPER_ORIGIN.x + (rect.left - surfaceRect.left) / current.zoom,
-        y: PAPER_ORIGIN.y + (rect.top - surfaceRect.top) / current.zoom,
+        x: paperOrigin.x + (rect.left - surfaceRect.left) / current.zoom,
+        y: paperOrigin.y + (rect.top - surfaceRect.top) / current.zoom,
         width: rect.width / current.zoom,
         height: rect.height / current.zoom,
       }
     })
-    setPages((currentPages) => (equalRects(currentPages, next) ? currentPages : next))
+    setPages((currentPages) => {
+      if (currentPages.length > 0 && next.length < currentPages.length) return currentPages
+      return equalRects(currentPages, next) ? currentPages : next
+    })
     setAvailable((currentSize) =>
       currentSize.width === board.clientWidth && currentSize.height === board.clientHeight
         ? currentSize
@@ -112,6 +132,9 @@ export function BoardNavigationController({
       if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current)
     }
   }, [scheduleMeasure])
+  useEffect(() => {
+    if (!panning) scheduleMeasure()
+  }, [panning, scheduleMeasure])
   const cardRects = useMemo(
     () => cards.filter((card) => card.kind !== "highlight").map(cardRect),
     [cards],
@@ -121,14 +144,24 @@ export function BoardNavigationController({
     [pages, cardRects],
   )
   useLayoutEffect(() => {
-    if (!bounds || available.width <= 0 || available.height <= 0) return
-    const next = constrainViewportToBounds(viewport, available, bounds, navigationPadding)
-    if (Math.abs(next.x - viewport.x) > 0.25 || Math.abs(next.y - viewport.y) > 0.25) {
-      onViewportChange(next)
+    if (
+      !bounds ||
+      !hasCompletePageSet(pages, pageCount) ||
+      available.width <= 0 ||
+      available.height <= 0
+    ) {
+      panConstraintRef.current = (candidate) => candidate
+      return
     }
-  }, [available, bounds, onViewportChange, viewport])
-
-  if (!bounds || pages.length === 0 || available.width <= 0 || available.height <= 0) {
+    panConstraintRef.current = (candidate) =>
+      constrainViewportToBounds(candidate, available, bounds, navigationPadding)
+  }, [available, bounds, pageCount, pages, panConstraintRef])
+  if (
+    !bounds ||
+    !hasCompletePageSet(pages, pageCount) ||
+    available.width <= 0 ||
+    available.height <= 0
+  ) {
     return <div ref={hostRef} className="board-navigation-controller" />
   }
   const navigate = (point: { readonly x: number; readonly y: number }): void => {

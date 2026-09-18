@@ -1,7 +1,7 @@
 import type { PdfFeature, PdfFeatureRect, PdfTextSpan } from "./pdfFeatureDetection"
 import { isSectionHeadingSpan } from "./pdfHeadingClassifier"
 
-const CAPTION = /^(?:Figure|Fig\.?|Table|Tab\.?)\s*\d+\s*[:.]/iu
+const CAPTION = /^(?:Figure|Fig\.?|Table|Tab\.?)\s*\d+\s*[:.|]/iu
 
 function isAuthorOrAffiliation(text: string): boolean {
   return /\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b|http|www|arXiv:|University|Institute|Laboratory|Department|School|College|Hospital|Center|Author|Contribution/iu.test(

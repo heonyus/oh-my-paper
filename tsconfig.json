@@ -21,5 +21,16 @@
     "jsx": "react-jsx",
     "types": ["vitest/globals", "@testing-library/jest-dom"]
   },
-  "include": ["src/renderer", "src/shared", "vite.config.ts", "vitest.config.ts", "tests"]
+  "include": ["src/renderer", "src/shared", "vite.config.ts", "vitest.config.ts", "tests"],
+  "exclude": [
+    "src/web",
+    "tests/e2e/webBoardParity.spec.ts",
+    "tests/e2e/webOnboarding.spec.ts",
+    "tests/unit/WebAppParity.test.tsx",
+    "tests/unit/WebAppearanceSettings.test.tsx",
+    "tests/unit/WebSignIn.test.tsx",
+    "tests/unit/WebWorkspaceBridge.test.ts",
+    "tests/unit/webScourgifyApi.test.ts",
+    "tests/unit/webUpload.test.ts"
+  ]
 }

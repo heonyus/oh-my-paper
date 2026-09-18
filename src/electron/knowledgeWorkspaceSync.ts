@@ -1,0 +1,84 @@
+import type { DatabaseSync } from "node:sqlite"
+import type { Workspace } from "../shared/schemas"
+import type { KnowledgeRepository } from "./knowledgeRepository"
+import { workspaceSettingsRowSchema } from "./knowledgeRepositoryRows"
+import { applyCards, applyDocuments, applyInsights } from "./knowledgeWorkspaceApply"
+import { mergeWorkspaceForSave } from "./knowledgeWorkspaceMerge"
+import { projectRepositoryToWorkspace } from "./knowledgeWorkspaceProjection"
+
+export function syncWorkspaceToRepository(
+  repo: KnowledgeRepository,
+  db: DatabaseSync,
+  workspace: Workspace,
+  baseWorkspace?: Workspace,
+  transactionAlreadyOpen = false,
+  projectionSourceFile?: string,
+): void {
+  const currentWorkspace = projectRepositoryToWorkspace(repo, db)
+  const effectiveWorkspace = baseWorkspace
+    ? mergeWorkspaceForSave(baseWorkspace, currentWorkspace, workspace)
+    : workspace
+  if (!transactionAlreadyOpen) db.exec("BEGIN IMMEDIATE")
+  try {
+    const now = new Date().toISOString()
+    // 1. Settings revision tracking
+    const rawSettings = db.prepare("SELECT * FROM workspace_settings WHERE id = 1").get()
+    const currentSettings = rawSettings ? workspaceSettingsRowSchema.parse(rawSettings) : undefined
+    const nextRevision = (currentSettings?.revision ?? 0) + 1
+
+    const settingsStmt = db.prepare(`
+      INSERT INTO workspace_settings
+      (id, sidebar_open, outline_width, research_sidebar_width, ui_font_family, ui_font_scale, theme, minimap_visible, viewport_x, viewport_y, viewport_zoom, active_document_id, revision, updated_at)
+      VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        sidebar_open = excluded.sidebar_open,
+        outline_width = excluded.outline_width,
+        research_sidebar_width = excluded.research_sidebar_width,
+        ui_font_family = excluded.ui_font_family,
+        ui_font_scale = excluded.ui_font_scale,
+        theme = excluded.theme,
+        minimap_visible = excluded.minimap_visible,
+        viewport_x = excluded.viewport_x,
+        viewport_y = excluded.viewport_y,
+        viewport_zoom = excluded.viewport_zoom,
+        active_document_id = excluded.active_document_id,
+        revision = excluded.revision,
+        updated_at = excluded.updated_at
+    `)
+    settingsStmt.run(
+      effectiveWorkspace.sidebarOpen ? 1 : 0,
+      effectiveWorkspace.outlineWidth,
+      effectiveWorkspace.researchSidebarWidth,
+      effectiveWorkspace.uiFontFamily,
+      effectiveWorkspace.uiFontScale,
+      effectiveWorkspace.theme,
+      effectiveWorkspace.minimapVisible ? 1 : 0,
+      effectiveWorkspace.viewport.x,
+      effectiveWorkspace.viewport.y,
+      effectiveWorkspace.viewport.zoom,
+      effectiveWorkspace.activeDocumentId,
+      nextRevision,
+      now,
+    )
+
+    applyDocuments(repo, effectiveWorkspace.documents, currentWorkspace.documents, now)
+    applyCards(repo, effectiveWorkspace.cards, currentWorkspace.cards)
+    applyInsights(db, currentWorkspace.insights, effectiveWorkspace.insights)
+    if (projectionSourceFile) {
+      db.prepare(`
+        INSERT OR IGNORE INTO legacy_migration_markers (id, migrated_at, source_file, node_count)
+        VALUES (?, ?, ?, ?)
+      `).run(
+        `projection-${Date.now()}`,
+        now,
+        projectionSourceFile,
+        effectiveWorkspace.documents.length + effectiveWorkspace.cards.length,
+      )
+    }
+
+    if (!transactionAlreadyOpen) db.exec("COMMIT")
+  } catch (error) {
+    if (!transactionAlreadyOpen) db.exec("ROLLBACK")
+    throw error
+  }
+}

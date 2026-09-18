@@ -1,0 +1,33 @@
+.note-preview {
+  max-width: 72ch;
+  color: var(--ink);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.note-preview table {
+  background: var(--surface);
+}
+
+.note-preview th {
+  background: var(--surface-muted);
+}
+
+.note-preview img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 32rem;
+  margin-block: var(--space-3);
+  object-fit: contain;
+}
+
+.note-preview-blocked-image {
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+}
+
+.note-preview .knowledge-link {
+  vertical-align: baseline;
+}

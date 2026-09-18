@@ -4,3 +4,7 @@ export const researchSidebarLayout = {
   contentMaximum: 520,
   railWidth: 40,
 } as const
+
+export const paperOrigin = { x: 300, y: 64 } as const
+
+export const pageTranslationLayout = { gap: 16, width: 640 } as const

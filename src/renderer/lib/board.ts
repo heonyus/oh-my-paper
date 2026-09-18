@@ -7,6 +7,9 @@ import {
   type SourceFragment,
 } from "../../shared/schemas"
 import type { BoardTextSelection } from "./boardSelection"
+import { translationCardTitle } from "./cardPresentation"
+import { addAstRangesToAnchor } from "./documentAstMigration"
+import { activeDocumentAst } from "./documentAstRuntime"
 import type { DetectedStructure } from "./structureDetector"
 
 export const CARD_WIDTH = 300
@@ -64,8 +67,8 @@ export function createBoardCard(input: CreateCardInput): BoardCard {
   }
 }
 
-export function saveTranslationAsNote(card: BoardCard): BoardCard {
-  return card.kind === "translation" ? { ...card, kind: "note", title: "번역 주석" } : card
+export function saveTranslationAsAnnotation(card: BoardCard): BoardCard {
+  return card.kind === "translation" ? { ...card, kind: "highlight", title: "번역 주석" } : card
 }
 
 export function createPostIt(documentId: DocumentId, page: number, placement: Point): BoardCard {
@@ -93,19 +96,21 @@ export function createSelectionCard(
   const copy = CARD_COPY[kind]
   const first = selection.fragments[0]
   if (!first) return null
+  const anchor = {
+    page: selection.page,
+    quote: selection.quote,
+    x: first.x + first.width,
+    y: first.y + first.height / 2,
+    fragments: [...selection.fragments],
+  }
+  const ast = activeDocumentAst(documentId)
   return createBoardCard({
     documentId,
     kind,
-    title: copy.title,
+    title: kind === "translation" ? translationCardTitle(selection.quote) : copy.title,
     body: kind === "highlight" ? selection.quote : copy.body,
     placement: selection.cardPosition,
-    anchor: {
-      page: selection.page,
-      quote: selection.quote,
-      x: first.x + first.width,
-      y: first.y + first.height / 2,
-      fragments: [...selection.fragments],
-    },
+    anchor: ast ? addAstRangesToAnchor(ast, anchor) : anchor,
     loading: kind !== "note" && kind !== "highlight",
   })
 }
@@ -126,6 +131,14 @@ export function createStructureCard(input: StructureCardInput): BoardCard {
       : structure.kind === "figure"
         ? "infographic"
         : "explanation"
+  const anchor = {
+    page: structure.page,
+    quote: structure.quote,
+    x: fragment.x + fragment.width,
+    y: fragment.y + fragment.height / 2,
+    fragments: [fragment],
+  }
+  const ast = activeDocumentAst(documentId)
   return createBoardCard({
     documentId,
     kind: cardKind,
@@ -137,12 +150,6 @@ export function createStructureCard(input: StructureCardInput): BoardCard {
       x: fragment.x + fragment.width + 32,
       y: Math.max(pageWorld.y, fragment.y - 18),
     },
-    anchor: {
-      page: structure.page,
-      quote: structure.quote,
-      x: fragment.x + fragment.width,
-      y: fragment.y + fragment.height / 2,
-      fragments: [fragment],
-    },
+    anchor: ast ? addAstRangesToAnchor(ast, anchor) : anchor,
   })
 }

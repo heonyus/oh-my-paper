@@ -1,4 +1,64 @@
+import { z } from "zod"
+import type { BoardCard, Workspace } from "../types"
+
 const genericSuffix = /\s*(?:해설|분석|카드)$/u
+const wordTranslationSchema = z.object({
+  meanings: z.array(z.string().trim().min(1)).length(3),
+})
+
+export function translationSelectionTitle(value: string): string | null {
+  const trimmed = value.trim().replace(/^["'`]+|["'`.,;:!?]+$/gu, "")
+  return /^[A-Za-z][A-Za-z'-]*$/u.test(trimmed) ? trimmed : null
+}
+
+export function translationCardTitle(value: string): string {
+  const normalized = value.trim().replace(/\s+/gu, " ")
+  if (translationSelectionTitle(normalized)) return normalized
+  const words = normalized.split(" ")
+  const shortEnglishPhrase =
+    words.length >= 2 &&
+    words.length <= 5 &&
+    normalized.length <= 60 &&
+    words.every((word) => /^[A-Za-z0-9][A-Za-z0-9'’-]*[.,;:!?]?$/u.test(word))
+  return shortEnglishPhrase ? normalized : "문단 번역"
+}
+
+function cleanMeaning(value: string): string {
+  return value
+    .replace(/^\s*\d+[.)]\s*/u, "")
+    .replace(/[*_"']/gu, "")
+    .replace(/[.。]\s*$/u, "")
+    .trim()
+}
+
+function legacyMeanings(value: string): readonly string[] {
+  const numbered = value
+    .split("\n")
+    .map((line) => line.match(/^\s*\d+[.)]\s*(.+)$/u)?.[1])
+    .filter((line): line is string => Boolean(line))
+    .map(cleanMeaning)
+    .filter(Boolean)
+  if (numbered.length > 0) return numbered.slice(0, 3)
+  const boldKorean = [...value.matchAll(/\*\*([^*]+)\*\*/gu)]
+    .map((match) => match[1] ?? "")
+    .filter((match) => /[가-힣]/u.test(match))
+    .flatMap((match) => match.split(/[,/·]/u))
+    .map(cleanMeaning)
+    .filter(Boolean)
+  if (boldKorean.length > 0) return boldKorean.slice(0, 3)
+  const concise = value.split(/\n|\(/u)[0]?.split(":").at(-1) ?? ""
+  return concise
+    .split(/[,/·]/u)
+    .map(cleanMeaning)
+    .filter((meaning) => /[가-힣]/u.test(meaning))
+    .slice(0, 3)
+}
+
+function formatMeanings(meanings: readonly string[]): string {
+  return meanings
+    .map((meaning, index) => `${index + 1}. ${index === 0 ? `**${meaning}**` : meaning}`)
+    .join("\n")
+}
 
 export function conciseCardTitle(value: string, fallback: string): string {
   const first = value
@@ -25,4 +85,37 @@ export function parsedCardResponse(
     title: conciseCardTitle(heading[1], fallbackTitle),
     body: lines.slice(1).join("\n").trim(),
   }
+}
+
+export function parsedTranslationResponse(
+  value: string,
+  selectedText: string,
+): { readonly title: string; readonly body: string } {
+  const title = translationCardTitle(selectedText)
+  if (!translationSelectionTitle(selectedText)) return { title, body: value.trim() }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    parsed = null
+  }
+  const result = wordTranslationSchema.safeParse(parsed)
+  const meanings = result.success ? result.data.meanings.map(cleanMeaning) : legacyMeanings(value)
+  return { title, body: formatMeanings(meanings) }
+}
+
+export function normalizeWorkspaceTranslations(workspace: Workspace): Workspace {
+  let changed = false
+  const cards = workspace.cards.map((card): BoardCard => {
+    if (card.kind === "note" && card.title.trim() === "번역 주석") {
+      changed = true
+      return { ...card, kind: "highlight" }
+    }
+    if (card.kind !== "translation" || card.loading) return card
+    const parsed = parsedTranslationResponse(card.body, card.anchor.quote)
+    if (parsed.title === card.title && parsed.body === card.body) return card
+    changed = true
+    return { ...card, ...parsed }
+  })
+  return changed ? { ...workspace, cards } : workspace
 }

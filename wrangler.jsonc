@@ -1,0 +1,58 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "scourgify-web",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-09-04",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist-web",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "vars": {
+    "GEMINI_MODEL": "gemini-3.5-flash-lite"
+  },
+  "secrets": {
+    "required": [
+      "BETTER_AUTH_SECRET",
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "CREDENTIAL_ENCRYPTION_KEY",
+      "MISTRAL_API_KEY",
+      "GEMINI_API_KEY"
+    ]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "scourgify-web",
+      "database_id": "deca883b-151d-4618-8131-608e5c6ea89b"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "DOCUMENTS",
+      "bucket_name": "scourgify-documents"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "OCR_QUEUE",
+        "queue": "scourgify-ocr"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "scourgify-ocr",
+        "max_batch_size": 1,
+        "max_batch_timeout": 5,
+        "max_retries": 3
+      }
+    ]
+  },
+  "observability": {
+    "enabled": true
+  }
+}

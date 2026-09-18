@@ -37,6 +37,15 @@ describe("selection AI request", () => {
     })
   })
 
+  it("forwards a detected heading section when explaining a selection", () => {
+    const request = selectionAiRequest("explanation", {
+      ...selection,
+      context: { ...selection.context, section: "all four scaffold actions including debugging" },
+    })
+
+    expect(request?.sectionContext).toBe("all four scaffold actions including debugging")
+  })
+
   it("does not create an AI request for local-only selection actions", () => {
     // Given / When
     const request = selectionAiRequest("highlight", selection)

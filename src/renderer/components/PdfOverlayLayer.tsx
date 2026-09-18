@@ -3,6 +3,7 @@ import { copyFeature } from "../lib/featureCopy"
 import type { PageOverlayState } from "../lib/pdfOverlayAnalysis"
 import { pageOverlayStyle } from "../lib/pdfOverlayRefresh"
 import type { DetectedStructure } from "../lib/structureDetector"
+import { PageTranslationTrigger } from "./PageTranslationTrigger"
 import { PaperStructureOverlay } from "./PaperStructureOverlay"
 
 type PdfOverlayLayerProps = {
@@ -24,6 +25,7 @@ export function PdfOverlayLayer({
           data-page-number={pageNumber}
           style={{ position: "absolute", ...pageOverlayStyle(data.pageDiv, container) }}
         >
+          <PageTranslationTrigger page={Number(pageNumber)} />
           <PaperStructureOverlay
             structures={data.structures}
             pageWidth={data.pageWidth}

@@ -1,10 +1,14 @@
 {
   "name": "scourgify",
-  "version": "1.0.0",
-  "private": false,
+  "version": "2.0.0",
+  "private": true,
   "description": "A local-first spatial PDF reading board",
   "license": "MIT",
-  "author": "heonyus",
+  "author": {
+    "name": "heonyus",
+    "email": "108461006+heonyus@users.noreply.github.com",
+    "url": "https://github.com/heonyus"
+  },
   "homepage": "https://github.com/heonyus/scourgify#readme",
   "repository": {
     "type": "git",
@@ -12,21 +16,28 @@
   },
   "main": "dist-electron/electron/main.js",
   "scripts": {
-    "dev": "concurrently -k \"vite\" \"npx wait-on tcp:5173 && electron .\"",
+    "dev": "node scripts/dev-electron.mjs",
+    "dev:web": "concurrently \"tsx src/server/main.ts\" \"vite --config vite.web.config.ts --port 5173\"",
+    "build:web": "vite build --config vite.web.config.ts",
+    "start:web": "tsx src/server/main.ts",
     "build": "node scripts/build-electron.mjs && vite build",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.electron.json --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.electron.json --noEmit && tsc -p tsconfig.web.json --noEmit && tsc -p tsconfig.worker.json --noEmit && tsc -p tsconfig.server.json --noEmit",
     "lint": "biome check .",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "test": "vitest run",
     "test:e2e": "npm run build && playwright test",
-    "package": "npm run build && electron-builder --dir",
-    "make": "npm run build && electron-builder",
-    "dist:mac": "npm run build && electron-builder --mac dmg zip --x64 --arm64",
-    "dist:win": "npm run build && electron-builder --win nsis portable --x64",
-    "dist:linux": "npm run build && electron-builder --linux AppImage deb --x64",
+    "release:check": "node scripts/release-preflight.mjs --config-only",
+    "release:preflight": "node scripts/release-preflight.mjs",
+    "package": "npm run release:check && npm run build && electron-builder --dir --mac --arm64 --publish never",
+    "make": "npm run release:check && npm run build && electron-builder --mac dmg zip --arm64 --publish never",
+    "dist:mac": "npm run release:check && npm run build && electron-builder --mac dmg zip --arm64 --publish never",
+    "dist:win": "node scripts/release-preflight.mjs --unsupported win32",
+    "dist:linux": "node scripts/release-preflight.mjs --unsupported linux",
     "fixture": "tsx scripts/create-fixture.ts",
     "setup:layout": "node scripts/setup-layout-runtime.mjs",
+    "setup:mineru": "node scripts/setup-mineru-runtime.mjs",
+    "setup:paddle-vl": "node scripts/setup-paddle-vl-runtime.mjs",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test",
     "verify:installed-layout": "node scripts/verify-installed-layout.mjs"
   },
@@ -38,10 +49,20 @@
       "output": "release"
     },
     "mac": {
-      "icon": "build/scourgify.icns",
+      "icon": "assets/branding/scourgify-leaf-mark.png",
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64"
+          ]
+        }
       ],
       "category": "public.app-category.productivity"
     },
@@ -64,8 +85,7 @@
     },
     "files": [
       "dist/**",
-      "dist-electron/**",
-      "package.json"
+      "dist-electron/**"
     ],
     "asar": true,
     "extraMetadata": {
@@ -75,6 +95,14 @@
       {
         "from": "src/layout/pp_structure_layout.py",
         "to": "layout/pp_structure_layout.py"
+      },
+      {
+        "from": "src/layout/pp_structure_enrichment.py",
+        "to": "layout/pp_structure_enrichment.py"
+      },
+      {
+        "from": "src/layout/paddle_vl_page_parser.py",
+        "to": "layout/paddle_vl_page_parser.py"
       }
     ],
     "publish": {
@@ -85,6 +113,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.2",
+    "@cloudflare/workers-types": "5.20260910.1",
     "@eslint/js": "^9.35.0",
     "@playwright/test": "^1.55.0",
     "@testing-library/jest-dom": "^6.9.1",
@@ -110,6 +139,14 @@
     "wait-on": "^8.0.5"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.11.0",
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/state": "^6.7.4",
+    "@codemirror/view": "^6.43.11",
+    "@lezer/highlight": "^1.2.3",
+    "better-auth": "1.7.4",
+    "docx": "^9.7.1",
     "dotenv": "^16.6.1",
     "katex": "^0.18.4",
     "lucide-react": "^0.542.0",
@@ -123,6 +160,7 @@
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
     "undici": "^6.28.0",
+    "yaml": "^2.9.0",
     "zod": "^4.1.5"
   }
 }

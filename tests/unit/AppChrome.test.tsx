@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { Topbar } from "../../src/renderer/components/AppChrome"
+import { documentIdSchema } from "../../src/shared/schemas"
 
 describe("Topbar", () => {
   it("connects outline, tool, history, and zoom controls without search", async () => {
@@ -12,6 +13,9 @@ describe("Topbar", () => {
     const onViewportChange = vi.fn()
     render(
       <Topbar
+        documents={[]}
+        activeDocumentId={documentIdSchema.parse("aabbccddeeff0011")}
+        onDocumentChange={vi.fn()}
         viewport={{ x: 0, y: 0, zoom: 1 }}
         onViewportChange={onViewportChange}
         tool="select"
@@ -31,13 +35,14 @@ describe("Topbar", () => {
     await userEvent.click(screen.getByRole("button", { name: "다시 실행" }))
     await userEvent.click(screen.getByRole("button", { name: "확대" }))
 
-    expect(screen.getByRole("img", { name: "Scourgify" })).toBeInTheDocument()
+    expect(screen.getByRole("combobox", { name: "읽는 논문" })).toBeInTheDocument()
     expect(onToggleOutline).toHaveBeenCalledOnce()
     expect(onToolChange).toHaveBeenCalledWith("pan")
     expect(onUndo).toHaveBeenCalledOnce()
     expect(onRedo).toHaveBeenCalledOnce()
     expect(onViewportChange).toHaveBeenCalledWith({ x: 0, y: 0, zoom: 1.1 })
     expect(screen.queryByRole("button", { name: "검색" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "포스트잇 도구" })).not.toBeInTheDocument()
   })
 
   it("keeps the visible board center fixed during toolbar zoom", async () => {
@@ -51,6 +56,9 @@ describe("Topbar", () => {
     const onViewportChange = vi.fn()
     render(
       <Topbar
+        documents={[]}
+        activeDocumentId={documentIdSchema.parse("aabbccddeeff0011")}
+        onDocumentChange={vi.fn()}
         viewport={{ x: -200, y: -300, zoom: 1 }}
         onViewportChange={onViewportChange}
         tool="select"

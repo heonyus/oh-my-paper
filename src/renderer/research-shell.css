@@ -1,0 +1,244 @@
+.app-shell {
+  --navigation-rail-width: 56px;
+  --canvas: #f5f6f8;
+  --surface-muted: #f5f6f8;
+  --ink: #202326;
+  --ink-muted: #62676e;
+  --line: #dce0e4;
+  --action: #202725;
+  --action-hover: #35433d;
+  --action-subtle: #e3eee8;
+  --focus: #35765b;
+  --research-lilac: #efedf6;
+  --research-mint: #eaf4f2;
+  --research-panel-radius: 8px;
+  --research-control-height: 36px;
+  --research-inspector-width: 300px;
+  --research-sidebar-width: 200px;
+}
+.app-shell[data-theme="dark"] {
+  --canvas: #181b20;
+  --surface: #22262d;
+  --surface-raised: #2a3038;
+  --surface-muted: #2a3038;
+  --ink: #eef0f3;
+  --ink-muted: #b7bfc8;
+  --line: #3d4651;
+  --action: #b2dcc5;
+  --action-hover: #d1efde;
+  --action-subtle: #304338;
+  --focus: #b2dcc5;
+  --research-lilac: #242331;
+  --research-mint: #1d302c;
+}
+.app-shell[data-navigation="research"] {
+  grid-template: max(64px, calc(var(--type-body-size) * 3 + 16px)) minmax(0, 1fr) / 0 minmax(0, 1fr) auto;
+  background: linear-gradient(
+    115deg,
+    var(--research-lilac),
+    var(--canvas) 48%,
+    var(--research-mint)
+  );
+}
+.app-shell[data-navigation="research"] > .topbar {
+  grid-row: 1;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding-left: 92px;
+  min-width: 0;
+}
+.library-topbar .topbar-brand {
+  gap: 6px;
+  height: auto;
+  color: var(--ink);
+  font-size: calc(var(--type-body-size) * 1.57);
+  font-weight: 600;
+  letter-spacing: -0.4px;
+}
+.library-topbar .topbar-brand-mark {
+  width: 30px;
+  height: 30px;
+}
+.app-shell[data-navigation="research"] .library-topbar > strong,
+.app-shell[data-navigation="research"] .library-topbar > .topbar-divider {
+  display: none;
+}
+.app-shell[data-navigation="research"] > .left-rail {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  flex-direction: row;
+  align-self: center;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 0;
+  max-height: 100%;
+  margin: 0 24px 0 max(280px, calc(var(--type-title-size) * 12 + 64px));
+  padding: 6px 0;
+  overflow-x: auto;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  -webkit-app-region: no-drag;
+}
+.app-shell[data-navigation="research"] .left-rail button {
+  width: auto;
+  min-height: var(--research-control-height);
+  padding: 10px 14px;
+  border-radius: 24px;
+  color: var(--ink-muted);
+  font-size: var(--type-toolbar-size);
+  font-weight: 550;
+  white-space: nowrap;
+}
+.app-shell[data-navigation="research"] .left-rail button.active {
+  color: var(--ink);
+  background: var(--surface);
+}
+.app-shell[data-navigation="research"] .left-rail button > svg {
+  display: none;
+}
+.app-shell[data-navigation="research"] .left-rail-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 8px;
+}
+.app-shell[data-navigation="research"] .left-rail .rail-settings {
+  margin: 0;
+}
+.research-navigation-utilities {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  min-width: 0;
+}
+.research-navigation-menu {
+  position: fixed;
+  inset: max(64px, calc(var(--type-body-size) * 3 + 16px)) 24px auto auto;
+  margin: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--research-panel-radius);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 8px 28px #00000018;
+}
+.app-shell[data-navigation="research"] .research-navigation-menu button {
+  width: 100%;
+  align-items: flex-start;
+  border-radius: 6px;
+}
+.app-shell[data-navigation="research"] .left-rail .research-navigation-more {
+  flex-direction: row;
+  gap: var(--space-1);
+}
+.app-shell[data-navigation="research"] .left-rail .research-navigation-more > svg {
+  display: block;
+}
+.app-shell[data-navigation="research"]:has(.topbar-account) > .left-rail {
+  margin-right: 200px;
+}
+.app-shell[data-navigation="research"] .topbar-account {
+  max-width: 168px;
+  min-width: 0;
+  margin-left: auto;
+}
+.app-shell[data-navigation="research"] .topbar-account > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-shell[data-navigation="research"] .library-home {
+  background: transparent;
+}
+.library-action-error {
+  position: absolute;
+  top: 84px;
+  left: 24px;
+  right: 24px;
+  z-index: 30;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--error);
+  border-radius: var(--research-panel-radius);
+  color: var(--error);
+  background: var(--surface);
+}
+.app-shell[data-navigation="research"] .knowledge-view,
+.app-shell[data-navigation="research"] .knowledge-graph-view,
+.app-shell[data-navigation="research"] .knowledge-compare-view,
+.app-shell[data-navigation="research"] .knowledge-project-view {
+  background: transparent;
+}
+@media (max-width: 1000px) {
+  .app-shell[data-navigation="research"] {
+    grid-template-rows: 112px minmax(0, 1fr);
+  }
+  .app-shell[data-navigation="research"] > .topbar {
+    align-items: flex-start;
+    padding-top: 8px;
+  }
+  .app-shell[data-navigation="research"] > .left-rail {
+    align-self: end;
+    margin-left: 16px;
+    margin-right: 16px;
+  }
+  .app-shell[data-navigation="research"]:has(.topbar-account) > .left-rail {
+    margin-right: 16px;
+  }
+  .library-topbar .topbar-brand {
+    font-size: var(--type-title-size);
+  }
+  .library-topbar .topbar-brand-mark {
+    width: 28px;
+    height: 28px;
+  }
+}
+@media (prefers-color-scheme: dark) {
+  .app-shell[data-theme="system"] {
+    --canvas: #181b20;
+    --surface: #22262d;
+    --surface-raised: #2a3038;
+    --surface-muted: #2a3038;
+    --ink: #eef0f3;
+    --ink-muted: #b7bfc8;
+    --line: #3d4651;
+    --action: #b2dcc5;
+    --action-hover: #d1efde;
+    --action-subtle: #304338;
+    --focus: #b2dcc5;
+    --research-lilac: #242331;
+    --research-mint: #1d302c;
+  }
+}
+
+.app-shell[data-navigation="research"][data-large-text="true"] {
+  grid-template-rows: calc(var(--type-body-size) * 6 + 24px) minmax(0, 1fr);
+}
+.app-shell[data-navigation="research"][data-large-text="true"] > .topbar {
+  align-items: flex-start;
+  padding-top: 8px;
+}
+.app-shell[data-navigation="research"][data-large-text="true"] > .left-rail {
+  align-self: end;
+  flex-wrap: wrap;
+  margin: 0 16px;
+  overflow: visible;
+  align-content: flex-start;
+  row-gap: 4px;
+}
+.app-shell[data-navigation="research"][data-large-text="true"]:has(.topbar-account) > .left-rail {
+  margin-right: 16px;
+}
+.app-shell[data-large-text="true"] .research-navigation-utilities {
+  margin-left: 0;
+}

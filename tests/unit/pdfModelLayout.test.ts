@@ -261,4 +261,115 @@ describe("model PDF layout", () => {
 
     expect(applied.features[0]?.rect).toEqual({ x: 300, y: 220, width: 220, height: 100 })
   })
+
+  it("unions aligned vertical panels and suppresses their internal A-B-C headings", () => {
+    const caption = {
+      id: "figure-1-caption",
+      text: "Figure 1. Construction and evaluation framework",
+      x: 60,
+      y: 650,
+      width: 480,
+      height: 12,
+      fontSize: 9,
+      fontWeight: 400,
+    } satisfies PdfTextSpan
+    const panelSpans = [
+      { id: "panel-a", text: "A Construction pipeline", y: 80 },
+      { id: "panel-b", text: "B Evaluation of a candidate agent", y: 270 },
+      { id: "panel-c", text: "C Evaluation framework", y: 460 },
+    ].map((item) => ({
+      ...item,
+      x: 70,
+      width: 300,
+      height: 18,
+      fontSize: 12,
+      fontWeight: 600,
+    })) satisfies readonly PdfTextSpan[]
+    const panelFigure = [
+      {
+        kind: "figure",
+        pageNumber: 3,
+        rect: { x: 60, y: 490, width: 480, height: 130 },
+        label: "Figure 1",
+        context: caption.text,
+        priority: 0.8,
+        sourceSpanIds: [caption.id],
+      },
+      ...panelSpans.map(
+        (span) =>
+          ({
+            kind: "subheading",
+            pageNumber: 3,
+            rect: { x: span.x, y: span.y, width: span.width, height: span.height },
+            label: span.text,
+            context: span.text,
+            priority: 0.85,
+            sourceSpanIds: [span.id],
+          }) satisfies PdfFeature,
+      ),
+    ] satisfies readonly PdfFeature[]
+    const stackedPanels = {
+      pageNumber: 3,
+      width: 600,
+      height: 1_200,
+      boxes: [
+        { label: "paragraph_title", score: 0.68, x: 70, y: 80, width: 300, height: 18 },
+        { label: "image", score: 0.9, x: 60, y: 110, width: 480, height: 130 },
+        { label: "paragraph_title", score: 0.62, x: 70, y: 270, width: 300, height: 18 },
+        { label: "image", score: 0.91, x: 60, y: 300, width: 480, height: 130 },
+        { label: "paragraph_title", score: 0.66, x: 70, y: 460, width: 300, height: 18 },
+        { label: "image", score: 0.89, x: 60, y: 490, width: 480, height: 130 },
+      ],
+    } satisfies DocumentLayoutPage
+
+    const applied = applyModelLayoutBounds(
+      panelFigure,
+      [caption, ...panelSpans],
+      stackedPanels,
+      600,
+      1_200,
+    )
+
+    expect(applied.features).toHaveLength(1)
+    expect(applied.features[0]?.kind).toBe("figure")
+    expect(applied.features[0]?.rect).toEqual({ x: 60, y: 80, width: 480, height: 540 })
+  })
+
+  it("includes a table panel in a compact mixed-panel figure", () => {
+    const caption = {
+      id: "nature-caption",
+      text: "Fig. 2 | Comprehensive evaluation across five benchmarks",
+      x: 60,
+      y: 650,
+      width: 480,
+      height: 12,
+      fontSize: 9,
+      fontWeight: 700,
+    } satisfies PdfTextSpan
+    const figure = [
+      {
+        kind: "figure",
+        pageNumber: 3,
+        rect: { x: 60, y: 310, width: 480, height: 150 },
+        label: "Figure 2",
+        context: caption.text,
+        priority: 0.8,
+        sourceSpanIds: [caption.id],
+      },
+    ] satisfies readonly PdfFeature[]
+    const layout = {
+      pageNumber: 3,
+      width: 600,
+      height: 1_000,
+      boxes: [
+        { label: "table", score: 0.96, x: 60, y: 100, width: 480, height: 180 },
+        { label: "chart", score: 0.54, x: 60, y: 310, width: 220, height: 150 },
+        { label: "chart", score: 0.53, x: 320, y: 310, width: 220, height: 150 },
+      ],
+    } satisfies DocumentLayoutPage
+
+    const applied = applyModelLayoutBounds(figure, [caption], layout, 600, 1_000)
+
+    expect(applied.features[0]?.rect).toEqual({ x: 60, y: 100, width: 480, height: 360 })
+  })
 })

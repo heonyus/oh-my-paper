@@ -1,5 +1,8 @@
-import { describe, expect, it } from "vitest"
-import { urlFromPdfClickTarget } from "../../src/renderer/lib/pdfColumnSupport"
+import { describe, expect, it, vi } from "vitest"
+import {
+  bindPdfExternalLinks,
+  urlFromPdfClickTarget,
+} from "../../src/renderer/lib/pdfColumnSupport"
 
 describe("PDF column links", () => {
   it("reads an HTTPS URL from a PDF.js annotation anchor", () => {
@@ -35,5 +38,19 @@ describe("PDF column links", () => {
 
     // Then
     expect(result).toBeNull()
+  })
+
+  it("opens an HTTPS PDF link through the registered Electron boundary", () => {
+    const container = document.createElement("div")
+    const anchor = document.createElement("a")
+    anchor.href = "https://example.com/paper"
+    container.append(anchor)
+    const openExternal = vi.fn(async () => undefined)
+    const release = bindPdfExternalLinks(container, openExternal)
+
+    anchor.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }))
+
+    expect(openExternal).toHaveBeenCalledWith({ url: "https://example.com/paper" })
+    release()
   })
 })

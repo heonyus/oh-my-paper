@@ -1,25 +1,39 @@
-import { BookOpen, Bot, Check, SlidersHorizontal, X } from "lucide-react"
-import { type FormEvent, type JSX, useState } from "react"
+import { BookOpen, Bot, SlidersHorizontal, X } from "lucide-react"
+import { type JSX, useLayoutEffect, useRef, useState } from "react"
+import type { DocumentOcrProviderStatus } from "../../shared/documentOcr"
 import type { ProviderConfig, ProviderStatus } from "../../shared/ipc"
+import type { AiMode } from "../../shared/providerModels"
+import type { AppearanceTheme, UiFontFamily } from "../../shared/schemas"
+import { uiFontScaleLabel, uiFontScalePercent, uiFontScalePresets } from "../../shared/uiAppearance"
+import { AiProviderSettings, useAiProviderForm } from "./AiProviderSettings"
+import { CodexSettings } from "./CodexSettings"
+import { FontFamilyPicker } from "./FontFamilyPicker"
 import {
-  DEFAULT_OPENROUTER_MODEL,
-  isOpenRouterModel,
-  OPENROUTER_MODEL_OPTIONS,
-} from "../../shared/providerModels"
+  HostedCredentialSettings,
+  type HostedCredentialSettingsProps,
+} from "./HostedCredentialSettings"
+import { LocalAiPanel } from "./localAi/LocalAiPanel"
+import "./settings-dialog.css"
 
 type SettingsSection = "general" | "ai" | "reading"
-type AppearanceTheme = "system" | "light" | "dark"
 
 type SettingsModalProps = {
   readonly status: ProviderStatus
   readonly fontScale: number
+  readonly fontFamily?: UiFontFamily | undefined
   readonly minimapVisible?: boolean | undefined
   readonly onClose: () => void
   readonly onSave: (config: ProviderConfig) => Promise<void>
+  readonly onModeSave?: (mode: AiMode) => Promise<void>
+  readonly ocrStatus?: DocumentOcrProviderStatus | undefined
+  readonly onOcrSave?: ((key: string) => Promise<void>) | undefined
   readonly onFontScaleChange: (scale: number) => void
+  readonly onFontFamilyChange?: ((font: UiFontFamily) => void) | undefined
   readonly onMinimapVisibleChange?: ((visible: boolean) => void) | undefined
   readonly theme?: AppearanceTheme | undefined
   readonly onThemeChange?: ((theme: AppearanceTheme) => void) | undefined
+  readonly appearanceOnly?: boolean | undefined
+  readonly hostedCredentials?: HostedCredentialSettingsProps | undefined
 }
 
 const sections = [
@@ -28,58 +42,49 @@ const sections = [
   { id: "reading", label: "읽기", icon: BookOpen },
 ] as const
 
-function initialModel(provider: ProviderConfig["provider"], model: string): string {
-  return provider !== "openrouter" || isOpenRouterModel(model) ? model : DEFAULT_OPENROUTER_MODEL
-}
-
-function nextProviderModel(provider: ProviderConfig["provider"]): string {
-  if (provider === "openai") return "gpt-5"
-  if (provider === "opencodex") return "gpt-5.6-sol"
-  return DEFAULT_OPENROUTER_MODEL
-}
-
 export function SettingsModal({
   status,
   fontScale,
+  fontFamily = "wanted",
   minimapVisible = true,
   onClose,
   onSave,
+  onModeSave,
   onFontScaleChange,
+  onFontFamilyChange,
   onMinimapVisibleChange,
   theme = "system",
   onThemeChange,
+  appearanceOnly = false,
+  hostedCredentials,
 }: SettingsModalProps): JSX.Element {
-  const [section, setSection] = useState<SettingsSection>("ai")
-  const [provider, setProvider] = useState<ProviderConfig["provider"]>(status.provider)
-  const [model, setModel] = useState(initialModel(status.provider, status.model))
-  const [key, setKey] = useState("")
-  const [message, setMessage] = useState("")
-
-  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault()
-    try {
-      await onSave(
-        provider === "opencodex" ? { provider, model } : { provider, model, apiKey: key },
-      )
-      setKey("")
-      setMessage("저장됨")
-    } catch {
-      setMessage("저장 실패")
-    }
-  }
+  const [section, setSection] = useState<SettingsSection>(appearanceOnly ? "general" : "ai")
+  const visibleSections = appearanceOnly
+    ? sections.filter((candidate) => candidate.id !== "ai")
+    : sections
+  const aiProviderForm = useAiProviderForm(status)
+  const dialog = useRef<HTMLDialogElement>(null)
+  useLayoutEffect(() => {
+    const element = dialog.current
+    element?.showModal()
+    return () => element?.close()
+  }, [])
 
   return (
-    <div className="modal-backdrop settings-backdrop" role="presentation">
-      <section
-        className="settings-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="settings-title"
-      >
+    <dialog
+      ref={dialog}
+      className="modal-backdrop settings-backdrop"
+      aria-labelledby="settings-title"
+      onCancel={(event) => {
+        event.preventDefault()
+        onClose()
+      }}
+    >
+      <section className="settings-modal">
         <aside className="settings-source-list" aria-label="설정 섹션">
           <h2 id="settings-title">설정</h2>
           <nav>
-            {sections.map(({ id, label, icon: Icon }) => (
+            {visibleSections.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 type="button"
@@ -96,7 +101,7 @@ export function SettingsModal({
         <div className="settings-content">
           <header className="settings-content-head">
             <div>
-              <h3>{sections.find((item) => item.id === section)?.label}</h3>
+              <h3>{visibleSections.find((item) => item.id === section)?.label}</h3>
               {section === "ai" ? (
                 <span className="settings-connection" data-ready={status.configured}>
                   <i /> {status.configured ? "연결 준비됨" : "설정 필요"}
@@ -133,92 +138,73 @@ export function SettingsModal({
                   </select>
                 </label>
                 <label className="settings-row" htmlFor="ui-font-scale">
-                  <span>글자 크기</span>
-                  <select
-                    id="ui-font-scale"
-                    value={fontScale}
-                    onChange={(event) => onFontScaleChange(Number(event.currentTarget.value))}
-                  >
-                    <option value={0.9}>작게 · 90%</option>
-                    <option value={1}>기본 · 100%</option>
-                    <option value={1.1}>크게 · 110%</option>
-                    <option value={1.2}>아주 크게 · 120%</option>
-                  </select>
+                  <span>
+                    <strong>글자 크기</strong>
+                    <small>{uiFontScaleLabel(fontScale)}</small>
+                  </span>
+                  <span className="settings-range-control">
+                    <input
+                      id="ui-font-scale"
+                      type="range"
+                      min={0.5}
+                      max={2}
+                      step={0.05}
+                      value={fontScale}
+                      onChange={(event) => onFontScaleChange(Number(event.currentTarget.value))}
+                    />
+                    <output htmlFor="ui-font-scale">{uiFontScalePercent(fontScale)}%</output>
+                  </span>
                 </label>
+                <fieldset className="settings-scale-presets">
+                  <legend>글자 크기 빠른 선택</legend>
+                  {uiFontScalePresets.map((scale) => (
+                    <button
+                      key={scale}
+                      type="button"
+                      aria-pressed={fontScale === scale}
+                      onClick={() => onFontScaleChange(scale)}
+                    >
+                      {uiFontScalePercent(scale)}%
+                    </button>
+                  ))}
+                </fieldset>
+                <FontFamilyPicker
+                  value={fontFamily}
+                  onChange={(font) => onFontFamilyChange?.(font)}
+                />
               </fieldset>
             ) : null}
             {section === "ai" ? (
-              <form className="settings-ai-form" onSubmit={(event) => void submit(event)}>
-                <div className="settings-group">
-                  <label className="settings-row" htmlFor="ai-provider">
-                    <span>Provider</span>
-                    <select
-                      id="ai-provider"
-                      value={provider}
-                      onChange={(event) => {
-                        const next = event.currentTarget.value
-                        if (next !== "openai" && next !== "openrouter" && next !== "opencodex")
-                          return
-                        setProvider(next)
-                        setModel(nextProviderModel(next))
-                      }}
-                    >
-                      <option value="openai">OpenAI API</option>
-                      <option value="openrouter">OpenRouter</option>
-                      <option value="opencodex">Local OpenCodex</option>
-                    </select>
-                  </label>
-                  <label className="settings-row" htmlFor="provider-model">
-                    <span>모델</span>
-                    {provider === "openrouter" ? (
-                      <select
-                        id="provider-model"
-                        aria-label="모델 ID"
-                        value={model}
-                        onChange={(event) => setModel(event.currentTarget.value)}
-                      >
-                        {OPENROUTER_MODEL_OPTIONS.map((option) => (
-                          <option key={option} value={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        id="provider-model"
-                        aria-label="모델 ID"
-                        value={model}
-                        onChange={(event) => setModel(event.currentTarget.value)}
+              <div className="settings-ai-stack">
+                {hostedCredentials ? (
+                  <HostedCredentialSettings {...hostedCredentials} />
+                ) : (
+                  <>
+                    <AiProviderSettings
+                      form={aiProviderForm}
+                      onSave={onSave}
+                      onModeSave={onModeSave ?? (async () => {})}
+                    />
+                    {aiProviderForm.mode === "chatgpt" ? (
+                      <CodexSettings
+                        onConnectionChange={async () => {
+                          await onModeSave?.("chatgpt")
+                        }}
                       />
-                    )}
-                  </label>
-                  {provider !== "opencodex" ? (
-                    <label className="settings-row" htmlFor="provider-key">
-                      <span>API 키</span>
-                      <input
-                        id="provider-key"
-                        type="password"
-                        autoComplete="off"
-                        value={key}
-                        placeholder={provider === "openrouter" ? "sk-or-…" : "sk-…"}
-                        onChange={(event) => setKey(event.currentTarget.value)}
-                      />
-                    </label>
-                  ) : null}
-                </div>
-                <div className="settings-form-footer">
-                  {message ? (
-                    <span role="status">
-                      <Check size={13} /> {message}
-                    </span>
-                  ) : (
-                    <span />
-                  )}
-                  <button className="settings-save" type="submit">
-                    암호화하여 저장
-                  </button>
-                </div>
-              </form>
+                    ) : null}
+                  </>
+                )}
+                {window.scourgify?.localInference ? (
+                  <LocalAiPanel
+                    api={window.scourgify.localInference}
+                    nodeTitle="로컬 제안 설정"
+                    draft=""
+                    imeComposing={false}
+                    showSuggestions={false}
+                    runSuggestions={false}
+                  />
+                ) : null}
+              </div>
             ) : null}
             {section === "reading" ? (
               <fieldset className="settings-group">
@@ -241,6 +227,6 @@ export function SettingsModal({
           </div>
         </div>
       </section>
-    </div>
+    </dialog>
   )
 }

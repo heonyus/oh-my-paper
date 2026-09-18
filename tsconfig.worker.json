@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": ["@cloudflare/workers-types", "./worker-configuration.d.ts"]
+  },
+  "include": [
+    "worker-configuration.d.ts",
+    "src/worker",
+    "src/shared",
+    "src/electron/mistralOcrResponse.ts"
+  ]
+}

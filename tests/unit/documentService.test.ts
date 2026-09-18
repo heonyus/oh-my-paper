@@ -1,6 +1,7 @@
 // @vitest-environment node
 
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { createHash } from "node:crypto"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { PDFDocument } from "pdf-lib"
@@ -33,5 +34,44 @@ describe("document import", () => {
 
     expect(imported?.document.authors).toEqual([])
     expect(imported?.document.title).toBe("empty-author")
+  })
+
+  it("persists the inspected bytes and repairs a missing duplicate original", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "scourgify-document-import-"))
+    temporaryDirectories.push(directory)
+    const source = join(directory, "paper.pdf")
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    const bytes = await pdf.save()
+    await writeFile(source, bytes)
+    const store = new WorkspaceStore(join(directory, "store"))
+
+    const first = await importDocument(source, store)
+    if (!first) throw new Error("Expected imported document")
+    const storedPath = join(store.documentsDirectory, `${first.document.hash}.pdf`)
+    expect(await readFile(storedPath)).toEqual(Buffer.from(bytes))
+    await rm(storedPath)
+
+    const duplicate = await importDocument(source, store)
+    if (!duplicate) throw new Error("Expected duplicate result")
+    expect(duplicate.duplicate).toBe(true)
+    expect(await readFile(storedPath)).toEqual(Buffer.from(bytes))
+  })
+
+  it("rejects a mismatched content-addressed original before metadata registration", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "scourgify-document-import-"))
+    temporaryDirectories.push(directory)
+    const source = join(directory, "paper.pdf")
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    const bytes = await pdf.save()
+    await writeFile(source, bytes)
+    const hash = createHash("sha256").update(bytes).digest("hex")
+    const store = new WorkspaceStore(join(directory, "store"))
+    await mkdir(store.documentsDirectory, { recursive: true })
+    await writeFile(join(store.documentsDirectory, `${hash}.pdf`), Buffer.from("not this PDF"))
+
+    await expect(importDocument(source, store)).rejects.toThrow()
+    expect((await store.read()).documents).toHaveLength(0)
   })
 })

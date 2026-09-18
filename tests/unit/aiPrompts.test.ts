@@ -1,36 +1,41 @@
 import { describe, expect, it } from "vitest"
 import { systemPromptFor, userInputFor } from "../../src/electron/aiPrompts"
-import { aiRequestSchema } from "../../src/shared/ipc"
+import { aiActionSchema, aiRequestSchema } from "../../src/shared/ipc"
 
 const request = aiRequestSchema.parse({
   action: "figure",
   documentId: "aabbccddeeff0011",
   page: 2,
-  quote: "Figure 1: Overview of leaderboard evaluation.",
-  paperContext: "논문은 생의학 코딩 에이전트 훈련 환경을 제안한다.",
-  sectionContext: "이 절은 모델 평가 결과와 일반화 성능을 설명한다.",
-  before: "앞 문단은 평가 설정을 정의한다.",
-  after: "다음 문단은 오류 분석을 논의한다.",
+  quote: "target",
+  paperContext: "paper",
+  sectionContext: "section",
+  before: "before",
+  after: "after",
   featureKind: "figure",
-  imageDataUrl: "data:image/png;base64,aG90ZWJvb2s=",
 })
 
-describe("research prompt contract", () => {
-  it("separates paper, section, local, and target evidence slots", () => {
-    const input = userInputFor(request)
+describe("research prompt routing contract", () => {
+  it("resolves a non-empty distinct instruction for every parsed AI action", () => {
+    const prompts = aiActionSchema.options.map(systemPromptFor)
 
-    expect(input).toContain("<PAPER_CONTEXT>")
-    expect(input).toContain("<CURRENT_SECTION>")
-    expect(input).toContain("<LOCAL_BEFORE>")
-    expect(input).toContain("<USER_QUESTION_OR_TARGET>")
-    expect(input).toContain("<LOCAL_AFTER>")
+    expect(prompts.every((prompt) => prompt.trim().length > 0)).toBe(true)
+    expect(new Set(prompts)).toHaveLength(aiActionSchema.options.length)
   })
 
-  it("asks figure analysis to lead with the scientific finding instead of crop disclaimers", () => {
-    const prompt = systemPromptFor("figure")
+  it("serializes typed context slots in deterministic priority order", () => {
+    const input = userInputFor(request)
+    const tags = [
+      "<CURRENT_PAGE>",
+      "<PAPER_CONTEXT>",
+      "<CURRENT_SECTION>",
+      "<LOCAL_BEFORE>",
+      "<USER_QUESTION_OR_TARGET>",
+      "<LOCAL_AFTER>",
+    ] as const
+    const positions = tags.map((tag) => input.indexOf(tag))
 
-    expect(prompt).toContain("Lead with the figure's main scientific finding")
-    expect(prompt).toContain("Do not mention that the caption is truncated")
-    expect(prompt).toContain("image as primary evidence")
+    expect(positions.every((position) => position >= 0)).toBe(true)
+    expect(positions).toEqual([...positions].sort((left, right) => left - right))
+    expect(input).toContain("<USER_QUESTION_OR_TARGET>\ntarget\n</USER_QUESTION_OR_TARGET>")
   })
 })

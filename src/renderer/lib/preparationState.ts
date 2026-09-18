@@ -1,6 +1,6 @@
 import { type PreparationUpdate, preparationSteps } from "../../shared/ipc"
 import type { DocumentId, Workspace } from "../../shared/schemas"
-import type { PreparedSummary } from "../components/PdfColumn"
+import type { PreparedSummary } from "./pdfDocumentFeatures"
 
 const labels: Readonly<Record<PreparationUpdate["step"], string>> = {
   pdf_check: "PDF 확인",
@@ -32,13 +32,15 @@ export function applyPreparedSummary(
     document.pageCount === summary.pages &&
     document.title === summary.title &&
     document.quality.textCharacters === summary.textCharacters &&
-    document.quality.needsOcr === summary.needsOcr
+    document.quality.needsOcr === summary.needsOcr &&
+    document.kind === summary.kind
   )
     return workspace
   const updated = {
     ...document,
     pageCount: summary.pages,
     title: summary.title,
+    kind: summary.kind,
     quality: {
       textCharacters: summary.textCharacters,
       needsOcr: summary.needsOcr,

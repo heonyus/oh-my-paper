@@ -68,6 +68,87 @@ describe("PDF feature detection", () => {
     expect(features.find((feature) => feature.kind === "equation")?.label).toBe("Equation (1)")
   })
 
+  it("detects a centered multi-row display equation without an equation number", () => {
+    const spans = [
+      {
+        id: "intro",
+        text: "The process-adherence score in the results is",
+        x: 60,
+        y: 180,
+        width: 300,
+        height: 11,
+        fontSize: 9,
+        fontWeight: 400,
+      },
+      {
+        id: "equation-main",
+        text: "S_process^(i) = max(0, ∑_(m∈M_i) w_m z_im)",
+        x: 195,
+        y: 220,
+        width: 220,
+        height: 24,
+        fontSize: 12,
+        fontWeight: 400,
+      },
+      {
+        id: "equation-denominator",
+        text: "∑_(m∈M_i:w_m>0) w_m",
+        x: 275,
+        y: 247,
+        width: 125,
+        height: 14,
+        fontSize: 9,
+        fontWeight: 400,
+      },
+      {
+        id: "body",
+        text: "Credit accrues against the positive budget while penalties subtract from it.",
+        x: 60,
+        y: 285,
+        width: 480,
+        height: 11,
+        fontSize: 9,
+        fontWeight: 400,
+      },
+    ] satisfies readonly PdfTextSpan[]
+
+    const features = detectPdfFeatures({ pageNumber: 19, pageWidth: 600, pageHeight: 800, spans })
+    const equation = features.find((feature) => feature.kind === "equation")
+
+    expect(equation?.label).toBe("Equation")
+    expect(equation?.sourceSpanIds).toEqual(["equation-main", "equation-denominator"])
+    expect(equation?.rect).toEqual({ x: 195, y: 220, width: 220, height: 41 })
+  })
+
+  it("keeps atomized variables and fraction rows inside an unnumbered equation target", () => {
+    const atoms = [
+      { id: "symbol", text: "S", x: 195, y: 220, width: 10, height: 18 },
+      { id: "subscript", text: "process", x: 205, y: 232, width: 42, height: 10 },
+      { id: "operator", text: "=", x: 250, y: 220, width: 10, height: 18 },
+      { id: "function", text: "max", x: 270, y: 220, width: 24, height: 18 },
+      { id: "numerator", text: "∑_(m∈M_i) w_m z_im", x: 315, y: 207, width: 95, height: 18 },
+      { id: "denominator", text: "∑_(m∈M_i:w_m>0) w_m", x: 305, y: 245, width: 110, height: 15 },
+      { id: "close", text: ")", x: 418, y: 220, width: 8, height: 18 },
+    ].map((atom) => ({
+      ...atom,
+      fontSize: atom.height,
+      fontWeight: 400,
+    })) satisfies readonly PdfTextSpan[]
+
+    const features = detectPdfFeatures({
+      pageNumber: 19,
+      pageWidth: 600,
+      pageHeight: 800,
+      spans: atoms,
+    })
+    const equation = features.find((feature) => feature.kind === "equation")
+
+    expect(equation?.sourceSpanIds).toEqual(expect.arrayContaining(atoms.map((atom) => atom.id)))
+    expect(equation?.rect).toEqual({ x: 195, y: 207, width: 231, height: 53 })
+    expect(equation?.context).toContain("S")
+    expect(equation?.context).toContain("process")
+  })
+
   it("infers nearby figure and table regions from their captions", () => {
     const spans = [
       {
@@ -124,6 +205,37 @@ describe("PDF feature detection", () => {
     expect(table?.context).toContain("Results on CN-EHR")
     expect((table?.rect.y ?? 0) + (table?.rect.height ?? 0)).toBeLessThanOrEqual(430)
     expect(table?.priority).toBeGreaterThan(figure?.priority ?? 0)
+  })
+
+  it("recognizes Nature captions that use a pipe after the figure number", () => {
+    const spans = [
+      {
+        id: "visual",
+        text: "Meta Agent Executor Agent Evaluator Agent Reflector Agent",
+        x: 70,
+        y: 120,
+        width: 460,
+        height: 220,
+        fontSize: 8,
+        fontWeight: 400,
+      },
+      {
+        id: "caption",
+        text: "Fig. 1 | HealthFlow: a strategically self-evolving multi-agent framework",
+        x: 60,
+        y: 380,
+        width: 480,
+        height: 13,
+        fontSize: 9,
+        fontWeight: 700,
+      },
+    ] satisfies readonly PdfTextSpan[]
+
+    const features = detectPdfFeatures({ pageNumber: 2, pageWidth: 600, pageHeight: 800, spans })
+    const figure = features.find((feature) => feature.kind === "figure")
+
+    expect(figure?.label).toBe("Figure 1")
+    expect(figure?.sourceSpanIds).toContain("visual")
   })
 
   it("detects a table whose caption is above its cell rows", () => {

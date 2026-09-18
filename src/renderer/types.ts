@@ -5,6 +5,7 @@ export type AiDeltaHandler = (delta: string) => void
 export type AiRequestRunner = (
   request: Omit<AiRequest, "documentId">,
   onDelta?: AiDeltaHandler,
+  signal?: AbortSignal,
 ) => Promise<string>
 
 export type {

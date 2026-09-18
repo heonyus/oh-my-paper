@@ -68,6 +68,7 @@ export function BoardCardChat({
         submitLabel="후속 질문 보내기"
         value={input}
         sending={sending}
+        responseStarted={streamedAnswer.length > 0}
         onChange={setInput}
         onSubmit={(event) => void submit(event)}
       />

@@ -1,4 +1,4 @@
-import { ExternalLink, Maximize2, StickyNote } from "lucide-react"
+import { Check, Copy, ExternalLink, Maximize2, StickyNote } from "lucide-react"
 import { type JSX, useEffect, useRef, useState } from "react"
 import { initialResearchCardHeight } from "../lib/board"
 import type { AiDeltaHandler, BoardCard as Card, CardId } from "../types"
@@ -14,7 +14,7 @@ type BoardCardProps = {
   readonly onMoveEnd?: ((id: CardId, x: number, y: number) => void) | undefined
   readonly onDelete: (id: CardId) => void
   readonly onJump: (page: number) => void
-  readonly onConvertToNote?: ((id: CardId) => void) | undefined
+  readonly onSaveAsAnnotation?: ((id: CardId) => void) | undefined
   readonly onBodyChange?: ((id: CardId, body: string) => void) | undefined
   readonly onMinimize: (id: CardId) => void
   readonly onRegenerateTitle?: ((id: CardId) => void) | undefined
@@ -39,7 +39,7 @@ export function BoardCard({
   onMoveEnd,
   onDelete,
   onJump,
-  onConvertToNote,
+  onSaveAsAnnotation,
   onBodyChange,
   onMinimize,
   onRegenerateTitle,
@@ -57,6 +57,7 @@ export function BoardCard({
   const editor = useRef<HTMLTextAreaElement>(null)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(card.body)
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle")
 
   useEffect(() => {
     if (autoEdit) setEditing(true)
@@ -68,18 +69,25 @@ export function BoardCard({
 
   useEffect(() => {
     setDraft(card.body)
+    setCopyState("idle")
   }, [card.body])
+
+  async function copyCardBody(): Promise<void> {
+    try {
+      await window.scourgify.writeClipboardText(card.body)
+      setCopyState("copied")
+    } catch (error: unknown) {
+      if (!(error instanceof Error)) throw error
+      setCopyState("failed")
+    }
+  }
 
   function finishEditing(): void {
     onBodyChange?.(card.id, draft)
     setEditing(false)
   }
 
-  const renderedBody = streaming ? (
-    <p className="streaming-copy">{card.body}</p>
-  ) : (
-    <MarkdownContent source={card.kind === "sticky" ? draft : card.body} />
-  )
+  const renderedBody = <MarkdownContent source={card.kind === "sticky" ? draft : card.body} />
   const supportsChat =
     card.kind === "explanation" || card.kind === "infographic" || card.kind === "citation"
   const sourceUrl =
@@ -122,7 +130,7 @@ export function BoardCard({
         onMoveEnd={onMoveEnd ?? onMove}
         onMinimize={onMinimize}
         onDelete={onDelete}
-        onRegenerateTitle={onRegenerateTitle}
+        onRegenerateTitle={card.kind === "translation" ? undefined : onRegenerateTitle}
       />
       {!card.minimized ? (
         <div className="card-body" onWheel={(event) => event.stopPropagation()}>
@@ -172,36 +180,6 @@ export function BoardCard({
           ) : (
             <div className="card-markdown">{renderedBody}</div>
           )}
-          {card.kind !== "sticky" ? (
-            <div className="card-actions">
-              {sourceUrl ? (
-                <button
-                  type="button"
-                  className="source-link"
-                  onClick={() => void window.scourgify.openExternal({ url: sourceUrl })}
-                >
-                  논문 열기 <ExternalLink size={13} />
-                </button>
-              ) : null}
-              {card.kind === "translation" && onConvertToNote ? (
-                <button
-                  type="button"
-                  className="source-link"
-                  aria-label="번역을 주석으로 저장"
-                  onClick={() => onConvertToNote(card.id)}
-                >
-                  주석으로 저장 <StickyNote size={13} />
-                </button>
-              ) : null}
-              <button
-                type="button"
-                className="source-link"
-                onClick={() => onJump(card.anchor.page)}
-              >
-                p. {card.anchor.page} 원문으로 이동 <Maximize2 size={13} />
-              </button>
-            </div>
-          ) : null}
           {supportsChat && !card.loading ? (
             <BoardCardChat
               card={card}
@@ -210,6 +188,54 @@ export function BoardCard({
             />
           ) : null}
         </div>
+      ) : null}
+      {!card.minimized && card.kind !== "sticky" ? (
+        <footer className="card-source-footer">
+          {!card.loading && !streaming && card.body.trim() ? (
+            <button
+              type="button"
+              className="source-link card-copy-action"
+              data-state={copyState}
+              aria-label={
+                copyState === "copied"
+                  ? "카드 내용 복사됨"
+                  : copyState === "failed"
+                    ? "카드 내용 복사 실패"
+                    : "카드 내용 복사"
+              }
+              onClick={() => void copyCardBody()}
+            >
+              {copyState === "copied" ? "복사됨" : copyState === "failed" ? "복사 실패" : "복사"}
+              {copyState === "copied" ? <Check size={13} /> : <Copy size={13} />}
+            </button>
+          ) : null}
+          {sourceUrl ? (
+            <button
+              type="button"
+              className="source-link"
+              onClick={() => void window.scourgify.openExternal({ url: sourceUrl })}
+            >
+              논문 열기 <ExternalLink size={13} />
+            </button>
+          ) : null}
+          {card.kind === "translation" && onSaveAsAnnotation ? (
+            <button
+              type="button"
+              className="source-link"
+              aria-label="번역을 주석으로 저장"
+              onClick={() => onSaveAsAnnotation(card.id)}
+            >
+              주석으로 저장 <StickyNote size={13} />
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="source-link source-jump"
+            onClick={() => onJump(card.anchor.page)}
+          >
+            p. {card.anchor.page} 원문으로 이동 <Maximize2 size={13} />
+          </button>
+        </footer>
       ) : null}
       {!card.minimized ? (
         <BoardCardResizeHandle

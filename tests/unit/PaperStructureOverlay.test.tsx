@@ -16,23 +16,6 @@ const figure: DetectedStructure = {
   bounds: { x: 100, y: 120, width: 240, height: 160 },
 }
 
-const citation: DetectedStructure = {
-  id: "citation-12",
-  kind: "citation",
-  page: 2,
-  title: "인용 논문 [12]",
-  quote: "Prior work [12]",
-  bounds: { x: 140, y: 200, width: 60, height: 18 },
-  reference: {
-    key: "12",
-    title: "A Memory Retrieval Paper",
-    authors: "Jane Doe",
-    year: 2024,
-    venue: "KDD",
-    rawText: "[12] Jane Doe. A Memory Retrieval Paper.",
-  },
-}
-
 const equation: DetectedStructure = {
   id: "equation-1",
   kind: "equation",
@@ -272,24 +255,6 @@ describe("PaperStructureOverlay", () => {
     const button = screen.getByRole("button", { name: "3 Methods AI 섹션 해설" })
     expect(button).toHaveTextContent("")
     expect(button).toHaveAttribute("title", "AI 섹션 해설")
-  })
-
-  it("shows a smart citation preview and adds it to the board", () => {
-    const onTrigger = vi.fn()
-    render(
-      <PaperStructureOverlay
-        structures={[citation]}
-        onTrigger={onTrigger}
-        onCopy={vi.fn(async () => {})}
-      />,
-    )
-    const citationButton = screen.getByRole("button", { name: /인용 논문 \[12\] 인용 논문 보기/u })
-
-    fireEvent.pointerEnter(citationButton)
-    expect(screen.getByText("A Memory Retrieval Paper")).toBeInTheDocument()
-    fireEvent.click(screen.getByRole("button", { name: /Smart Citation 카드 만들기/u }))
-
-    expect(onTrigger).toHaveBeenCalledWith(citation)
   })
 })
 it("copies figure feature on copy button click", async () => {

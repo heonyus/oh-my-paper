@@ -1,0 +1,52 @@
+.settings-font-picker {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 14px;
+  border: 0;
+  background: var(--surface-muted);
+}
+.settings-font-picker legend {
+  margin-bottom: 4px;
+  padding: 0;
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+}
+.settings-font-option {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.settings-font-option:hover {
+  border-color: var(--ink-muted);
+}
+.settings-font-option[aria-pressed="true"] {
+  border-color: var(--focus);
+}
+.settings-font-option-label {
+  overflow-wrap: anywhere;
+  font-size: var(--type-compact-size);
+  font-weight: 650;
+}
+.settings-font-option-sample {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  font-size: calc(var(--type-body-size) * 1.14);
+  line-height: 1.35;
+}
+.settings-font-option-sample span {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  min-width: 0;
+}

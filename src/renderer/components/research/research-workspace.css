@@ -1,0 +1,94 @@
+.discovery-workspace,
+.research-workspace {
+  min-width: 0;
+  width: 100%;
+}
+.discovery-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-8);
+  border-bottom: 1px solid var(--line);
+}
+.discovery-mode button,
+.research-source-picker button,
+.research-selected button {
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field);
+  min-height: 36px;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+}
+.discovery-mode button[aria-pressed="true"] {
+  background: var(--action);
+  color: var(--surface);
+}
+.discovery-mode button:focus-visible,
+.research-source-picker :focus-visible,
+.research-selected button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.research-source-picker {
+  margin: var(--space-6);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.research-source-picker summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.research-source-picker p,
+.research-source-picker small {
+  color: var(--ink-muted);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.research-source-picker form,
+.research-selected {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  align-items: end;
+}
+.research-source-picker form label {
+  display: grid;
+  gap: var(--space-2);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.research-source-picker input:not([type="checkbox"]) {
+  font: inherit;
+  color: var(--ink);
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field);
+  padding: var(--space-2);
+}
+.research-source-picker ul {
+  list-style: none;
+  padding: 0;
+  max-height: 24rem;
+  overflow: auto;
+}
+.research-source-picker li label {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  align-items: start;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.research-selected {
+  margin: var(--space-6);
+}
+.research-selected button {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: start;
+}

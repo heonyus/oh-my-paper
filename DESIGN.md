@@ -1,287 +1,261 @@
-# Scourgify Design System
+# Scourgify interaction and visual contract
 
-## 0. Research Log
+## 2026-09-15 Browser-first paper reading (current)
 
-- Primary visual contract: `.omo/frontend-design/mockups/hotebook-board-cards-metadata-sidebar-v1.png` (1536×1024, SHA-256 `78b7a1281ad31775f018e885b205b8a277bdd2c901213294b1b8adec7abbbf39`).
-- Interaction evidence: `.omo/evidence/hotebook-rnr-verified.md` and the preserved private Record & Replay session.
-- Component references: sanitized captures under `recording-review-2026-08-26/`; prior MarginLedger implementation is explicitly not a pixel or source-code base.
-- Owner corrections: continuous vertical paper column; research cards remain on the infinite board; collapsible right sidebar is metadata/index only.
-- Scourgify branding assets: `assets/branding/scourgify-logo-v2.png` (app mark) and `assets/branding/scourgify-wordmark-v1.png` (topbar wordmark).
-- Runtime evidence established a narrow mode rail, a roughly 300px resizable content pane, cached overview sections, page-adjacent translation, and source-proximate explanation controls.
-- Computer History evidence on 2026-08-28 shows repeated paper/tab switching, zooming, card minimization, citation/GitHub hops, and new-tab word lookups. Scourgify therefore prioritizes persistent reading context, compact controls, and fast translation/explanation recovery over decorative dashboard chrome.
-- Skipped: third-party brand tokens. The owner-approved layout mockup remains the interaction reference.
+This section supersedes the expanded desktop navigation below for the browser
+product.
+Keep Scourgify's leaf identity, bundled typography, neutral surface and focus tokens.
+The product is a paper library and continuous PDF reader, with context-aware AI
+beside the source. Library recommendations remain in scope; general knowledge
+graphs, comparison/project boards and agent memory are outside the browser shell.
 
-## 1. Atmosphere & Identity
+Navigation has Library and Reader, with paper recommendations reached from Library.
+Use the existing LibraryHome list/preview and ReaderWorkspace/PDF primitives.
+The reader retains its compact document/outline/select/pan/undo/zoom toolbar,
+continuous pages, page-adjacent translation, source-linked cards and collapsible
+research sidebar. Avoid duplicate headers and settings for disconnected services.
 
-Scourgify is a quiet spatial research desk: the paper stays crisp and central while translation, reasoning, notes, citations, and infographics accumulate around exact passages. Its signature is the provenance connector, a thin blue path that makes every board object visibly accountable to its source without turning the workspace into a dashboard.
+The ten reference families are Translation, AI Chat, Explanation, Citation, Summary,
+Preview, Library, Scholar Deep Search, Auto Highlight and Markup. Each needs real
+behavior and persistence where applicable. Empty, loading, saving, error, cancelled
+and unavailable states must be explicit and actionable. No generated demo data.
 
-## 2. Color
+Primary persona: Korean researcher reading English papers and checking their source.
+Keyboard-only and enlarged-text users must reach import, search, reading, source
+return and settings. Existing semantic colors, 4/8/12/16/24 spacing, bundled font
+selection and 50–200% text scale remain the design system; PDF text is untouched.
+Each panel owns its scrolling, controls wrap before clipping, and narrow viewports
+collapse secondary panels while preserving access to their content. Verify actual
+screens at 375/768/1280px and a normal desktop, both themes and enlarged text.
 
-| Role | Token | Value | Usage |
-|---|---|---:|---|
-| App canvas | `--canvas` | `#f8f9f7` | Infinite board and window surround |
-| Dot grid | `--canvas-dot` | `#dfe3e8` | Sparse board orientation grid |
-| Surface | `--surface` | `#ffffff` | PDF leaves, cards, rails |
-| Surface muted | `--surface-muted` | `#f4f6f8` | Selected rows, metadata groups |
-| Text primary | `--ink` | `#20242a` | Titles and body |
-| Text secondary | `--ink-muted` | `#656d78` | Metadata and hints |
-| Hairline | `--line` | `#e1e5ea` | Dividers and card edges |
-| Action | `--action` | `#3478f6` | Selection, connectors, focus |
-| Action subtle | `--action-subtle` | `#eaf2ff` | Selected source/outline states |
-| Note | `--note` | `#fff1bd` | User note cards only |
-| Success | `--success` | `#2b9b69` | Completed local preparation |
-| Warning | `--warning` | `#b87400` | OCR/quality review states |
-| Error | `--error` | `#c43d45` | Failed preparation/provider states |
+This is an existing-product conversion; use current components and installed test
+tooling. No new dev-tool dependencies are needed. Reference fidelity concerns the
+reader interaction and quality; copying another product's logo is not authorized.
+There is no accepted functional or accessibility debt at completion.
 
-Color never carries state alone. The PDF's colors are document content, not app tokens.
-Scourgify follows the macOS appearance with explicit Light, Dark, and System choices. Every surface
-uses semantic tokens; paper pages remain faithful white PDF content while app chrome, board canvas,
-cards, rails, inputs, and overlays adapt. Native controls inherit the active `color-scheme`.
+## 2026-09-10 Consistent sizing across every workspace
 
-The visual language is quiet macOS utility, not an AI dashboard: neutral grouped surfaces, one-pixel
-separators, restrained translucency, small monochrome symbols, and blue reserved for selection and
-links. Feature identity comes from layout and content structure rather than colored icon tiles.
+The user requested one consistent design across all tabs, with no overflowing labels or mismatched boxes. Preserve the existing neutral research workspace, leaf branding, shared records and reader behavior. Apply the existing title/body/compact/toolbar typography and spacing tokens consistently to Library, Search, Knowledge, Connections, Reader, Compare, Project, Memory and their settings/dialogs.
 
-## 3. Typography
+Controls grow with their text. Flexible rows and grids must shrink or stack before labels, selected values or actions collide. Korean words wrap as words; long unbroken identifiers and URLs may break within bounded content. Fixed-height controls must not clip 50–200% text. Keep deliberate PDF/graph pan areas and table scrolling, while preventing accidental horizontal overflow of the application, forms and navigation. All actions remain reachable in a 920×640 window, using internal scrolling where needed.
 
-- UI/Korean: `-apple-system, BlinkMacSystemFont, "SF Pro Text", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif`.
-- Document: rendered by PDF.js; never restyled.
-- Coordinates/identifiers: `"SF Mono", ui-monospace, monospace`.
+Acceptance uses synthetic populated workspaces, every tab in both themes, normal and enlarged text at desktop/narrow widths, and 50% text. Compare current screenshots and element bounds; verify settings scrolling, source return and saved note reopen. No new dependencies or replacement component framework are needed.
 
-| Token | Size | Weight | Line height | Usage |
-|---|---:|---:|---:|---|
-| `--type-title` | 18px | 650 | 1.35 | Sidebar/card titles |
-| `--type-body` | 14px | 430 | 1.55 | UI and generated prose |
-| `--type-compact` | 12px | 500 | 1.45 | Metadata, page/source IDs |
-| `--type-toolbar` | 13px | 520 | 1.3 | Toolbar and actions |
+## 2026-09-10 Internal Mistral OCR configuration
 
-No readable UI text is smaller than 12px. Korean, DOI, and unbroken identifiers wrap intentionally.
+The user reverted the subscription OCR experiment. Desktop document OCR uses the existing Mistral parser with `MISTRAL_API_KEY` supplied through the main process environment. Source development loads an uncommitted `.env`; installed apps load the local app-data `.env`. Never bundle the key in renderer code or distribute it inside the application. Hide the desktop Mistral key form and provider-specific setup instructions.
 
-## 4. Spacing & Layout
+An explicit page translation uses configured Mistral structure extraction before translating, retaining existing block types, table/equation content, source geometry and document cache. Reading/importing a PDF still performs only local preparation. A missing key is an internal setup gap, not evidence that OCR is available. Existing ChatGPT chat/translation login and local-only writing suggestions remain separate.
 
-Base unit: 4px. Allowed intent tokens: 4, 8, 12, 16, 20, 24, 32, 40.
+## 2026-09-08 Explicit local owner access (current)
 
-- Top toolbar: 60px fixed screen region.
-- Left utility rail: 48px fixed icon-only rail; every icon keeps a tooltip and accessible label.
-- Outline panel: optional 240px default screen region between the utility rail and board; user-resizable from 200–420px and persisted locally.
-- Research sidebar: 300px default content pane plus a 40px mode rail; user-resizable from 260–520px and persisted locally. It collapses to the 40px mode rail.
-- Board viewport: remaining bounded region; owns pan/zoom gestures and never document scroll.
-- Paper column: all pages share one X coordinate, ordered vertically with 12–20px gaps.
-- Board world: minimum 4800×6400 logical pixels, expandable from rendered page and card extents; zoom 38–400%. Navigation bounds mirror the larger occupied side around the paper column and reserve at least 720 logical pixels on both left and right, so cards can live on either side without leaving the opposite side as a hard edge.
-- Pan: two-finger/trackpad wheel and hand-tool drag. Pinch or `Ctrl`/`Meta` wheel zooms around cursor. Rendered pages and cards define a finite navigation extent with 40px screen-space outer padding, so persisted or live gestures cannot strand all content beyond an unlimited blank region.
-- Cards: 280–340px default width, movable in board coordinates, never docked in metadata sidebar.
-- FigJam-style post-its: 240px default width, square-cornered 4px radius, `--note` paper tone, created at the clicked board coordinate and focused for immediate editing.
-- A compact bottom-right minimap shows every rendered page, board card, current page, and the live viewport rectangle. Clicking or dragging navigates immediately; `첫 페이지로` restores page 1 with 40px top padding. It is an actionable recovery surface, not a decorative overview.
+The Knowledge list is a continuous 200px side panel aligned directly below shared navigation, matching Library density. Remove the floating rounded-card frame and outer gutters. Use one quiet 13px title, compact labelled create/collapse icon buttons, aligned full-width search and kind controls, and document rows with understated dividers. Do not duplicate filter icons or use a large dark create button in this narrow panel. The user requested no repeated app launches during QA: complete non-window checks first, then inspect the final installed Knowledge panel once in one app session.
 
-The paper column and cards transform together. Toolbar, rails, and metadata sidebar remain screen-fixed.
+The user approved login-free use on this Mac. A main-process profile file explicitly selects local owner access; its absence keeps the existing Google-required behavior. Local access is a separate `local` state, not a fake authenticated Google session or remote administrator role. It opens the current collection without rebinding ownership or creating another document store. Saved notes, PDFs and source links remain in their existing locations. Existing main-process sender/input validation remains mandatory.
 
-## 5. Components
+Show `이 Mac · 로컬` in the shared account area and omit the inapplicable logout action. Library, Reader and Knowledge remain immediately available after startup, including without network or account-service settings. AI/provider setup remains separately available through Settings and never runs automatically. Do not claim Google is connected in local mode; the existing Google flow remains available to account-managed profiles and its unconfigured state is not promoted to a pass. Reopen persistence and real installed-app workspace entry, not a dismissed help dialog, are the acceptance boundary.
 
-### BoardViewport
-- **Structure:** grid canvas, world transform, paper column, cards, SVG connector layer, bounded-navigation controller, minimap.
-- **States:** empty, preparing, ready, panning, zooming, bounded-edge, minimap-dragging, selection, restore-failed.
-- **Accessibility:** keyboard pan/zoom/reset/fit; current zoom announced; motion is not required to locate content.
-- **Scroll ownership:** wheel/trackpad gestures over the board pan the board; scrollable sidebar/card bodies keep their own bounded scroll. Minimap pointer and wheel events never leak into board panning.
-- **Trackpad axis intent:** ordinary wheel gestures lock to their dominant axis, so vertical reading never accumulates incidental horizontal drift. `Shift` plus wheel intentionally pans horizontally. Pinch zoom remains focal-point anchored.
-- **Boundary stability:** finite board bounds are applied before paint. Repeated wheel or trackpad input at the top, bottom, left, or right edge never renders an overscrolled frame and snaps back, so the paper and cards do not vibrate at navigation limits.
-- **Zoom performance:** wheel/pinch updates are coalesced to at most one viewport commit per animation frame. The paper uses a temporary compositor scale during active zoom and commits the expensive PDF.js page scale only after 140ms of inactivity, so long papers do not rerender every page for every wheel delta.
+## 2026-09-08 Stable navigation and explicit reader context (current)
 
-### BoardMinimap
-- **Structure:** 160px token-driven surface, one continuous document strip spanning the paper's real world bounds, one current-page marker, labelled card markers, and a high-contrast live viewport rectangle. Do not render every page as a bordered miniature: long papers must remain a legible document silhouette rather than a dense ladder of page lines. The header shows the page count, and a compact switch turns the minimap on or off with workspace persistence.
-- **Behavior:** click or pointer-drag maps minimap coordinates into board world coordinates and recenters through the same finite navigation bounds as wheel/drag. `첫 페이지로` centers page 1 horizontally and restores 40px top padding.
-- **States:** live, dragging, current-page, card-present.
-- **Accessibility:** labelled navigation surface, visible `첫 페이지로` button, semantic current viewport; no information is conveyed by color alone.
+Every workspace, including the PDF reader, keeps the same global top navigation, labels, order and secondary menu. The `리더` destination denotes the retained reading workspace; it does not select a different paper or claim to be a recent-paper list. The library's title-and-page `이어서 읽기` remains the explicit resume action.
 
-### PaperColumn
-- **Structure:** continuous ordered PDF leaves, page IDs, source anchor overlays.
-- **States:** validating, rendering, text-indexing, ready, password, damaged, OCR-needed.
-- **Behavior:** current/near pages render first; all pages retain a single vertical axis.
-- **Metadata invariant:** blank or whitespace-only PDF metadata never replaces a registered non-empty document title. This keeps workspace persistence valid across re-render and app restart.
-- **External links:** PDF.js annotation links and visible HTTPS text both open through Electron's validated external-link boundary in the macOS default browser. The reader never navigates away from the local PDF surface and internal PDF destinations remain in-app.
-- **Link hit scope:** visible-text URL detection is leaf-scoped to the clicked PDF text span. Clicking a figure, canvas, page background, or structure affordance never searches the surrounding page for an unrelated URL.
-- **Render quality:** PDF.js canvas backing stores honor the window device-pixel ratio through 200% UI scaling and ordinary paper zoom. Canvas allocation may use up to 32M pixels per visible page before PDF.js detail rendering takes over; the paper surface is aligned to physical-pixel boundaries so vector text is never softened by a fractional parent transform.
+The secondary `더 보기` and `설정` controls travel together as a compact group when global navigation wraps, so Settings never becomes an isolated extra row. At large text or narrow widths, the document selector takes its own full row. Minimap legend labels wrap by whole label, not individual Korean syllables.
 
-### SourceAnchor
-- **Structure:** passage/object highlight, page/range identity, connector endpoint.
-- **States:** exact, nearby, page-only, unresolved, selected.
-- **Behavior:** never silently relocates; explicit action toolbar appears after a stable selection.
+Changing document identity resets transient selection, sidebar and retrieval state. Outline and citation indexes are owned by their document and cannot be displayed or acted on under another document while it loads. Memory marks its secondary-menu destination and trigger as current.
 
-### DocumentFeatureTarget
-- **Variants:** document title, section heading, subsection heading, figure, table, display equation, related-work citation.
-- **States:** idle, hover-ring, action-visible, loading, explained, metadata-missing.
-- **Behavior:** only those variants receive an AI mark. Headings, figures, tables, equations, and citations expose affordances only while hovered or keyboard-focused. Targets display a neutral subtle dashed outline (`--ink-muted` at 55%) on hover/focus with no blue fill. Image-bearing targets expose a copy action; equations expose a LaTeX/text copy action; inline citations open a Smart Citation preview before any AI request. If supported by DOM, a top-right close affordance is available.
-- **Section affordance:** heading and subheading targets expose one compact icon immediately outside the detected text bounds. The visible control never contains a text label or covers document glyphs; its full action name remains available through the accessible label and tooltip.
-- **Geometry:** figure and table bounds are the caption-column visual object above the caption, not a union of interior labels. Display equations join the math line to a right-edge equation number. Nested heading, equation, and citation marks inside a figure or table are suppressed.
-- **Layout pipeline:** each document runs once through the optional local PP-DocLayout detector and caches normalized page boxes for tables, charts, images, and titles. Cached model boxes own Figure/Table geometry and are matched globally to PDF captions without reuse. PDF text/ink detection remains a bounded Web Worker fallback when the local runtime is unavailable; low-confidence or structureless pages remain unmarked rather than exposing a guessed target. This local pass performs no AI or network request after the model is installed.
-- **Overlay lifecycle:** feature overlays live in a stable viewer-owned layer outside PDF.js page children, while their geometry stays page-local. PDF.js page replacement and zoom may refresh or rescale geometry but must never remove targets.
-- **Zoom invariant & Cluster Layout:** Figure and Table actions sit 8px outside the detected object's nearer side with enough clear width; they never snap to a distant page edge. The cluster is stacked vertically so no chart label, table cell, or caption is obscured. When the nearer side fits 28px controls but not labelled pills, the cluster becomes icon-only and stays on that side instead of jumping across another text column. Equation actions are two icon-only controls placed entirely outside the detected math bounds; they prefer the nearest column margin and switch sides when that margin is clipped by the board viewport, so no formula glyph is obscured and the controls remain reachable. Feature outlines are 1 screen-pixel neutral dashed strokes; zoom changes enclosed PDF geometry without altering stroke weight or dash intervals.
-- **Constraint:** overlays never cover target content; after the pointer corridor expires they fade in 110–120ms. Idle sparkles never appear on table cells, figure labels, axis ticks, or body prose.
-- **Pointer corridor:** Figure/Table clusters include an invisible 8px bridge from the target edge to the controls. Moving from any target to its adjacent actions also keeps controls alive for a 280ms fallback; entering an action or citation popover cancels dismissal. Citation popovers open below the source line and never cover their trigger.
-- **Citation hit priority:** native PDF citation links retain their yellow hover and internal destination behavior outside Scourgify controls. Where a Smart Citation button or popover overlaps the annotation rectangle, the Scourgify control owns the pointer hit and remains clickable above PDF.js annotation z-order.
+The reader uses the shared brand/account header and navigation. A separate compact toolbar below shows a labelled `읽는 논문` selector containing the actual active document title, followed by outline, selection/pan, undo/redo, zoom and explicit translation controls. Changing the selector uses the same document-opening path as Library and restores that document's saved page. With no document, show an honest empty reader and import action; do not select a random or first paper. Global destinations never move to a left icon rail. Only the document outline may occupy the left side. Reading tools wrap at large text/narrow widths; PDF content, source geometry and evidence return remain intact.
 
-### FeatureExplanationCard
-- **Structure:** feature-kind label, source title/caption, grounded Korean explanation, source-jump action.
-- **States:** loading, complete, failed.
-- **Behavior:** image-bearing targets send only the cropped local feature image plus page caption/context after explicit click; text targets send only the detected block and minimal context.
-- **Research context contract:** every AI request has four explicit evidence slots: cached paper overview, current section, local before/after text, and the exact user question or target. Existing AI paper summaries are injected when available; otherwise a locally extracted paper overview is cached by document ID and reused without a network request.
-- **Figure/Table interpretation:** Figure, Table, and display-equation actions are multimodal. They send the local image crop plus full nearby caption/section prose and paper overview. Responses lead with the scientific finding or decision-relevant comparison; crop, OCR, truncation, and tool disclaimers never lead the answer and appear only as one specific `확인 필요` note when they materially affect interpretation.
+This supersedes the historical reader-only 56px global rail and replacement header. Reuse the existing 64px desktop global chrome, two-row narrow/large-text global navigation, tokens and reader controls. Validate identical global menu bounds before/after entering the reader, explicit document switching, empty state, source return, per-document reopen, and light/dark/narrow/50–200% text.
 
-### SelectionActions
-- **Variants:** translate, explain, visualize, highlight, note.
-- **States:** stable-selection, keyboard-shortcut, running, complete, failed.
-- **Behavior:** a stable single-page text selection supports `E` (explain), `T` (translate), `I` (infographic), `H` (highlight), and `C` (comment) shortcuts; invocation clears the native selection and keeps the action local to the selected range.
+## 2026-09-08 Paper exploration and content-first refinement (current)
 
-### FeatureCopyAction
-- **Variants:** figure image, table image, equation text/LaTeX best effort.
-- **States:** idle, copying, copied, unavailable.
-- **Behavior:** copy is explicit, local-only, and never sends data to the provider.
+Paper graph node colors encode references (muted blue #3b88b0), cited-by (teal #31968f), and related papers (purple #9a73af), with a text legend. The seed remains outlined. Citation coordinates use a visibly labelled log scale and small collision offsets; arrowheads end outside the paper marks.
 
-### SmartCitationCard
-- **Structure:** cited-paper title, authors/year/venue, abstract summary, DOI or paper link, citation context.
-- **States:** preview-loading, metadata-found, metadata-missing, explanation-loading, explained.
-- **Behavior:** hover/focus previews locally resolved reference text; click performs an explicit online metadata lookup and can add the result as a board citation card.
+At 150–200% text, research navigation wraps in a dedicated lower header area, with the brand and account above it. The graph inspector grows to 480px on wide windows; source, save and exploration actions share a persistent footer while article text scrolls independently. Short windows may scroll the footer itself rather than cut off controls. Narrow windows retain the stacked graph and inspector.
 
-### ResearchCard
-- **Variants:** translation, explanation, infographic, note, sticky post-it, citation, quiz.
-- **States:** loading, streaming, complete, failed, minimized, selected, moving, unresolved.
-- **Behavior:** drag, 32px compact-bar minimize, close, 240–720px width/160–900px height resize, internal scroll, and source-grounded follow-up chat. Connectors are hidden by default and only the selected/focused card exposes its source line; selection persists while moving and clears when the board or another card is selected. Reopening the same source focuses the cached card without replacing its content or issuing another AI request. A completed translation can be converted in place to a source-linked note while preserving its translated body and anchor.
-- **Loading:** AI cards show only a slim progress track while the first request runs; generic prose such as “AI가 분석하는 중입니다” is never rendered as card content. Loading, completed body, size, minimized state, and chat history are workspace-persisted.
-- **Initial height:** explanation, infographic, note, citation, and long translation cards use a 420px expanded display height when no persisted height exists. Selection translations up to 120 characters start at a compact 180px; all bodies remain internally scrollable and resizable. Post-its and highlights retain natural height.
-- **Index focus:** activating a board-index row places the card's actual visual center inside the available board viewport, accounting for persisted width and minimized state, so resize and expand controls remain reachable beside the fixed sidebar.
-- **Selection translation:** the translation action translates only the highlighted quote and creates a `선택 번역` card. It never forwards surrounding page context as translatable text. Selections up to 120 characters use a small completion budget so a word or short phrase returns with minimal latency.
+The explicit rejection of generic generated UI supersede the decorative treatment of the previous checkpoint. This is a functional paper exploration requirement, not just graph styling. Preserve Scourgify branding, local records and all existing reader/knowledge tools.
 
-### ChatComposer
-- **Structure:** one quiet rounded composer surface, a label-free one-row textarea, optional plain-text model metadata, and one 28px circular ArrowUp submit control integrated at the lower right. Card chat, paper discussion, citation questions, and the paper chat agent share this primitive.
-- **Behavior:** visible prompt sentences such as “질문하세요” are omitted; accessible labels remain for VoiceOver. `Enter` submits, `Shift+Enter` inserts a line break, and IME composition never submits prematurely. The submit control is muted gray while unavailable and dark neutral while actionable rather than a large blue square.
-- **States:** idle, focus-within, ready, sending, disabled. Focus uses the existing hairline and surface tokens without changing layout.
+- Research graph: a large left graph stage with a 320–360px right article inspector. Circular paper marks, author/year labels, visible selected paper, highlighted incident edges and quiet unrelated nodes. Citation and semantic-related edges are distinct. References and cited-by expand actual external scholarly metadata after an explicit user action; related results identify the provider/method. Do not call title search similarity, fabricate citations or invent counts.
+- A year/citation layout uses observed metadata, with unknown values visibly identified; no invented timeline. Directed citation edges mean source cites target. References, cited-by, related exploration, back/forward, selection, zoom, pan, fit and graph/list modes must be usable. History is bounded and restored without another network request; abandoned requests are cancelled or ignored by generation.
+- Graph selection opens an in-place inspector containing actual title, authors, year, available abstract and source link. Saving reuses the existing discovery-to-knowledge path. External results are not silently imported PDFs or scientifically accepted user relations. The local knowledge graph remains a shared-record view, clearly distinguished from external paper discovery.
+- Typography/surfaces: honor the bundled user-selected font, 14px body, 13px controls, 12px metadata, 18px view title and 24px brand scaled with existing appearance preferences. Base canvas #f5f6f8, surface #ffffff, ink #202326, muted #62676e; retain dark equivalents and semantic action/focus tokens. Quiet lilac/mint wash may remain where it does not compete with content. Panel radius 8px and control radius 6px; graph nodes alone are circular. Use the existing 4/8/12/16/24 spacing scale. Main top chrome 64px; narrow two-row navigation remains 112px.
+- Library: a compact context heading, search and import action lead directly to a continuous document list. Resume reading is a small strip, not a hero card. List rows target roughly 88px at 100% text, grow for long titles or accessibility scaling, and use separators rather than separate framed cards. Compact thumbnails, consistent title/author/year hierarchy and one primary reading action per selection. Selection previews; explicit reading opens. All document kinds remain available through a folded filter instead of many empty categories. Collections retain 200px/176px widths and collapse; reader keeps the 56px rail.
+- Latest header feedback: compact 22px/600 wordmark with a 30px raster leaf aligned on one baseline; reserve the existing native window-control area. Native traffic lights use a 12px left and 24px top inset to align with the 64px chrome. Sidebar has one quiet 13px `보관함` heading, no `탐색`/`빠른 보기` eyebrows, and the main heading names the current collection/filter rather than repeating `라이브러리`. Keep native window controls and app identity intact. Main content and sidebar header align within the same compact rhythm.
+- Knowledge/Compare/Project: the same restrained typography, toolbar/control hierarchy and neutral surfaces; writing content is the main column, optional properties/relations use progressive disclosure. Do not hide data loss, errors, missing evidence or pending changes to obtain a cleaner screenshot. Reader source geometry and continuous scrolling remain unchanged by surface restyling.
+- Acceptance: real public scholarly API verification plus deterministic bounded/error/cancellation tests; fresh Electron flows for graph expansion, neighbor selection, back/forward, save, source opening, library filters/collections, reading/notes persistence. Check all major views in both themes, narrow window and text scaling. Report public API behavior separately from fixtures and live OAuth/AI inference.
 
-### InsightDisclosure
-- **Structure:** the clamped text keeps its bottom fade; the disclosure is a small gray text label with a 12px chevron inside the faded edge, never a bordered action button.
-- **Behavior:** collapsed copy reads `더 보기` with a downward chevron; expanded copy reads `접기` with the chevron reversed. The full accessible name includes the owning insight title.
 
-### PostIt
-- **Structure:** compact drag strip, editable Markdown source, rendered Markdown/KaTeX body, close action.
-- **States:** newly-created editing, rendered, focused, moving.
-- **Behavior:** selecting the post-it tool then clicking the board creates one card at that exact board coordinate, focuses the editor, and returns to the select tool after placement. Double-clicking an existing post-it re-enters editing; `Cmd/Ctrl+Enter` commits and `Escape` restores rendered mode.
-- **Persistence:** post-it position and Markdown source are ordinary workspace card data and survive document/app reopen.
-- **Immediate editing:** a new or empty post-it always renders its textarea immediately and focuses it. Placeholder copy is a faint editing hint only; it is never presented as saved note content.
+## 2026-09-08 Non-reader screen layout revision (current)
 
-### GeneratedCardTitle
-- **Structure:** concise Korean noun phrase, 24 characters preferred and 42 characters maximum, with no generic `해설`, `분석`, page number, or duplicated section heading suffix.
-- **Behavior:** AI responses may return a `# title` first line; Scourgify parses it into the card header and keeps the remaining Markdown as the body. A quiet regenerate control in the header explicitly requests a new title from the current grounded card body.
+This revision supersedes the earlier labelled-rail layout for non-reader screens. Use a clear information hierarchy and panel proportions using Scourgify branding and real local records. The reference is an interaction/layout target, not permission to fabricate article metadata or citation networks.
 
-### ProviderSettings
-- **Providers:** OpenAI API, OpenRouter, and Local OpenCodex. Local OpenCodex uses the already-running OpenAI-compatible loopback endpoint at `127.0.0.1:10100`; it never copies browser cookies, OAuth tokens, or ChatGPT credentials into Scourgify.
-- **Status:** the local provider is considered ready only after its `/v1/models` endpoint responds. It needs no API-key field; hosted providers continue to use encrypted key storage.
-- **Boundary:** ChatGPT subscription billing is not represented as an API entitlement. Scourgify only connects to the user's separately authenticated local OpenCodex proxy.
+- Research flow: top navigation for discovery, library, notes, connections and projects; selection previews an item in place, explicit actions open its PDF or note. The continuous PDF reader retains its working toolbar and navigation. Library collection/list context and exploration history must survive inspection.
+- Layout at 1440px: 72px top chrome; 20–24px outer padding; 200px collection/list sidebar (reduced by the user's latest explicit feedback); flexible primary canvas; roughly 320px selected-record inspector. Collection and graph lists can collapse; the retained reader rail is a 56px icon rail with accessible names/tooltips. Use 12px panel radius, white panel surfaces, subtle borders, 36px minimum controls, and compact 4/8/12/16/24px spacing. At narrow widths panels reflow or scroll within their own bounded area; no clipped controls. Text scaling remains 50–200%.
+- Tokens: light canvas #f1f2f6, subtle lilac #efedf6 and mint #eaf4f2 atmospheric wash; surface #ffffff; muted surface #f5f6f8; ink #202326; muted ink #62676e; border #dce0e4; primary action #202725; green selection #e3eee8; focus #35765b. Dark equivalents use canvas #181b20, surface #22262d, muted #2a3038, ink #eef0f3, muted ink #b7bfc8, border #3d4651 and high-contrast pale-green actions. Use shared token variables, not decorative per-card colors.
+- Typography: existing bundled user-selected font; body 14px, compact 12px, controls 13px, section title 18px, brand 24px, scaled by existing appearance variables. Korean words remain intact where needed; long document titles wrap, never push panes beyond the viewport.
+- Graph: actual shared relations only, review state visible, graph/list alternatives, root history, pointer pan, zoom and fit. Selecting a node updates the inspector without leaving the graph. Every node can be reached; viewport transforms must not create inaccessible clipped neighbors. Unknown year/citation count is not an invented timeline axis.
+- Library: document preview with explicit reading action; real saved collections only if backed by existing persistence. Document-kind filters remain labelled as filters. No browser storage duplicating repository metadata.
+- Compact layout: at 1000px and below, the header uses two rows (112px total) so the brand and navigation do not overlap. Library lists narrow to 176px and the inspector reflows below the main list. Collection creation uses an inline labelled form. Completed import jobs collapse to a short summary; active jobs and failures stay visible. Visited research views preserve their current selection and draft while shared collections refresh on return.
+- Reading/notes: preserve selection explanation/translation and page-adjacent translation through existing explicit-consent actions. Preserve canonical folder Markdown, backlinks and exact PDF source returns. Do not claim plugin compatibility with other Markdown editors.
+- Project and graph body previews render readable Markdown and show wiki-link aliases instead of internal identifiers; the canonical note source remains unchanged. Source jumps center the selected passage within the available reader viewport rather than using card placement offsets.
+- Accessibility and persona: a Korean researcher can find a paper, inspect relationships, return to its source, and save/reopen a linked note by keyboard or pointer. Focus indicators, loading/empty/error states and reversible edits are required. Hover/selection changes use existing short transitions; no decorative animation.
+- Verification: current Electron captures at desktop and narrow sizes, both themes, appearance scaling, synthetic import, graph exploration and fit, preview-to-reader, and note/source persistence. Live OAuth/provider inference remain separately unverified until configured. Existing Electron dependencies are the accepted runtime tooling; do not install unrelated web/SEO instrumentation for this desktop change.
 
-### SettingsWindow
-- **Structure:** a 720px split-view sheet with a 176px macOS source-list sidebar and one focused content pane. The sidebar contains `일반`, `AI 모델`, and `읽기`; the current row uses a quiet selected surface rather than a colored dashboard tile. The content pane uses grouped preference rows with labels, values, and native-sized controls aligned on one baseline.
-- **Behavior:** appearance and reading preferences apply immediately and persist with the workspace. Provider credentials remain a deliberate form action and show a compact connection state beside the page title. Switching sections does not reset unsaved provider fields.
-- **Responsive:** below 680px the source list becomes a compact horizontal segmented row above the content. The sheet stays within `calc(100vw - 32px)` and `calc(100vh - 32px)` with only the content pane scrolling.
-- **Copy:** headings are nouns, not instructions. Implementation and privacy explanations are omitted; errors and connection state are concise and local to the affected group.
 
-### SidebarCategoryPanel
-- **Structure:** macOS-style grouped list with a strong feature title and immediately readable content preview. Translation foregrounds translated text and source; explanation foregrounds a Markdown takeaway; visual analysis foregrounds structured nodes; notes foreground editable prose; highlights foreground the quotation; citations foreground identity and reading rationale.
-- **Constraint:** no blue icon tiles, colored left rails, oversized counters, or decorative gradients. Rail badges represent unread additions rather than lifetime totals, use compact 9–11px capsules, abbreviate counts above 99 as `99+`, and clear as soon as the user opens that mode.
+## 2026-09-08 six-screen reference implementation
 
-### MarkdownContent
-- **Coverage:** every user-authored or AI-authored prose surface uses the same renderer; plain strings remain plain paragraphs while Markdown headings, lists, links, tables, code, and block quotes are supported.
-- **UI heading scale:** Markdown `h1`/`h2`/`h3` inside cards and sidebars map to 18px/16px/14px UI headings. Generated prose never inherits document-sized browser heading defaults.
-- **Math:** inline `$…$` and display `$$…$$` use KaTeX with horizontal overflow contained inside the owning panel/card.
-- **Safety:** raw HTML is never executed; external links open through the validated Electron external-link boundary.
+The user approved implementation from the six generated desktop concepts: Library, Reader, Knowledge, Connections, Compare and Project. These are layout references, not production data or evidence of working features. Preserve the approved leaf logo and existing semantic palette; do not reproduce generated text mistakes, fabricated papers, source quotes or decorative accent rails. Reuse existing controls and records rather than introducing competing stores.
 
-### MetadataSidebar
-- **Structure:** document title/authors/year/DOI/pages, current page/selection, a compact board index for translations, AI explanations, AI cards, notes, and citations, followed by tags.
-- **Behavior:** every board-index row shows only kind, title, and source page; activating it pans to and selects the corresponding board card. The header opens the Paper Chat Agent in this same sidebar column.
-- **States:** expanded, collapsed marker rail, metadata-review, empty.
-- **Constraint:** never renders full research-card bodies.
+- Shared navigation: a separately identifiable Library home followed by the five labelled destinations 읽기, 지식, 연결, 비교, 프로젝트. Current location is explicit; search, memory, interchange and AI proposal tools remain reachable as secondary utilities. At normal desktop size use an approximately 88px labelled rail and 220–260px secondary list panes; at high text scale or narrow windows allow bounded scrolling and readable compact navigation without clipping controls.
+- Library: a working import action, collection navigation, retained recent reading position, local PDF thumbnails and paper cards. The continue-reading item is backed by actual reader state. Empty or unavailable files have actionable honest states.
+- Reader: preserve the existing continuous PDF board, selection, source tools, fixed navigation and page-adjacent translations. Do not replace the board with a static page or side-panel-only translation.
+- Knowledge: search/list, a continuous opaque note writing column and evidence/backlinks. Compare: selectable records, condition rows, explicit unknowns and source return. Connections: labelled relationships, list alternative, selected-record detail and distinct proposals. Project: actual shared records and removable placements, with no fabricated experiments or results.
+- Persona and acceptance: a Korean-speaking researcher moving from PDF to note to comparison/graph and back. Keyboard focus, empty/loading/error/save/conflict states, dark/light, 50/100/200% text and narrow settings remain required. Existing Electron tests and disposable-profile native interaction are the acceptance harness; no extra dev dependencies or mobile/web replacement are introduced.
+- Settings uses the native modal dialog lifecycle: focus enters the dialog, background controls are inert, Tab stays inside, Escape closes it, and focus returns to the opener. Keep the existing scrolling settings layout and appearance inheritance.
+- Project keeps its existing evidence-transfer tool in an expandable bottom section, leaving the board available at full width when the tool is closed.
+- Navigation stacks each icon above its Korean label. `--navigation-rail-width` is at least 88px and grows with the compact text size so labels remain whole at 200%; secondary action labels wrap only between words.
+- Knowledge prioritizes writing: group formatting and view controls in a compact toolbar, reduce empty vertical gaps, and disclose relation creation on demand. Draft-preservation guidance is a quiet status message with no generic retry action. Graph, Compare and Project stack their heading above content in a column shell.
 
-### SidebarResizeHandle
-- **Structure:** 7px hit area centered on a 1px divider with a quiet 28px center grip, exposed as an ARIA separator with current/min/max width.
-- **Behavior:** pointer drag resizes the adjacent expanded panel directly; arrow keys adjust by 16px. The handle never appears on a collapsed rail.
-- **Persistence:** outline and research-sidebar widths are workspace values and restore on the next launch.
 
-### OutlinePanel
-- **Structure:** title, close control, current-page marker, and PDF outline rows only.
-- **Placement:** appears to the left of the board and never inside the right research sidebar.
-- **Behavior:** the top-left toolbar outline button toggles it; choosing a row jumps to that PDF page and preserves the open state until explicitly closed.
+This is the current contract, replacing the conflicting historical specifications archived under `.omo/plans/archive/pre-direct-2026-09-05/`. It describes intended behavior; implementation status belongs in the active plan and QA report.
 
-### PreparationProgress
-- **Steps:** PDF 확인 → 문서 등록 → 페이지 구성 → 텍스트 추출 → 앵커 생성 → 메타정보 → 품질 검사 → 보드 준비 완료.
-- **States:** pending, active, complete, warning, failed.
-- **Behavior:** the panel is dismissible at any time and automatically closes shortly after every step reaches complete; warnings and failures remain until explicitly dismissed.
-- **Constraint:** import performs no AI/network request.
+## 1. What the product is
 
-### AI Provider Settings
-- **Providers:** OpenAI API and OpenRouter API, each with an encrypted local key and user-selectable model ID. OpenRouter with `z-ai/glm-5.3-flash` is the default state.
-- **Typography preference:** one compact selector controls UI text at 90%, 100%, 110%, or 120% and persists in the workspace; it never changes PDF page scale.
-- **Copy constraint:** settings and empty states contain controls, status, and errors only. Repeated privacy/network explanations and implementation-detail banners are omitted.
-- **Constraint:** ChatGPT consumer subscriptions are not treated as API credentials. Provider calls occur only after an explicit AI action or chat send.
-- **Environment bootstrap:** a valid provider configuration supplied through `.env` or process environment replaces a stale or unreadable local provider value and is encrypted into the local provider store on first use. The secret never enters the app bundle; subsequent Finder launches reuse the encrypted copy.
-- **Reading-action latency:** explicit selection/section/figure/table/equation actions and structured citation assessment use the provider's low-reasoning mode with bounded completion budgets; open-ended research chat keeps its deeper default. Citation assessment must emit its schema-valid JSON within the interactive card flow rather than spending an unbounded reasoning turn. Section requests include a bounded excerpt following the detected heading instead of sending the heading alone.
-- **Streaming:** provider deltas cross a request-ID-scoped, Zod-validated IPC channel. The renderer coalesces visible text updates to one animation frame and commits the completed Markdown to workspace storage only once. The first token removes the slim loading track; cancellation or failure never leaves a partial response persisted as complete.
-- **Context budgets:** short translation and title actions receive the smallest bounded context/completion budgets; figure, table, section, and open-ended research requests retain the paper overview, current section, local evidence, and exact question in that priority order.
+Read a paper, keep the original passage with your interpretation, connect it to a concept or research question, and later trace a hypothesis or result back to that evidence. Existing reading functions stay intact. A graph is a useful view, not the product's purpose.
 
-### WorkspacePersistence
-- **Transient state:** pan, zoom, sidebar resize, outline resize, and in-progress card geometry update the live workspace without entering undo history. A completed semantic edit or final pointer release creates one history checkpoint.
-- **Storage:** rapid workspace changes are coalesced and the latest valid snapshot is saved after a short idle interval. Only one save may be in flight; a newer snapshot follows it rather than racing the database.
-- **Render budget:** AI streaming text is local component state until completion. PDF page rendering, Markdown parsing, workspace serialization, and database writes never run once per token.
+Use plain labels: `라이브러리`, `읽기`, `지식`, `연결`, `비교`, `프로젝트`, `설정`. Describe actual actions and errors. Avoid slogans such as “연구 문서를 위한 개인 라이브러리”, implementation-provider marketing, fake metrics, or decorative AI badges.
 
-### Paper Chat Agent
-- **Structure:** provider/model status, document-grounded message history, prompt input, send/close controls.
-- **Placement:** is the default right sidebar for an open paper and never floats over the paper. Its header switches to the board index; the board-index header switches back to AI chat.
-- **Behavior:** each message is explicitly submitted and includes the active paper identity plus only the bounded context supplied by the user interaction.
+## 2. Visual direction
 
-### ResearchSidebar Modes
-- **Shell:** one 300px default resizable scrollable content pane plus a fixed 40px mode rail on the far right. The rail exposes `AI`, `Translation`, `Explanation`, `AI Card`, `Note`, `Post-it`, `Highlight`, and `Citations` as first-class modes; there is no aggregate `Board` mode or secondary filter-chip row.
-- **Initial state:** the visible pane starts in `AI` mode because explanation and translation are the primary reading loop. This initial view performs no request; the first explicit AI-rail activation starts missing overview requests.
-- **AI mode:** collapsible Keyword Dictionary, 3-Line Summary, Summary, and Discussion sections. The first explicit activation of the AI rail generates all missing overview sections concurrently; subsequent visits restore cached values immediately. Individual empty-state `Generate` buttons do not exist. Every generated section supports copy, regenerate, and explicit `Save to Board`.
-- **Failure copy:** an unconfigured provider is labeled as setup-required; a configured provider request failure is labeled as retryable and never misreported as a missing key.
-- **Overview context boundary:** overview extraction and the renderer/preload/main IPC schema share one 8,000-character limit. No producer may construct a context larger than the receiving boundary.
-- **Card-category modes:** Translation, Explanation, AI Card, Note, Post-it, and Highlight each open a dedicated source-linked index containing only that card kind. Every rail item has its own icon and accessible name; a count badge appears only when its count is greater than zero. Selecting a row focuses the matching board card while the board remains the spatial canvas rather than the navigation container.
-- **Translation panel:** each result is a readable comparison card: translated output is the dominant block, the source quote sits in a muted `원문` inset, and the page/action footer returns to the board location.
-- **Explanation panel:** each section or figure explanation shows a two-line title, a multi-line grounded takeaway, and the cited source passage. It optimizes evidence recall, not generic card management.
-- **AI Card panel:** figure/table/infographic analysis uses a larger visual-type tile and a structured multi-line preview so image-oriented outputs are distinguishable before opening the board card.
-- **Note and Post-it panels:** notes use a quiet warm paper tint with their linked source; post-its use the stronger `--note` paper surface, preserve more handwritten content, and label the board action as editing rather than viewing.
-- **Highlight panel:** saved source text is the content itself, rendered as a marker-like evidence strip with an `원문 위치 보기` action. It never wastes the panel on a title-only row.
-- **Category empty states:** an empty category explains what the feature preserves and the user action that creates the first item. Empty panels never show an unexplained blank canvas.
-- **Citations mode:** lists references extracted locally, then performs online identity resolution and AI assessment only after an explicit per-paper or batch action. It supports source/open-access links, board saving, citation-reason explanation, reading guidance, and cited-paper questions.
+Quiet, legible desktop research software. Natural green identity with restrained warmth, not a gold/ivory dashboard. No blue brand accents, repeating dot grid, gradients behind controls, oversized pills, excessive nested cards, or ambient motion inside the reader. Do not copy Anthropic/Apple layouts or logos.
 
-### Citation Triage Agent
-- **Responsive citation cards:** the citation list has one shrinkable track across the full 260–520px sidebar range. Citation IDs never define card width. At 360px and below, the ID occupies its own row and the title/author/source block spans the card; titles, author lists, DOI/URL text, actions, and score breakdowns wrap inside the card without horizontal scrolling, clipping, or ellipsis-only loss.
-- **Identity gate:** search multiple Semantic Scholar and Crossref candidates; accept only DOI-exact or strongly matching title/author/year evidence. Ambiguous candidates remain unresolved and are never scored as if verified.
-- **AI evidence:** assess dependency on the cited work, methodological relevance, conceptual relevance, evidentiary importance, and context sufficiency from the current citation context plus verified metadata/abstract. Return schema-validated JSON; prose-only or malformed output fails closed.
-- **Local score:** the renderer sums bounded component scores to 0–100 and assigns the final tier; the model cannot directly promote itself to a tier.
-- **Score display:** every assessed citation shows `score/100`, a compact meter, and the five visible components: dependency 30, methodological 25, conceptual 20, evidentiary 15, and context sufficiency 10. Verified source/DOI links remain directly accessible from the assessment header.
-- **Conservative distribution:** among verified assessments, at most 5% become `Deep Read`, the next 15% `Skim`, the next 25% `Abstract Only`, and the remaining majority `Pass`, with hard score gates of 88/68/42. Very small sets receive `Deep Read` only for an exceptional score of at least 96.
-- **Tier meaning:** `Deep Read` names exact sections to study; `Skim` names the minimum sections/figures; `Abstract Only` requires abstract plus the citation context; `Pass` preserves the citation reason but recommends no additional reading.
-- **Ordering:** tier, score, identity confidence, then number of independent citation contexts. Raw citation count is metadata, never the primary reading-value signal.
+Latest reference grammar: use the reference's alignment, crisp hierarchy, near-neutral palette, and spacious layout as inspiration for Scourgify's own natural-green system. Keep accents sparse and purposeful; this is not a clone, and the approved leaf mark, bundled readable fonts, and restrained glass navigation remain Scourgify-specific.
 
-### Primitive Showcase
-- Must exercise every component/variant/state at 920×640, 1280×800, and 1536×1024 before product-screen acceptance.
+Approved branding: `assets/branding/scourgify-leaf-mark.png`. Render the full raster with `object-fit: contain`, stable aspect ratio and clear padding. Never crop the leaf inside a wordmark viewport. The optional onboarding scene is `assets/branding/scourgify-onboarding-golden-leaves-v1.jpg`; do not load it in normal reading views.
 
-## 6. Motion & Interaction
+### Accent treatment prohibition
 
-| Interaction | Timing | Mechanism |
-|---|---:|---|
-| Button/selection feedback | 100–120ms | opacity + micro-scale |
-| Card minimize/expand | 180ms | transform + opacity, interruptible |
-| Sidebar collapse/expand | 180ms | transform, board viewport relayout after completion |
-| Connector emphasis | 160ms | opacity/stroke only |
-| Board pan/zoom | gesture-bound | direct manipulation, no queued tween |
+Alerts, cards, callouts, and selected-card treatments must not use decorative or status-colored vertical accents: no `border-left`/`border-inline-start` rails, inset box-shadows, or `::before` pseudo-element rails. Communicate state with readable text and icons, plus a neutral uniform boundary or a subtle whole-surface treatment. Only actual Markdown blockquotes, structural split-pane separators, and authored PDF content are exempt.
 
-- Spatial motion uses transforms; color/opacity use short easing.
-- Reduced Motion removes nonessential interpolation but preserves all state changes and connectors.
-- Pinch zoom is centered on cursor/focal point. Dragged cards stay under the pointer.
-- Toolbar zoom is centered on the visible board area, preserving the current paper/card location instead of shifting the active page off-screen.
+AI-generated and research-draft notices are neutral inline text only. They must not become a colored left rail, callout, or authored Markdown quote.
 
-## 7. Depth & Surface
+### Semantic palette
 
-Strategy: tonal shift plus hairline. Board cards use `0 2px 10px rgb(25 35 45 / 8%)`; selected/moving cards may use `0 8px 24px rgb(25 35 45 / 12%)`. No gradients, glass layers, neon, or rounded-card nesting.
+| Token | Light | Dark |
+| --- | --- | --- |
+| canvas | `#F4F5F2` | `#151C18` |
+| surface | `#FFFFFF` | `#1D2721` |
+| surface-muted | `#ECEFEA` | `#263229` |
+| ink | `#17251F` | `#EDF2EC` |
+| ink-muted | `#556259` | `#B0BCB1` |
+| line | `#D6DDD5` | `#3B493E` |
+| action | `#285644` | `#9BCCAB` |
+| action-hover | `#1D4435` | `#B9DEC4` |
+| focus | `#9B772E` | `#DABB77` |
+| action-subtle | `#E3EDE5` | `#30483A` |
+| note | `#F5EDD6` | `#403B2A` |
+| warning | `#88651F` | `#DABB77` |
+| error | `#A04335` | `#F0A393` |
 
-## 8. Accessibility Constraints & Accepted Debt
+Original photographic samples remain reference colors, not mandatory control colors: forest `#040F0F`, evergreen `#0C1E20`, moss `#394134`, haze `#716745`, bronze `#A18242`, amber `#AD7015`, leaf gold `#EFC245`, light `#FFE398`. Reserve warm accents for focused evidence, warnings and notes. State also needs text/icon, not color alone. Keep the PDF's authored colors unchanged.
 
-- Target WCAG 2.2 AA, visible 2px action-color focus, keyboard reachability, 200% text, increased contrast, reduced motion, and VoiceOver labels.
-- Board objects use DOM reading order independent of visual coordinates; connectors are decorative while source-jump controls are semantic.
-- Current accepted debt: exact PDF text-layer selection geometry and VoiceOver reading order require runtime verification against real mixed-layout PDFs before release.
+### Type and density
+
+- Default Wanted Sans; selectable bundled Wanted Sans, Pretendard, SUIT, Geist + Wanted Sans Korean fallback, and system font. No font CDN. Show each family in a visible labelled specimen.
+- Font specimens always stack the family label above the full-width preview, independent of window width. The text-scale row may wrap within its panel; reserve intrinsic width for the percentage value at 200% rather than clipping it or reducing text size.
+- Title 24px, section 16px, body 14px, metadata 12px at 100%; use the existing semantic scale for toolbar variants. Prefer restrained medium weights, no decorative serif UI.
+- User text scale 50–200%, 5% steps, presets 50/75/100/125/150/175/200. No duplicate “100% 초기화” button. Warn that values below 90% are small without blocking the preference.
+- Text scale does not scale PDF pages or shrink hit targets. Controls expand/wrap at 200%, never clip or hide actions. Minimum desktop target 32px; touch target 44px.
+- Specimens: `읽은 것은 남고, 필요한 것은 다시 찾을 수 있어야 합니다.` / `What we read should remain, and what we need should be easy to find again.`
+- Gaps 4/8/12/16/24/32px; 1px hairlines. Radius tiers: 8px inset fields, 12px controls, 18px content cards, 24px floating panels/dialogs; inner radii follow outer radius minus padding. Use progressive `corner-shape: squircle` where supported, with ordinary rounded corners as a safe fallback. Do not round the PDF page itself. Keep content grouped by spacing rather than boxed everywhere.
+
+### Glass chrome, 2026-09-06
+
+The user requested Apple-inspired material and geometry, not a clone. Apply glass to navigation, floating tool groups and dialogs; paper, note prose, tables and graph labels retain opaque reading surfaces. Source: [Apple Materials](https://developer.apple.com/design/human-interface-guidelines/materials) and the frontend Apple/redesign references. Do not copy Apple's blue accents, logos, copy or proprietary font files.
+
+Reusable glass recipe: light `rgba(250,252,249,.88)`, dark `rgba(27,38,31,.90)`; 20px background blur with 120% saturation; inset top rim light `rgba(255,255,255,.78)` / dark `rgba(255,255,255,.12)`; outer green-black shadow `0 8px 28px rgba(13,31,22,.10)` / dark `.25`. Quiet floating elevation uses `0 2px 8px rgba(13,31,22,.06)`. No animated blur, full-window blur, fake lens distortion, glitter or moving background.
+
+Normal/hover/focus/pressed/disabled states reuse semantic action/line/focus tokens. `prefers-reduced-transparency`, increased contrast and unsupported backdrop filtering use opaque surfaces and solid borders. Reduced motion retains content and focus without transform transitions. Never require transparency to identify an action.
+
+The topbar, left rail, right navigation rails, minimap, source tools, popovers, and dialogs share this chrome recipe. PDF pages, note prose, tables, graph labels, board cards, metadata panes, and research content remain opaque so translucency never reduces reading contrast. Workspace typography is driven by the persisted local font family and 50–200% text scale custom properties; the PDF document itself is never restyled.
+
+Shared state harness and final QA must include long Korean/English titles, keyboard focus, saving/conflict/error, empty list, light/dark, 50/100/200% scale and narrow panes. Reading body uses 1.6 line height and at most 72ch; navigation keeps compact 1.4 leading, 500/600 weights and tabular numbers. Keep bundled font choices with real specimens; no extra font downloads or dev-tool dependencies for this redesign.
+
+## 3. Navigation and reading
+
+- Returning from a graph, comparison or note evidence link verifies the immutable PDF hash, brings the anchored region into view and marks it with the existing source highlight. A small dismissible source-return notice identifies the page. Anchors without geometry open the page and explicitly say that the exact region is unavailable; never invent a highlight. This navigation neither creates a card nor starts AI.
+
+- Library is the default launch view, with local first-page previews, search, plain import control and retained recent position. A paper card opens the existing reader, not a replacement viewer.
+- Fixed top toolbar and compact left rail. The five destinations remain reachable. Library remains a separate home action. Long titles truncate only in navigation, not in content/editors.
+- Reader retains continuous vertically aligned PDF pages and spatial cards on either side; paper and cards pan/zoom together. Toolbar, outline and metadata rail remain fixed.
+- Preserve hand/select/note tools, undo/redo, zoom/fit, minimap, outline, highlights, selection actions, figure/table/equation actions, citations, discussion, and source return.
+- Page translation belongs next to its source page and follows its position/zoom. It never replaces the research sidebar. Show completed batches while later batches stream; cancellation stops pending work; auth/limits require user recovery, not blind retries.
+- Import, opening settings, opening a PDF, and scrolling to a new document do not trigger AI/OCR. A deliberate automatic-translation toggle may process pages only within that document; reset consent on switching documents.
+- Research rail: expand or first mode activation opens transiently; activating the same open mode again pins it until explicit collapse. Selecting another mode opens that mode transiently. Pointer leave dismisses only unpinned content; hover/keyboard focus alone never pins. Collapse clears local pin state. Pin activation does not repeat translation toggles or sticky-tool actions; translation remains page-adjacent. Keep existing geometry, tokens and motion; expose expanded and pinned state accessibly.
+- Each scroll region owns its scrolling: settings content and sidebar/card bodies have bounded heights and `min-height: 0`; their wheel events do not pan the board. At 920×640 all settings actions remain reachable at 200% text.
+- Local preparation status appears only for current jobs. Completed rows disappear shortly; errors remain actionable. Never restore old completed documents as a live queue.
+
+## 4. One knowledge model, five views
+
+Identity/content, relationships, source evidence and placement are separate records. A node edited from any view changes everywhere. Paper identity differs from PDF version; versioned anchors never drift to a similar title or a replacement file.
+
+### Knowledge
+
+Search title/body and Korean/English aliases. Create/edit paper, concept, note, claim, evidence, question, hypothesis, experiment and project records. Stable `[[id|label]]` links have autocomplete and click-through; renaming a node does not break links. Show incoming and outgoing links and distinguish draft edits, saving, saved, conflict and failure. Do not silently discard edits on selection changes.
+
+Live note editing uses one Markdown source and undo history. Source/live toggles preserve text and selection; image/table/math controls remain ordinary compact buttons. Selecting a passage exposes a bounded `선택한 구절 연결` action with its target and quote visible before saving. Empty selection disables the action. Saving and linking report failures without dismissing the buffer; stale external edits never overwrite silently. Stored note-fragment quotes appear alongside PDF evidence in relations; missing or ambiguous text is labelled `연결 위치 확인 필요`, not replaced with a guessed match.
+
+The note editor is a document-first writing surface: one opaque, borderless title field and one continuous 720–800px writing canvas share the note's reading column. Aliases and stored properties are folded under `세부 정보`; relations and backlinks remain available under a folded `연결 및 백링크` section instead of competing with the prose. Insert tools stay compact and appear on demand; the default surface contains no canned writing suggestions. Notes use an honest pending-save fallback rather than background autosave: `⌘S`/`Ctrl+S` and the visible save action submit the current body with `expectedBody`, while conflict or writer-lock recovery keeps the buffer in place and explains the next action.
+
+From a selected PDF passage or existing grounded reader card, `지식으로 연결` chooses an existing concept/question/hypothesis or creates one. Repeated use from two PDFs must link to one identity. Preserve the exact quote, hash, page and available source ranges. A sticky note is not fabricated PDF evidence. Source return opens the matching imported file and page; unavailable versions show an explanation, never jump to the wrong file.
+
+### Graph
+
+Start around a selected node, bounded by visible node/edge limits. Citation/concept/research and review-state filters operate on the same store. Show actual edges and labels plus a keyboard-accessible list. Nodes open the knowledge record; evidence opens its source. Show truncation honestly. A force simulation or a new graph dependency is not required for a useful neighbourhood view.
+
+### Compare
+
+Select records and inspect actual source-linked task, data split, model, tools, budget and metric conditions. Unknown means `확인되지 않음`; do not invent summaries, scores, claims of superiority or globally novel research gaps. Follow source links. Distinguish metadata-only literature from read full text.
+
+### Project
+
+Create/select named boards; place existing shared nodes, move them spatially, and remove placements independently of node deletion. The same node can appear on multiple boards. Question → hypothesis → experiment uses typed relations and stores code commit, data/evaluation configuration, metrics and bounded failure categories. No patient-level prompts/results are silently ingested.
+
+### Relations and AI review
+
+### Search and research workspace
+
+Keep academic metadata search and evidence research in a labelled two-mode navigation within Search. Local research sources are opt-in, selected from named records (maximum 20), never implicitly the whole library. Display the count, removable selection chips, and the excerpt limit before the scope preview. Loading titles is local-only; AI and external search still require preview and explicit start. Reuse surface, spacing, focus and field-radius tokens; no decorative dashboard panels.
+
+Relations include cites/discusses/interprets/supported_by/motivates/tests/refutes/relates_to. Show creator and provenance, evidence, and proposed/accepted/rejected/needs-review states. `supported_by` is a recorded assessment, not certification of truth.
+
+An explicit AI proposal action displays its scope before sending selected evidence/records through the configured provider. Results remain proposed and can be accepted/rejected individually. No on-mount calls, automatic merges, paid fallback, or fabricated source IDs. Keep user-written notes distinct from AI output.
+
+## 5. Interchange and configuration
+
+- Data recovery lists only the signed-in account's interrupted drafts. Preview is read-only; restoring creates a new standalone note and never silently overwrites its original. Keep the recovery copy available and clearly label the new note. Normal note history remains a separate revision-aware restore action.
+
+- Markdown exports carry stable IDs, aliases, document versions, evidence, relations and provenance. Import previews conflicts; explicit commit revalidates and is atomic. Do not overwrite existing notes silently.
+- JSON Canvas carries layout and visual edges; a sidecar carries Scourgify semantics. Explain the pair, missing-node constraints and partial-save failures. A Canvas-only import is not claimed to preserve PDF anchors.
+- Native bibliography management preserves imported legacy IDs and reviewed identifier matches; no Zotero application connector or automatic synchronization. Metadata-only records remain labelled until their full text is actually read.
+- Experiment JSONL accepts bounded aggregate records with code/data/evaluation versions. Optional Inspect conversion uses the official log reader header mode, not execution of imported code or raw patient traces.
+- API and ChatGPT subscription modes are visibly distinct. Local OpenCodex remains an API-compatible local proxy option. Credentials stay main-process-only. Display actual connection state, cancellation, expiry/error and unknown usage honestly.
+- Settings separates app account, AI connections and reading/general preferences. Google app login is required with the approved seven-day bounded offline policy; it is not provider authorization. Modal body scrolls; close and navigation remain accessible. No shared API key, automatic sync or document upload to the account service.
+- Subscription connection offers browser login and device-code login, a cancellable pending state, account plan and available usage windows. Pending authorization never displays as connected. Failures remain visible until retried. Login/logout refresh the application's provider state; no background inference or API fallback.
+- `데이터 가져오기·내보내기` is a rail action opening the existing bounded settings-style dialog. Format, destination and selected record precede file selection. Previews show counts, titles and conflicts; invalid previews cannot commit. A successful commit consumes its preview. Canvas export explicitly saves two companion files and reports a cancelled second save.
+- `AI 연결 제안` opens a bounded dialog with a searchable node checklist (2–12 records), visible source-scope notice, explicit generate/cancel controls and individual accept/reject decisions with source-return buttons. Proposed is never styled as accepted. Use existing settings and knowledge primitives, no new palette.
+- Note images use collection-owned raster assets only. Picker, paste and drop keep Markdown paths portable; unsupported or oversized input shows an inline error without losing the buffer. A note's `변경 이력` opens a scrollable, opaque text preview with date, current revision, explicit restore and conflict review. Restore preserves a recovery copy and must fail visibly if the current file changed. Existing modal chrome and focus rules apply.
+
+## 6. Motion, performance and acceptance
+
+The desktop account gate loads before the research workspace. It never flashes local documents before authentication. Expiry covers and disables the mounted workspace, preserving its editor buffers. Explicit logout, account change and window close first write pending note drafts to local recovery. Help is a native, keyboard-dismissable dialog; account-service configuration failures must explain what is unavailable without presenting a nonfunctional sign-in button.
+
+Use short opacity/transform state transitions only; respect reduced motion. Do not animate reading content continuously. If an onboarding view is retained, use optional small scroll entrances with content visible without animation, no heavy animation framework.
+
+Reuse PDF/thumbnail caches with bounded eviction and cancellation. Do not re-render every PDF on pointer samples or re-query document status when idle. Optimize measured work, not just bundle numbers.
+
+Verify the actual current Electron build with synthetic PDFs: library/import, complete reader controls, two PDFs to one concept and back, persistent edit/backlinks, graph filters, honest comparison, multi-board placement, reviewed import/export, failure/cancel states, settings at 50/100/200%, dark/light and narrow windows. The old Hotebook mockup remains a feature-continuity reference only; its old palette and historical screenshots are not the current design or acceptance evidence.
+
+## 9. Document Preparation and Enrichment
+
+Keep `SourceDocumentAst` (immutable source), `SemanticDocumentAst` (derived interpretation) and `RenderedDocumentGeometry` (current viewport coordinates) separate. Native text is the default; scanned or unparseable content shows an actionable warning. `AI 구조 보강` is an explicit optional action, never triggered by key configuration. Show queued/running/complete/failed/cancelled and `budget-paused` distinctly; resume only on a deliberate action. Existing movable board cards retain source anchors while derived structure is regenerated. Unknown coordinates remain missing, not fabricated 1×1 boxes.

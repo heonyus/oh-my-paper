@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs"
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import { PDFDocument, type PDFPage, rgb, StandardFonts } from "pdf-lib"
+import { generateDocumentFixtureCorpus } from "./document-fixtures"
 import { drawFixtureHeaderFooter, type FixturePageContext } from "./fixture-page-shared"
 import { renderFixturePage1 } from "./fixture-page1"
 import type { FixtureGenerationResult, FixtureMetadata, FixtureOptions } from "./fixture-types"
@@ -238,6 +239,7 @@ export async function writeFixturePdf(
 
 async function runCli(): Promise<void> {
   const result = await writeFixturePdf()
+  await generateDocumentFixtureCorpus()
   process.stdout.write(
     `Deterministic PDF fixture created: ${result.outputPath} (${result.byteLength} bytes, ${result.pageCount} pages)\n`,
   )

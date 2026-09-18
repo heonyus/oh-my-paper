@@ -1,0 +1,27 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "scourgify-account-local",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-05",
+  "workers_dev": false,
+  "preview_urls": false,
+  "send_metrics": false,
+  "vars": {
+    "APP_ISSUER": "http://127.0.0.1:8789",
+    "GOOGLE_CLIENT_IDS": "UNCONFIGURED_GOOGLE_DESKTOP_CLIENT_ID"
+  },
+  "secrets": {
+    "required": ["APP_JWT_SIGNING_JWK"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "scourgify-account-local",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1
+  }
+}

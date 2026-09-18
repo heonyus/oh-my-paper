@@ -16,7 +16,7 @@ export type BoardCategoryKind = Exclude<BoardCard["kind"], "citation">
 type CategoryCopy = {
   readonly purpose: string
   readonly empty: string
-  readonly action: string
+  readonly action: string | null
 }
 
 const categoryCopy: Readonly<Record<BoardCategoryKind, CategoryCopy>> = {
@@ -38,12 +38,12 @@ const categoryCopy: Readonly<Record<BoardCategoryKind, CategoryCopy>> = {
   note: {
     purpose: "메모와 연결된 원문을 다시 찾습니다.",
     empty: "선택 구절을 노트로 저장하거나 번역을 주석으로 바꾸면 여기에 모입니다.",
-    action: "보드에서 편집",
+    action: null,
   },
   sticky: {
     purpose: "빠른 메모를 모아 편집 위치로 이동합니다.",
     empty: "포스트잇 도구로 보드를 클릭하면 빠른 메모가 여기에 나타납니다.",
-    action: "보드에서 편집",
+    action: null,
   },
   highlight: {
     purpose: "핵심 문장을 페이지 순서로 다시 찾습니다.",
@@ -95,7 +95,7 @@ function previewFor(card: BoardCard, kind: BoardCategoryKind): string {
     case "sticky":
       return plainPreview(card.body) || "내용이 없는 포스트잇"
     case "highlight":
-      return card.anchor.quote
+      return plainPreview(card.body) || card.anchor.quote
   }
 }
 
@@ -107,8 +107,9 @@ function sourceFor(card: BoardCard, kind: BoardCategoryKind): string | null {
     case "note":
       return card.anchor.quote
     case "sticky":
-    case "highlight":
       return null
+    case "highlight":
+      return card.anchor.quote
   }
 }
 
@@ -143,20 +144,25 @@ export function BoardIndexPanel({
         <ol className="board-index-list">
           {visible.map((card) => {
             const source = sourceFor(card, kind)
+            const showsItemIdentity = kind !== "highlight"
             return (
               <li key={card.id} data-kind={kind}>
                 <button
                   type="button"
                   data-kind={kind}
-                  aria-label={`${card.title}, p.${card.anchor.page}, ${copy.action}`}
+                  aria-label={`${card.title}, p.${card.anchor.page}${copy.action ? `, ${copy.action}` : ""}`}
                   onClick={() => onJump(card.id)}
                 >
-                  <span className="board-index-icon">
-                    <KindIcon kind={kind} size={20} />
-                  </span>
-                  <strong className="board-index-title">
-                    {conciseCardTitle(card.title, card.title)}
-                  </strong>
+                  {showsItemIdentity ? (
+                    <>
+                      <span className="board-index-icon">
+                        <KindIcon kind={kind} size={20} />
+                      </span>
+                      <strong className="board-index-title">
+                        {conciseCardTitle(card.title, card.title)}
+                      </strong>
+                    </>
+                  ) : null}
                   <span className="board-index-page">p.{card.anchor.page}</span>
                   <span className="board-index-preview">{previewFor(card, kind)}</span>
                   {source ? (
@@ -165,9 +171,11 @@ export function BoardIndexPanel({
                       <span>{source}</span>
                     </span>
                   ) : null}
-                  <span className="board-index-action">
-                    {copy.action} <ArrowUpRight size={12} />
-                  </span>
+                  {copy.action ? (
+                    <span className="board-index-action">
+                      {copy.action} <ArrowUpRight size={12} />
+                    </span>
+                  ) : null}
                 </button>
               </li>
             )

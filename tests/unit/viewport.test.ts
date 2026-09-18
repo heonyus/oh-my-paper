@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   clampZoom,
+  fitWorldRectHorizontally,
   focusWorldRect,
   moveWorldPointByScreenDelta,
   panViewport,
@@ -75,6 +76,19 @@ describe("board viewport", () => {
 
     expect(next.x + (760 + 320) * next.zoom).toBeCloseTo(808)
     expect(next.y).toBe(20)
+  })
+
+  it("fits a PDF and its page-adjacent translation into the board width", () => {
+    const next = fitWorldRectHorizontally(
+      { x: 88, y: 36, zoom: 0.9 },
+      1152,
+      { x: 300, y: 64, width: 1420 },
+      16,
+    )
+
+    expect(next.x + 300 * next.zoom).toBeCloseTo(16)
+    expect(next.x + (300 + 1420) * next.zoom).toBeCloseTo(1136)
+    expect(next.y + 64 * next.zoom).toBeCloseTo(36 + 64 * 0.9)
   })
 
   it("focuses a board card inside the available viewport", () => {

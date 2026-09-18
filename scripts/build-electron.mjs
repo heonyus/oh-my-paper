@@ -9,7 +9,7 @@ const shared = {
   platform: "node",
   target: "node22",
   format: "cjs",
-  external: ["electron"],
+  external: ["electron", "pdfjs-dist/legacy/build/pdf.mjs"],
   sourcemap: false,
 }
 

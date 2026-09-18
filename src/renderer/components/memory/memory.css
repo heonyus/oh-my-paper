@@ -1,0 +1,181 @@
+.memory-inspector {
+  background: var(--canvas);
+}
+
+.memory-inspector-header {
+  align-items: flex-start;
+}
+
+.memory-inspector-header h2,
+.memory-inspector-header p {
+  margin: 0;
+}
+
+.memory-inspector-header p {
+  margin-top: var(--space-1);
+}
+
+.memory-inspector-body {
+  display: grid;
+  gap: var(--space-6);
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-6);
+}
+
+.memory-inspector-section-heading,
+.memory-inspector-card-heading,
+.memory-inspector-actions,
+.memory-inspector-pagination,
+.memory-inspector-recent-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.memory-inspector-section-heading,
+.memory-inspector-card-heading,
+.memory-inspector-pagination {
+  justify-content: space-between;
+}
+
+.memory-inspector-section-heading {
+  margin-bottom: var(--space-3);
+}
+
+.memory-inspector-list,
+.memory-inspector-recents,
+.memory-inspector-evidence {
+  display: grid;
+  gap: var(--space-3);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.memory-inspector-card {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.memory-inspector-card[data-state="invalidated"] {
+  border-style: dashed;
+}
+
+.memory-inspector-text {
+  max-width: 72ch;
+  margin: 0;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.memory-inspector-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.memory-inspector-metadata div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.memory-inspector-metadata dt,
+.memory-inspector-metadata dd {
+  margin: 0;
+}
+
+.memory-inspector-metadata dt {
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+}
+
+.memory-inspector-evidence {
+  padding-left: var(--space-3);
+}
+
+.memory-inspector-evidence li {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.memory-inspector-evidence q {
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
+.memory-inspector-recent {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.memory-inspector-recent-heading strong {
+  font-weight: 600;
+}
+
+.memory-inspector-pagination {
+  margin-top: var(--space-4);
+}
+
+.memory-view {
+  display: grid;
+  gap: var(--space-4);
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-4);
+}
+
+.memory-view-propose,
+.memory-view-status {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.memory-view-heading,
+.memory-view-form {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.memory-view-heading {
+  align-items: flex-start;
+  grid-template-columns: 1fr auto;
+}
+
+.memory-view-heading h2,
+.memory-view-heading p {
+  margin: 0;
+}
+
+.memory-view-textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.memory-view-form button {
+  justify-self: start;
+}
+
+@media (max-width: 48rem) {
+  .memory-view {
+    padding: var(--space-3);
+  }
+
+  .memory-view-heading {
+    grid-template-columns: 1fr;
+  }
+
+  .memory-inspector-body {
+    padding: var(--space-4);
+  }
+
+  .memory-inspector-header,
+  .memory-inspector-section-heading,
+  .memory-inspector-card-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

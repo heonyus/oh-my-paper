@@ -20,7 +20,7 @@
   align-items: center;
   gap: 7px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--type-body-size);
 }
 .outline-panel header button {
   width: 28px;
@@ -57,7 +57,7 @@
   background: transparent;
   color: var(--ink);
   text-align: left;
-  font-size: 12px;
+  font-size: var(--type-compact-size);
   line-height: 1.35;
   cursor: pointer;
 }
@@ -72,5 +72,5 @@
 .outline-panel > p {
   margin: 20px 16px;
   color: var(--ink-muted);
-  font-size: 12px;
+  font-size: var(--type-compact-size);
 }

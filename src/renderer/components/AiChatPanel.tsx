@@ -112,6 +112,7 @@ export function AiChatPanel({ page, provider, onClose, onAsk }: AiChatPanelProps
         submitLabel="보내기"
         value={input}
         sending={sending}
+        responseStarted={Boolean(entries.at(-1)?.content)}
         model={provider.model}
         onChange={setInput}
         onSubmit={(event) => void submit(event)}

@@ -8,6 +8,7 @@ export type WorldRect = {
 }
 
 export type ViewportSize = { readonly width: number; readonly height: number }
+export type ViewportConstraint = (viewport: Viewport) => Viewport
 export type ScreenRect = {
   readonly left: number
   readonly top: number
@@ -45,6 +46,14 @@ export function symmetricBoardBounds(
     width: paper.width + sideSpace * 2,
     height: content.height,
   }
+}
+
+export function hasCompletePageSet(pages: readonly WorldRect[], pageCount: number): boolean {
+  return (
+    pageCount > 0 &&
+    pages.length >= pageCount &&
+    pages.every((page) => page.width > 0 && page.height > 0)
+  )
 }
 
 export function constrainViewportToBounds(

@@ -56,11 +56,14 @@ export function mergePdfTextLines(
       const crossesGutter =
         previous !== undefined &&
         pageWidth !== undefined &&
-        previous.x < pageWidth * 0.43 &&
-        previous.x + previous.width <= pageWidth * 0.57 &&
-        span.x >= pageWidth * 0.46 &&
         gap >= -pageWidth * 0.02 &&
-        (previous.text.trim().length >= 12 || span.text.trim().length >= 12)
+        (previous.text.trim().length >= 12 || span.text.trim().length >= 12) &&
+        ((previous.x < pageWidth * 0.43 &&
+          previous.x + previous.width <= pageWidth * 0.57 &&
+          span.x >= pageWidth * 0.46) ||
+          (previous.x < pageWidth * 0.5 &&
+            previous.x + previous.width <= pageWidth * 0.51 &&
+            span.x >= pageWidth * 0.5))
       const smallerChartLabel =
         previous !== undefined &&
         pageWidth !== undefined &&

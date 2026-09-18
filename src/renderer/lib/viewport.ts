@@ -1,5 +1,11 @@
 import type { Point, Viewport } from "../../shared/schemas"
 
+export type VisiblePageRect = {
+  readonly page: number
+  readonly top: number
+  readonly bottom: number
+}
+
 export function clampZoom(value: number): number {
   return Math.min(4, Math.max(0.38, value))
 }
@@ -17,6 +23,23 @@ export function wheelPanDelta(delta: Point, shiftKey: boolean): Point {
   return Math.abs(delta.y) >= Math.abs(delta.x) ? { x: 0, y: -delta.y } : { x: -delta.x, y: 0 }
 }
 
+export function mostVisiblePage(
+  boardTop: number,
+  boardBottom: number,
+  pages: readonly VisiblePageRect[],
+): number | null {
+  let bestPage: number | null = null
+  let bestOverlap = 0
+  for (const page of pages) {
+    const overlap = Math.max(0, Math.min(boardBottom, page.bottom) - Math.max(boardTop, page.top))
+    if (overlap > bestOverlap) {
+      bestPage = page.page
+      bestOverlap = overlap
+    }
+  }
+  return bestPage
+}
+
 export function moveWorldPointByScreenDelta(point: Point, delta: Point, zoom: number): Point {
   return { x: point.x + delta.x / zoom, y: point.y + delta.y / zoom }
 }
@@ -32,6 +55,21 @@ export function revealWorldRectHorizontally(
   return overflow > 0 ? { ...viewport, x: viewport.x - overflow } : viewport
 }
 
+export function fitWorldRectHorizontally(
+  viewport: Viewport,
+  availableWidth: number,
+  rect: { readonly x: number; readonly y: number; readonly width: number },
+  padding: number,
+): Viewport {
+  const zoom = clampZoom(Math.min(viewport.zoom, (availableWidth - padding * 2) / rect.width))
+  const currentTop = viewport.y + rect.y * viewport.zoom
+  return {
+    x: padding - rect.x * zoom,
+    y: currentTop - rect.y * zoom,
+    zoom,
+  }
+}
+
 export function focusWorldRect(
   viewport: Viewport,
   available: { readonly width: number; readonly height: number },
@@ -40,6 +78,18 @@ export function focusWorldRect(
   return {
     ...viewport,
     x: available.width * 0.64 - (rect.x + rect.width / 2) * viewport.zoom,
+    y: available.height * 0.12 - rect.y * viewport.zoom,
+  }
+}
+
+export function focusSourceRect(
+  viewport: Viewport,
+  available: { readonly width: number; readonly height: number },
+  rect: { readonly x: number; readonly y: number; readonly width: number; readonly height: number },
+): Viewport {
+  return {
+    ...viewport,
+    x: available.width / 2 - (rect.x + rect.width / 2) * viewport.zoom,
     y: available.height * 0.12 - rect.y * viewport.zoom,
   }
 }

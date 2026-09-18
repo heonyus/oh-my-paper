@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { useWorkspacePersistence } from "../../src/renderer/lib/useWorkspacePersistence"
-import { workspaceSchema } from "../../src/shared/schemas"
+import { type Workspace, workspaceSchema } from "../../src/shared/schemas"
 
 const workspace = workspaceSchema.parse({
   documents: [],
@@ -16,14 +16,22 @@ afterEach(() => vi.useRealTimers())
 describe("useWorkspacePersistence", () => {
   it("coalesces rapid workspace changes into one latest save", async () => {
     vi.useFakeTimers()
-    const saveWorkspace = vi.fn(async () => {})
+    const saveWorkspace = vi.fn(async (value: Workspace) => value)
+    const onAcknowledged = vi.fn()
     Object.defineProperty(window, "scourgify", {
       configurable: true,
-      value: { saveWorkspace },
+      value: {
+        saveWorkspace,
+        onBeforeWorkspaceClose: () => () => {},
+        flushWorkspace: async () => {},
+      },
     })
     const { rerender } = renderHook(
       ({ x }: { readonly x: number }) =>
-        useWorkspacePersistence({ ...workspace, viewport: { ...workspace.viewport, x } }),
+        useWorkspacePersistence(
+          { ...workspace, viewport: { ...workspace.viewport, x } },
+          onAcknowledged,
+        ),
       { initialProps: { x: 0 } },
     )
 

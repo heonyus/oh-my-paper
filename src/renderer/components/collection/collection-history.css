@@ -1,0 +1,43 @@
+.collection-history-modal {
+  width: min(800px, calc(100vw - 48px));
+  max-height: calc(100dvh - 64px);
+  padding: 0;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-dialog);
+  overflow: hidden;
+}
+.collection-history-modal::backdrop {
+  background: rgb(16 27 21 / 32%);
+}
+.collection-history-body {
+  padding: 24px;
+  overflow: auto;
+  max-height: calc(100dvh - 160px);
+}
+.collection-history-list {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+}
+.collection-history-preview {
+  display: block;
+  width: 100%;
+  min-height: 220px;
+  margin: 16px 0;
+  padding: 16px;
+  font: inherit;
+  line-height: 1.6;
+  resize: vertical;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+}
+.collection-conflict-source {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
