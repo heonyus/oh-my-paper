@@ -6,6 +6,8 @@ import {
   NotebookPen,
   Palette,
   PanelRightClose,
+  Pin,
+  PinOff,
   Quote,
   Search,
   Sparkles,
@@ -259,6 +261,15 @@ export function ResearchSidebar({
         <nav className="research-mode-rail" aria-label="연구 사이드바 모드">
           <button
             type="button"
+            onClick={() => setFlyout((current) => (current === "pinned" ? "hover" : "pinned"))}
+            aria-label={flyout === "pinned" ? "연구 사이드바 고정 해제" : "연구 사이드바 고정"}
+            aria-pressed={flyout === "pinned"}
+            title={flyout === "pinned" ? "고정 해제" : "고정"}
+          >
+            {flyout === "pinned" ? <PinOff size={18} /> : <Pin size={18} />}
+          </button>
+          <button
+            type="button"
             onClick={() => {
               setFlyout("hover")
               onToggle()
@@ -276,22 +287,14 @@ export function ResearchSidebar({
               data-active={mode === item.id}
               aria-pressed={mode === item.id}
               aria-expanded={mode === item.id && flyout === "pinned" && mode !== "translation"}
-              aria-description={
-                mode === item.id && flyout === "pinned"
-                  ? "고정됨, 다시 누르면 해제"
-                  : "클릭하면 고정"
-              }
+              aria-description={mode === item.id && flyout === "pinned" ? "고정됨" : undefined}
               aria-label={item.id === "ai" ? "AI 개요 열기" : `${item.label} 모드`}
               title={item.label}
               onClick={() => {
-                if (mode === item.id && flyout === "pinned") {
-                  setFlyout("hover")
-                  return
-                }
-                setFlyout("pinned")
+                if (flyout !== "pinned") setFlyout("open")
                 if (item.id === "translation") togglePageTranslation(currentPage)
-                if (item.id === "sticky") onToolChange("sticky")
-                else if (tool === "sticky") onToolChange("select")
+                if (item.id === "sticky" && tool !== "sticky") onToolChange("sticky")
+                else if (item.id !== "sticky" && tool === "sticky") onToolChange("select")
                 setMode(item.id)
                 if (item.count) {
                   setSeenCounts((current) => ({ ...current, [item.id]: item.count }))

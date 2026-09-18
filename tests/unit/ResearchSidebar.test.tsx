@@ -78,34 +78,34 @@ function SidebarHarness({ expanded = false }: { readonly expanded?: boolean }) {
 }
 
 describe("ResearchSidebar", () => {
-  it("pins on a single mode activation and retains the panel after pointer leave", async () => {
+  it("pins via the rail pin button and retains the panel after pointer leave", async () => {
     // Given: a collapsed sidebar opened once.
     render(<SidebarHarness />)
     await userEvent.click(screen.getByRole("button", { name: "연구 사이드바 펼치기" }))
     const sidebar = screen.getByLabelText("연구 사이드바")
     const mode = screen.getByRole("button", { name: "AI 개요 열기" })
     expect(sidebar).toHaveAttribute("data-flyout", "open")
-    // When: the selected mode is activated once, then the pointer leaves.
-    await userEvent.click(mode)
+    // When: the pin button at the top of the rail is clicked, then the pointer leaves.
+    await userEvent.click(screen.getByRole("button", { name: "연구 사이드바 고정" }))
     fireEvent.pointerLeave(sidebar)
     // Then: the panel stays pinned, independently of hover or focus.
     expect(sidebar).toHaveAttribute("data-flyout", "pinned")
     expect(mode).toHaveAttribute("aria-expanded", "true")
-    expect(mode).toHaveAttribute("aria-description", "고정됨, 다시 누르면 해제")
+    expect(mode).toHaveAttribute("aria-description", "고정됨")
   })
 
-  it("pins on the first mode activation and unpins when the active mode is clicked again", async () => {
+  it("unpins when the rail pin button is clicked again", async () => {
     // Given: a rail expanded by the saved workspace setting.
     render(<SidebarHarness expanded />)
     const sidebar = screen.getByLabelText("연구 사이드바")
     const mode = screen.getByRole("button", { name: "AI 개요 열기" })
-    // When: its default selected mode is clicked once, then the pointer leaves.
-    await userEvent.click(mode)
+    // When: the pin button is clicked once, then the pointer leaves.
+    await userEvent.click(screen.getByRole("button", { name: "연구 사이드바 고정" }))
     expect(sidebar).toHaveAttribute("data-flyout", "pinned")
     fireEvent.pointerLeave(sidebar)
     expect(sidebar).toHaveAttribute("data-flyout", "pinned")
-    // And: the active mode is clicked again to unpin.
-    await userEvent.click(mode)
+    // And: the pin button is clicked again to unpin.
+    await userEvent.click(screen.getByRole("button", { name: "연구 사이드바 고정 해제" }))
     expect(sidebar).toHaveAttribute("data-flyout", "hover")
     fireEvent.pointerLeave(sidebar)
     // Then: the panel closes rather than staying pinned.
@@ -113,21 +113,21 @@ describe("ResearchSidebar", () => {
     expect(mode).toHaveAttribute("aria-expanded", "false")
   })
 
-  it("resets pinning on explicit collapse and pins the next mode selection", async () => {
+  it("resets pinning on explicit collapse and opens the next mode transiently", async () => {
     // Given: a pinned sidebar.
     render(<SidebarHarness />)
     await userEvent.click(screen.getByRole("button", { name: "연구 사이드바 펼치기" }))
-    await userEvent.click(screen.getByRole("button", { name: "AI 개요 열기" }))
+    await userEvent.click(screen.getByRole("button", { name: "연구 사이드바 고정" }))
     // When: explicitly collapsed and reopened with another mode.
     await userEvent.click(screen.getByRole("button", { name: "연구 사이드바 접기" }))
     expect(screen.queryByLabelText("연구 사이드바")).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole("button", { name: "연구 사이드바 펼치기" }))
     await userEvent.click(screen.getByRole("button", { name: "노트 모드" }))
-    // Then: the new mode pins on its first click and survives pointer leave.
+    // Then: the new mode opens transiently and closes on pointer leave.
     const sidebar = screen.getByLabelText("연구 사이드바")
-    expect(sidebar).toHaveAttribute("data-flyout", "pinned")
+    expect(sidebar).toHaveAttribute("data-flyout", "open")
     fireEvent.pointerLeave(sidebar)
-    expect(sidebar).toHaveAttribute("data-flyout", "pinned")
+    expect(sidebar).toHaveAttribute("data-flyout", "hover")
   })
 
   it("exposes each board-card category as its own sidebar mode", async () => {
@@ -179,7 +179,7 @@ describe("ResearchSidebar", () => {
     ).toBeNull()
     const translationPane = await screen.findByRole("region", { name: "페이지 번역" })
     expect(translationPane.closest(".board-world")).not.toBeNull()
-    expect(screen.getByLabelText("연구 사이드바")).toHaveAttribute("data-flyout", "pinned")
+    expect(screen.getByLabelText("연구 사이드바")).toHaveAttribute("data-flyout", "open")
     expect(screen.getByRole("region", { name: "페이지 번역" })).toBeInTheDocument()
     expect(screen.getByRole("region", { name: "번역 인덱스" })).toBeInTheDocument()
     expect(screen.getByText("p. 1 / 12")).toBeVisible()
@@ -202,7 +202,7 @@ describe("ResearchSidebar", () => {
     await userEvent.click(screen.getByRole("button", { name: "포스트잇 모드" }))
     expect(onToolChange).toHaveBeenCalledWith("sticky")
     await userEvent.click(screen.getByRole("button", { name: "포스트잇 모드" }))
-    expect(onToolChange).toHaveBeenCalledTimes(1)
+    expect(onToolChange).not.toHaveBeenCalledWith("select")
     await userEvent.click(screen.getByRole("button", { name: "인용 모드" }))
     expect(screen.getByRole("region", { name: "인용 논문 판독" })).toBeInTheDocument()
   })
