@@ -1555,8 +1555,11 @@ button:focus-visible {
 }
 .settings-modal .settings-switch {
   appearance: none;
+  flex: 0 0 auto;
   width: 36px;
+  min-width: 36px;
   height: 21px;
+  min-height: 0;
   padding: 2px;
   border: 0;
   border-radius: 999px;
