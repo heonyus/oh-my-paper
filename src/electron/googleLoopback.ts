@@ -56,7 +56,7 @@ export async function startGoogleLoopback(
       settleReject(new GoogleLoopbackError("cancelled"))
       return
     }
-    respond(response, 200, "로그인이 확인되었습니다. 이 창을 닫고 Scourgify로 돌아가세요.")
+    respond(response, 200, "로그인이 확인되었습니다. 이 창을 닫고 oh-my-paper로 돌아가세요.")
     settleResolve(parsed.data.code)
   })
 
@@ -114,6 +114,6 @@ function respond(
     "X-Content-Type-Options": "nosniff",
   })
   response.end(
-    `<!doctype html><meta charset="utf-8"><title>Scourgify 로그인</title><p>${message}</p>`,
+    `<!doctype html><meta charset="utf-8"><title>oh-my-paper 로그인</title><p>${message}</p>`,
   )
 }

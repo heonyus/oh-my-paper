@@ -20,7 +20,7 @@ export async function exportDocx(
   options: { readonly renderMath?: MathImageRenderer } = {},
 ): Promise<ExportFile> {
   const document = new Document({
-    creator: "Scourgify",
+    creator: "oh-my-paper",
     title: snapshot.title,
     styles: {
       default: {

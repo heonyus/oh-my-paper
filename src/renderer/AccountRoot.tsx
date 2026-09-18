@@ -95,7 +95,7 @@ export function AccountRoot(): JSX.Element {
   if (!status)
     return (
       <main className="loading-screen" role="status">
-        Scourgify를 여는 중…
+        oh-my-paper를 여는 중…
       </main>
     )
   const effectiveStatus: AccountStatus =
@@ -159,7 +159,7 @@ function AccountHelp({ onClose }: { readonly onClose: () => void }): JSX.Element
     >
       <h2 id="account-help-title">로그인과 AI 연결</h2>
       <p>
-        Google 로그인은 Scourgify 계정을 확인합니다. 논문과 노트는 이 Mac에 남고, AI 연결은 로그인
+        Google 로그인은 oh-my-paper 계정을 확인합니다. 논문과 노트는 이 Mac에 남고, AI 연결은 로그인
         후 설정에서 따로 선택합니다.
       </p>
       <p>

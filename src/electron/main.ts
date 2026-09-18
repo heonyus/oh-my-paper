@@ -14,7 +14,7 @@ for (const candidate of [join(userDataDir, ".env"), join(homedir(), ".env")]) {
 void startDesktopApplication({ userDataRoot: configuredUserData ?? app.getPath("userData") }).catch(
   () => {
     dialog.showErrorBox(
-      "Scourgify를 열지 못했습니다",
+      "oh-my-paper를 열지 못했습니다",
       "자료 폴더를 안전하게 열지 못했습니다. 기존 파일은 지우지 않았습니다. 디스크 공간과 폴더 접근 권한을 확인해 주세요.",
     )
     app.quit()

@@ -55,8 +55,8 @@ async function defaultTransport(url: string): Promise<TransportResponse> {
     headers: {
       accept: "application/json",
       "user-agent": url.includes("openalex.org")
-        ? "Scourgify/0.1 (https://github.com/heonyus/scourgify)"
-        : "Scourgify/0.1",
+        ? "oh-my-paper/0.1 (https://github.com/heonyus/scourgify)"
+        : "oh-my-paper/0.1",
     },
     headersTimeout: 5_000,
     bodyTimeout: 5_000,

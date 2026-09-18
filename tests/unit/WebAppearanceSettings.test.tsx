@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest"
 import { WebAppearanceSettings } from "../../src/web/WebAppearanceSettings"
 
 describe("WebAppearanceSettings", () => {
-  it("offers the same font and 50–200% scale controls as the desktop app", async () => {
+  it("offers theme and 50–200% scale controls without a font picker", async () => {
     const onChange = vi.fn()
     render(
       <WebAppearanceSettings
@@ -15,12 +15,13 @@ describe("WebAppearanceSettings", () => {
       />,
     )
 
-    await userEvent.selectOptions(screen.getByLabelText("글꼴"), "suit")
+    expect(screen.queryByLabelText("글꼴")).not.toBeInTheDocument()
+    await userEvent.selectOptions(screen.getByLabelText("화면 모드"), "dark")
     await userEvent.click(screen.getByRole("button", { name: "200%" }))
 
     expect(onChange).toHaveBeenCalledWith({
-      theme: "system",
-      uiFontFamily: "suit",
+      theme: "dark",
+      uiFontFamily: "wanted",
       uiFontScale: 1,
     })
     expect(onChange).toHaveBeenCalledWith({

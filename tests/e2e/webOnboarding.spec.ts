@@ -13,7 +13,7 @@ test("desktop onboarding identifies the product immediately without a header str
 }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   await openSignedOutHome(page)
-  const hero = page.getByRole("region", { name: "Scourgify" })
+  const hero = page.getByRole("region", { name: "oh-my-paper" })
   const evidence = join(process.cwd(), ".omo", "evidence", "web-onboarding-final")
   await mkdir(evidence, { recursive: true })
 
@@ -35,7 +35,7 @@ test("desktop onboarding identifies the product immediately without a header str
 test("mobile onboarding keeps the brand and login action inside the viewport", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await openSignedOutHome(page)
-  const hero = page.getByRole("region", { name: "Scourgify" })
+  const hero = page.getByRole("region", { name: "oh-my-paper" })
   await expect(page.locator(".onboarding-entry")).toHaveCSS("opacity", "1")
   const buttonBox = await hero.getByRole("button", { name: "Google로 계속" }).boundingBox()
   expect(buttonBox?.height).toBeGreaterThanOrEqual(44)

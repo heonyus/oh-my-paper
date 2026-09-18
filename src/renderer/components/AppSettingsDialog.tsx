@@ -35,12 +35,10 @@ export function AppSettingsDialog({
       status={status}
       ocrStatus={ocrStatus}
       fontScale={workspace.uiFontScale}
-      fontFamily={workspace.uiFontFamily}
       minimapVisible={workspace.minimapVisible}
       theme={workspace.theme}
       onThemeChange={(theme) => onWorkspaceChange({ ...workspace, theme })}
       onFontScaleChange={(uiFontScale) => onWorkspaceChange({ ...workspace, uiFontScale })}
-      onFontFamilyChange={(uiFontFamily) => onWorkspaceChange({ ...workspace, uiFontFamily })}
       onMinimapVisibleChange={(minimapVisible) =>
         onWorkspaceChange({ ...workspace, minimapVisible })
       }

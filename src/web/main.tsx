@@ -24,7 +24,7 @@ import "../renderer/components/reader-workspace.css"
 import "./local-reader.css"
 
 const root = document.getElementById("root")
-if (!root) throw new Error("Scourgify web root is missing")
+if (!root) throw new Error("oh-my-paper web root is missing")
 installLocalReaderApi()
 
 createRoot(root).render(

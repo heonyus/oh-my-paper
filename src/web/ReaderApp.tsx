@@ -36,7 +36,7 @@ export function ReaderApp(): JSX.Element {
             </button>
           </div>
         ) : (
-          <p>Scourgify를 여는 중…</p>
+          <p>oh-my-paper를 여는 중…</p>
         )}
       </main>
     )
@@ -65,10 +65,10 @@ export function ReaderApp(): JSX.Element {
           type="button"
           className="web-reader-brand"
           onClick={() => app.setLibraryOpen(true)}
-          aria-label="Scourgify 라이브러리"
+          aria-label="oh-my-paper 라이브러리"
         >
           <img src={leafMarkUrl} alt="" width={30} height={30} />
-          <span>Scourgify</span>
+          <span>oh-my-paper</span>
         </button>
         <nav aria-label="주 메뉴">
           <button
@@ -88,7 +88,6 @@ export function ReaderApp(): JSX.Element {
             리더
           </button>
         </nav>
-        <span className="web-reader-storage">이 Mac에 저장</span>
         <button
           type="button"
           className="web-reader-settings"

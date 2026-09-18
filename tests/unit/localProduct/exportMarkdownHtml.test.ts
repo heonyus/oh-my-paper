@@ -71,7 +71,7 @@ describe("Markdown and HTML export", () => {
     expect(markdown).toContain("| split | test |")
     expect(markdown).toContain("$$\nE = mc^2\n$$")
     expect(markdown).toContain("Inline $x + y$ stays inline.")
-    expect(markdown).toContain("Source links marked scourgify_only require Scourgify")
+    expect(markdown).toContain("Source links marked scourgify_only require oh-my-paper")
   })
 
   it("builds inert offline HTML with tables, MathML, safe links, and embedded images", () => {

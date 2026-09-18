@@ -13,7 +13,7 @@ export function App(): JSX.Element {
   if (session.isPending) return <SignIn checking />
   if (!session.data) return <SignIn />
   return (
-    <Suspense fallback={<main className="loading-screen">Scourgify을 여는 중…</main>}>
+    <Suspense fallback={<main className="loading-screen">oh-my-paper를 여는 중…</main>}>
       <AuthenticatedWorkspace user={session.data.user} />
     </Suspense>
   )

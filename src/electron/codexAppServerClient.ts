@@ -63,7 +63,7 @@ export class CodexAppServerClient {
         {
           clientInfo: {
             name: "scourgify",
-            title: "Scourgify Reader",
+            title: "oh-my-paper Reader",
             version: "2.0.0",
           },
         },

@@ -24,12 +24,12 @@ async function chooseDirectory(title: string): Promise<string | null> {
 export function registerBackupIpc(service: BackupIpcService): () => void {
   ipcMain.handle(backupChannels.create, async (_event, value: unknown) => {
     backupCreateRequestSchema.parse(value)
-    const parentRoot = await chooseDirectory("Choose a folder for the Scourgify backup")
+    const parentRoot = await chooseDirectory("Choose a folder for the oh-my-paper backup")
     return backupCreateResultSchema.parse(parentRoot ? await service.create(parentRoot) : null)
   })
   ipcMain.handle(backupChannels.restore, async (_event, value: unknown) => {
     backupRestoreRequestSchema.parse(value)
-    const backupRoot = await chooseDirectory("Choose a Scourgify backup")
+    const backupRoot = await chooseDirectory("Choose a oh-my-paper backup")
     if (!backupRoot) return null
     const parentRoot = await chooseDirectory("Choose a new collection destination")
     return backupRestoreResultSchema.parse(

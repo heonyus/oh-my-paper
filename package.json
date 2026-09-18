@@ -1,5 +1,5 @@
 {
-  "name": "scourgify",
+  "name": "oh-my-paper",
   "version": "2.0.0",
   "private": true,
   "description": "A local-first spatial PDF reading board",
@@ -42,8 +42,8 @@
     "verify:installed-layout": "node scripts/verify-installed-layout.mjs"
   },
   "build": {
-    "appId": "com.honey.scourgify",
-    "productName": "Scourgify",
+    "appId": "com.honey.oh-my-paper",
+    "productName": "oh-my-paper",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "directories": {
       "output": "release"

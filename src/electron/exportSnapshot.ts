@@ -90,7 +90,7 @@ export function createExportSnapshot(unchecked: unknown): ExportSnapshot {
     addExportLimitation(limitations, {
       code: "source_link_unavailable",
       detail:
-        "Source links marked scourgify_only require Scourgify; unavailable sources cannot be opened from this export.",
+        "Source links marked scourgify_only require oh-my-paper; unavailable sources cannot be opened from this export.",
     })
   }
   return {

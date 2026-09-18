@@ -85,7 +85,7 @@ export function OnboardingStory({
 
       <section className="onboarding-final">
         <div className="onboarding-final-copy">
-          <span>Scourgify</span>
+          <span>oh-my-paper</span>
           <h2>로그인하면 라이브러리에서 PDF를 추가할 수 있습니다.</h2>
           <p>업로드와 AI 처리는 직접 실행하기 전에는 시작되지 않습니다.</p>
           <button

@@ -30,11 +30,11 @@ export function SignIn({ checking = false }: { readonly checking?: boolean }): J
           <div className="onboarding-copy">
             <div className="onboarding-brand">
               <span className="onboarding-brand-mark">
-                <img src={leafMarkUrl} alt="Scourgify" width="1024" height="1024" />
+                <img src={leafMarkUrl} alt="oh-my-paper" width="1024" height="1024" />
               </span>
               <div>
                 <p className="onboarding-category">학술 PDF 리더</p>
-                <h1 id="onboarding-title">Scourgify</h1>
+                <h1 id="onboarding-title">oh-my-paper</h1>
               </div>
             </div>
             <p className="onboarding-description">번역·메모·인용을 원문 위치와 함께 정리합니다.</p>

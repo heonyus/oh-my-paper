@@ -3,7 +3,6 @@ import type { CSSProperties, JSX } from "react"
 import type { AppearancePreferences } from "../shared/schemas"
 import {
   uiFontFamilyStack,
-  uiFontOptions,
   uiFontScaleLabel,
   uiFontScalePercent,
   uiFontScalePresets,
@@ -58,24 +57,6 @@ export function WebAppearanceSettings({
               <option value="system">시스템 설정</option>
               <option value="light">라이트</option>
               <option value="dark">다크</option>
-            </select>
-          </label>
-          <label>
-            <span>글꼴</span>
-            <select
-              value={value.uiFontFamily}
-              onChange={(event) => {
-                const option = uiFontOptions.find(
-                  (candidate) => candidate.value === event.currentTarget.value,
-                )
-                if (option) onChange({ ...value, uiFontFamily: option.value })
-              }}
-            >
-              {uiFontOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
             </select>
           </label>
           <label className="web-settings-range">

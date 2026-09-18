@@ -49,7 +49,7 @@ async function undiciWire(input: {
     headers: {
       accept:
         input.url.hostname === "export.arxiv.org" ? "application/atom+xml" : "application/json",
-      "user-agent": "Scourgify/2.0 (https://github.com/heonyus/scourgify)",
+      "user-agent": "oh-my-paper/2.0 (https://github.com/heonyus/scourgify)",
     },
     headersTimeout: SCHOLARLY_REQUEST_TIMEOUT_MS,
     bodyTimeout: SCHOLARLY_REQUEST_TIMEOUT_MS,

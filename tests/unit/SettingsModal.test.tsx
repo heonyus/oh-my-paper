@@ -113,33 +113,20 @@ describe("SettingsModal", () => {
 
   it("changes the persisted UI font scale", async () => {
     const onFontScaleChange = vi.fn()
-    const onFontFamilyChange = vi.fn()
     render(
       <SettingsModal
         status={{ configured: false, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
         fontScale={1}
-        fontFamily="wanted"
         onClose={vi.fn()}
         onSave={vi.fn(async () => {})}
         onFontScaleChange={onFontScaleChange}
-        onFontFamilyChange={onFontFamilyChange}
       />,
     )
 
     await userEvent.click(screen.getByRole("button", { name: "일반" }))
-    await userEvent.click(screen.getByRole("button", { name: /Pretendard/ }))
     await userEvent.click(screen.getByRole("button", { name: "75%" }))
 
-    expect(onFontFamilyChange).toHaveBeenCalledWith("pretendard")
     expect(onFontScaleChange).toHaveBeenCalledWith(0.75)
-    expect(
-      screen.getAllByText("읽은 것은 남고, 필요한 것은 다시 찾을 수 있어야 합니다."),
-    ).toHaveLength(5)
-    expect(
-      screen.getAllByText(
-        "What we read should remain, and what we need should be easy to find again.",
-      ),
-    ).toHaveLength(5)
     expect(screen.queryByRole("button", { name: "100%로 초기화" })).not.toBeInTheDocument()
   })
 

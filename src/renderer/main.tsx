@@ -23,7 +23,7 @@ import "./research-shell.css"
 import "./components/reader-workspace.css"
 
 const root = document.getElementById("root")
-if (!root) throw new Error("Scourgify root element is missing")
+if (!root) throw new Error("oh-my-paper root element is missing")
 
 createRoot(root).render(
   <StrictMode>

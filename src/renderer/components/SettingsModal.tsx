@@ -3,11 +3,10 @@ import { type JSX, useLayoutEffect, useRef, useState } from "react"
 import type { DocumentOcrProviderStatus } from "../../shared/documentOcr"
 import type { ProviderConfig, ProviderStatus } from "../../shared/ipc"
 import type { AiMode } from "../../shared/providerModels"
-import type { AppearanceTheme, UiFontFamily } from "../../shared/schemas"
+import type { AppearanceTheme } from "../../shared/schemas"
 import { uiFontScaleLabel, uiFontScalePercent, uiFontScalePresets } from "../../shared/uiAppearance"
 import { AiProviderSettings, useAiProviderForm } from "./AiProviderSettings"
 import { CodexSettings } from "./CodexSettings"
-import { FontFamilyPicker } from "./FontFamilyPicker"
 import {
   HostedCredentialSettings,
   type HostedCredentialSettingsProps,
@@ -20,7 +19,6 @@ type SettingsSection = "general" | "ai" | "reading"
 type SettingsModalProps = {
   readonly status: ProviderStatus
   readonly fontScale: number
-  readonly fontFamily?: UiFontFamily | undefined
   readonly minimapVisible?: boolean | undefined
   readonly onClose: () => void
   readonly onSave: (config: ProviderConfig) => Promise<void>
@@ -28,7 +26,6 @@ type SettingsModalProps = {
   readonly ocrStatus?: DocumentOcrProviderStatus | undefined
   readonly onOcrSave?: ((key: string) => Promise<void>) | undefined
   readonly onFontScaleChange: (scale: number) => void
-  readonly onFontFamilyChange?: ((font: UiFontFamily) => void) | undefined
   readonly onMinimapVisibleChange?: ((visible: boolean) => void) | undefined
   readonly theme?: AppearanceTheme | undefined
   readonly onThemeChange?: ((theme: AppearanceTheme) => void) | undefined
@@ -45,13 +42,11 @@ const sections = [
 export function SettingsModal({
   status,
   fontScale,
-  fontFamily = "wanted",
   minimapVisible = true,
   onClose,
   onSave,
   onModeSave,
   onFontScaleChange,
-  onFontFamilyChange,
   onMinimapVisibleChange,
   theme = "system",
   onThemeChange,
@@ -168,10 +163,6 @@ export function SettingsModal({
                     </button>
                   ))}
                 </fieldset>
-                <FontFamilyPicker
-                  value={fontFamily}
-                  onChange={(font) => onFontFamilyChange?.(font)}
-                />
               </fieldset>
             ) : null}
             {section === "ai" ? (

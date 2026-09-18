@@ -275,18 +275,20 @@ export function ResearchSidebar({
               key={item.id}
               data-active={mode === item.id}
               aria-pressed={mode === item.id}
-              aria-expanded={mode === item.id && flyout !== "hover" && mode !== "translation"}
+              aria-expanded={mode === item.id && flyout === "pinned" && mode !== "translation"}
               aria-description={
-                mode === item.id && flyout === "pinned" ? "고정됨" : "한 번 열기, 다시 누르면 고정"
+                mode === item.id && flyout === "pinned"
+                  ? "고정됨, 다시 누르면 해제"
+                  : "클릭하면 고정"
               }
               aria-label={item.id === "ai" ? "AI 개요 열기" : `${item.label} 모드`}
               title={item.label}
               onClick={() => {
-                if (mode === item.id && flyout !== "hover") {
-                  setFlyout("pinned")
+                if (mode === item.id && flyout === "pinned") {
+                  setFlyout("hover")
                   return
                 }
-                setFlyout("open")
+                setFlyout("pinned")
                 if (item.id === "translation") togglePageTranslation(currentPage)
                 if (item.id === "sticky") onToolChange("sticky")
                 else if (tool === "sticky") onToolChange("select")

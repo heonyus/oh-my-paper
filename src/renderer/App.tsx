@@ -83,7 +83,7 @@ export function App({
   const [dataExchangeOpen, setDataExchangeOpen] = useState(false)
   const [proposalOpen, setProposalOpen] = useState(false)
 
-  if (!workspace) return <main className="loading-screen">Scourgify을 여는 중…</main>
+  if (!workspace) return <main className="loading-screen">oh-my-paper를 여는 중…</main>
 
   const openDocument = (id: DocumentId): void => {
     const selected = workspace.documents.find((document) => document.id === id)

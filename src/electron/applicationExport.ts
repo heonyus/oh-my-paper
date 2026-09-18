@@ -188,7 +188,7 @@ async function snapshotFor(
     return [
       {
         id: anchor.id,
-        label: paper?.title ?? "Scourgify source",
+        label: paper?.title ?? "oh-my-paper source",
         locator: `Page ${anchor.page}`,
         url: null,
         availability: "scourgify_only",

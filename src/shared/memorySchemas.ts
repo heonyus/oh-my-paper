@@ -16,7 +16,7 @@ export const memoryLocalSourceKeySchema = z
   .min(1)
   .max(512)
   .refine((value) => !/^(?:https?:\/\/|wiki:)/iu.test(value), {
-    message: "Memory sources must be local Scourgify records",
+    message: "Memory sources must be local oh-my-paper records",
   })
 export const memoryEvidenceKindSchema = z.enum([
   "note",

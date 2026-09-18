@@ -170,8 +170,8 @@ export function LibraryTopbar({
   return (
     <header className="topbar library-topbar">
       <div className="topbar-brand">
-        <img className="topbar-brand-mark" src={leafMarkUrl} alt="Scourgify" />
-        <span aria-hidden="true">Scourgify</span>
+        <img className="topbar-brand-mark" src={leafMarkUrl} alt="oh-my-paper" />
+        <span aria-hidden="true">oh-my-paper</span>
       </div>
       <span className="topbar-divider" />
       <strong>{title}</strong>

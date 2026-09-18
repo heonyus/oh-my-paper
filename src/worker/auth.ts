@@ -3,7 +3,7 @@ import { betterAuth } from "better-auth"
 export function createAuth(request: Request, env: Env, context: ExecutionContext) {
   const origin = new URL(request.url).origin
   return betterAuth({
-    appName: "Scourgify",
+    appName: "oh-my-paper",
     baseURL: origin,
     database: env.DB,
     secret: env.BETTER_AUTH_SECRET,

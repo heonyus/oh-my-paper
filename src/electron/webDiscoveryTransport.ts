@@ -40,7 +40,7 @@ export const defaultSourceTransport: SourceHttpTransport = async (input) => {
       signal: input.signal,
       headers: {
         accept: "text/html,application/xhtml+xml,text/plain,application/pdf",
-        "user-agent": "Scourgify/2 source-retrieval",
+        "user-agent": "oh-my-paper/2 source-retrieval",
       },
     })
     return {

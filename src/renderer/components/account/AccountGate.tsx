@@ -62,7 +62,7 @@ function AccountGatePrompt(props: AccountGateProps): JSX.Element {
       )
     case "signed_out":
       return (
-        <AccountGateShell title="Scourgify에 로그인" error={props.error}>
+        <AccountGateShell title="oh-my-paper에 로그인" error={props.error}>
           <p>Google 계정은 앱 접근 확인에만 사용되며 문서나 AI 제공자 계정과 연결되지 않습니다.</p>
           <AccountBoundaryNote entitlement={props.entitlement} />
           <div className="account-gate__actions">

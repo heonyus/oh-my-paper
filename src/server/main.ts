@@ -8,7 +8,9 @@ async function main() {
   const server = createLocalWebServer(config, services)
 
   server.listen(config.port, config.host, () => {
-    process.stdout.write(`Scourgify web server listening on http://${config.host}:${config.port}\n`)
+    process.stdout.write(
+      `oh-my-paper web server listening on http://${config.host}:${config.port}\n`,
+    )
   })
 
   const shutdown = async () => {
