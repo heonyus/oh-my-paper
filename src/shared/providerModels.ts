@@ -27,12 +27,10 @@ export const GEMINI_MODEL_OPTIONS = [
 
 export const OPENROUTER_MODEL_OPTIONS = [
   "google/gemini-2.5-flash-lite",
-  "z-ai/glm-5.3-flash",
-  "deepseek/deepseek-v4-flash-0731",
-  "anthropic/claude-3.7-sonnet",
-  "google/gemini-2.5-flash",
-  "openai/gpt-4.1",
-  "nvidia/nemotron-3-ultra-550b-a55b:free",
+  "qwen/qwen3.7-flash",
+  "qwen/qwen3.8-flash",
+  "deepseek/deepseek-v4.1-flash",
+  "google/gemini-3.1-flash-lite",
 ] as const
 
 export const GROQ_MODEL_OPTIONS = [

@@ -8,7 +8,11 @@ function actionFor(structure: DetectedStructure): AiAction {
 export function structureAiRequest(
   structure: DetectedStructure,
   imageDataUrl: string | null,
-  context: { readonly paper: string; readonly section: string },
+  context: {
+    readonly paper: string
+    readonly section: string
+    readonly sourceEvidence?: string | undefined
+  },
 ): Omit<AiRequest, "documentId"> {
   const request = {
     action: actionFor(structure),
@@ -19,6 +23,7 @@ export function structureAiRequest(
     paperContext: context.paper,
     sectionContext: context.section,
     featureKind: structure.kind === "section" ? "heading" : structure.kind,
+    ...(context.sourceEvidence ? { sourceEvidence: context.sourceEvidence } : {}),
   } satisfies Omit<AiRequest, "documentId" | "imageDataUrl">
   return imageDataUrl ? { ...request, imageDataUrl } : request
 }

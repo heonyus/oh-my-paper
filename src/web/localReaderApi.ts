@@ -1,22 +1,28 @@
 import { z } from "zod"
+import { jevDecisionResultSchema } from "../shared/aiDecision"
+import {
+  type DiscoveryApi,
+  discoveryCancelResultSchema,
+  discoverySavedMetadataResultSchema,
+  discoverySaveInputSchema,
+  discoverySaveResultSchema,
+  discoverySearchInputSchema,
+} from "../shared/discoveryIpc"
 import type { DocumentAstRequest } from "../shared/documentAstIpc"
 import { documentAstResultSchema } from "../shared/documentAstIpc"
+import type { DocumentOcrProviderStatus } from "../shared/documentOcr"
 import type {
   CitationLookupRequest,
   CitationLookupResult,
-  DocumentOcrProviderStatus,
-  DocumentPageParseProgress,
   DocumentPageParseRequest,
   DocumentPageParseResult,
   PreparationUpdate,
-  ProviderConfig,
   ProviderStatus,
   ScourgifyApi,
 } from "../shared/ipc"
 import {
   citationLookupResultSchema,
   documentOcrProviderStatusSchema,
-  documentPageParseResultSchema,
   providerStatusSchema,
 } from "../shared/ipc"
 import type {
@@ -27,16 +33,51 @@ import type {
 import { pageTranslationCacheResultSchema } from "../shared/pageTranslationCache"
 import type { DocumentId, Workspace } from "../shared/schemas"
 import { workspaceSchema } from "../shared/schemas"
+import { scholarlySearchResultSchema } from "../shared/scholarlySearchSchemas"
+import { unavailableWebFeature } from "../shared/unavailableWebFeatures"
 import { createLocalAiJobs } from "./localAiJobs"
 import { createLocalImporter } from "./localImport"
+import { createLocalPageParser } from "./localPageParser"
 import { localRpc, readLocalResponse } from "./localTransport"
 
 export function installLocalReaderApi(): void {
   const importer = createLocalImporter()
   const aiJobs = createLocalAiJobs()
+  const pageParser = createLocalPageParser()
   let _activeDocumentId: DocumentId | null = null
+  const discovery: DiscoveryApi = {
+    search: async (input) => {
+      const parsed = discoverySearchInputSchema.parse(input)
+      const response = await fetch("/api/rpc/scholarlySearch", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(parsed.request),
+        signal: AbortSignal.timeout(30_000),
+      })
+      return readLocalResponse(response, scholarlySearchResultSchema)
+    },
+    cancel: async () => discoveryCancelResultSchema.parse({ cancelled: false }),
+    saveMetadata: async (input) => {
+      const parsed = discoverySaveInputSchema.parse(input)
+      const response = await fetch("/api/rpc/discoverySaveMetadata", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(parsed),
+        signal: AbortSignal.timeout(30_000),
+      })
+      return readLocalResponse(response, discoverySaveResultSchema)
+    },
+    listSavedMetadata: async () => {
+      const response = await fetch("/api/rpc/discoveryListSavedMetadata", {
+        method: "POST",
+        signal: AbortSignal.timeout(30_000),
+      })
+      return readLocalResponse(response, discoverySavedMetadataResultSchema)
+    },
+  }
 
   const api: ScourgifyApi = {
+    discovery,
     readWorkspace: async (): Promise<Workspace> => {
       const response = await fetch("/api/workspace", { signal: AbortSignal.timeout(30_000) })
       return readLocalResponse(response, workspaceSchema)
@@ -65,15 +106,17 @@ export function installLocalReaderApi(): void {
     readDocumentLayout: async () => ({ status: "unavailable", reason: "runtime_missing" }),
     parseDocumentPage: async (
       request: DocumentPageParseRequest,
+      signal?: AbortSignal,
     ): Promise<DocumentPageParseResult> => {
       _activeDocumentId = request.id
-      return localRpc("parseDocumentPage", request, documentPageParseResultSchema)
+      return pageParser.parse(request, signal)
     },
-    onDocumentPageParseProgress:
-      (_listener: (progress: DocumentPageParseProgress) => void) => () => {},
+    onDocumentPageParseProgress: pageParser.onProgress,
     readDocumentAnalysis: async () => [],
     onDocumentAnalysis: (_listener) => () => {},
-    saveDocumentOcrKey: async () => {},
+    saveDocumentOcrKey: async (key) => {
+      await localRpc("saveDocumentOcrKey", key, documentOcrProviderStatusSchema)
+    },
     documentOcrStatus: async (): Promise<DocumentOcrProviderStatus> => {
       return localRpc("documentOcrStatus", {}, documentOcrProviderStatusSchema)
     },
@@ -93,15 +136,28 @@ export function installLocalReaderApi(): void {
       return localRpc("readDocumentAst", request, documentAstResultSchema)
     },
     onPreparation: (_listener: (update: PreparationUpdate) => void) => () => {},
-    saveApiKey: async () => {},
-    saveProviderConfig: async (_config: ProviderConfig) => {},
-    saveAiMode: async () => {},
+    saveApiKey: unavailableWebFeature("provider.saveApiKey"),
+    saveProviderConfig: async (config) => {
+      await localRpc("saveProviderConfig", config, providerStatusSchema)
+    },
+    saveAiMode: unavailableWebFeature("provider.saveAiMode"),
     providerStatus: async (): Promise<ProviderStatus> => {
       return localRpc("providerStatus", {}, providerStatusSchema)
     },
     runAi: async (request) => {
       _activeDocumentId = request.documentId
       return localRpc("runAi", request, z.object({ text: z.string(), model: z.string() }))
+    },
+    decideAi: async (request, signal) => {
+      const response = await fetch("/api/rpc/decideAi", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(request),
+        signal: signal
+          ? AbortSignal.any([signal, AbortSignal.timeout(20_000)])
+          : AbortSignal.timeout(20_000),
+      })
+      return readLocalResponse(response, jevDecisionResultSchema)
     },
     streamAi: async (request, onDelta) => {
       _activeDocumentId = request.documentId
@@ -128,95 +184,61 @@ export function installLocalReaderApi(): void {
     flushWorkspace: async () => {},
     onBeforeWorkspaceClose: () => () => {},
     knowledge: {
-      linkEvidence: async () => {
-        throw new Error("not_supported_in_web")
-      },
-      proposeRelations: async () => [],
-      cancelProposal: async () => {},
-      findNodes: async () => [],
-      getNode: async () => null,
-      createNode: async () => {
-        throw new Error("not_supported_in_web")
-      },
-      updateNode: async () => {
-        throw new Error("not_supported_in_web")
-      },
-      deleteNode: async () => false,
-      findRelations: async () => [],
-      createRelation: async () => {
-        throw new Error("not_supported_in_web")
-      },
-      updateRelation: async () => {
-        throw new Error("not_supported_in_web")
-      },
-      getBacklinks: async () => [],
-      getNeighbourGraph: async () => {
-        throw new Error("not_supported_in_web")
-      },
-      createEvidenceAnchor: async () => {
-        throw new Error("not_supported_in_web")
-      },
-      getEvidenceAnchor: async () => null,
-      getEvidenceNavigation: async () => null,
-      createDocumentVersion: async (v) => v,
-      getDocumentVersion: async () => null,
-      findDocumentVersionsByHash: async () => [],
-      getOrCreateDefaultBoard: async () => {
-        throw new Error("not_supported_in_web")
-      },
-      listBoards: async () => [],
-      createBoard: async () => {
-        throw new Error("not_supported_in_web")
-      },
-      getBoard: async () => null,
-      findPlacementsForBoard: async () => [],
-      findPlacementsForNode: async () => [],
-      createPlacement: async () => {
-        throw new Error("not_supported_in_web")
-      },
-      updatePlacement: async () => {
-        throw new Error("not_supported_in_web")
-      },
-      deletePlacement: async () => true,
+      linkEvidence: unavailableWebFeature("knowledge.linkEvidence"),
+      proposeRelations: unavailableWebFeature("knowledge.proposeRelations"),
+      cancelProposal: unavailableWebFeature("knowledge.cancelProposal"),
+      findNodes: unavailableWebFeature("knowledge.findNodes"),
+      getNode: unavailableWebFeature("knowledge.getNode"),
+      createNode: unavailableWebFeature("knowledge.createNode"),
+      updateNode: unavailableWebFeature("knowledge.updateNode"),
+      deleteNode: unavailableWebFeature("knowledge.deleteNode"),
+      findRelations: unavailableWebFeature("knowledge.findRelations"),
+      createRelation: unavailableWebFeature("knowledge.createRelation"),
+      updateRelation: unavailableWebFeature("knowledge.updateRelation"),
+      getBacklinks: unavailableWebFeature("knowledge.getBacklinks"),
+      getNeighbourGraph: unavailableWebFeature("knowledge.getNeighbourGraph"),
+      createEvidenceAnchor: unavailableWebFeature("knowledge.createEvidenceAnchor"),
+      getEvidenceAnchor: unavailableWebFeature("knowledge.getEvidenceAnchor"),
+      getEvidenceNavigation: unavailableWebFeature("knowledge.getEvidenceNavigation"),
+      createDocumentVersion: unavailableWebFeature("knowledge.createDocumentVersion"),
+      getDocumentVersion: unavailableWebFeature("knowledge.getDocumentVersion"),
+      findDocumentVersionsByHash: unavailableWebFeature("knowledge.findDocumentVersionsByHash"),
+      getOrCreateDefaultBoard: unavailableWebFeature("knowledge.getOrCreateDefaultBoard"),
+      listBoards: unavailableWebFeature("knowledge.listBoards"),
+      createBoard: unavailableWebFeature("knowledge.createBoard"),
+      getBoard: unavailableWebFeature("knowledge.getBoard"),
+      findPlacementsForBoard: unavailableWebFeature("knowledge.findPlacementsForBoard"),
+      findPlacementsForNode: unavailableWebFeature("knowledge.findPlacementsForNode"),
+      createPlacement: unavailableWebFeature("knowledge.createPlacement"),
+      updatePlacement: unavailableWebFeature("knowledge.updatePlacement"),
+      deletePlacement: unavailableWebFeature("knowledge.deletePlacement"),
     },
     codex: {
-      getStatus: async () => ({ configured: false, loggedIn: false, plan: null }),
-      startLogin: async () => ({ loginId: "", verificationUri: "", userCode: "" }),
+      getStatus: async () => ({
+        available: false,
+        authenticated: false,
+        account: null,
+        requiresOpenaiAuth: false,
+      }),
+      startLogin: unavailableWebFeature("codex.startLogin"),
       cancelLogin: async () => {},
       logout: async () => {},
       onLoginCompleted: () => () => {},
     },
     interchange: {
-      exportMarkdown: async () => "",
-      previewMarkdownImport: async () => ({
-        previewId: "",
-        validFiles: [],
-        conflictFiles: [],
-        totalNodes: 0,
-      }),
-      commitMarkdownImport: async () => ({ createdNodes: [] }),
-      exportCanvas: async () => ({ canvasJson: "", sidecarJson: "" }),
-      previewCanvasImport: async () => ({
-        previewId: "",
-        totalNodes: 0,
-        totalEdges: 0,
-        missingNodes: [],
-      }),
-      commitCanvasImport: async () => [],
-      previewExperimentJsonl: async () => ({
-        previewId: "",
-        totalRecords: 0,
-        validRecords: 0,
-        invalidLines: [],
-      }),
-      commitExperiment: async () => {
-        throw new Error("not_supported_in_web")
-      },
-      previewZoteroFile: async () => ({ previewId: "", collections: [], items: [] }),
-      fetchAndPreviewLocalZotero: async () => ({ previewId: "", collections: [], items: [] }),
-      commitZotero: async () => ({ importedCollections: 0, importedItems: 0 }),
-      chooseFiles: async () => [],
-      saveFile: async () => ({ saved: false, filePath: null }),
+      exportMarkdown: unavailableWebFeature("interchange.exportMarkdown"),
+      previewMarkdownImport: unavailableWebFeature("interchange.previewMarkdownImport"),
+      commitMarkdownImport: unavailableWebFeature("interchange.commitMarkdownImport"),
+      exportCanvas: unavailableWebFeature("interchange.exportCanvas"),
+      previewCanvasImport: unavailableWebFeature("interchange.previewCanvasImport"),
+      commitCanvasImport: unavailableWebFeature("interchange.commitCanvasImport"),
+      previewExperimentJsonl: unavailableWebFeature("interchange.previewExperimentJsonl"),
+      commitExperiment: unavailableWebFeature("interchange.commitExperiment"),
+      previewZoteroFile: unavailableWebFeature("interchange.previewZoteroFile"),
+      fetchAndPreviewLocalZotero: unavailableWebFeature("interchange.fetchAndPreviewLocalZotero"),
+      commitZotero: unavailableWebFeature("interchange.commitZotero"),
+      chooseFiles: unavailableWebFeature("interchange.chooseFiles"),
+      saveFile: unavailableWebFeature("interchange.saveFile"),
     },
   }
 

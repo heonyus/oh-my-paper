@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { extractReferencesFromText } from "../../src/renderer/lib/structureDetector"
+import {
+  detectPageStructures,
+  extractReferencesFromText,
+} from "../../src/renderer/lib/structureDetector"
 
 describe("reference extraction", () => {
   it("indexes numbered and author-year bibliography entries", () => {
@@ -45,5 +48,56 @@ describe("reference extraction", () => {
 
     expect(elapsed).toBeLessThan(250)
     expect(Object.keys(references)).toHaveLength(0)
+  })
+
+  it("keeps numbered two-column entries separate and never treats a year as a key", () => {
+    const entries = Array.from(
+      { length: 40 },
+      (_, index) =>
+        `[${index + 1}] Author ${index + 1}. 2017. Paper ${index + 1} with a stable title. Venue.`,
+    ).join(" ")
+
+    const references = extractReferencesFromText(`References ${entries}`)
+
+    expect(Object.keys(references)).toHaveLength(40)
+    expect(references["40"]?.year).toBe(2017)
+    expect(references["2017"]).toBeUndefined()
+  })
+
+  it("keeps trailing figure captions out of a year-at-end reference", () => {
+    const references = extractReferencesFromText(
+      "References [1] Author One and Author Two. A stable paper title. Journal, 2013. 12 Figure 3: unrelated caption text.",
+    )
+
+    expect(references["1"]).toMatchObject({
+      title: "A stable paper title",
+      year: 2013,
+    })
+    expect(references["1"]?.title).not.toContain("Figure")
+  })
+
+  it("keeps initials in author names out of the title boundary", () => {
+    const references = extractReferencesFromText(
+      "References [3] Quoc V. Le. Massive exploration of neural machine translation architectures. CoRR, 2017. [9] Yann N. Dauphin. Convolutional sequence to sequence learning. arXiv, 2017. [19] Alexander M. Rush. Structured attention networks. ICLR, 2017.",
+    )
+
+    expect(references["3"]?.title).toBe(
+      "Massive exploration of neural machine translation architectures",
+    )
+    expect(references["9"]?.title).toBe("Convolutional sequence to sequence learning")
+    expect(references["19"]?.title).toBe("Structured attention networks")
+  })
+
+  it("leaves an unresolved citation without fabricated paper metadata", () => {
+    const structures = detectPageStructures(4, [
+      {
+        text: "Prior work [38].",
+        bounds: { x: 10, y: 10, width: 200, height: 20 },
+      },
+    ])
+
+    const citation = structures.find((structure) => structure.kind === "citation")
+    expect(citation).toBeDefined()
+    expect(citation?.reference).toBeUndefined()
   })
 })

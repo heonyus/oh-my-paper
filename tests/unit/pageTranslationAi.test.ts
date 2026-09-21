@@ -15,8 +15,8 @@ describe("mapped page translation response", () => {
   it("retries one transient provider failure before failing the page", async () => {
     const response = JSON.stringify({
       translations: [
-        { id: "p1-b1", markdown: "결과" },
-        { id: "p1-b2", markdown: "점수가 향상됐다." },
+        { id: "b0", markdown: "결과" },
+        { id: "b1", markdown: "점수가 향상됐다." },
       ],
     })
     const onAiRequest = vi
@@ -32,6 +32,40 @@ describe("mapped page translation response", () => {
     })
 
     expect(onAiRequest).toHaveBeenCalledTimes(2)
+    expect([...translated]).toEqual([
+      ["p1-b1", "결과"],
+      ["p1-b2", "점수가 향상됐다."],
+    ])
+  })
+
+  it("retries only missing IDs after a truncated response", async () => {
+    const first = JSON.stringify({
+      translations: [{ id: "b0", markdown: "결과" }],
+    })
+    const second = JSON.stringify({
+      translations: [{ id: "b0", markdown: "점수가 향상됐다." }],
+    })
+    const requests: string[] = []
+    const onAiRequest = vi.fn(async (request, onDelta) => {
+      requests.push(request.quote)
+      if (requests.length === 1) {
+        onDelta?.(first.slice(0, -1))
+        throw new Error("provider response truncated")
+      }
+      return second
+    })
+
+    const translated = await translatePageBatch({
+      batch,
+      page: 1,
+      onAiRequest,
+      onPartial: vi.fn(),
+    })
+
+    expect(requests).toHaveLength(2)
+    expect(JSON.parse(requests[1] ?? "{}").blocks).toEqual([
+      { id: "b0", kind: batch[1]?.kind, source: batch[1]?.source },
+    ])
     expect([...translated]).toEqual([
       ["p1-b1", "결과"],
       ["p1-b2", "점수가 향상됐다."],
@@ -76,8 +110,8 @@ describe("mapped page translation response", () => {
   it("does not launch a queued request after its signal is cancelled", async () => {
     const response = JSON.stringify({
       translations: [
-        { id: "p1-b1", markdown: "결과" },
-        { id: "p1-b2", markdown: "점수가 향상됐다." },
+        { id: "b0", markdown: "결과" },
+        { id: "b1", markdown: "점수가 향상됐다." },
       ],
     })
     const releases: Array<() => void> = []
@@ -120,15 +154,15 @@ describe("mapped page translation response", () => {
     const onPartial = vi.fn()
     const response = JSON.stringify({
       translations: [
-        { id: "p1-b1", markdown: "결과" },
-        { id: "p1-b2", markdown: "점수가 향상됐다." },
+        { id: "b0", markdown: "결과" },
+        { id: "b1", markdown: "점수가 향상됐다." },
       ],
     })
 
     const onAiRequest = vi.fn(async (_req, onDelta) => {
       // Simulate streaming deltas chunk by chunk
-      onDelta?.('{"translations": [{"id": "p1-b1", "markdown": "결과"}')
-      onDelta?.(', {"id": "p1-b2", "markdown": "점수가 향상됐다."}]}')
+      onDelta?.('{"translations": [{"id": "b0", "markdown": "결과"}')
+      onDelta?.(', {"id": "b1", "markdown": "점수가 향상됐다."}]}')
       return response
     })
 
@@ -145,13 +179,12 @@ describe("mapped page translation response", () => {
     expect(firstPartialCall.get("p1-b1")).toBe("결과")
   })
 
-  it("extractPartialTranslations ignores out of order or duplicate IDs", () => {
-    // If stream contains duplicate or out of order IDs, extractPartialTranslations must not corrupt order
+  it("extractPartialTranslations accepts known IDs in model response order", () => {
     const outOfOrderStream =
       '{"translations": [{"id": "p1-b2", "markdown": "두번째"}, {"id": "p1-b1", "markdown": "첫번째"}]}'
     const partials = extractPartialTranslations(outOfOrderStream, batch)
-    // p1-b2 was seen first when p1-b1 was expected, so p1-b2 is skipped/not emitted out of order
-    expect(partials.has("p1-b1")).toBe(false)
+    expect(partials.get("p1-b2")).toBe("두번째")
+    expect(partials.get("p1-b1")).toBe("첫번째")
   })
 
   it.each([
@@ -159,18 +192,19 @@ describe("mapped page translation response", () => {
       "extra id",
       JSON.stringify({
         translations: [
-          { id: "p1-b1", markdown: "결과" },
+          { id: "b0", markdown: "결과" },
           { id: "extra", markdown: "추가" },
-          { id: "p1-b2", markdown: "점수가 향상됐다." },
+          { id: "b1", markdown: "점수가 향상됐다." },
         ],
       }),
     ],
     [
-      "out of order ids",
+      "unknown id",
       JSON.stringify({
         translations: [
-          { id: "p1-b2", markdown: "점수가 향상됐다." },
-          { id: "p1-b1", markdown: "결과" },
+          { id: "extra", markdown: "추가" },
+          { id: "b0", markdown: "결과" },
+          { id: "b1", markdown: "점수가 향상됐다." },
         ],
       }),
     ],
@@ -178,9 +212,9 @@ describe("mapped page translation response", () => {
       "duplicate id",
       JSON.stringify({
         translations: [
-          { id: "p1-b1", markdown: "결과" },
-          { id: "p1-b1", markdown: "중복" },
-          { id: "p1-b2", markdown: "점수가 향상됐다." },
+          { id: "b0", markdown: "결과" },
+          { id: "b0", markdown: "중복" },
+          { id: "b1", markdown: "점수가 향상됐다." },
         ],
       }),
     ],
@@ -189,6 +223,40 @@ describe("mapped page translation response", () => {
 
     await expect(
       translatePageBatch({ batch, page: 1, onAiRequest, onPartial: vi.fn() }),
-    ).rejects.toThrow("page translation block order mismatch")
+    ).rejects.toThrow(/page translation response contains/u)
+  })
+
+  it("accepts reordered IDs while returning the request block order", async () => {
+    const longBatch = [
+      {
+        id: "page:1:block:1:sentence:1",
+        kind: "heading" as const,
+        source: "Results",
+      },
+      {
+        id: "page:1:block:27:sentence:3",
+        kind: "body" as const,
+        source: "The score improved.",
+      },
+    ] as const
+    const response = JSON.stringify({
+      translations: [
+        { id: "b0", markdown: "결과" },
+        { id: "b1", markdown: "점수가 향상됐다." },
+      ],
+    })
+
+    const translated = await translatePageBatch({
+      batch: longBatch,
+      page: 1,
+      onAiRequest: vi.fn(async () => response),
+      onPartial: vi.fn(),
+    })
+
+    expect([...translated]).toEqual([
+      ["page:1:block:1:sentence:1", "결과"],
+      ["page:1:block:27:sentence:3", "점수가 향상됐다."],
+    ])
+    expect(longBatch.map((block) => translated.get(block.id))).toEqual(["결과", "점수가 향상됐다."])
   })
 })

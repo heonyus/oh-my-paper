@@ -19,7 +19,7 @@ const readingTokenLimits: Readonly<Partial<Record<AiRequest["action"], number>>>
   citation: 1_024,
   auto_highlight: 1_024,
   page_structure: 8_192,
-  page_translation: 2_048,
+  page_translation: 4_096,
 }
 
 export function completionTokenLimit(request: AiRequest): number | undefined {
@@ -72,6 +72,12 @@ export function completionLimitParameters(
     }
   if (provider === "groq")
     return { max_completion_tokens: limit, reasoning_effort: "low", temperature: 0, ...structured }
+  if (provider === "gemini")
+    if (request.action === "page_translation")
+      return {
+        max_completion_tokens: limit,
+        response_format: geminiPageTranslationResponseFormat,
+      }
   if (provider === "gemini")
     return {
       max_completion_tokens: limit,

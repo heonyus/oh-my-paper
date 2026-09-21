@@ -4,11 +4,8 @@ import {
   discoveryCancelResultSchema,
   discoveryChannels,
   discoverySaveInputSchema,
-  discoverySaveResultSchema,
   discoverySearchInputSchema,
 } from "../shared/discoveryIpc"
-import type { KnowledgeNode } from "../shared/knowledgeSchemas"
-import type { CreateNodeInput, NodeFilter } from "../shared/knowledgeTypes"
 import {
   scholarlyGraphCancelInputSchema,
   scholarlyGraphCancelResultSchema,
@@ -16,9 +13,9 @@ import {
   scholarlyGraphInputSchema,
 } from "../shared/scholarlyGraphIpc"
 import { scholarlyGraphResultSchema } from "../shared/scholarlyGraphSchemas"
-import type { ScholarlySearchItem } from "../shared/scholarlySearchSchemas"
 import { scholarlySearchResultSchema } from "../shared/scholarlySearchSchemas"
 import { getScholarlyGraph } from "./scholarlyGraph"
+import { listScholarlyMetadata, saveScholarlyMetadata } from "./scholarlyMetadata"
 import { searchScholarly } from "./scholarlySearch"
 import { defaultScholarlyTransport } from "./scholarlySearchTransport"
 
@@ -28,61 +25,11 @@ type ScholarlyIpc = {
   readonly handle: (channel: string, handler: ScholarlyIpcHandler) => void
   readonly removeHandler: (channel: string) => void
 }
-type KnowledgeWriter = {
-  readonly findNodes: (filter?: NodeFilter) => readonly KnowledgeNode[]
-  readonly createNode: (input: CreateNodeInput) => KnowledgeNode
-}
-
 export interface ScholarlyIpcDependencies {
-  readonly knowledge: KnowledgeWriter
+  readonly knowledge: Parameters<typeof saveScholarlyMetadata>[0]
   readonly search?: typeof searchScholarly
   readonly graph?: typeof getScholarlyGraph
   readonly transport?: typeof defaultScholarlyTransport
-}
-
-function identityKeys(item: ScholarlySearchItem): readonly string[] {
-  const values = [
-    item.identity.doi ? `doi:${item.identity.doi.toLowerCase()}` : null,
-    item.identity.arxivId ? `arxiv:${item.identity.arxivId.toLowerCase()}` : null,
-    item.identity.openAlexId ? `openalex:${item.identity.openAlexId.toLowerCase()}` : null,
-    `${item.provider}:${item.identity.providerRecordId.toLowerCase()}`,
-  ]
-  return [...new Set(values.filter((value): value is string => value !== null))]
-}
-
-function findDuplicate(knowledge: KnowledgeWriter, keys: readonly string[]): KnowledgeNode | null {
-  for (const key of keys) {
-    const nodes = knowledge.findNodes({ kind: "paper", search: key, limit: 100 })
-    const duplicate = nodes.find((node) => node.aliases.some((alias) => keys.includes(alias)))
-    if (duplicate) return duplicate
-  }
-  return null
-}
-
-function saveMetadata(knowledge: KnowledgeWriter, item: ScholarlySearchItem) {
-  const aliases = identityKeys(item)
-  const duplicate = findDuplicate(knowledge, aliases)
-  if (duplicate) return discoverySaveResultSchema.parse({ status: "duplicate", node: duplicate })
-  const node = knowledge.createNode({
-    kind: "paper",
-    title: item.title,
-    body: "",
-    aliases,
-    metadata: {
-      source: "scholarly_search",
-      provider: item.provider,
-      identity: item.identity,
-      authors: item.authors,
-      year: item.year,
-      venue: item.venue,
-      abstract: item.abstract,
-      landingUrl: item.landingUrl,
-      citationCount: item.citationCount,
-      access: item.access,
-      fullTextReviewed: false,
-    },
-  })
-  return discoverySaveResultSchema.parse({ status: "saved", node })
 }
 
 export function registerScholarlyIpc(
@@ -124,13 +71,16 @@ export function registerScholarlyIpc(
   })
   main.handle(discoveryChannels.saveMetadata, async (_event, value: unknown) => {
     const { item } = discoverySaveInputSchema.parse(value)
-    const operation = saveQueue.then(() => saveMetadata(dependencies.knowledge, item))
+    const operation = saveQueue.then(() => saveScholarlyMetadata(dependencies.knowledge, item))
     saveQueue = operation.then(
       () => undefined,
       () => undefined,
     )
     return await operation
   })
+  main.handle(discoveryChannels.listSavedMetadata, () =>
+    listScholarlyMetadata(dependencies.knowledge),
+  )
   main.handle(scholarlyGraphChannels.get, async (event, value: unknown) => {
     const input = scholarlyGraphInputSchema.parse(value)
     const key = jobKey(event, input.jobId)

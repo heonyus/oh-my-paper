@@ -2,11 +2,17 @@ import { readFile, stat } from "node:fs/promises"
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http"
 import { extname, join } from "node:path"
 import type { z } from "zod"
+import { jevDecisionRequestSchema } from "../shared/aiDecision"
 import { aiJobCancelRequestSchema, aiJobStartRequestSchema, aiRequestSchema } from "../shared/aiIpc"
+import {
+  discoverySavedMetadataResultSchema,
+  discoverySaveInputSchema,
+  discoverySaveResultSchema,
+} from "../shared/discoveryIpc"
 import { documentAstRequestSchema, documentAstResultSchema } from "../shared/documentAstIpc"
-import { MISTRAL_OCR_MODEL } from "../shared/documentOcr"
+import { documentOcrKeySchema, MISTRAL_OCR_MODEL } from "../shared/documentOcr"
 import { documentPageParseRequestSchema } from "../shared/documentPageModel"
-import { citationLookupRequestSchema } from "../shared/ipc"
+import { citationLookupRequestSchema, providerConfigSchema } from "../shared/ipc"
 import {
   pageTranslationCacheReadRequestSchema,
   pageTranslationCacheWriteRequestSchema,
@@ -17,6 +23,7 @@ import {
   scholarlySearchResultSchema,
 } from "../shared/scholarlySearchSchemas"
 import type { WebServerConfig } from "./config"
+import { streamParsedPage } from "./pageParseStream"
 import type { WebServices } from "./services"
 import { importPdfBytes, readDocumentBase64, readWorkspace } from "./services"
 
@@ -82,8 +89,15 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
     try {
       const url = new URL(req.url ?? "/", "http://127.0.0.1")
       const pathname = url.pathname
+      const requestOrigin = req.headers.origin
+      const localOrigin = `http://${req.headers.host ?? `${config.host}:${config.port}`}`
 
-      res.setHeader("access-control-allow-origin", "*")
+      if (requestOrigin && requestOrigin !== localOrigin) {
+        sendError(res, 403, "cross_origin_request_rejected")
+        return
+      }
+
+      res.setHeader("access-control-allow-origin", localOrigin)
       res.setHeader("access-control-allow-methods", "GET, POST, OPTIONS")
       res.setHeader("access-control-allow-headers", "content-type, authorization")
 
@@ -143,13 +157,47 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
       if (pathname.startsWith("/api/rpc/") && req.method === "POST") {
         const method = pathname.replace("/api/rpc/", "")
         switch (method) {
+          case "decideAi": {
+            const input = await readJson(req, jevDecisionRequestSchema)
+            const decisions = services.decisionService()
+            if (!decisions) {
+              sendError(res, 503, "Jev needs an OpenRouter key on this server")
+              return
+            }
+            const controller = new AbortController()
+            const cancel = () => controller.abort()
+            res.on("close", cancel)
+            try {
+              const result = await decisions.decide(input, controller.signal)
+              if (!res.destroyed) sendJson(res, 200, result)
+            } finally {
+              res.off("close", cancel)
+            }
+            return
+          }
           case "providerStatus": {
+            sendJson(res, 200, services.ai.status())
+            return
+          }
+          case "saveProviderConfig": {
+            const input = await readJson(req, providerConfigSchema)
+            await services.saveProviderConfig(input)
             sendJson(res, 200, services.ai.status())
             return
           }
           case "documentOcrStatus": {
             sendJson(res, 200, {
-              configured: services.mistralConfigured,
+              configured: services.mistralConfigured(),
+              provider: "mistral",
+              model: MISTRAL_OCR_MODEL,
+            })
+            return
+          }
+          case "saveDocumentOcrKey": {
+            const input = await readJson(req, documentOcrKeySchema)
+            await services.saveMistralKey(input)
+            sendJson(res, 200, {
+              configured: services.mistralConfigured(),
               provider: "mistral",
               model: MISTRAL_OCR_MODEL,
             })
@@ -163,6 +211,11 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
               forceOcr: input.forceOcr ?? false,
             })
             sendJson(res, 200, result)
+            return
+          }
+          case "parseDocumentPageStream": {
+            const input = await readJson(req, documentPageParseRequestSchema)
+            await streamParsedPage(res, input, services.pages)
             return
           }
           case "readPageTranslationCache": {
@@ -191,19 +244,24 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
           }
           case "startAiJob": {
             const input = await readJson(req, aiJobStartRequestSchema)
+            const stream = services.startAiJob(input)
             res.writeHead(200, {
               "content-type": "text/event-stream; charset=utf-8",
               "cache-control": "no-store",
               connection: "keep-alive",
             })
-            req.on("close", () => {
-              services.cancelAiJob(input.jobId)
-            })
-            for await (const chunk of services.startAiJob(input)) {
-              if (res.destroyed) break
-              res.write(chunk)
+            const cancel = () => services.cancelAiJob(input.jobId)
+            res.on("close", cancel)
+            try {
+              for await (const chunk of stream) {
+                if (res.destroyed) break
+                res.write(chunk)
+              }
+              if (!res.destroyed) res.end()
+            } finally {
+              res.off("close", cancel)
+              cancel()
             }
-            if (!res.destroyed) res.end()
             return
           }
           case "cancelAiJob": {
@@ -230,6 +288,21 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
             sendJson(res, 200, result)
             return
           }
+          case "discoverySaveMetadata": {
+            const input = await readJson(req, discoverySaveInputSchema)
+            const result = discoverySaveResultSchema.parse(
+              await services.saveScholarlyMetadata(input),
+            )
+            sendJson(res, 200, result)
+            return
+          }
+          case "discoveryListSavedMetadata": {
+            const result = discoverySavedMetadataResultSchema.parse(
+              services.listSavedScholarlyMetadata(),
+            )
+            sendJson(res, 200, result)
+            return
+          }
           default: {
             sendError(res, 404, `unknown_rpc_method_${method}`)
             return
@@ -240,7 +313,8 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
       sendError(res, 404, "not_found")
     } catch (error) {
       const message = error instanceof Error ? error.message : "internal_server_error"
-      sendError(res, 500, message)
+      if (res.headersSent) res.destroy()
+      else sendError(res, 500, message)
     }
   })
 }

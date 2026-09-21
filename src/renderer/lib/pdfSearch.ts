@@ -1,8 +1,9 @@
+import type { ParsedDocumentPage } from "../../shared/documentPageModel"
 import { AI_CONTEXT_MAX_CHARACTERS } from "../../shared/ipc"
+import type { DocumentId } from "../../shared/schemas"
 import { pageTextsFromAst } from "./documentAstProjection"
 import { activeDocumentAst } from "./documentAstRuntime"
-import { activeParsedDocumentPages } from "./documentPageRuntime"
-import { parsedPageBodyText } from "./parsedPageTranslation"
+import { activeParsedDocumentPages, loadParsedDocumentPage } from "./documentPageRuntime"
 
 const RETRIEVAL_CHUNK_SIZE = 900
 const RETRIEVAL_CHUNK_STEP = 720
@@ -16,14 +17,31 @@ type PdfRetrievalChunk = {
   readonly tokens: readonly string[]
 }
 
+function parsedPageRetrievalText(page: ParsedDocumentPage): string {
+  return [...page.blocks]
+    .sort((left, right) => left.order - right.order)
+    .filter(
+      (block) =>
+        block.content.trim() &&
+        block.label !== "image" &&
+        block.label !== "header" &&
+        block.label !== "footer" &&
+        block.label !== "page_number",
+    )
+    .map((block) => block.content.trim())
+    .join("\n\n")
+}
+
 function pageTextsWithParsedPages(
   ast: NonNullable<ReturnType<typeof activeDocumentAst>>,
 ): readonly string[] {
   const pageTexts = [...pageTextsFromAst(ast)]
   for (const page of activeParsedDocumentPages()) {
     if (page.sourceHash !== ast.sourceHash) continue
-    const text = parsedPageBodyText(page)
-    if (text) pageTexts[page.pageNumber - 1] = text
+    const parsedText = parsedPageRetrievalText(page)
+    if (!parsedText) continue
+    const nativeText = pageTexts[page.pageNumber - 1]?.trim() ?? ""
+    pageTexts[page.pageNumber - 1] = nativeText ? `${nativeText}\n\n${parsedText}` : parsedText
   }
   return pageTexts
 }
@@ -178,11 +196,113 @@ export function findPdfTextPage(query: string): number | null {
   return null
 }
 
+function questionQueryParts(question: string): readonly string[] {
+  const parts = question
+    .split(/\?|,|;|\band\b|\band\s+also\b|및|그리고/iu)
+    .map((part) => part.trim())
+    .filter((part) => part.length >= 3)
+  const tokens = retrievalTokens(question)
+  const focused = tokens.flatMap((token, index) => {
+    const next = tokens[index + 1]
+    const single = /[A-Za-z]/u.test(token) && token.length >= 4 ? [token] : []
+    const pair = next && token.length >= 3 && next.length >= 3 ? [`${token} ${next}`] : []
+    return [...single, ...pair]
+  })
+  return [...new Set([question.trim(), ...parts, ...focused])].filter((part) => part.length >= 3)
+}
+
+function contextSnippetForResult(index: PdfRetrievalIndex, result: PdfRetrievalResult): string {
+  const chunkIndex = index.chunks.findIndex((chunk) => chunk.id === result.id)
+  const current = index.chunks[chunkIndex]
+  const sourceText = current?.text ?? result.snippet
+  const previous = chunkIndex > 0 ? index.chunks[chunkIndex - 1] : undefined
+  if (!previous) return `Page ${result.page}: ${sourceText}`
+  const preceding = previous.text.replace(/\s+/gu, " ").trim().slice(-280)
+  return `Page ${previous.page} preceding context: ${preceding}\nPage ${result.page}: ${sourceText}`
+}
+
+function rankedResultsForQuestion(
+  index: PdfRetrievalIndex,
+  question: string,
+): readonly PdfRetrievalResult[] {
+  const rankedQueries = questionQueryParts(question).map((query) => rankPdfPassages(index, query))
+  const matches: PdfRetrievalResult[] = []
+  const seen = new Set<string>()
+  for (let resultIndex = 0; resultIndex < RETRIEVAL_RESULT_LIMIT; resultIndex += 1) {
+    for (const results of rankedQueries) {
+      const result = results[resultIndex]
+      if (!result || seen.has(result.id)) continue
+      seen.add(result.id)
+      matches.push(result)
+      if (matches.length >= 8) return matches
+    }
+  }
+  return matches
+}
+
+function sectionMembershipContext(question: string): string {
+  const queryTokens = new Set(retrievalTokens(question))
+  if (queryTokens.size === 0) return ""
+  const blocks = activeParsedDocumentPages().flatMap((page) =>
+    [...page.blocks]
+      .sort((left, right) => left.order - right.order)
+      .map((block) => ({ page: page.pageNumber, block })),
+  )
+  let precedingHeading: string | null = null
+  const passages: {
+    readonly page: number
+    readonly content: string
+    readonly precedingHeading: string
+    readonly followingHeading: string | null
+    readonly score: number
+  }[] = []
+  for (const [index, entry] of blocks.entries()) {
+    const heading =
+      entry.block.label === "doc_title" || entry.block.label === "paragraph_title"
+        ? entry.block.content.replace(/^#+\s*/u, "").trim()
+        : null
+    if (heading) {
+      precedingHeading = heading
+      continue
+    }
+    if (!precedingHeading || !["text", "list", "equation"].includes(entry.block.label)) continue
+    const contentTokens = new Set(retrievalTokens(entry.block.content))
+    const score = [...queryTokens].filter((token) => contentTokens.has(token)).length
+    if (score < 2) continue
+    const followingHeading = blocks
+      .slice(index + 1)
+      .find(({ block }) => ["doc_title", "paragraph_title"].includes(block.label))?.block.content
+    passages.push({
+      page: entry.page,
+      content: entry.block.content,
+      precedingHeading,
+      followingHeading: followingHeading?.replace(/^#+\s*/u, "").trim() ?? null,
+      score,
+    })
+  }
+  return passages
+    .sort((left, right) => right.score - left.score || left.page - right.page)
+    .slice(0, 2)
+    .map((passage) => {
+      const membership = `Verified section membership: page ${passage.page} passage belongs to "${passage.precedingHeading}".`
+      const boundary = passage.followingHeading
+        ? ` The following heading "${passage.followingHeading}" starts after that passage.`
+        : ""
+      return `${membership}${boundary}`
+    })
+    .join("\n")
+}
+
 export function paperContextForQuestion(question: string, currentPage: number): string {
   const ast = activeDocumentAst()
   if (ast) {
-    return rankPdfPassages(buildPdfRetrievalIndex(pageTextsWithParsedPages(ast)), question)
-      .map((result) => `Page ${result.page}: ${result.snippet}`)
+    const index = buildPdfRetrievalIndex(pageTextsWithParsedPages(ast))
+    const matches = rankedResultsForQuestion(index, question)
+    return [
+      sectionMembershipContext(question),
+      ...matches.slice(0, 8).map((result) => contextSnippetForResult(index, result)),
+    ]
+      .filter(Boolean)
       .join("\n\n")
       .slice(0, AI_CONTEXT_MAX_CHARACTERS)
   }
@@ -209,6 +329,36 @@ export function paperContextForQuestion(question: string, currentPage: number): 
     .map((page) => `Page ${page.pageNumber}: ${page.text}`)
     .join("\n\n")
     .slice(0, AI_CONTEXT_MAX_CHARACTERS)
+}
+
+export async function preparePaperContextForQuestion(
+  documentId: DocumentId,
+  question: string,
+  currentPage: number,
+  signal?: AbortSignal,
+): Promise<string> {
+  const ast = activeDocumentAst()
+  if (!ast) return paperContextForQuestion(question, currentPage)
+  const nativeIndex = buildPdfRetrievalIndex(pageTextsFromAst(ast))
+  const matchingPages = rankedResultsForQuestion(nativeIndex, question)
+    .map((result) => result.page)
+    .filter((page, index, pages) => pages.indexOf(page) === index)
+    .slice(0, 3)
+  const pagesToLoad = new Set<number>()
+  for (const page of matchingPages) {
+    if (page > 1) pagesToLoad.add(page - 1)
+    pagesToLoad.add(page)
+  }
+  const ocr = await window.scourgify.documentOcrStatus()
+  await Promise.all(
+    [...pagesToLoad].map((page) =>
+      loadParsedDocumentPage(documentId, page, {
+        forceOcr: ocr.configured,
+        signal,
+      }),
+    ),
+  )
+  return paperContextForQuestion(question, currentPage)
 }
 
 export function paperOverviewContext(): string {

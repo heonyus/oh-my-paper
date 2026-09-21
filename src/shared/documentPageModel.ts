@@ -19,6 +19,7 @@ export const parsedPageBlockLabelSchema = z.enum([
   "chart",
   "figure_title",
   "table_title",
+  "references",
   "header",
   "footer",
   "page_number",
@@ -40,6 +41,13 @@ export const parsedPageBlockSchema = z.object({
   content: z.string().max(40_000),
   contentFormat: z.enum(["text", "markdown", "latex", "html", "none"]),
   translationPolicy: z.enum(["include", "exclude"]),
+  confidence: z.number().min(0).max(1).nullable().optional(),
+})
+
+export const parsedPageProvenanceSchema = z.object({
+  model: z.string().min(1),
+  pageIndex: z.number().int().nonnegative(),
+  confidence: z.number().min(0).max(1).nullable().optional(),
 })
 
 export const parsedDocumentPageSchema = z
@@ -51,6 +59,7 @@ export const parsedDocumentPageSchema = z
     pageNumber: z.number().int().positive(),
     width: z.number().finite().positive(),
     height: z.number().finite().positive(),
+    provenance: parsedPageProvenanceSchema.optional(),
     blocks: z.array(parsedPageBlockSchema).max(1_024).readonly(),
   })
   .superRefine((page, context) => {

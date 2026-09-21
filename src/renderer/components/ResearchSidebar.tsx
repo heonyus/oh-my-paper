@@ -32,7 +32,7 @@ import { AiOverviewPanel } from "./AiOverviewPanel"
 import { AutoHighlightControls } from "./AutoHighlightControls"
 import { BoardIndexPanel } from "./BoardIndexPanel"
 import { CitationPanel } from "./CitationPanel"
-import { PageTranslationPortal } from "./PageTranslationPortal"
+import { PageTranslationPortal, visibleResearchSidebarWidth } from "./PageTranslationPortal"
 import { ScholarSearchPanel } from "./ScholarSearchPanel"
 import { SidebarResizeHandle } from "./SidebarResizeHandle"
 
@@ -149,6 +149,11 @@ export function ResearchSidebar({
       onAiRequest={onAiRequest}
       viewport={viewport}
       onViewportChange={onViewportChange}
+      sidebarReservedWidth={
+        expanded
+          ? visibleResearchSidebarWidth(flyout, mode, width)
+          : researchSidebarLayout.railWidth
+      }
     />
   ) : null
   if (!expanded) {
@@ -245,7 +250,7 @@ export function ResearchSidebar({
                 onJump={onJumpToCard}
               />
             ) : mode === "scholar" ? (
-              <ScholarSearchPanel document={document} />
+              <ScholarSearchPanel key={document.id} document={document} citations={citations} />
             ) : (
               <CitationPanel
                 document={document}

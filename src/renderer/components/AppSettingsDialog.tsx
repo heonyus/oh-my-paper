@@ -17,6 +17,7 @@ export function AppSettingsDialog({
   onClose,
   appearanceOnly = false,
   hostedCredentials,
+  locked = false,
 }: {
   readonly open: boolean
   readonly status: ProviderStatus
@@ -28,6 +29,7 @@ export function AppSettingsDialog({
   readonly onClose: () => void
   readonly appearanceOnly?: boolean | undefined
   readonly hostedCredentials?: HostedCredentialSettingsProps | undefined
+  readonly locked?: boolean | undefined
 }): JSX.Element | null {
   if (!open) return null
   return (
@@ -43,6 +45,8 @@ export function AppSettingsDialog({
         onWorkspaceChange({ ...workspace, minimapVisible })
       }
       appearanceOnly={appearanceOnly}
+      locked={locked}
+      openRouterRequired={!hostedCredentials}
       hostedCredentials={
         hostedCredentials
           ? {

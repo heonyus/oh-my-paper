@@ -84,11 +84,15 @@ function centerInside(container: PdfFeatureRect, inner: PdfFeatureRect): boolean
 
 function isNestedMark(feature: PdfFeature, containers: readonly PdfFeature[]): boolean {
   if (feature.kind === "figure" || feature.kind === "table") return false
-  return containers.some(
-    (container) =>
+  return containers.some((container) => {
+    if (feature.kind === "citation" && container.sourceSpanIds[0] === feature.sourceSpanIds[0]) {
+      return false
+    }
+    return (
       feature.sourceSpanIds.some((id: string) => container.sourceSpanIds.includes(id)) ||
-      centerInside(container.rect, feature.rect),
-  )
+      centerInside(container.rect, feature.rect)
+    )
+  })
 }
 
 export function refinePdfFeatures(

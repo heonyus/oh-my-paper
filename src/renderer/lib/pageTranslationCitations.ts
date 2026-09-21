@@ -7,17 +7,6 @@ function citationUrl(entry: CitationIndexEntry): string {
   return direct ?? `https://scholar.google.com/scholar?q=${encodeURIComponent(entry.title)}`
 }
 
-function citationLabel(entry: CitationIndexEntry): string {
-  const firstAuthor = entry.authors.split(/,|\band\b|\bet al\.?\b/iu)[0]?.trim() ?? ""
-  const surname =
-    firstAuthor
-      .split(/\s+/u)
-      .at(-1)
-      ?.replace(/[^\p{L}\p{N}'-]/gu, "") ?? ""
-  const author = surname || entry.title.slice(0, 32)
-  return entry.year ? `${author} et al., ${entry.year}` : author
-}
-
 function expandedKeys(value: string): readonly string[] {
   return value.split(/\s*,\s*/u).flatMap((part) => {
     const range = part.match(/^(\d{1,3})\s*[–-]\s*(\d{1,3})$/u)
@@ -38,7 +27,10 @@ function linkedCluster(
   const entries = keys.map((key) => citations.get(key))
   if (entries.some((entry) => entry === undefined)) return null
   return entries
-    .flatMap((entry) => (entry ? [`[${citationLabel(entry)}](${citationUrl(entry)})`] : []))
+    .flatMap((entry, index) => {
+      const key = keys[index]
+      return entry && key ? [`[${key}](${citationUrl(entry)})`] : []
+    })
     .join("; ")
 }
 
@@ -50,13 +42,7 @@ function linkSourceCitations(
     const linked = linkedCluster(keys, citations)
     return linked ? `(${linked})` : match
   })
-  return bracketed.replace(
-    /(?<=[\p{L})\]])\s*(\d{1,3}(?:\s*(?:,|[–-])\s*\d{1,3})*)(?=[.;:\s)]|$)/gu,
-    (match, keys: string) => {
-      const linked = linkedCluster(keys, citations)
-      return linked ? ` (${linked})` : match
-    },
-  )
+  return bracketed
 }
 
 export function withPageTranslationTextCitationLinks(

@@ -116,6 +116,7 @@ const discovery: DiscoveryApi = {
       },
     }),
   ),
+  listSavedMetadata: vi.fn(async () => ({ items: [] })),
 }
 
 describe("ScholarlyGraphView", () => {

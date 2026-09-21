@@ -23,6 +23,7 @@ export function useAppBootstrap({
   setPreparation,
   setProvider,
   setOcrStatus,
+  setCredentialsChecked,
   setBootstrapError,
 }: {
   readonly preparation: readonly PreparationUpdate[]
@@ -30,6 +31,7 @@ export function useAppBootstrap({
   readonly setPreparation: Dispatch<SetStateAction<PreparationUpdate[]>>
   readonly setProvider: Dispatch<SetStateAction<ProviderStatus>>
   readonly setOcrStatus: Dispatch<SetStateAction<DocumentOcrProviderStatus>>
+  readonly setCredentialsChecked: Dispatch<SetStateAction<boolean>>
   readonly setBootstrapError?: Dispatch<SetStateAction<string | null>>
 }): void {
   const report = useCallback(
@@ -44,12 +46,16 @@ export function useAppBootstrap({
       .then(normalizeWorkspaceTranslations)
       .then(resetWorkspace)
       .catch(report)
-    void window.scourgify.providerStatus().then(setProvider).catch(report)
-    void window.scourgify.documentOcrStatus().then(setOcrStatus).catch(report)
+    void Promise.all([
+      window.scourgify.providerStatus().then(setProvider),
+      window.scourgify.documentOcrStatus().then(setOcrStatus),
+    ])
+      .catch(report)
+      .finally(() => setCredentialsChecked(true))
     return window.scourgify.onPreparation((update) => {
       setPreparation((current) => [...current.filter((item) => item.step !== update.step), update])
     })
-  }, [resetWorkspace, setOcrStatus, setPreparation, setProvider, report])
+  }, [resetWorkspace, setCredentialsChecked, setOcrStatus, setPreparation, setProvider, report])
 
   useEffect(() => {
     const complete =

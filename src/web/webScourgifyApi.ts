@@ -10,6 +10,7 @@ import {
   type ScourgifyApi,
 } from "../shared/ipc"
 import type { DocumentId } from "../shared/schemas"
+import { unavailableWebFeature } from "../shared/unavailableWebFeatures"
 import { GEMINI_WEB_MODEL, GROQ_WEB_MODELS, MISTRAL_WEB_MODEL } from "../shared/webCredentials"
 import { fetchHostedCredentialStatus, saveHostedCredential, WebApiError } from "./api"
 import { WebWorkspaceBridge } from "./webWorkspace"
@@ -72,7 +73,10 @@ export function installWebScourgifyApi(userId: string): void {
 
   const api: ScourgifyApi = {
     readWorkspace: () => bridge.read(),
-    saveWorkspace: async (workspace) => bridge.save(workspace),
+    saveWorkspace: async (workspace) => {
+      await bridge.save(workspace)
+      return workspace
+    },
     importDocument: () => refreshAfterImport(bridge.importPicked()),
     importDocumentPath: (token) => refreshAfterImport(bridge.importToken(token)),
     importDocumentPaths: (tokens) =>
@@ -136,7 +140,7 @@ export function installWebScourgifyApi(userId: string): void {
         }))
       return blocks.length > 0 ? { status: "ready", blocks } : { status: "missing" }
     },
-    writePageTranslationCache: async () => {},
+    writePageTranslationCache: unavailableWebFeature("pageTranslation.writeCache"),
     clearPageTranslationCache: async ({ id, pageNumber }) => {
       regenerateTranslations.add(`${id}:${pageNumber}`)
     },
@@ -229,6 +233,66 @@ export function installWebScourgifyApi(userId: string): void {
     },
     writeClipboardText: async (text) => {
       await navigator.clipboard.writeText(clipboardWriteTextRequestSchema.parse({ text }).text)
+    },
+    saveAiMode: unavailableWebFeature("provider.saveAiMode"),
+    flushWorkspace: async () => {},
+    onBeforeWorkspaceClose: () => () => {},
+    knowledge: {
+      linkEvidence: unavailableWebFeature("knowledge.linkEvidence"),
+      proposeRelations: unavailableWebFeature("knowledge.proposeRelations"),
+      cancelProposal: unavailableWebFeature("knowledge.cancelProposal"),
+      findNodes: unavailableWebFeature("knowledge.findNodes"),
+      getNode: unavailableWebFeature("knowledge.getNode"),
+      createNode: unavailableWebFeature("knowledge.createNode"),
+      updateNode: unavailableWebFeature("knowledge.updateNode"),
+      deleteNode: unavailableWebFeature("knowledge.deleteNode"),
+      findRelations: unavailableWebFeature("knowledge.findRelations"),
+      createRelation: unavailableWebFeature("knowledge.createRelation"),
+      updateRelation: unavailableWebFeature("knowledge.updateRelation"),
+      getBacklinks: unavailableWebFeature("knowledge.getBacklinks"),
+      getNeighbourGraph: unavailableWebFeature("knowledge.getNeighbourGraph"),
+      createEvidenceAnchor: unavailableWebFeature("knowledge.createEvidenceAnchor"),
+      getEvidenceAnchor: unavailableWebFeature("knowledge.getEvidenceAnchor"),
+      getEvidenceNavigation: unavailableWebFeature("knowledge.getEvidenceNavigation"),
+      createDocumentVersion: unavailableWebFeature("knowledge.createDocumentVersion"),
+      getDocumentVersion: unavailableWebFeature("knowledge.getDocumentVersion"),
+      findDocumentVersionsByHash: unavailableWebFeature("knowledge.findDocumentVersionsByHash"),
+      getOrCreateDefaultBoard: unavailableWebFeature("knowledge.getOrCreateDefaultBoard"),
+      listBoards: unavailableWebFeature("knowledge.listBoards"),
+      createBoard: unavailableWebFeature("knowledge.createBoard"),
+      getBoard: unavailableWebFeature("knowledge.getBoard"),
+      findPlacementsForBoard: unavailableWebFeature("knowledge.findPlacementsForBoard"),
+      findPlacementsForNode: unavailableWebFeature("knowledge.findPlacementsForNode"),
+      createPlacement: unavailableWebFeature("knowledge.createPlacement"),
+      updatePlacement: unavailableWebFeature("knowledge.updatePlacement"),
+      deletePlacement: unavailableWebFeature("knowledge.deletePlacement"),
+    },
+    codex: {
+      getStatus: async () => ({
+        available: false,
+        authenticated: false,
+        account: null,
+        requiresOpenaiAuth: false,
+      }),
+      startLogin: unavailableWebFeature("codex.startLogin"),
+      cancelLogin: async () => {},
+      logout: async () => {},
+      onLoginCompleted: () => () => {},
+    },
+    interchange: {
+      exportMarkdown: unavailableWebFeature("interchange.exportMarkdown"),
+      previewMarkdownImport: unavailableWebFeature("interchange.previewMarkdownImport"),
+      commitMarkdownImport: unavailableWebFeature("interchange.commitMarkdownImport"),
+      exportCanvas: unavailableWebFeature("interchange.exportCanvas"),
+      previewCanvasImport: unavailableWebFeature("interchange.previewCanvasImport"),
+      commitCanvasImport: unavailableWebFeature("interchange.commitCanvasImport"),
+      previewExperimentJsonl: unavailableWebFeature("interchange.previewExperimentJsonl"),
+      commitExperiment: unavailableWebFeature("interchange.commitExperiment"),
+      previewZoteroFile: unavailableWebFeature("interchange.previewZoteroFile"),
+      fetchAndPreviewLocalZotero: unavailableWebFeature("interchange.fetchAndPreviewLocalZotero"),
+      commitZotero: unavailableWebFeature("interchange.commitZotero"),
+      chooseFiles: unavailableWebFeature("interchange.chooseFiles"),
+      saveFile: unavailableWebFeature("interchange.saveFile"),
     },
   }
   Object.defineProperty(window, "scourgify", { value: api, configurable: true })

@@ -4,6 +4,7 @@ import { CARD_WIDTH, createStructureCard } from "./board"
 import { parsedCardResponse } from "./cardPresentation"
 import { citationCardSource } from "./citationCardSource"
 import { assessCitationStructure } from "./citationStructureAssessment"
+import { parsedDocumentPage } from "./documentPageRuntime"
 import { cropFeatureImage } from "./pdfFeatureDom"
 import { featureRequestContext, sectionRequestContext } from "./sectionContext"
 import { rectsToElementSpace } from "./selectionGeometry"
@@ -14,6 +15,7 @@ import {
   upsertStructureCard,
 } from "./structureCardState"
 import type { DetectedStructure } from "./structureDetector"
+import { tableEvidenceWithDocumentContext, verifiedTableBody } from "./tableEvidence"
 import { revealWorldRectHorizontally } from "./viewport"
 
 type StructureActionsInput = {
@@ -186,16 +188,44 @@ export function createStructureActionHandler(
               bounds: structure.bounds,
               paperTitle: input.currentPaperTitle,
             })
-          : { paper: "", section: featureRequestContext(pageElement, structure.bounds, viewer) }
+          : {
+              paper: "",
+              section: featureRequestContext(pageElement, structure.bounds, viewer),
+              ...(structure.kind === "table"
+                ? (() => {
+                    const sourceEvidence = tableEvidenceWithDocumentContext(
+                      parsedDocumentPage(input.documentId, structure.page),
+                      structure,
+                      pageRect.width,
+                      pageRect.height,
+                      featureRequestContext(pageElement, structure.bounds, viewer),
+                    )
+                    return sourceEvidence ? { sourceEvidence } : {}
+                  })()
+                : {}),
+            }
       const explanation = await input.onAiRequest(
         structureAiRequest(structure, imageDataUrl, requestContext),
         (delta) => input.onCardStream(card.id, delta),
       )
       if (activeGenerations.get(card.id) !== currentGen) return
+      const parsed = parsedCardResponse(explanation, card.title)
+      const tableBody =
+        structure.kind === "table"
+          ? verifiedTableBody(
+              parsedDocumentPage(input.documentId, structure.page),
+              structure,
+              pageRect.width,
+              pageRect.height,
+              featureRequestContext(pageElement, structure.bounds, viewer),
+              parsed.body,
+            )
+          : parsed.body
       input.commitCards(
         patchCard(input.getCards(), card.id, (item) => ({
           ...item,
-          ...parsedCardResponse(explanation, item.title),
+          title: parsed.title,
+          body: tableBody,
           loading: false,
         })),
       )

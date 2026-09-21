@@ -30,15 +30,13 @@ export const pageTranslationResponseFormat = {
       properties: {
         translations: {
           type: "array",
-          minItems: 1,
-          maxItems: 128,
           items: {
             type: "object",
             additionalProperties: false,
             required: ["id", "markdown"],
             properties: {
-              id: { type: "string", pattern: "^[A-Za-z0-9._:-]+$" },
-              markdown: { type: "string", minLength: 1, maxLength: 8_000 },
+              id: { type: "string" },
+              markdown: { type: "string" },
             },
           },
         },

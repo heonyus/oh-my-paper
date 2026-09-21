@@ -52,20 +52,20 @@ describe("ProviderService saved configuration", () => {
     await service.saveConfig({
       provider: "openrouter",
       apiKey: "sk-or-stale-key-at-least-twenty-characters",
-      model: "deepseek/deepseek-v4-flash-0731",
+      model: "deepseek/deepseek-v4.1-flash",
     })
     vi.stubEnv("OPENROUTER_API_KEY", "sk-or-current-key-at-least-twenty-characters")
 
     expect(await service.status()).toMatchObject({
       configured: true,
       provider: "openrouter",
-      model: "deepseek/deepseek-v4-flash-0731",
+      model: "deepseek/deepseek-v4.1-flash",
     })
 
     vi.unstubAllEnvs()
     expect(await new ProviderService(root).status()).toMatchObject({
       configured: true,
-      model: "deepseek/deepseek-v4-flash-0731",
+      model: "deepseek/deepseek-v4.1-flash",
     })
   })
 

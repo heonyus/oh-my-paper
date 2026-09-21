@@ -1,4 +1,6 @@
 import { z } from "zod"
+import { parsedPageParserSchema } from "./documentPageModel"
+import { pageStructureKindSchema } from "./pageStructure"
 import { providerKindSchema } from "./providerModels"
 import { documentIdSchema } from "./schemas"
 
@@ -8,6 +10,8 @@ const cacheIdentitySchema = z.object({
   targetLanguage: z.literal("ko"),
   provider: providerKindSchema,
   model: z.string().trim().min(1).max(160),
+  parser: parsedPageParserSchema.optional(),
+  parserConfigVersion: z.string().trim().min(1).max(64).optional(),
 })
 
 const sourceBoundsSchema = z.object({
@@ -20,11 +24,14 @@ const sourceBoundsSchema = z.object({
 export const cachedPageTranslationBlockSchema = z.object({
   id: z.string().min(1).max(240),
   kind: z.enum(["heading", "body"]),
+  structureKind: pageStructureKindSchema.or(z.literal("figure")).optional(),
   source: z.string().min(1).max(40_000),
   parsedBlockId: z.string().min(1).max(240).optional(),
   sourceBounds: sourceBoundsSchema.optional(),
   sourcePageWidth: z.number().finite().positive().optional(),
   sourcePageHeight: z.number().finite().positive().optional(),
+  sourceParser: z.enum(["PaddleOCR-VL-1.6", "Mistral-OCR-4.1", "NativeText-1.0"]).optional(),
+  sourceParserConfigVersion: z.string().trim().min(1).max(64).optional(),
   translation: z.string().trim().min(1).max(40_000),
 })
 

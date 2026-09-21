@@ -30,10 +30,15 @@ describe("document import", () => {
     pdf.setAuthor("")
     await writeFile(source, await pdf.save())
 
-    const imported = await importDocument(source, new WorkspaceStore(join(directory, "store")))
+    const imported = await importDocument(
+      source,
+      new WorkspaceStore(join(directory, "store")),
+      "original-paper-name.pdf",
+    )
 
     expect(imported?.document.authors).toEqual([])
-    expect(imported?.document.title).toBe("empty-author")
+    expect(imported?.document.name).toBe("original-paper-name.pdf")
+    expect(imported?.document.title).toBe("original-paper-name")
   })
 
   it("persists the inspected bytes and repairs a missing duplicate original", async () => {

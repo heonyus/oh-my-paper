@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-export const MISTRAL_OCR_MODEL = "mistral-ocr-latest"
+export const MISTRAL_OCR_MODEL = "mistral-ocr-4-1"
 
 export const documentOcrProviderStatusSchema = z.object({
   configured: z.boolean(),

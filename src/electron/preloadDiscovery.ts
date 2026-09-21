@@ -4,6 +4,7 @@ import {
   discoveryCancelInputSchema,
   discoveryCancelResultSchema,
   discoveryChannels,
+  discoverySavedMetadataResultSchema,
   discoverySaveInputSchema,
   discoverySaveResultSchema,
   discoverySearchInputSchema,
@@ -28,6 +29,10 @@ export function createDiscoveryPreload(renderer: DiscoveryRenderer = ipcRenderer
           discoveryChannels.saveMetadata,
           discoverySaveInputSchema.parse(input),
         ),
+      ),
+    listSavedMetadata: async () =>
+      discoverySavedMetadataResultSchema.parse(
+        await renderer.invoke(discoveryChannels.listSavedMetadata),
       ),
   }
 }

@@ -57,7 +57,7 @@ export function PdfPage({
       try {
         const loaded = await task.promise
         if (cancelled) {
-          void loaded.destroy()
+          void task.destroy()
           return
         }
         setPdf(loaded)

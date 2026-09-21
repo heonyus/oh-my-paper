@@ -31,7 +31,7 @@ describe("DocumentOcrCredentialService", () => {
     expect(await service.status()).toEqual({
       configured: false,
       provider: "mistral",
-      model: "mistral-ocr-latest",
+      model: "mistral-ocr-4-1",
     })
     expect(await service.apiKey()).toBeNull()
   })

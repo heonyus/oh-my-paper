@@ -1,17 +1,22 @@
-import type { BoardCard, DocumentId } from "../types"
+import { z } from "zod"
+import type { BoardCard, DocumentId } from "../../shared/schemas"
+import {
+  type AutoHighlightCandidate,
+  normalizedTextIndex,
+  normalizeForMatch,
+  selectionFromOcrBlock,
+} from "./autoHighlightCandidates"
 import { createSelectionCard } from "./board"
 import { type BoardTextSelection, captureNativeBoardTextSelection } from "./boardSelection"
+import { activeParsedDocumentPages } from "./documentPageRuntime"
 
 export const AUTO_HIGHLIGHT_MAX_PASSAGES = 6
 const QUOTE_MAX_LENGTH = 300
 
 export type AutoHighlightPassage = {
+  readonly candidateId: string | null
   readonly quote: string
   readonly reason: string
-}
-
-function normalizeForMatch(value: string): string {
-  return value.replace(/\s+/gu, " ").trim()
 }
 
 export function parseAutoHighlightResponse(text: string): AutoHighlightPassage[] {
@@ -25,59 +30,59 @@ export function parseAutoHighlightResponse(text: string): AutoHighlightPassage[]
   } catch {
     return []
   }
-  const list = Array.isArray(parsed)
-    ? parsed
-    : parsed && typeof parsed === "object"
-      ? (parsed as { passages?: unknown }).passages
-      : null
-  if (!Array.isArray(list)) return []
+  const selectionResult = z
+    .object({
+      selections: z.array(
+        z.object({
+          candidateId: z.string().trim().min(1).max(160),
+          reason: z.string().optional(),
+        }),
+      ),
+    })
+    .safeParse(parsed)
+  if (selectionResult.success) {
+    const seen = new Set<string>()
+    return selectionResult.data.selections
+      .slice(0, AUTO_HIGHLIGHT_MAX_PASSAGES)
+      .flatMap((selection) => {
+        if (seen.has(selection.candidateId)) return []
+        seen.add(selection.candidateId)
+        return [
+          {
+            candidateId: selection.candidateId,
+            quote: "",
+            reason: selection.reason ? normalizeForMatch(selection.reason).slice(0, 80) : "",
+          },
+        ]
+      })
+  }
+  const legacyList = z
+    .object({
+      passages: z.array(z.unknown()),
+    })
+    .safeParse(parsed)
+  const list = Array.isArray(parsed) ? parsed : legacyList.success ? legacyList.data.passages : []
   const seen = new Set<string>()
   const passages: AutoHighlightPassage[] = []
   for (const item of list) {
     if (passages.length >= AUTO_HIGHLIGHT_MAX_PASSAGES) break
-    if (!item || typeof item !== "object") continue
-    const { quote, reason } = item as { quote?: unknown; reason?: unknown }
-    if (typeof quote !== "string") continue
+    const itemResult = z
+      .object({ quote: z.string(), reason: z.string().optional() })
+      .safeParse(item)
+    if (!itemResult.success) continue
+    const { quote, reason } = itemResult.data
     const normalizedQuote = normalizeForMatch(quote)
     if (normalizedQuote.length < 20 || normalizedQuote.length > QUOTE_MAX_LENGTH) continue
     const key = normalizedQuote.toLocaleLowerCase()
     if (seen.has(key)) continue
     seen.add(key)
     passages.push({
+      candidateId: null,
       quote: normalizedQuote,
-      reason: typeof reason === "string" ? normalizeForMatch(reason).slice(0, 80) : "",
+      reason: reason ? normalizeForMatch(reason).slice(0, 80) : "",
     })
   }
   return passages
-}
-
-type TextPosition = { readonly node: Text; readonly offset: number }
-
-function normalizedTextIndex(textLayer: HTMLElement): {
-  readonly text: string
-  readonly positions: readonly TextPosition[]
-} {
-  const walker = document.createTreeWalker(textLayer, NodeFilter.SHOW_TEXT)
-  const positions: TextPosition[] = []
-  let text = ""
-  let node = walker.nextNode()
-  while (node instanceof Text) {
-    const value = node.nodeValue ?? ""
-    for (let index = 0; index < value.length; index += 1) {
-      const character = value[index] ?? ""
-      if (/\s/u.test(character)) {
-        if (text.length > 0 && !text.endsWith(" ")) {
-          text += " "
-          positions.push({ node, offset: index })
-        }
-        continue
-      }
-      text += character
-      positions.push({ node, offset: index })
-    }
-    node = walker.nextNode()
-  }
-  return { text, positions }
 }
 
 function quoteRangeInPage(pageElement: HTMLElement, needle: string): Range | null {
@@ -116,12 +121,41 @@ export function locateQuoteSelection(
   return null
 }
 
+function locateCandidateSelection(
+  candidate: AutoHighlightCandidate,
+  boardWorld: HTMLElement,
+): BoardTextSelection | null {
+  if (candidate.location.kind === "ocr") {
+    const page = activeParsedDocumentPages().find((item) => item.pageNumber === candidate.page)
+    return page ? selectionFromOcrBlock(candidate, page, boardWorld) : null
+  }
+  const pageElement = document.querySelector<HTMLElement>(
+    `.page[data-page-number="${candidate.page}"]`,
+  )
+  if (!pageElement) return null
+  const range = quoteRangeInPage(pageElement, candidate.quote)
+  if (!range) return null
+  const selection = captureNativeBoardTextSelection({
+    pageElement,
+    boardWorldElement: boardWorld,
+    range,
+    quote: candidate.quote,
+  })
+  range.detach()
+  return selection
+}
+
 export function createAutoHighlightCard(
   documentId: DocumentId,
   passage: AutoHighlightPassage,
   boardWorld: HTMLElement,
+  candidates: readonly AutoHighlightCandidate[],
 ): BoardCard | null {
-  const selection = locateQuoteSelection(passage.quote, boardWorld)
+  const candidate = passage.candidateId
+    ? candidates.find((item) => item.id === passage.candidateId)
+    : undefined
+  if (!candidate) return null
+  const selection = locateCandidateSelection(candidate, boardWorld)
   if (!selection) return null
   const card = createSelectionCard(documentId, selection, "highlight")
   if (!card) return null

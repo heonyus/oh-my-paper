@@ -9,4 +9,10 @@ describe("MarkdownContent", () => {
     expect(screen.getByText("핵심").tagName).toBe("STRONG")
     expect(container.querySelector(".katex-display")).not.toBeNull()
   })
+
+  it("normalizes TeX delimiters emitted by OCR into rendered math", () => {
+    const { container } = render(<MarkdownContent source={String.raw`Distance \(d_k\)`} />)
+
+    expect(container.querySelector(".katex")).not.toBeNull()
+  })
 })

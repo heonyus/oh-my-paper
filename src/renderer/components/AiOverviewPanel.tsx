@@ -1,8 +1,7 @@
-import { Sparkles } from "lucide-react"
 import { type JSX, useCallback, useEffect, useRef, useState } from "react"
 import type { AiAction, AiHistoryMessage, ProviderStatus } from "../../shared/ipc"
 import type { DocumentInsight, DocumentInsightKind } from "../../shared/schemas"
-import { paperContextForQuestion, paperOverviewContext } from "../lib/pdfSearch"
+import { paperOverviewContext, preparePaperContextForQuestion } from "../lib/pdfSearch"
 import type { AiDeltaHandler, AiRequestRunner, DocumentRecord } from "../types"
 import { PaperDiscussion } from "./PaperDiscussion"
 import { SidebarInsightSection } from "./SidebarInsightSection"
@@ -24,6 +23,7 @@ const config: Readonly<Record<InsightKey, { readonly title: string; readonly act
     summary: { title: "요약", action: "paper_summary" },
   }
 const leadingInsightKeys: readonly InsightKey[] = ["keywords", "threeLines"]
+const overviewInsightKeys: readonly InsightKey[] = [...leadingInsightKeys, "summary"]
 const overviewRequests = new Map<string, Promise<string>>()
 const emptyCachedInsights: readonly DocumentInsight[] = []
 
@@ -86,21 +86,24 @@ export function AiOverviewPanel({
         const activeRequest = overviewRequests.get(requestKey)
         const request =
           activeRequest ??
-          onAiRequest(
-            {
-              action: config[key].action,
-              page: 1,
-              quote: document.title,
-              paperContext: paperOverviewContext(),
-              before: "",
-              after: "",
-            },
-            (delta) =>
-              setInsights((current) => ({
-                ...current,
-                [key]: { value: current[key].value + delta, loading: true, error: "" },
-              })),
-          )
+          (() => {
+            const source = paperOverviewContext() || document.overview || document.title
+            return onAiRequest(
+              {
+                action: config[key].action,
+                page: 1,
+                quote: source,
+                paperContext: source,
+                before: "",
+                after: "",
+              },
+              (delta) =>
+                setInsights((current) => ({
+                  ...current,
+                  [key]: { value: current[key].value + delta, loading: true, error: "" },
+                })),
+            )
+          })()
         if (!activeRequest) overviewRequests.set(requestKey, request)
         const value = await request
         setInsights((current) => ({ ...current, [key]: { value, loading: false, error: "" } }))
@@ -121,20 +124,40 @@ export function AiOverviewPanel({
         running.current.delete(key)
       }
     },
-    [document.id, document.title, onAiRequest, onInsightChange, provider.configured],
+    [
+      document.id,
+      document.overview,
+      document.title,
+      onAiRequest,
+      onInsightChange,
+      provider.configured,
+    ],
   )
+  useEffect(() => {
+    if (!provider.configured) return
+    for (const key of overviewInsightKeys) {
+      const insight = insightsRef.current[key]
+      if (!insight.value && !insight.loading) void generate(key)
+    }
+  }, [generate, provider.configured])
   async function ask(
     question: string,
     history: readonly AiHistoryMessage[],
     onDelta?: AiDeltaHandler,
     signal?: AbortSignal,
   ): Promise<string> {
+    const paperContext = await preparePaperContextForQuestion(
+      document.id,
+      question,
+      currentPage,
+      signal,
+    )
     return onAiRequest(
       {
         action: "chat",
         page: currentPage,
         quote: question,
-        paperContext: paperContextForQuestion(question, currentPage),
+        paperContext,
         before: "",
         after: "",
         history: [...history],
@@ -146,12 +169,6 @@ export function AiOverviewPanel({
 
   return (
     <section className="sidebar-mode-panel ai-overview-panel" aria-label="AI 논문 개요">
-      <header className="mode-panel-head">
-        <div>
-          <Sparkles size={18} />
-          <h2>With AI</h2>
-        </div>
-      </header>
       <div className="ai-overview-scroll">
         {leadingInsightKeys.map((key) => (
           <SidebarInsightSection

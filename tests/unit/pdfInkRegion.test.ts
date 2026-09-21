@@ -37,6 +37,14 @@ describe("caption ink search region", () => {
     expect(hasPlausibleInkCoverage(candidate, { x: 84, y: 114, width: 260, height: 96 })).toBe(true)
   })
 
+  it("accepts a centered figure that occupies a third of a full-column fallback", () => {
+    const candidate = { x: 0, y: 181, width: 734, height: 304 }
+    const figureInk = { x: 236.5, y: 87.5, width: 261.5, height: 385 }
+
+    expect(hasPlausibleInkCoverage(candidate, figureInk)).toBe(false)
+    expect(hasPlausibleInkCoverage(candidate, figureInk, 0.28)).toBe(true)
+  })
+
   it("adds safe equation padding without leaving the page", () => {
     expect(expandBoundsWithinPage({ x: 2, y: 3, width: 80, height: 12 }, 5, 600, 800)).toEqual({
       x: 0,

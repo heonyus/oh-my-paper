@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { DocumentPageParseProgress } from "../../shared/documentPageModel"
 import type { ProviderStatus } from "../../shared/ipc"
 import type { AiRequestRunner, DocumentRecord } from "../types"
@@ -23,6 +23,7 @@ import {
   planParsedPageTranslations,
 } from "./parsedPageTranslation"
 import type { CitationIndexEntry } from "./pdfCitationIndex"
+import { useDocumentTranslation } from "./useDocumentTranslation"
 
 export function usePageTranslation({
   document,
@@ -44,6 +45,11 @@ export function usePageTranslation({
   const [totalChunks, setTotalChunks] = useState(0)
   const [parserStage, setParserStage] =
     useState<DocumentPageParseProgress["stage"]>("engine-starting")
+  const pageStatusRef = useRef<TranslationStatus>(status)
+
+  useEffect(() => {
+    pageStatusRef.current = status
+  }, [status])
 
   useEffect(() => {
     const completedTranslations = new Map<string, string>()
@@ -59,17 +65,6 @@ export function usePageTranslation({
     async function translatePage(): Promise<void> {
       try {
         await pause(0)
-        const cached = await readCachedPageTranslation(document.id, currentPage, provider)
-        if (cancelled || abortController.signal.aborted) return
-        if (cached) {
-          bindPageSourceBounds(currentPage, cached)
-          await pause(0)
-          if (cancelled || abortController.signal.aborted) return
-          bindPageSourceBounds(currentPage, cached)
-          setBlocks(cached)
-          setStatus("complete")
-          return
-        }
         if (!provider.configured) {
           setStatus("setup")
           return
@@ -80,10 +75,28 @@ export function usePageTranslation({
         if (cancelled || abortController.signal.aborted) return
         const parsedPage = await loadParsedDocumentPage(document.id, currentPage, {
           forceOcr: ocr.configured,
+          signal: abortController.signal,
         })
         if (cancelled || abortController.signal.aborted) return
         if (!parsedPage) {
           setStatus("parser-unavailable")
+          return
+        }
+        const cached = await readCachedPageTranslation(
+          document.id,
+          currentPage,
+          provider,
+          parsedPage.parser,
+          parsedPage.configVersion,
+        )
+        if (cancelled || abortController.signal.aborted) return
+        if (cached) {
+          bindPageSourceBounds(currentPage, cached)
+          await pause(0)
+          if (cancelled || abortController.signal.aborted) return
+          bindPageSourceBounds(currentPage, cached)
+          setBlocks(cached)
+          setStatus("complete")
           return
         }
         const source = pageTranslationBlocksFromParsedPage(parsedPage)
@@ -187,11 +200,38 @@ export function usePageTranslation({
     }
   }, [citations, currentPage, document, onAiRequest, provider, revision])
 
+  const documentTranslation = useDocumentTranslation({
+    document,
+    citations,
+    provider,
+    onAiRequest,
+    pageStatusRef,
+    onPageBlocks: (page, nextBlocks) => {
+      if (page === currentPage) {
+        bindPageSourceBounds(page, nextBlocks)
+        setBlocks(nextBlocks)
+      }
+    },
+  })
+
   const regenerate = useCallback(async (): Promise<void> => {
     await clearCachedPageTranslation(document.id, currentPage, provider)
     setBlocks([])
     setRevision((value) => value + 1)
   }, [currentPage, document.id, provider])
 
-  return { blocks, status, progress, totalChunks, parserStage, regenerate }
+  return {
+    blocks,
+    status,
+    progress,
+    totalChunks,
+    parserStage,
+    regenerate,
+    translateAll: documentTranslation.translateAll,
+    cancelAll: documentTranslation.cancelAll,
+    documentProgress: documentTranslation.progress,
+    documentStatus: documentTranslation.status,
+    documentError: documentTranslation.error,
+    documentPages: documentTranslation.pages,
+  }
 }

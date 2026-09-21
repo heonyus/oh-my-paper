@@ -47,6 +47,32 @@ function sseResponse(frames: readonly unknown[]): Response {
 }
 
 describe("local AI job bridge", () => {
+  it("reports an interrupted stream instead of leaving the job running", async () => {
+    const jobs = createLocalAiJobs()
+    const terminal = new Promise<AiJobEvent>((resolve) => jobs.onAiJobEvent(resolve))
+    const restore = stubRpcFetch("/api/rpc/startAiJob", async () => new Response(""))
+    try {
+      await jobs.startAiJob(requestFixture)
+      expect(await terminal).toMatchObject({ kind: "failed", code: "provider_error" })
+    } finally {
+      restore()
+    }
+  }, 1000)
+
+  it("reports fetch rejection as a terminal failure", async () => {
+    const jobs = createLocalAiJobs()
+    const terminal = new Promise<AiJobEvent>((resolve) => jobs.onAiJobEvent(resolve))
+    const restore = stubRpcFetch("/api/rpc/startAiJob", async () => {
+      throw new TypeError("network unavailable")
+    })
+    try {
+      await jobs.startAiJob(requestFixture)
+      expect(await terminal).toMatchObject({ kind: "failed", code: "provider_error" })
+    } finally {
+      restore()
+    }
+  }, 1000)
+
   it("emits provider deltas and settles completed when the stream responds", async () => {
     const jobs = createLocalAiJobs()
     const events: AiJobEvent[] = []

@@ -89,7 +89,7 @@ describe("page translation source mapping", () => {
     expect([...parsePageTranslationStream(streamed)]).toEqual([["item:1.0", "번역된 첫 문장"]])
   })
 
-  it("keeps a normal academic page in one low-latency request", () => {
+  it("splits a normal academic page into bounded low-latency requests", () => {
     const blocks = Array.from({ length: 12 }, (_, index) => ({
       id: `page:1:block:${index}:sentence:1`,
       kind: "body" as const,
@@ -98,7 +98,9 @@ describe("page translation source mapping", () => {
       ),
     }))
 
-    expect(pageTranslationBatches(blocks)).toHaveLength(1)
+    const batches = pageTranslationBatches(blocks)
+    expect(batches.length).toBeGreaterThan(1)
+    expect(batches.every((batch) => pageTranslationRequest(batch).length <= 2_800)).toBe(true)
   })
 
   it("repairs LaTeX commands returned as JSON control characters", () => {

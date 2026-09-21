@@ -39,11 +39,11 @@ type Match = {
 }
 
 const numericEntryPattern =
-  /\[(\d+)\]\s+(.+?)(?=\s+\[\d+\]|\s+[A-Z][\p{L}'-]+(?:\s+[A-Z][\p{L}'-]+)*\.\s+(?:19|20)\d{2}\b|$)/gu
+  /\[(\d{1,3})\]\s+(.+?)(?=\s+\[\d{1,3}\]|\s+[A-Z][\p{L}'-]+(?:\s+[A-Z][\p{L}'-]+)*\.\s+(?:19|20)\d{2}\b|$)/gu
 const authorEntryPattern =
   /([A-Z][\p{L}'-]+(?:\s+(?:and|et al\.)\s+[A-Z][\p{L}'-]+)*)\.\s+((?:19|20)\d{2}[a-z]?)\.\s+(.+?)(?=\s+[A-Z][\p{L}'-]+(?:\s+[A-Z][\p{L}'-]+)*\.\s+(?:19|20)\d{2}\b|$)/gu
 const numericOccurrencePattern =
-  /\[((?:\d+\s*(?:,|;)\s*)*\d+(?:\s*-\s*\d+)?(?:\s*(?:,|;)\s*\d+(?:\s*-\s*\d+)?)*)\]/gu
+  /\[((?:\d{1,3}\s*(?:,|;)\s*)*\d{1,3}(?:\s*-\s*\d{1,3})?(?:\s*(?:,|;)\s*\d{1,3}(?:\s*-\s*\d{1,3})?)*)\]/gu
 const parenthesizedAuthorYearPattern =
   /\(([A-Z][\p{L}'-]+(?:\s+(?:and|et al\.)\s+[A-Z][\p{L}'-]+)*),\s*((?:19|20)\d{2}[a-z]?)\)/gu
 const etAlAuthorYearPattern = /\b([A-Z][\p{L}'-]+\s+et al\.)\s*\(((?:19|20)\d{2}[a-z]?)\)/gu

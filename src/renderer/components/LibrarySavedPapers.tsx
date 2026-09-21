@@ -101,10 +101,24 @@ export function LibrarySavedPapers({
   const [reloadToken, setReloadToken] = useState(0)
 
   useEffect(() => {
-    if (!clientOps || !active) return
+    if (!active) return
     let isCurrent = true
     const requestToken = reloadToken
-    void loadPaperPages(clientOps)
+    const load = async (): Promise<SavedPaperLoad> => {
+      try {
+        const discovery = window.scourgify?.discovery
+        if (!discovery) {
+          if (clientOps) return loadPaperPages(clientOps)
+          return { nodes: [], truncated: false }
+        }
+        const result = await discovery.listSavedMetadata()
+        return { nodes: result.items, truncated: false }
+      } catch (cause) {
+        if (clientOps) return loadPaperPages(clientOps)
+        throw cause
+      }
+    }
+    void load()
       .then(({ nodes, truncated: nextTruncated }) => {
         if (!isCurrent || requestToken !== reloadToken) return
         setPapers(nodes.filter((node) => !linkedToLocalDocument(node, documents)).map(savedPaper))
@@ -120,7 +134,7 @@ export function LibrarySavedPapers({
     }
   }, [active, clientOps, documents, reloadToken])
 
-  if (!clientOps || (papers.length === 0 && !error)) return null
+  if (papers.length === 0 && !error) return null
   return (
     <section className="library-saved-papers" aria-label="저장한 논문">
       <div className="library-saved-papers-heading">

@@ -54,7 +54,7 @@ export function DocumentOcrSettings({
         ) : (
           <span />
         )}
-        <button className="settings-save" type="submit">
+        <button className="settings-save" type="submit" disabled={key.trim().length < 20}>
           OCR 키 저장
         </button>
       </div>

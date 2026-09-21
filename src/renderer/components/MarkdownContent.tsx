@@ -22,9 +22,16 @@ const components: Components = {
 }
 
 function normalizedDisplayMath(source: string): string {
-  return source.replace(/\$\$\s*([\s\S]*?)\s*\$\$/gu, (_match, expression: string) => {
-    return `$$\n${expression.trim()}\n$$`
-  })
+  return source
+    .replace(/\\\[\s*([\s\S]*?)\s*\\\]/gu, (_match, expression: string) => {
+      return `$$\n${expression.trim()}\n$$`
+    })
+    .replace(/\\\(\s*([\s\S]*?)\s*\\\)/gu, (_match, expression: string) => {
+      return `$${expression.trim()}$`
+    })
+    .replace(/\$\$\s*([\s\S]*?)\s*\$\$/gu, (_match, expression: string) => {
+      return `$$\n${expression.trim()}\n$$`
+    })
 }
 
 export function MarkdownContent({

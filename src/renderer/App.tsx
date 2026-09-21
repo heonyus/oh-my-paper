@@ -85,6 +85,35 @@ export function App({
 
   if (!workspace) return <main className="loading-screen">oh-my-paper를 여는 중…</main>
 
+  if (!app.credentialsChecked)
+    return <main className="loading-screen">API 연결을 확인하는 중…</main>
+
+  const credentialsReady =
+    provider.configured && provider.provider === "openrouter" && ocrStatus.configured
+
+  if (!credentialsReady)
+    return (
+      <main
+        className="app-shell"
+        data-theme={workspace.theme}
+        style={appShellStyle(workspace.uiFontScale, workspace.uiFontFamily)}
+      >
+        <Suspense fallback={<p role="status">API 설정을 여는 중…</p>}>
+          <AppSettingsDialog
+            open
+            locked
+            status={provider}
+            ocrStatus={ocrStatus}
+            workspace={workspace}
+            onWorkspaceChange={app.setWorkspaceTransient}
+            onProviderChange={app.setProvider}
+            onOcrStatusChange={app.setOcrStatus}
+            onClose={() => undefined}
+          />
+        </Suspense>
+      </main>
+    )
+
   const openDocument = (id: DocumentId): void => {
     const selected = workspace.documents.find((document) => document.id === id)
     if (!selected) return
@@ -125,10 +154,14 @@ export function App({
         <LibraryWorkspace
           clientOps={knowledgeClientOps}
           active={libraryView}
-          onOpenNode={(id) => {
-            app.setSelectedKnowledgeNodeId(id)
-            app.setViewMode("knowledge")
-          }}
+          onOpenNode={
+            platform === "web"
+              ? undefined
+              : (id) => {
+                  app.setSelectedKnowledgeNodeId(id)
+                  app.setViewMode("knowledge")
+                }
+          }
           onOpenGraph={() => app.setViewMode("graph")}
           onOpenSearch={() => app.setViewMode("search")}
           documents={workspace.documents}

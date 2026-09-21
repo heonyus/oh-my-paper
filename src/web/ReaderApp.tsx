@@ -41,6 +41,39 @@ export function ReaderApp(): JSX.Element {
       </main>
     )
 
+  if (!app.credentialsChecked)
+    return (
+      <main className="loading-screen" aria-live="polite">
+        <p>API 연결을 확인하는 중…</p>
+      </main>
+    )
+
+  const credentialsReady =
+    app.provider.configured && app.provider.provider === "openrouter" && app.ocrStatus.configured
+
+  if (!credentialsReady)
+    return (
+      <main
+        className="app-shell web-reader-shell"
+        data-theme={workspace.theme}
+        style={appShellStyle(workspace.uiFontScale, workspace.uiFontFamily)}
+      >
+        <Suspense fallback={<p role="status">API 설정을 여는 중…</p>}>
+          <AppSettingsDialog
+            open
+            locked
+            status={app.provider}
+            ocrStatus={app.ocrStatus}
+            workspace={workspace}
+            onWorkspaceChange={app.setWorkspaceTransient}
+            onProviderChange={app.setProvider}
+            onOcrStatusChange={app.setOcrStatus}
+            onClose={() => undefined}
+          />
+        </Suspense>
+      </main>
+    )
+
   function openDocument(id: DocumentId): void {
     if (!workspace) return
     const selected = workspace.documents.find((document) => document.id === id)
@@ -186,7 +219,6 @@ export function ReaderApp(): JSX.Element {
             onProviderChange={app.setProvider}
             onOcrStatusChange={app.setOcrStatus}
             onClose={() => setSettingsOpen(false)}
-            appearanceOnly
           />
         </Suspense>
       ) : null}

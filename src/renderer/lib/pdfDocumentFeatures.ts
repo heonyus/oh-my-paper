@@ -49,14 +49,7 @@ function citationReference(
   if (!authorYear?.[1]) return undefined
   const authorYearKey = `${authorYear[1].toLowerCase()}-${(authorYear[2] ?? "").toLowerCase()}`
   if (bibliography[authorYearKey]) return bibliography[authorYearKey]
-  return {
-    key: authorYearKey,
-    title: "인용 논문 제목을 확인하는 중",
-    authors: authorYear[1],
-    year: authorYear[2] ? Number.parseInt(authorYear[2], 10) : null,
-    venue: "",
-    rawText: feature.context,
-  }
+  return undefined
 }
 
 function featureContext(feature: PdfFeature, spans: readonly PdfTextSpan[]): string {

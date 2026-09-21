@@ -1,8 +1,8 @@
 import { aiPolicy } from "../../shared/documentAiJobs"
 import type { AiRequestRunner } from "../types"
+import { parsePageTranslationResponse } from "./pageTranslationJson"
 import {
   type PageSourceBlock,
-  pageTranslationBlockIds,
   pageTranslationRequest,
   parsePageTranslationStream,
 } from "./pageTranslationSource"
@@ -22,6 +22,10 @@ type TranslationSlotWaiter = {
   readonly signal: AbortSignal | undefined
   abort: () => void
   cancelled: boolean
+}
+
+class InvalidPageTranslationResponseError extends Error {
+  readonly name = "InvalidPageTranslationResponseError"
 }
 
 let activeTranslationRequests = 0
@@ -85,6 +89,7 @@ async function withTranslationSlot<T>(
 }
 
 export function isRecoverableAiError(error: unknown): boolean {
+  if (error instanceof InvalidPageTranslationResponseError) return false
   if (error instanceof PaperAiJobError) {
     return error.code === "provider_error" || error.code === "timeout"
   }
@@ -116,7 +121,8 @@ export function extractPartialTranslations(
   const itemRegex =
     /\{\s*"id"\s*:\s*"([A-Za-z0-9._:-]+)"\s*,\s*"markdown"\s*:\s*"((?:[^"\\]|\\.)*)"\s*\}/gu
   let match: RegExpExecArray | null = null
-  let expectedIndex = 0
+  const expectedIds = new Set(blocks.map((block) => block.id))
+  const seenIds = new Set<string>()
 
   while (true) {
     match = itemRegex.exec(accumulated)
@@ -125,13 +131,8 @@ export function extractPartialTranslations(
     const rawMarkdown = match[2]
     if (!id || rawMarkdown === undefined) break
 
-    while (expectedIndex < blocks.length && blocks[expectedIndex]?.id !== id) {
-      expectedIndex += 1
-    }
-    if (expectedIndex >= blocks.length) {
-      break
-    }
-    expectedIndex += 1
+    if (!expectedIds.has(id) || seenIds.has(id)) continue
+    seenIds.add(id)
 
     try {
       const markdown = JSON.parse(`"${rawMarkdown}"`)
@@ -146,23 +147,60 @@ export function extractPartialTranslations(
   return result
 }
 
-function assertOrderedSubset(response: string, blocks: readonly PageSourceBlock[]): void {
-  let expectedIndex = 0
-  for (const id of pageTranslationBlockIds(response)) {
-    while (expectedIndex < blocks.length && blocks[expectedIndex]?.id !== id) expectedIndex += 1
-    if (expectedIndex >= blocks.length) throw new Error("page translation block order mismatch")
-    expectedIndex += 1
+function assertKnownUniqueIds(response: string, blocks: readonly PageSourceBlock[]): void {
+  const expectedIds = new Set(blocks.map((block) => block.id))
+  const seenIds = new Set<string>()
+  const parsed = parsePageTranslationResponse(response)
+  if (!parsed)
+    throw new InvalidPageTranslationResponseError("page translation response is malformed")
+  for (const { id } of parsed.translations) {
+    if (!expectedIds.has(id))
+      throw new InvalidPageTranslationResponseError(
+        "page translation response contains unknown block",
+      )
+    if (seenIds.has(id))
+      throw new InvalidPageTranslationResponseError(
+        "page translation response contains duplicate block",
+      )
+    seenIds.add(id)
   }
+}
+
+function wireBlocksForRequest(blocks: readonly PageSourceBlock[]): {
+  readonly blocks: readonly PageSourceBlock[]
+  readonly stableIds: ReadonlyMap<string, string>
+} {
+  const stableIds = new Map<string, string>()
+  const wireBlocks = blocks.map((block, index) => {
+    const wireId = `b${index}`
+    stableIds.set(wireId, block.id)
+    return { ...block, id: wireId }
+  })
+  return { blocks: wireBlocks, stableIds }
+}
+
+function restoreStableIds(
+  translations: ReadonlyMap<string, string>,
+  stableIds: ReadonlyMap<string, string>,
+): ReadonlyMap<string, string> {
+  return new Map(
+    [...translations].flatMap(([wireId, value]) => {
+      const stableId = stableIds.get(wireId)
+      return stableId ? [[stableId, value] as const] : []
+    }),
+  )
 }
 
 async function requestBlocks(
   input: TranslationBatchInput,
   blocks: readonly PageSourceBlock[],
+  allowRecovery = true,
 ): Promise<ReadonlyMap<string, string>> {
+  const wire = wireBlocksForRequest(blocks)
   const request = {
     action: "page_translation" as const,
     page: input.page,
-    quote: pageTranslationRequest(blocks),
+    quote: pageTranslationRequest(wire.blocks),
     before: "",
     after: "",
   }
@@ -171,10 +209,10 @@ async function requestBlocks(
   const onDelta = (delta: string): void => {
     if (input.signal?.aborted) return
     accumulated += delta
-    const partials = extractPartialTranslations(accumulated, blocks)
+    const partials = extractPartialTranslations(accumulated, wire.blocks)
     if (partials.size > emittedCount) {
       emittedCount = partials.size
-      input.onPartial(partials)
+      input.onPartial(restoreStableIds(partials, wire.stableIds))
     }
   }
   let result: string
@@ -183,17 +221,20 @@ async function requestBlocks(
       input.onAiRequest(request, onDelta, input.signal),
     )
   } catch (error) {
-    if (input.signal?.aborted || !isRecoverableAiError(error)) throw error
-    accumulated = ""
-    emittedCount = 0
-    result = await withTranslationSlot(input.signal, () =>
-      input.onAiRequest(request, onDelta, input.signal),
-    )
+    if (input.signal?.aborted || !allowRecovery || !isRecoverableAiError(error)) throw error
+    const wirePartials = extractPartialTranslations(accumulated, wire.blocks)
+    const partials = restoreStableIds(wirePartials, wire.stableIds)
+    if (partials.size > 0) input.onPartial(partials)
+    const missing = blocks.filter((block) => !partials.get(block.id)?.trim())
+    if (missing.length === 0) return partials
+    const retried = await requestBlocks(input, missing, false)
+    return new Map([...partials, ...retried])
   }
-  assertOrderedSubset(result, blocks)
+  assertKnownUniqueIds(result, wire.blocks)
   const parsed = parsePageTranslationStream(result)
-  input.onPartial(parsed)
-  return parsed
+  const restored = restoreStableIds(parsed, wire.stableIds)
+  input.onPartial(restored)
+  return restored
 }
 
 export async function translatePageBatch(

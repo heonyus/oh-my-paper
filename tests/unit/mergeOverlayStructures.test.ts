@@ -5,7 +5,7 @@ import type { DetectedStructure } from "../../src/renderer/lib/structureDetector
 const structure = (
   kind: DetectedStructure["kind"],
   bounds: { x: number; y: number; width: number; height: number },
-  title = kind,
+  title: string = kind,
 ): DetectedStructure => ({
   id: `${kind}-${bounds.x}-${bounds.y}`,
   kind,
@@ -32,6 +32,20 @@ describe("mergeOverlayStructures", () => {
     const parsed = [structure("table", { x: 0, y: 0, width: 300, height: 150 })]
     const detected = [structure("table", { x: 20, y: 30, width: 200, height: 100 })]
     expect(mergeOverlayStructures(parsed, detected)).toHaveLength(1)
+  })
+
+  it("does not let a native caption replace an OCR table with the same semantic number", () => {
+    const parsed = [structure("table", { x: 100, y: 160, width: 522, height: 333 }, "Table 3")]
+    const detected = [structure("table", { x: 100, y: 90, width: 517, height: 58 }, "Table 3")]
+
+    expect(mergeOverlayStructures(parsed, detected)).toEqual(parsed)
+  })
+
+  it("keeps different numbered tables even when their native bounds overlap", () => {
+    const parsed = [structure("table", { x: 100, y: 100, width: 500, height: 300 }, "Table 2")]
+    const detected = [structure("table", { x: 120, y: 120, width: 400, height: 240 }, "Table 3")]
+
+    expect(mergeOverlayStructures(parsed, detected)).toHaveLength(2)
   })
 
   it("keeps detected structures of the same kind when they do not overlap", () => {

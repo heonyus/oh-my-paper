@@ -39,6 +39,7 @@ export function useAppWorkspace() {
   const [tool, setTool] = useState<BoardTool>("select")
   const [provider, setProvider] = useState<ProviderStatus>(initialProviderStatus)
   const [ocrStatus, setOcrStatus] = useState<DocumentOcrProviderStatus>(initialOcrProviderStatus)
+  const [credentialsChecked, setCredentialsChecked] = useState(false)
   const [bootstrapError, setBootstrapError] = useState<string | null>(null)
   const activeId = history.workspace?.activeDocumentId ?? null
   const [outline, setOutline] = useState<{
@@ -91,6 +92,7 @@ export function useAppWorkspace() {
     setPreparation,
     setProvider,
     setOcrStatus,
+    setCredentialsChecked,
     setBootstrapError,
   })
 
@@ -201,6 +203,7 @@ export function useAppWorkspace() {
     setProvider,
     ocrStatus,
     setOcrStatus,
+    credentialsChecked,
     bootstrapError,
     outline: outline?.documentId === activeId ? outline.entries : [],
     citations: citations?.documentId === activeId ? citations.entries : [],

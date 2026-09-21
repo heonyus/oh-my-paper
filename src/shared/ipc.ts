@@ -1,5 +1,6 @@
 import { z } from "zod"
 import type { AccountApi } from "./accountIpc"
+import type { JevDecisionRequest, JevDecisionResult } from "./aiDecision"
 import {
   AI_CONTEXT_MAX_CHARACTERS,
   aiActionSchema,
@@ -288,6 +289,7 @@ export type ScourgifyApi = {
   readonly readDocumentLayout: (id: DocumentId) => Promise<DocumentLayoutResult>
   readonly parseDocumentPage: (
     request: DocumentPageParseRequest,
+    signal?: AbortSignal,
   ) => Promise<DocumentPageParseResult>
   readonly onDocumentPageParseProgress: (
     listener: (progress: DocumentPageParseProgress) => void,
@@ -313,6 +315,10 @@ export type ScourgifyApi = {
       | { mode: AiMode; codexModel?: string; codexReasoningEffort?: CodexReasoningEffort },
   ) => Promise<void>
   readonly providerStatus: () => Promise<z.infer<typeof providerStatusSchema>>
+  readonly decideAi?: (
+    request: JevDecisionRequest,
+    signal?: AbortSignal,
+  ) => Promise<JevDecisionResult>
   readonly runAi: (
     request: z.infer<typeof aiRequestSchema>,
   ) => Promise<z.infer<typeof aiResultSchema>>

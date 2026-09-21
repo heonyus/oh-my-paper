@@ -23,7 +23,7 @@ describe("AI completion budget", () => {
   })
 
   it("bounds mapped page-translation batches for low-latency streaming", () => {
-    expect(completionTokenLimit({ ...request, action: "page_translation" })).toBe(2_048)
+    expect(completionTokenLimit({ ...request, action: "page_translation" })).toBe(4_096)
     expect(
       completionLimitParameters("openrouter", "z-ai/glm-5.3-flash", {
         ...request,
@@ -112,6 +112,9 @@ describe("AI completion budget", () => {
     expect(JSON.stringify(pageParameters.response_format)).not.toMatch(
       /pattern|minLength|maxLength|minItems|maxItems/u,
     )
+    expect(pageParameters.max_completion_tokens).toBe(4_096)
+    expect(pageParameters.reasoning_effort).toBeUndefined()
+    expect(pageParameters.temperature).toBeUndefined()
   })
 
   it("uses low reasoning for the Groq speed fallback", () => {

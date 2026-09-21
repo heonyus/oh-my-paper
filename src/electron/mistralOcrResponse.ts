@@ -33,6 +33,14 @@ const mistralOcrResponseSchema = z.object({
         height: z.number().positive(),
         dpi: z.number().positive().optional(),
       }),
+      confidence_scores: z
+        .object({
+          average_page_confidence_score: z.number().min(0).max(1).nullable().optional(),
+          minimum_page_confidence_score: z.number().min(0).max(1).nullable().optional(),
+        })
+        .passthrough()
+        .nullable()
+        .optional(),
       blocks: z.array(
         z.object({
           type: mistralBlockTypeSchema,
@@ -41,6 +49,15 @@ const mistralOcrResponseSchema = z.object({
           bottom_right_x: z.number().finite(),
           bottom_right_y: z.number().finite(),
           content: z.string(),
+          confidence_scores: z
+            .object({
+              average_content_confidence_score: z.number().min(0).max(1).nullable().optional(),
+              minimum_content_confidence_score: z.number().min(0).max(1).nullable().optional(),
+              block_type_confidence_score: z.number().min(0).max(1).nullable().optional(),
+            })
+            .passthrough()
+            .nullable()
+            .optional(),
         }),
       ),
     }),
@@ -48,16 +65,21 @@ const mistralOcrResponseSchema = z.object({
   usage_info: z.object({ pages_processed: z.number().int().nonnegative() }).passthrough(),
 })
 
-function blockLabel(type: z.infer<typeof mistralBlockTypeSchema>) {
+function blockLabel(type: z.infer<typeof mistralBlockTypeSchema>, content: string) {
   switch (type) {
     case "title":
       return "paragraph_title" as const
     case "text":
-    case "references":
     case "signature":
       return "text" as const
-    case "caption":
-      return "figure_title" as const
+    case "references":
+      return "references" as const
+    case "caption": {
+      if (/^\s*(?:table|tab\.?)\s*\d+(?:\s|[:.)-]|$)/iu.test(content)) return "table_title" as const
+      if (/^\s*(?:figure|fig\.?)\s*\d+(?:\s|[:.)-]|$)/iu.test(content))
+        return "figure_title" as const
+      return "unknown" as const
+    }
     case "image":
       return "image" as const
     case "equation":
@@ -99,7 +121,7 @@ export function parsedPagesFromMistralResponse(
   sourceHash: Sha256,
 ): readonly ParsedDocumentPage[] {
   const response = mistralOcrResponseSchema.parse(value)
-  return response.pages.map((page, pageIndex) => {
+  return response.pages.map((page) => {
     const blocks = page.blocks.flatMap((block, order) => {
       const x = Math.max(0, Math.min(page.dimensions.width, block.top_left_x))
       const y = Math.max(0, Math.min(page.dimensions.height, block.top_left_y))
@@ -108,13 +130,18 @@ export function parsedPagesFromMistralResponse(
       if (right <= x || bottom <= y) return []
       return [
         {
-          id: `page:${pageIndex + 1}:block:${order}`,
-          label: blockLabel(block.type),
+          id: `page:${page.index + 1}:block:${order}`,
+          label: blockLabel(block.type, block.content),
           order,
           bounds: { x, y, width: right - x, height: bottom - y },
           content: block.content,
           contentFormat: contentFormat(block.type),
           translationPolicy: translationPolicy(block.type),
+          ...(block.confidence_scores === undefined
+            ? {}
+            : {
+                confidence: block.confidence_scores?.average_content_confidence_score ?? null,
+              }),
         },
       ]
     })
@@ -123,10 +150,17 @@ export function parsedPagesFromMistralResponse(
         schemaVersion: "1.0.0",
         sourceHash,
         parser: "Mistral-OCR-4.1",
-        configVersion: "blocks-v1",
-        pageNumber: pageIndex + 1,
+        configVersion: "blocks-v2",
+        pageNumber: page.index + 1,
         width: page.dimensions.width,
         height: page.dimensions.height,
+        provenance: {
+          model: response.model,
+          pageIndex: page.index,
+          ...(page.confidence_scores === undefined
+            ? {}
+            : { confidence: page.confidence_scores?.average_page_confidence_score ?? null }),
+        },
         blocks,
       }),
     )

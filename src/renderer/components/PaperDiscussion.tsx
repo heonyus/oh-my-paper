@@ -29,6 +29,14 @@ function loadEntries(documentId: string): readonly ChatEntry[] {
           typeof (entry as ChatEntry).content === "string",
       )
       .slice(-MAX_PERSISTED_ENTRIES)
+      .map((entry) =>
+        entry.role === "assistant" &&
+        /^(?:답변 작성 중…|논문 근거를 확인하는 중…)$/u.test(entry.content.trim())
+          ? { ...entry, content: "중단되었습니다." }
+          : entry.content.trim().length === 0
+            ? { ...entry, content: "중단되었습니다." }
+            : entry,
+      )
   } catch {
     return []
   }

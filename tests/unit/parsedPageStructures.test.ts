@@ -117,6 +117,114 @@ describe("Paddle page structures", () => {
     ])
   })
 
+  it("keeps a table structure on the body bounds when its numbered caption is separate", () => {
+    const page = parsedDocumentPageSchema.parse({
+      schemaVersion: "1.0.0",
+      sourceHash: "b".repeat(64),
+      parser: "Mistral-OCR-4.1",
+      configVersion: "blocks-v2",
+      pageNumber: 9,
+      width: 791,
+      height: 1_023,
+      blocks: [
+        {
+          id: "page:9:block:0",
+          label: "table_title",
+          order: 0,
+          bounds: { x: 135, y: 90, width: 517, height: 58 },
+          content: "Table 3: Variations on the Transformer architecture.",
+          contentFormat: "text",
+          translationPolicy: "include",
+        },
+        {
+          id: "page:9:block:1",
+          label: "table",
+          order: 1,
+          bounds: { x: 137, y: 165, width: 522, height: 333 },
+          content: "| base | 6 |",
+          contentFormat: "markdown",
+          translationPolicy: "exclude",
+        },
+      ],
+    })
+
+    expect(parsedPageStructures(page, 791, 1_023)).toMatchObject([
+      {
+        kind: "table",
+        title: "Table 3: Variations on the Transformer architecture.",
+        bounds: { x: 137, y: 165, width: 522, height: 333 },
+      },
+    ])
+  })
+
+  it("matches the OCR gold body bounds for Tables 2 and 3", () => {
+    const pages = [
+      parsedDocumentPageSchema.parse({
+        schemaVersion: "1.0.0",
+        sourceHash: "c".repeat(64),
+        parser: "Mistral-OCR-4.1",
+        configVersion: "blocks-v2",
+        pageNumber: 8,
+        width: 791,
+        height: 1_023,
+        blocks: [
+          {
+            id: "page:8:block:0",
+            label: "table_title",
+            order: 0,
+            bounds: { x: 135, y: 90, width: 517, height: 30 },
+            content: "Table 2: The Transformer achieves better BLEU scores.",
+            contentFormat: "text",
+            translationPolicy: "include",
+          },
+          {
+            id: "page:8:block:1",
+            label: "table",
+            order: 1,
+            bounds: { x: 166, y: 121, width: 458, height: 194 },
+            content: "| Model | BLEU |",
+            contentFormat: "markdown",
+            translationPolicy: "exclude",
+          },
+        ],
+      }),
+      parsedDocumentPageSchema.parse({
+        schemaVersion: "1.0.0",
+        sourceHash: "c".repeat(64),
+        parser: "Mistral-OCR-4.1",
+        configVersion: "blocks-v2",
+        pageNumber: 9,
+        width: 791,
+        height: 1_023,
+        blocks: [
+          {
+            id: "page:9:block:0",
+            label: "table_title",
+            order: 0,
+            bounds: { x: 135, y: 90, width: 517, height: 58 },
+            content: "Table 3: Variations on the Transformer architecture.",
+            contentFormat: "text",
+            translationPolicy: "include",
+          },
+          {
+            id: "page:9:block:1",
+            label: "table",
+            order: 1,
+            bounds: { x: 137, y: 165, width: 522, height: 333 },
+            content: "| Model | BLEU |",
+            contentFormat: "markdown",
+            translationPolicy: "exclude",
+          },
+        ],
+      }),
+    ]
+
+    expect(pages.map((page) => parsedPageStructures(page, 791, 1_023)[0])).toMatchObject([
+      { kind: "table", bounds: { x: 166, y: 121, width: 458, height: 194 } },
+      { kind: "table", bounds: { x: 137, y: 165, width: 522, height: 333 } },
+    ])
+  })
+
   it("refines only visual structures through the shared rendered-pixel seam", () => {
     const structures = [
       {

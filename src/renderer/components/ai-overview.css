@@ -51,6 +51,8 @@
   padding: 12px 4px 0 23px;
   font-size: var(--type-body-size);
   line-height: 1.68;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 .insight-body > p {
   margin: 0;
@@ -144,6 +146,8 @@
   background: var(--surface-muted);
   font-size: var(--type-toolbar-size);
   line-height: 1.62;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 .discussion-messages article[data-role="user"] {
   margin-left: 40px;

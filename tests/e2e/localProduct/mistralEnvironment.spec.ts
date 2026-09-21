@@ -67,7 +67,7 @@ test("installed Mistral uses a private env file and keeps import local", async (
       collectionRootForId(profile, activeCollection.collectionId),
       "parsed-pages",
       imported.document.hash,
-      "mistral-ocr-4-1-blocks-v1",
+      "mistral-ocr-4-1-blocks-v2",
       "page-2.json",
     )
     await expect(access(cache)).rejects.toMatchObject({ code: "ENOENT" })

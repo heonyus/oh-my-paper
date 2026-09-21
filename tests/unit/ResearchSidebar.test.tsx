@@ -207,7 +207,7 @@ describe("ResearchSidebar", () => {
     expect(screen.getByRole("region", { name: "인용 논문 판독" })).toBeInTheDocument()
   })
 
-  it("keeps overview generation explicit after the document is ready", async () => {
+  it("starts overview generation when the document is ready", async () => {
     const onAiRequest = vi.fn(async (_request: Omit<AiRequest, "documentId">) => "cached result")
     render(
       <ResearchSidebar
@@ -227,10 +227,6 @@ describe("ResearchSidebar", () => {
       />,
     )
 
-    await userEvent.click(screen.getByRole("button", { name: "AI 개요 열기" }))
-    for (const label of ["키워드 사전", "3줄 요약", "요약"]) {
-      await userEvent.click(screen.getByRole("button", { name: `${label} 다시 생성` }))
-    }
     await waitFor(() => expect(onAiRequest).toHaveBeenCalledTimes(3))
     expect(onAiRequest.mock.calls.map(([request]) => request.action)).toEqual(
       expect.arrayContaining(["keywords", "three_line_summary", "paper_summary"]),

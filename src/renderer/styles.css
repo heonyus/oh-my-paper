@@ -1382,6 +1382,10 @@ button:focus-visible {
   font-weight: 600;
   cursor: pointer;
 }
+.settings-save:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
 .codex-settings-card {
   padding: 18px 20px;
   display: flex;

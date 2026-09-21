@@ -39,6 +39,8 @@ describe("PageTranslationCacheService", () => {
       targetLanguage: "ko" as const,
       provider: "openrouter" as const,
       model: "translation-model-a",
+      parser: "Mistral-OCR-4.1" as const,
+      parserConfigVersion: "blocks-v2",
     }
     const blocks = [
       {
@@ -46,6 +48,8 @@ describe("PageTranslationCacheService", () => {
         kind: "body" as const,
         source: "Hello.",
         translation: "안녕하세요.",
+        sourceParser: "Mistral-OCR-4.1" as const,
+        sourceParserConfigVersion: "blocks-v2",
       },
     ]
 
@@ -58,6 +62,20 @@ describe("PageTranslationCacheService", () => {
       })
 
       expect(restored).toEqual({ status: "ready", blocks })
+      expect(
+        await new PageTranslationCacheService(store).read({
+          ...request,
+          parser: "NativeText-1.0",
+          parserConfigVersion: "page-native-v1",
+        }),
+      ).toEqual({ status: "missing" })
+      expect(
+        await new PageTranslationCacheService(store).read({
+          ...request,
+          parser: "Mistral-OCR-4.1",
+          parserConfigVersion: "blocks-v2",
+        }),
+      ).toEqual({ status: "ready", blocks })
       expect(otherModel).toEqual({ status: "missing" })
       await new PageTranslationCacheService(store).clear(request)
       expect(await new PageTranslationCacheService(store).read(request)).toEqual({

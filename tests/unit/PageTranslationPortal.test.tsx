@@ -1,7 +1,10 @@
 import { render, renderHook } from "@testing-library/react"
 import { act } from "react"
 import { describe, expect, it, vi } from "vitest"
-import { PageTranslationPortal } from "../../src/renderer/components/PageTranslationPortal"
+import {
+  PageTranslationPortal,
+  visibleResearchSidebarWidth,
+} from "../../src/renderer/components/PageTranslationPortal"
 import {
   setPageTranslationDocument,
   toggleAutomaticPageTranslation,
@@ -55,6 +58,13 @@ function renderPortal(document: DocumentRecord, currentPage: number) {
 }
 
 describe("PageTranslationPortal", () => {
+  it("reserves the visible AI flyout width when fitting translation panes", () => {
+    expect(visibleResearchSidebarWidth("open", "ai", 320)).toBe(360)
+    expect(visibleResearchSidebarWidth("pinned", "ai", 420)).toBe(460)
+    expect(visibleResearchSidebarWidth("hover", "ai", 320)).toBe(40)
+    expect(visibleResearchSidebarWidth("open", "translation", 320)).toBe(40)
+  })
+
   it("does not reopen the new document from the previous document's auto consent", () => {
     document.body.innerHTML = '<div class="board-world"></div>'
     const { result } = renderHook(() => usePageTranslationSession())

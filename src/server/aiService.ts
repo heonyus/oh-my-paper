@@ -14,29 +14,19 @@ import {
   type ProviderStatus,
   providerStatusSchema,
 } from "../shared/ipc"
-import type { WebServerConfig } from "./config"
 
 type AiRequest = z.infer<typeof aiRequestSchema>
 type AiResult = z.infer<typeof aiResultSchema>
 
 export class WebAiService {
-  readonly #providerConfig: ProviderConfig | null
+  #providerConfig: ProviderConfig | null
 
-  constructor(config: WebServerConfig) {
-    if (config.provider && config.model) {
-      const apiKey = config.apiKeys[config.provider]
-      if (apiKey) {
-        this.#providerConfig = {
-          provider: config.provider,
-          apiKey,
-          model: config.model,
-        } as ProviderConfig
-      } else {
-        this.#providerConfig = null
-      }
-    } else {
-      this.#providerConfig = null
-    }
+  constructor(config: ProviderConfig | null) {
+    this.#providerConfig = config
+  }
+
+  configure(config: ProviderConfig): void {
+    this.#providerConfig = config
   }
 
   status(): ProviderStatus {
@@ -96,7 +86,6 @@ export class WebAiService {
       })
       return aiResultSchema.parse(completion)
     } catch (error) {
-      console.error("[WebAiService.run] AI request failed:", error)
       throw providerFailure(error)
     }
   }
@@ -131,7 +120,6 @@ export class WebAiService {
       })
       return aiResultSchema.parse(completion)
     } catch (error) {
-      console.error("[WebAiService.stream] AI stream failed:", error)
       throw providerFailure(error)
     }
   }

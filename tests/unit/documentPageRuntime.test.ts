@@ -76,6 +76,59 @@ describe("parsed document page runtime", () => {
     expect(parsedDocumentPage(documentId, 1)).toBeNull()
   })
 
+  it("cancels one consumer without cancelling a shared page request", async () => {
+    const deferred: { resolve: ((result: DocumentPageParseResult) => void) | null } = {
+      resolve: null,
+    }
+    const pending = new Promise<DocumentPageParseResult>((resolve) => {
+      deferred.resolve = resolve
+    })
+    const signals: (AbortSignal | undefined)[] = []
+    const parseDocumentPage = vi.fn((_request: unknown, signal?: AbortSignal) => {
+      signals.push(signal)
+      return pending
+    })
+    Object.defineProperty(window, "scourgify", {
+      configurable: true,
+      value: { parseDocumentPage },
+    })
+    const firstController = new AbortController()
+    const first = loadParsedDocumentPage(documentId, 1, { signal: firstController.signal })
+    const second = loadParsedDocumentPage(documentId, 1)
+    firstController.abort(new Error("first consumer cancelled"))
+
+    expect(signals).toHaveLength(1)
+    expect(signals[0]?.aborted).toBe(false)
+    await expect(first).rejects.toThrow("first consumer cancelled")
+    deferred.resolve?.({ status: "ready", page })
+
+    await expect(second).resolves.toEqual(page)
+    expect(signals[0]?.aborted).toBe(true)
+    expect(parseDocumentPage).toHaveBeenCalledOnce()
+  })
+
+  it("reuses an active force OCR request for repeated consumers", async () => {
+    const deferred: { resolve: ((result: DocumentPageParseResult) => void) | null } = {
+      resolve: null,
+    }
+    const pending = new Promise<DocumentPageParseResult>((resolve) => {
+      deferred.resolve = resolve
+    })
+    const parseDocumentPage = vi.fn(() => pending)
+    Object.defineProperty(window, "scourgify", {
+      configurable: true,
+      value: { parseDocumentPage },
+    })
+
+    const first = loadParsedDocumentPage(documentId, 1, { forceOcr: true })
+    const second = loadParsedDocumentPage(documentId, 1, { forceOcr: true })
+    expect(parseDocumentPage).toHaveBeenCalledOnce()
+    deferred.resolve?.({ status: "ready", page })
+
+    await expect(first).resolves.toEqual(page)
+    await expect(second).resolves.toEqual(page)
+  })
+
   it("forces OCR through the IPC seam and drops the old page before loading", async () => {
     const nativePage = page
     const ocrPage = parsedDocumentPageSchema.parse({

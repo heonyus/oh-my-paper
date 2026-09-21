@@ -1,4 +1,5 @@
-import { AI_CONTEXT_MAX_CHARACTERS } from "../../shared/ipc"
+import type { ParsedDocumentPage } from "../../shared/documentPageModel"
+import type { PageStructureKind } from "../../shared/pageStructure"
 import { parsePageTranslationResponse } from "./pageTranslationJson"
 import { bindPageTranslationSpans, sourceElementMatchesBlock } from "./pageTranslationSpanMapping"
 import { normalizeExtractedPdfText } from "./pdfTextLines"
@@ -6,6 +7,7 @@ import { normalizeExtractedPdfText } from "./pdfTextLines"
 export type PageSourceBlock = {
   readonly id: string
   readonly kind: "heading" | "body"
+  readonly structureKind?: PageStructureKind | "figure"
   readonly source: string
   readonly parsedBlockId?: string
   readonly sourceBounds?: {
@@ -16,6 +18,8 @@ export type PageSourceBlock = {
   }
   readonly sourcePageWidth?: number
   readonly sourcePageHeight?: number
+  readonly sourceParser?: ParsedDocumentPage["parser"]
+  readonly sourceParserConfigVersion?: string
 }
 
 export type PageTranslationBlock = PageSourceBlock & { readonly translation: string }
@@ -31,7 +35,7 @@ type SourceRun = {
   readonly height: number
 }
 
-const translationChunkLimit = AI_CONTEXT_MAX_CHARACTERS - 800
+const translationChunkLimit = 2_800
 
 function median(values: readonly number[]): number {
   if (values.length === 0) return 0
@@ -113,6 +117,21 @@ export function setPageSourceActive(pageNumber: number, blockId: string, active:
   }
 }
 
+export function focusPageSource(pageNumber: number, blockId: string): void {
+  const page = document.querySelector<HTMLElement>(`.page[data-page-number="${pageNumber}"]`)
+  const overlay = document.querySelector<HTMLElement>(
+    `.paper-structure-host > [data-page-number="${pageNumber}"]`,
+  )
+  const elements = [
+    ...(page?.querySelectorAll<HTMLElement>("[data-page-translation-block]") ?? []),
+    ...(overlay?.querySelectorAll<HTMLElement>("[data-page-translation-block]") ?? []),
+  ]
+  const source = elements.find((element) => sourceElementMatchesBlock(element, blockId))
+  if (!source) return
+  setPageSourceActive(pageNumber, blockId, true)
+  source.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" })
+}
+
 export function extractPageSourceBlocks(pageNumber: number): readonly PageSourceBlock[] | null {
   const page = document.querySelector<HTMLElement>(`.page[data-page-number="${pageNumber}"]`)
   if (!page) return null
@@ -175,16 +194,13 @@ export function pageTranslationBatches(
 ): readonly (readonly PageSourceBlock[])[] {
   const batches: PageSourceBlock[][] = []
   let current: PageSourceBlock[] = []
-  let characters = 0
   for (const block of blocks) {
-    const size = block.source.length + block.id.length + 40
-    if (current.length > 0 && characters + size > translationChunkLimit) {
+    const candidate = [...current, block]
+    if (current.length > 0 && pageTranslationRequest(candidate).length > translationChunkLimit) {
       batches.push(current)
       current = []
-      characters = 0
     }
     current.push(block)
-    characters += size
   }
   if (current.length > 0) batches.push(current)
   return batches

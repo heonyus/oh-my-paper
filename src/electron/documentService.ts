@@ -40,16 +40,20 @@ type InspectedDocument = {
   readonly sourceAst: SourceDocumentAst
 }
 
-async function inspectDocument(bytes: Uint8Array, sourcePath: string): Promise<InspectedDocument> {
+async function inspectDocument(
+  bytes: Uint8Array,
+  sourcePath: string,
+  originalName = basename(sourcePath),
+): Promise<InspectedDocument> {
   if (bytes.length < 5 || new TextDecoder().decode(bytes.slice(0, 5)) !== "%PDF-") {
     throw new DocumentImportError("invalid_pdf")
   }
   try {
     const { preparePdf } = await import("./preparePdf")
-    const prepared = await preparePdf(new Uint8Array(bytes), basename(sourcePath))
+    const prepared = await preparePdf(new Uint8Array(bytes), originalName)
     const document = documentRecordSchema.parse({
       id: prepared.hash.slice(0, 16),
-      name: basename(sourcePath),
+      name: basename(originalName),
       hash: prepared.hash,
       bytes: bytes.length,
       importedAt: new Date().toISOString(),
@@ -77,9 +81,10 @@ async function inspectDocument(bytes: Uint8Array, sourcePath: string): Promise<I
 export async function importDocument(
   sourcePath: string,
   store: WorkspaceStore,
+  originalName = basename(sourcePath),
 ): Promise<ImportResult> {
   const bytes = await readFile(sourcePath)
-  const inspected = await inspectDocument(bytes, sourcePath)
+  const inspected = await inspectDocument(bytes, sourcePath, originalName)
   const inspectedHash = hashBytes(bytes)
   if (inspectedHash !== inspected.document.hash) {
     throw new DocumentImportError("read_failed")

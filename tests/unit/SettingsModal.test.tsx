@@ -62,8 +62,8 @@ describe("SettingsModal", () => {
 
     const model = screen.getByLabelText("모델 ID")
     expect(model).toHaveValue("google/gemini-2.5-flash-lite")
-    await userEvent.selectOptions(model, "deepseek/deepseek-v4-flash-0731")
-    expect(model).toHaveValue("deepseek/deepseek-v4-flash-0731")
+    await userEvent.selectOptions(model, "deepseek/deepseek-v4.1-flash")
+    expect(model).toHaveValue("deepseek/deepseek-v4.1-flash")
   })
 
   it("saves Gemini Flash-Lite as a first-class provider", async () => {
@@ -92,7 +92,7 @@ describe("SettingsModal", () => {
     })
   })
 
-  it("keeps the internally configured Mistral key out of desktop settings", async () => {
+  it("requires a user-owned Mistral OCR key alongside OpenRouter", async () => {
     const onOcrSave = vi.fn(async () => {})
     render(
       <SettingsModal
@@ -106,9 +106,49 @@ describe("SettingsModal", () => {
       />,
     )
 
-    expect(screen.queryByLabelText("Mistral OCR API 키")).not.toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "OCR 키 저장" })).not.toBeInTheDocument()
-    expect(onOcrSave).not.toHaveBeenCalled()
+    await userEvent.type(
+      screen.getByLabelText("Mistral OCR API 키"),
+      "mistral-example-key-at-least-twenty-characters",
+    )
+    await userEvent.click(screen.getByRole("button", { name: "OCR 키 저장" }))
+
+    expect(onOcrSave).toHaveBeenCalledWith("mistral-example-key-at-least-twenty-characters")
+  })
+
+  it("locks first run to OpenRouter and Mistral setup", async () => {
+    const onSave = vi.fn(async () => {})
+    const onModeSave = vi.fn(async () => {})
+    render(
+      <SettingsModal
+        status={{ configured: false, provider: "openrouter", model: "qwen/qwen3.7-flash" }}
+        ocrStatus={{ configured: false, provider: "mistral", model: "mistral-ocr-4-1" }}
+        fontScale={1}
+        locked
+        openRouterRequired
+        onClose={vi.fn()}
+        onSave={onSave}
+        onModeSave={onModeSave}
+        onOcrSave={vi.fn(async () => {})}
+        onFontScaleChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText("두 API 키 설정 필요")).toBeVisible()
+    expect(screen.getByLabelText("OpenRouter API 키")).toBeVisible()
+    expect(screen.getByLabelText("Mistral OCR API 키")).toBeVisible()
+    expect(screen.queryByLabelText("Provider")).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "설정 닫기" })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "OpenRouter 설정 저장" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "OCR 키 저장" })).toBeDisabled()
+
+    await userEvent.type(
+      screen.getByLabelText("OpenRouter API 키"),
+      "sk-or-user-owned-key-at-least-twenty-characters",
+    )
+    await userEvent.click(screen.getByRole("button", { name: "OpenRouter 설정 저장" }))
+    expect(await screen.findByText("저장됨")).toBeVisible()
+    expect(onSave).toHaveBeenCalledOnce()
+    expect(onModeSave).not.toHaveBeenCalled()
   })
 
   it("changes the persisted UI font scale", async () => {

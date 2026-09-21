@@ -69,7 +69,10 @@ const metadataSchema = z.object({
   Title: z.string().optional(),
   Author: z.string().optional(),
   Subject: z.string().optional(),
-  CreationDate: z.string().optional(),
+  PublicationDate: z.string().optional(),
+  PublicationYear: z.union([z.string(), z.number()]).optional(),
+  Published: z.string().optional(),
+  Keywords: z.string().optional(),
 })
 
 function errorName(error: unknown): string | null {
@@ -91,6 +94,146 @@ function extractDoi(...values: readonly (string | null)[]): string | null {
     if (match?.[0]) return match[0]
   }
   return null
+}
+
+function explicitYear(value: string | number | undefined): number | null {
+  const candidate = typeof value === "number" ? value : value?.match(/(?:19|20)\d{2}/u)?.[0]
+  if (!candidate) return null
+  const year = typeof candidate === "number" ? candidate : Number.parseInt(candidate, 10)
+  return Number.isInteger(year) && year >= 1000 && year <= 9999 ? year : null
+}
+
+function publicationYear(
+  info: z.infer<typeof metadataSchema>,
+  firstPageText: string,
+): number | null {
+  const metadataYear =
+    explicitYear(info.PublicationYear) ??
+    explicitYear(info.PublicationDate) ??
+    explicitYear(info.Published)
+  if (metadataYear !== null) return metadataYear
+  const labeledYear = firstPageText.match(
+    /\b(?:published|publication\s+date|published\s+on)\s*:?\s*((?:19|20)\d{2})\b/iu,
+  )?.[1]
+  const keywordYear = info.Keywords?.match(
+    /\bpublication[_\s-]*year\s*:?\s*((?:19|20)\d{2})\b/iu,
+  )?.[1]
+  return explicitYear(labeledYear ?? keywordYear)
+}
+
+function firstPageTitle(sourceAst: SourceDocumentAst): string | null {
+  const page = sourceAst.pages[0]
+  if (!page) return null
+  const items = sourceAst.items.filter((item) => item.pageId === page.id)
+  const lines = sourceAst.lines
+    .filter((line) => line.pageId === page.id && line.bounds.y < page.height * 0.25)
+    .map((line) => {
+      const text = line.sourceItemIds
+        .map((id) => items.find((item) => item.id === id)?.text ?? "")
+        .join(" ")
+        .replace(/\s+/gu, " ")
+        .trim()
+      const heights = line.sourceItemIds.flatMap((id) => {
+        const item = sourceAst.rawItems.find((candidate) => candidate.id === id)
+        return item ? [item.height] : []
+      })
+      return { text, bounds: line.bounds, height: Math.max(...heights, line.bounds.height) }
+    })
+    .filter(
+      (line) =>
+        line.text.length >= 12 &&
+        line.text.length <= 180 &&
+        !/^(?:abstract|introduction|keywords?|doi|arxiv|figure|fig\.?|table)\b/iu.test(line.text) &&
+        !/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/u.test(line.text),
+    )
+    .sort((left, right) => right.height - left.height || left.bounds.y - right.bounds.y)
+  const candidate = lines[0]
+  if (!candidate) return null
+  const titleLines = lines
+    .filter(
+      (line) =>
+        Math.abs(line.height - candidate.height) <= candidate.height * 0.05 &&
+        Math.abs(line.bounds.y - candidate.bounds.y) <= candidate.height * 1.8,
+    )
+    .sort((left, right) => left.bounds.y - right.bounds.y)
+  const competitor = lines.find((line) => !titleLines.includes(line))
+  if (competitor && candidate.height < competitor.height * 1.15) return null
+  const title = titleLines
+    .map((line) => line.text)
+    .join(" ")
+    .replace(/\s+arXiv:\S+(?:\s+\[[^\]]+\])?.*$/iu, "")
+    .trim()
+  return title.length <= 240 ? title : null
+}
+
+function splitAuthorNames(line: string): readonly string[] {
+  const tokens = line
+    .replace(/[∗*†‡]+/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean)
+  if (
+    tokens.length < 2 ||
+    tokens.length > 20 ||
+    tokens.some((token) => !/^(?:\p{Lu}[\p{L}'’-]*|\p{Lu}\.)$/u.test(token))
+  )
+    return []
+  const names: string[] = []
+  for (let index = 0; index < tokens.length; ) {
+    const given = tokens[index]
+    if (!given) return []
+    const parts = [given]
+    index += 1
+    while (tokens[index] && /^\p{Lu}\.$/u.test(tokens[index] ?? "")) {
+      parts.push(tokens[index] ?? "")
+      index += 1
+    }
+    const family = tokens[index]
+    if (!family) return []
+    parts.push(family)
+    index += 1
+    names.push(parts.join(" "))
+  }
+  return names
+}
+
+function firstPageAuthors(sourceAst: SourceDocumentAst, title: string): readonly string[] {
+  const page = sourceAst.pages[0]
+  if (!page) return []
+  const items = sourceAst.items.filter((item) => item.pageId === page.id)
+  const lines = sourceAst.lines
+    .filter((line) => line.pageId === page.id && line.bounds.y < page.height * 0.55)
+    .map((line) => ({
+      text: line.sourceItemIds
+        .map((id) => items.find((item) => item.id === id)?.text ?? "")
+        .join(" ")
+        .replace(/\s+/gu, " ")
+        .trim(),
+      bounds: line.bounds,
+    }))
+    .sort((left, right) => left.bounds.y - right.bounds.y)
+  const titleBottom = lines
+    .filter((line) => title.includes(line.text) || line.text.includes(title))
+    .reduce(
+      (bottom, line) =>
+        Math.max(bottom, line.bounds.y + Math.min(line.bounds.height, page.height * 0.05)),
+      0,
+    )
+  if (titleBottom === 0) return []
+  const abstractTop = lines.find(
+    (line) => line.bounds.y > titleBottom && /^abstract\b/iu.test(line.text),
+  )?.bounds.y
+  return lines
+    .filter(
+      (line) =>
+        line.bounds.y > titleBottom &&
+        line.bounds.y < (abstractTop ?? page.height * 0.55) &&
+        !/@|\b(?:university|institute|department|research|laboratory|language|google)\b/iu.test(
+          line.text,
+        ),
+    )
+    .flatMap((line) => splitAuthorNames(line.text))
 }
 
 export async function preparePdf(bytes: Uint8Array, fileName: string): Promise<PreparedPdf> {
@@ -129,14 +272,17 @@ export async function preparePdf(bytes: Uint8Array, fileName: string): Promise<P
       anchors.push(...splitAnchors(index + 1, text))
     }
 
-    const title = info.Title?.trim() || fileName.replace(/\.pdf$/iu, "")
     const author = info.Author?.trim() || null
     const subject = info.Subject?.trim() || null
-    const creationDate = info.CreationDate?.trim() || null
-    const yearMatch = creationDate?.match(/(?:19|20)\d{2}/u)
     const textCharacters = pages.reduce((total, page) => total + page.text.length, 0)
     const hash = createHash("sha256").update(bytes).digest("hex")
     const sourceAst = buildSourceDocumentAst(hash, sourceAstPages)
+    const title =
+      info.Title?.trim() || firstPageTitle(sourceAst) || fileName.replace(/\.pdf$/iu, "")
+    const authors = author
+      ? author.split(/[;,]/u).map((value) => value.trim())
+      : firstPageAuthors(sourceAst, title)
+    const year = publicationYear(info, pages[0]?.text ?? "")
     const warnings = pages
       .filter((page) => page.text.length < 24)
       .map((page) => `${page.page}페이지의 텍스트 품질을 확인하세요.`)
@@ -146,8 +292,8 @@ export async function preparePdf(bytes: Uint8Array, fileName: string): Promise<P
       hash,
       pageCount: pages.length,
       title,
-      authors: author ? author.split(/[;,]/u).map((value) => value.trim()) : [],
-      year: yearMatch ? Number(yearMatch[0]) : null,
+      authors,
+      year,
       doi: extractDoi(subject, pages.map((page) => page.text).join("\n")),
       kind: detectDocumentKind(pages.map((page) => page.text).join("\n"), pages.length),
       overview: buildDocumentOverview(pages),

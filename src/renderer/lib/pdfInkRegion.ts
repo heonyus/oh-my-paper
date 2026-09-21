@@ -19,9 +19,13 @@ export function expandBoundsWithinPage(
   return { x, y, width: right - x, height: bottom - y }
 }
 
-export function hasPlausibleInkCoverage(candidate: BoundingBox, ink: BoundingBox): boolean {
+export function hasPlausibleInkCoverage(
+  candidate: BoundingBox,
+  ink: BoundingBox,
+  minimumWidthRatio = 0.45,
+): boolean {
   return (
-    ink.width >= candidate.width * 0.45 &&
+    ink.width >= candidate.width * minimumWidthRatio &&
     ink.height >= candidate.height * 0.45 &&
     ink.width * ink.height >= candidate.width * candidate.height * 0.18
   )

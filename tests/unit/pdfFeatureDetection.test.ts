@@ -562,6 +562,38 @@ describe("PDF feature detection", () => {
     expect(features.filter((feature) => feature.kind === "citation")).toHaveLength(0)
   })
 
+  it("keeps a real citation marker in a figure caption", () => {
+    const spans = [
+      {
+        id: "figure-ink",
+        text: "encoder diagram",
+        x: 80,
+        y: 120,
+        width: 180,
+        height: 30,
+        fontSize: 9,
+        fontWeight: 400,
+      },
+      {
+        id: "figure-caption",
+        text: "Figure 2: Encoder architecture adapted from [38].",
+        x: 80,
+        y: 180,
+        width: 300,
+        height: 12,
+        fontSize: 9,
+        fontWeight: 400,
+      },
+    ] satisfies readonly PdfTextSpan[]
+
+    const features = detectPdfFeatures({ pageNumber: 8, pageWidth: 600, pageHeight: 800, spans })
+
+    expect(features.filter((feature) => feature.kind === "figure")).toHaveLength(1)
+    expect(
+      features.filter((feature) => feature.kind === "citation").map((feature) => feature.label),
+    ).toEqual(["[38]"])
+  })
+
   it("detects numbered display equations but rejects inline prose math", () => {
     const spans = [
       {

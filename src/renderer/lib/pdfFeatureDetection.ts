@@ -59,7 +59,7 @@ function isAuthorOrAffiliation(text: string): boolean {
   return false
 }
 
-const CITATION_PATTERN = /\[(\d+(?:\s*,\s*\d+)*)\]/gu
+const CITATION_PATTERN = /\[(\d{1,3}(?:\s*,\s*\d{1,3})*)\]/gu
 const AUTHOR_YEAR_CITATION_PATTERN =
   /\b[A-Z][A-Za-zÀ-ÖØ-öø-ÿ'-]+(?:\s+et al\.|,)\s*,?\s*(?:19|20)\d{2}[a-z]?\b/gu
 
@@ -166,8 +166,13 @@ export function detectPdfFeatures(input: DetectPdfFeaturesInput): readonly PdfFe
   )
   const consumedAll = new Set([...frontMatter.consumed, ...figTab.consumed, ...equationIds])
 
+  const captionIds = new Set(
+    figTab.features
+      .map((feature) => feature.sourceSpanIds[0])
+      .filter((id): id is string => id !== undefined),
+  )
   const citations = sorted
-    .filter((s) => !consumedAll.has(s.id))
+    .filter((span) => !consumedAll.has(span.id) || captionIds.has(span.id))
     .flatMap((s) => extractCitations(s, input.pageNumber))
   const sections = detectSections(
     sorted,

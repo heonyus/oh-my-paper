@@ -7,6 +7,7 @@ import type { AppearanceTheme } from "../../shared/schemas"
 import { uiFontScaleLabel, uiFontScalePercent, uiFontScalePresets } from "../../shared/uiAppearance"
 import { AiProviderSettings, useAiProviderForm } from "./AiProviderSettings"
 import { CodexSettings } from "./CodexSettings"
+import { DocumentOcrSettings, useDocumentOcrForm } from "./DocumentOcrSettings"
 import {
   HostedCredentialSettings,
   type HostedCredentialSettingsProps,
@@ -31,6 +32,8 @@ type SettingsModalProps = {
   readonly onThemeChange?: ((theme: AppearanceTheme) => void) | undefined
   readonly appearanceOnly?: boolean | undefined
   readonly hostedCredentials?: HostedCredentialSettingsProps | undefined
+  readonly openRouterRequired?: boolean | undefined
+  readonly locked?: boolean | undefined
 }
 
 const sections = [
@@ -52,12 +55,20 @@ export function SettingsModal({
   onThemeChange,
   appearanceOnly = false,
   hostedCredentials,
+  ocrStatus,
+  onOcrSave,
+  openRouterRequired = false,
+  locked = false,
 }: SettingsModalProps): JSX.Element {
   const [section, setSection] = useState<SettingsSection>(appearanceOnly ? "general" : "ai")
-  const visibleSections = appearanceOnly
-    ? sections.filter((candidate) => candidate.id !== "ai")
-    : sections
-  const aiProviderForm = useAiProviderForm(status)
+  const visibleSections = locked
+    ? sections.filter((candidate) => candidate.id === "ai")
+    : appearanceOnly
+      ? sections.filter((candidate) => candidate.id !== "ai")
+      : sections
+  const aiProviderForm = useAiProviderForm(status, openRouterRequired)
+  const ocrForm = useDocumentOcrForm()
+  const credentialsReady = status.configured && ocrStatus?.configured === true
   const dialog = useRef<HTMLDialogElement>(null)
   useLayoutEffect(() => {
     const element = dialog.current
@@ -72,7 +83,7 @@ export function SettingsModal({
       aria-labelledby="settings-title"
       onCancel={(event) => {
         event.preventDefault()
-        onClose()
+        if (!locked) onClose()
       }}
     >
       <section className="settings-modal">
@@ -98,19 +109,21 @@ export function SettingsModal({
             <div>
               <h3>{visibleSections.find((item) => item.id === section)?.label}</h3>
               {section === "ai" ? (
-                <span className="settings-connection" data-ready={status.configured}>
-                  <i /> {status.configured ? "연결 준비됨" : "설정 필요"}
+                <span className="settings-connection" data-ready={credentialsReady}>
+                  <i /> {credentialsReady ? "연결 준비됨" : "두 API 키 설정 필요"}
                 </span>
               ) : null}
             </div>
-            <button
-              type="button"
-              className="settings-close"
-              aria-label="설정 닫기"
-              onClick={onClose}
-            >
-              <X size={17} />
-            </button>
+            {!locked ? (
+              <button
+                type="button"
+                className="settings-close"
+                aria-label="설정 닫기"
+                onClick={onClose}
+              >
+                <X size={17} />
+              </button>
+            ) : null}
           </header>
           <div className="settings-page">
             {section === "general" ? (
@@ -175,17 +188,21 @@ export function SettingsModal({
                       form={aiProviderForm}
                       onSave={onSave}
                       onModeSave={onModeSave ?? (async () => {})}
+                      openRouterOnly={openRouterRequired}
                     />
-                    {aiProviderForm.mode === "chatgpt" ? (
+                    {!openRouterRequired && aiProviderForm.mode === "chatgpt" ? (
                       <CodexSettings
                         onConnectionChange={async () => {
                           await onModeSave?.("chatgpt")
                         }}
                       />
                     ) : null}
+                    {ocrStatus && onOcrSave ? (
+                      <DocumentOcrSettings status={ocrStatus} form={ocrForm} onSave={onOcrSave} />
+                    ) : null}
                   </>
                 )}
-                {window.scourgify?.localInference ? (
+                {!openRouterRequired && window.scourgify?.localInference ? (
                   <LocalAiPanel
                     api={window.scourgify.localInference}
                     nodeTitle="로컬 제안 설정"

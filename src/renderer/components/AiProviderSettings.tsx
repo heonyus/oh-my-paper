@@ -50,10 +50,12 @@ export function AiProviderSettings({
   form,
   onSave,
   onModeSave = async () => {},
+  openRouterOnly = false,
 }: {
   readonly form: AiProviderFormState
   readonly onSave: (config: ProviderConfig) => Promise<void>
   readonly onModeSave?: (mode: AiMode) => Promise<void>
+  readonly openRouterOnly?: boolean | undefined
 }): JSX.Element {
   const {
     mode,
@@ -73,10 +75,14 @@ export function AiProviderSettings({
     try {
       if (mode === "api") {
         await onSave(
-          provider === "opencodex" ? { provider, model } : { provider, model, apiKey: key },
+          openRouterOnly
+            ? { provider: "openrouter", model, apiKey: key }
+            : provider === "opencodex"
+              ? { provider, model }
+              : { provider, model, apiKey: key },
         )
       }
-      await onModeSave(mode)
+      if (!openRouterOnly) await onModeSave(mode)
       setKey("")
       setMessage("저장됨")
     } catch (error) {
@@ -88,51 +94,55 @@ export function AiProviderSettings({
   return (
     <form className="settings-ai-form" onSubmit={(event) => void submit(event)}>
       <div className="settings-group">
-        <label className="settings-row" htmlFor="ai-mode">
-          <span>AI 접근 방식</span>
-          <select
-            id="ai-mode"
-            value={mode}
-            onChange={(event) => {
-              const next = event.currentTarget.value
-              if (next === "api" || next === "chatgpt") {
-                setMode(next)
-                void onModeSave(next)
-              }
-            }}
-          >
-            <option value="chatgpt">ChatGPT 구독</option>
-            <option value="api">API 키·로컬 연결 (고급)</option>
-          </select>
-        </label>
+        {!openRouterOnly ? (
+          <label className="settings-row" htmlFor="ai-mode">
+            <span>AI 접근 방식</span>
+            <select
+              id="ai-mode"
+              value={mode}
+              onChange={(event) => {
+                const next = event.currentTarget.value
+                if (next === "api" || next === "chatgpt") {
+                  setMode(next)
+                  void onModeSave(next)
+                }
+              }}
+            >
+              <option value="chatgpt">ChatGPT 구독</option>
+              <option value="api">API 키·로컬 연결 (고급)</option>
+            </select>
+          </label>
+        ) : null}
         {mode === "api" ? (
           <>
-            <label className="settings-row" htmlFor="ai-provider">
-              <span>Provider</span>
-              <select
-                id="ai-provider"
-                value={provider}
-                onChange={(event) => {
-                  const next = event.currentTarget.value
-                  if (
-                    next !== "openai" &&
-                    next !== "openrouter" &&
-                    next !== "opencodex" &&
-                    next !== "gemini" &&
-                    next !== "groq"
-                  )
-                    return
-                  setProvider(next)
-                  setModel(nextProviderModel(next))
-                }}
-              >
-                <option value="gemini">Gemini API</option>
-                <option value="groq">Groq</option>
-                <option value="openai">OpenAI API</option>
-                <option value="openrouter">OpenRouter</option>
-                <option value="opencodex">로컬 OpenAI 호환 프록시</option>
-              </select>
-            </label>
+            {!openRouterOnly ? (
+              <label className="settings-row" htmlFor="ai-provider">
+                <span>Provider</span>
+                <select
+                  id="ai-provider"
+                  value={provider}
+                  onChange={(event) => {
+                    const next = event.currentTarget.value
+                    if (
+                      next !== "openai" &&
+                      next !== "openrouter" &&
+                      next !== "opencodex" &&
+                      next !== "gemini" &&
+                      next !== "groq"
+                    )
+                      return
+                    setProvider(next)
+                    setModel(nextProviderModel(next))
+                  }}
+                >
+                  <option value="gemini">Gemini API</option>
+                  <option value="groq">Groq</option>
+                  <option value="openai">OpenAI API</option>
+                  <option value="openrouter">OpenRouter</option>
+                  <option value="opencodex">로컬 OpenAI 호환 프록시</option>
+                </select>
+              </label>
+            ) : null}
             <label className="settings-row" htmlFor="provider-model">
               <span>모델</span>
               <select
@@ -150,9 +160,10 @@ export function AiProviderSettings({
             </label>
             {provider !== "opencodex" ? (
               <label className="settings-row" htmlFor="provider-key">
-                <span>API 키</span>
+                <span>{openRouterOnly ? "OpenRouter API 키" : "API 키"}</span>
                 <input
                   id="provider-key"
+                  aria-label={openRouterOnly ? "OpenRouter API 키" : "API 키"}
                   type="password"
                   autoComplete="off"
                   value={key}
@@ -179,8 +190,12 @@ export function AiProviderSettings({
           ) : (
             <span />
           )}
-          <button className="settings-save" type="submit">
-            암호화하여 저장
+          <button
+            className="settings-save"
+            type="submit"
+            disabled={openRouterOnly && key.trim().length < 20}
+          >
+            {openRouterOnly ? "OpenRouter 설정 저장" : "암호화하여 저장"}
           </button>
         </div>
       ) : null}
@@ -201,10 +216,14 @@ export type AiProviderFormState = {
   readonly setMessage: Dispatch<SetStateAction<string>>
 }
 
-export function useAiProviderForm(status: ProviderStatus): AiProviderFormState {
-  const [provider, setProvider] = useState<ProviderConfig["provider"]>(status.provider)
-  const [mode, setMode] = useState<AiMode>(status.mode ?? "api")
-  const [model, setModel] = useState(initialModel(status.provider, status.model))
+export function useAiProviderForm(
+  status: ProviderStatus,
+  openRouterOnly = false,
+): AiProviderFormState {
+  const initialProvider = openRouterOnly ? "openrouter" : status.provider
+  const [provider, setProvider] = useState<ProviderConfig["provider"]>(initialProvider)
+  const [mode, setMode] = useState<AiMode>(openRouterOnly ? "api" : (status.mode ?? "api"))
+  const [model, setModel] = useState(initialModel(initialProvider, status.model))
   const [key, setKey] = useState("")
   const [message, setMessage] = useState("")
   return { mode, setMode, provider, setProvider, model, setModel, key, setKey, message, setMessage }

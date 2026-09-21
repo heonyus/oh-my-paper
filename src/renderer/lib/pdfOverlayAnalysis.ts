@@ -48,8 +48,20 @@ function boundsIntersection(
   return width * height
 }
 
+function semanticVisualNumber(structure: DetectedStructure): number | null {
+  if (structure.kind !== "figure" && structure.kind !== "table") return null
+  const match = /^\s*(?:figure|fig\.?|table|tab\.?)\s*(\d+)/iu.exec(structure.title)
+  const number = match?.[1]
+  if (!number) return null
+  const parsed = Number.parseInt(number, 10)
+  return Number.isSafeInteger(parsed) ? parsed : null
+}
+
 function structuresDuplicate(parsed: DetectedStructure, detected: DetectedStructure): boolean {
   if (parsed.kind !== detected.kind) return false
+  const parsedNumber = semanticVisualNumber(parsed)
+  const detectedNumber = semanticVisualNumber(detected)
+  if (parsedNumber !== null && detectedNumber !== null) return parsedNumber === detectedNumber
   const smaller = Math.min(boundsArea(parsed.bounds), boundsArea(detected.bounds))
   if (smaller <= 0) return false
   return boundsIntersection(parsed.bounds, detected.bounds) / smaller > 0.4
@@ -116,7 +128,9 @@ export function completePageOverlay(
       const captionId = feature.sourceSpanIds[0]
       const caption = captionId ? captured.spans.find((span) => span.id === captionId) : undefined
       const ink = caption ? inkBoundsForCaption(pageDiv, caption, feature.rect, feature.kind) : null
-      if (ink && hasPlausibleInkCoverage(feature.rect, ink)) return { ...feature, rect: ink }
+      const minimumWidthRatio = feature.kind === "figure" ? 0.28 : 0.45
+      if (ink && hasPlausibleInkCoverage(feature.rect, ink, minimumWidthRatio))
+        return { ...feature, rect: ink }
       return { ...feature, rect: adoptVisualBounds(pageDiv, feature.rect) }
     }
     if (feature.kind === "equation") {

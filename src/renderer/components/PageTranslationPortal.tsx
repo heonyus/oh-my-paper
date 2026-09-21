@@ -14,6 +14,20 @@ import { fitWorldRectHorizontally } from "../lib/viewport"
 import type { AiRequestRunner, DocumentRecord, Viewport } from "../types"
 import { PageTranslationPane } from "./PageTranslationPane"
 
+export function visibleResearchSidebarWidth(
+  flyout: string | undefined,
+  mode: string | undefined,
+  flyoutWidth: number,
+): number {
+  if (mode === "translation" || (flyout !== "open" && flyout !== "pinned"))
+    return researchSidebarLayout.railWidth
+  const contentWidth =
+    Number.isFinite(flyoutWidth) && flyoutWidth > 0
+      ? flyoutWidth
+      : researchSidebarLayout.contentDefault
+  return researchSidebarLayout.railWidth + contentWidth
+}
+
 export function PageTranslationPortal({
   document,
   currentPage,
@@ -22,6 +36,7 @@ export function PageTranslationPortal({
   onAiRequest,
   viewport,
   onViewportChange,
+  sidebarReservedWidth = researchSidebarLayout.railWidth,
 }: {
   readonly document: DocumentRecord
   readonly currentPage: number
@@ -30,12 +45,14 @@ export function PageTranslationPortal({
   readonly onAiRequest: AiRequestRunner
   readonly viewport?: Viewport | undefined
   readonly onViewportChange?: ((viewport: Viewport) => void) | undefined
+  readonly sidebarReservedWidth?: number | undefined
 }): JSX.Element | null {
   const translation = usePageTranslationSession()
   const [world, setWorld] = useState<HTMLElement | null>(() =>
     globalThis.document.querySelector<HTMLElement>(".board-world"),
   )
   const revealedPages = useRef(new Set<number>())
+  const fittedSidebarWidth = useRef(sidebarReservedWidth)
 
   useEffect(() => {
     if (world) return
@@ -61,7 +78,11 @@ export function PageTranslationPortal({
   useEffect(() => {
     for (const page of revealedPages.current)
       if (!openPages.includes(page)) revealedPages.current.delete(page)
-    const pageNumber = openPages.find((page) => !revealedPages.current.has(page))
+    const sidebarWidthChanged = fittedSidebarWidth.current !== sidebarReservedWidth
+    fittedSidebarWidth.current = sidebarReservedWidth
+    const pageNumber =
+      openPages.find((page) => !revealedPages.current.has(page)) ??
+      (sidebarWidthChanged ? openPages.at(-1) : undefined)
     if (!pageNumber || !viewport || !onViewportChange) return
     revealedPages.current.add(pageNumber)
     const frame = requestAnimationFrame(() => {
@@ -79,7 +100,7 @@ export function PageTranslationPortal({
       const pageWidth = pageRect.width / scale
       const next = fitWorldRectHorizontally(
         viewport,
-        board.clientWidth - researchSidebarLayout.railWidth,
+        board.clientWidth - sidebarReservedWidth,
         {
           x: placement.left - pageTranslationLayout.gap - pageWidth,
           y: placement.top,
@@ -90,7 +111,7 @@ export function PageTranslationPortal({
       onViewportChange(next)
     })
     return () => cancelAnimationFrame(frame)
-  }, [onViewportChange, openPages, viewport])
+  }, [onViewportChange, openPages, sidebarReservedWidth, viewport])
 
   return world
     ? createPortal(

@@ -14,42 +14,72 @@ export type LocalAiJobs = {
 
 export function createLocalAiJobs(): LocalAiJobs {
   const listeners = new Set<(event: AiJobEvent) => void>()
+  const active = new Map<AiJobId, { readonly controller: AbortController; sequence: number }>()
   const emit = (event: AiJobEvent): void => {
     for (const listener of listeners) listener(event)
   }
 
   const startAiJob: StartAiJob = (request) => {
     const jobId = request.jobId
+    if (active.has(jobId)) return Promise.reject(new Error("AI job already running"))
+    const job = { controller: new AbortController(), sequence: 0 }
+    active.set(jobId, job)
+    const receive = (event: AiJobEvent): void => {
+      if (active.get(jobId) !== job) return
+      job.sequence = event.sequence
+      switch (event.kind) {
+        case "started":
+        case "delta":
+          break
+        case "completed":
+        case "failed":
+        case "cancelled":
+          active.delete(jobId)
+          break
+      }
+      emit(event)
+    }
     void (async () => {
       const response = await fetch("/api/rpc/startAiJob", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(request),
+        signal: job.controller.signal,
       })
       const stream = response.body
       if (!response.ok || stream === null) {
-        const failure = (await response.json().catch(() => null)) as { error?: string } | null
-        emit({
+        await stream?.cancel()
+        throw new Error("AI request failed")
+      }
+      await readJobEvents(jobId, stream, receive)
+      if (active.get(jobId) === job) throw new Error("AI stream ended before completion")
+    })()
+      .catch(() => {
+        receive({
           kind: "failed",
           jobId,
-          sequence: 0,
+          sequence: job.sequence + 1,
           code: "provider_error",
           retryable: false,
         })
-        throw new Error(failure?.error ?? "startAiJob request failed")
-      }
-      await readJobEvents(jobId, stream, emit)
-    })().catch(() => undefined)
+      })
+      .finally(() => {
+        job.controller.abort()
+      })
     return Promise.resolve({ jobId: request.jobId })
   }
 
   const cancelAiJob: CancelAiJob = async (jobId) => {
+    const job = active.get(jobId)
+    if (!job) return
+    active.delete(jobId)
+    job.controller.abort()
     void fetch("/api/rpc/cancelAiJob", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ jobId }),
     }).catch(() => undefined)
-    emit({ kind: "cancelled", jobId, sequence: 0 })
+    emit({ kind: "cancelled", jobId, sequence: job.sequence + 1 })
   }
 
   const onAiJobEvent: OnAiJobEvent = (listener) => {
@@ -71,20 +101,29 @@ function readJobEvents(
   const pump = async (): Promise<void> => {
     const reader = stream.getReader()
     let buffered = ""
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buffered += decode.decode(value, { stream: true })
-      const frames = buffered.split("\n\n")
-      buffered = frames.pop() ?? ""
-      for (const frame of frames) {
-        const event = parseFrame(jobId, frame)
+    try {
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffered += decode.decode(value, { stream: true })
+        if (buffered.length > 262_144) throw new Error("AI event exceeds limit")
+        const frames = buffered.split(/\r?\n\r?\n/u)
+        buffered = frames.pop() ?? ""
+        for (const frame of frames) {
+          const event = parseFrame(jobId, frame)
+          if (!event) continue
+          emit(event)
+          if (event.kind === "completed" || event.kind === "failed" || event.kind === "cancelled")
+            return
+        }
+      }
+      if (buffered.length > 0) {
+        const event = parseFrame(jobId, buffered)
         if (event) emit(event)
       }
-    }
-    if (buffered.length > 0) {
-      const event = parseFrame(jobId, buffered)
-      if (event) emit(event)
+    } finally {
+      await reader.cancel().catch(() => undefined)
+      reader.releaseLock()
     }
   }
   return pump()

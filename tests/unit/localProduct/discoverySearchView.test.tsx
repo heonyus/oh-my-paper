@@ -73,6 +73,7 @@ function client(overrides: Partial<DiscoveryApi> = {}): DiscoveryApi {
         },
       }),
     ),
+    listSavedMetadata: vi.fn(async () => ({ items: [] })),
     ...overrides,
   }
 }

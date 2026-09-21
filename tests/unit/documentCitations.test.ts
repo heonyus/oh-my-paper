@@ -97,4 +97,33 @@ describe("document citations", () => {
     expect(result.occurrences[0]?.resolution).toBe("ambiguous")
     expect(result.edges).toHaveLength(0)
   })
+
+  it("does not resolve a four-digit bracketed year as a numeric citation", () => {
+    const source = sourceDocumentAstSchema.parse({
+      ...sourceFixture(),
+      items: [
+        {
+          id: "item:1.0",
+          pageId: "page:1",
+          text: "The 2013 result is unrelated to a numeric citation.",
+          normalizedStart: 0,
+          normalizedEnd: 52,
+          bounds: { x: 40, y: 60, width: 400, height: 14 },
+        },
+        {
+          id: "item:2.0",
+          pageId: "page:2",
+          text: "References [2013] A paper. Journal.",
+          normalizedStart: 0,
+          normalizedEnd: 36,
+          bounds: { x: 40, y: 60, width: 400, height: 14 },
+        },
+      ],
+    })
+
+    const result = deriveDocumentCitations(source)
+
+    expect(result.occurrences).toHaveLength(0)
+    expect(result.bibliography.some((entry) => entry.referenceKey === "2013")).toBe(false)
+  })
 })

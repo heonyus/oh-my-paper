@@ -168,7 +168,10 @@ export function adoptVisualBounds(
   )
 }
 
-export function cropFeatureImage(pageElement: HTMLElement, feature: PdfFeature): string | null {
+export function cropFeatureImage(
+  pageElement: HTMLElement,
+  feature: PdfFeature | Pick<PdfFeature, "rect">,
+): string | null {
   const source = pageElement.querySelector<HTMLCanvasElement>(".canvasWrapper canvas")
   if (!source) return null
   const pageRect = pageElement.getBoundingClientRect()

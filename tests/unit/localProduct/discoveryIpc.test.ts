@@ -98,12 +98,14 @@ describe("discovery IPC", () => {
 
     const first = await client.saveMetadata({ item })
     const second = await client.saveMetadata({ item })
+    const listed = await client.listSavedMetadata()
     expect(first.status).toBe("saved")
     expect(second.status).toBe("duplicate")
     expect(second.node.id).toBe(first.node.id)
     expect(first.node.body).toBe("")
     expect(first.node.aliases).toContain("doi:10.1000/example")
     expect(first.node.metadata).toMatchObject({ fullTextReviewed: false })
+    expect(listed.items.map((saved) => saved.id)).toEqual([first.node.id])
     database.close()
   })
 
@@ -115,6 +117,6 @@ describe("discovery IPC", () => {
     )
     dispose()
     expect(main.handlers.size).toBe(0)
-    expect(Object.values(discoveryChannels)).toHaveLength(3)
+    expect(Object.values(discoveryChannels)).toHaveLength(4)
   })
 })

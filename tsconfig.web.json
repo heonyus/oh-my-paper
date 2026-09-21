@@ -3,6 +3,7 @@
   "compilerOptions": {
     "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"]
   },
+  "exclude": ["node_modules", "dist", "dist-web", "dist-electron"],
   "include": [
     "vite.web.config.ts",
     "src/web",

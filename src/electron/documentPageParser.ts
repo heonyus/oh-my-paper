@@ -17,6 +17,25 @@ import type { WorkspaceStore } from "./workspaceStore"
 
 type PaddlePageParser = Pick<PaddlePageParserService, "parse">
 
+type ActivePageParse = {
+  readonly promise: Promise<DocumentPageParseResult>
+  readonly controller: AbortController
+  consumers: number
+}
+
+function waitForAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise
+  if (signal.aborted) return Promise.reject(signal.reason)
+  let onAbort: (() => void) | undefined
+  const aborted = new Promise<T>((_, reject) => {
+    onAbort = () => reject(signal.reason)
+    signal.addEventListener("abort", onAbort, { once: true })
+  })
+  return Promise.race([promise, aborted]).finally(() => {
+    if (onAbort) signal.removeEventListener("abort", onAbort)
+  })
+}
+
 export type DocumentPageParserOptions = {
   readonly store: WorkspaceStore
   readonly paddlePageParser: PaddlePageParser
@@ -31,7 +50,7 @@ export class DocumentPageParser {
   readonly #mistral: MistralPageParserService
   readonly #ocrCredentials: OcrCredentialSource
   readonly #astService: DocumentAstService
-  readonly #active = new Map<string, Promise<DocumentPageParseResult>>()
+  readonly #active = new Map<string, ActivePageParse>()
 
   constructor(options: DocumentPageParserOptions) {
     this.#store = options.store
@@ -47,14 +66,31 @@ export class DocumentPageParser {
     readonly store?: WorkspaceStore
     readonly onProgress?: (progress: DocumentPageParseProgress) => void
     readonly forceOcr?: boolean
+    readonly signal?: AbortSignal | undefined
   }): Promise<DocumentPageParseResult> {
     const key = `${input.documentId}:${input.pageNumber}:${input.forceOcr ? "ocr" : "auto"}`
-    const active = this.#active.get(key)
-    if (active) return active
-
-    const operation = this.#runParse(input).finally(() => this.#active.delete(key))
-    this.#active.set(key, operation)
-    return operation
+    let active = this.#active.get(key)
+    if (!active) {
+      const controller = new AbortController()
+      const promise = this.#runParse({ ...input, signal: controller.signal }).finally(() => {
+        if (this.#active.get(key)?.promise === promise) this.#active.delete(key)
+      })
+      active = { promise, controller, consumers: 0 }
+      this.#active.set(key, active)
+    }
+    active.consumers += 1
+    try {
+      return await waitForAbort(active.promise, input.signal)
+    } catch (error) {
+      if (input.signal?.aborted) return { status: "unavailable", reason: "execution_failed" }
+      throw error
+    } finally {
+      active.consumers -= 1
+      if (active.consumers === 0) {
+        active.controller.abort()
+        if (this.#active.get(key)?.promise === active.promise) this.#active.delete(key)
+      }
+    }
   }
 
   async #runParse(input: {
@@ -63,6 +99,7 @@ export class DocumentPageParser {
     readonly store?: WorkspaceStore
     readonly onProgress?: (progress: DocumentPageParseProgress) => void
     readonly forceOcr?: boolean
+    readonly signal?: AbortSignal | undefined
   }): Promise<DocumentPageParseResult> {
     if (!Number.isInteger(input.pageNumber) || input.pageNumber <= 0) {
       return { status: "unavailable", reason: "invalid_page" }
@@ -74,7 +111,8 @@ export class DocumentPageParser {
     if (input.pageNumber > document.pageCount)
       return { status: "unavailable", reason: "invalid_page" }
 
-    if (input.forceOcr) {
+    const mistralConfigured = (await this.#ocrCredentials.apiKey()) !== null
+    if (input.forceOcr || mistralConfigured) {
       const ocrCached = await this.#readOcrCachedPage(store, document.hash, input.pageNumber)
       if (ocrCached)
         return documentPageParseResultSchema.parse({ status: "ready", page: ocrCached })
@@ -102,6 +140,7 @@ export class DocumentPageParser {
       readonly documentId: DocumentId
       readonly pageNumber: number
       readonly onProgress?: (progress: DocumentPageParseProgress) => void
+      readonly signal?: AbortSignal | undefined
     },
     _document: DocumentRecord,
     store: WorkspaceStore,
@@ -113,6 +152,7 @@ export class DocumentPageParser {
         pageNumber: input.pageNumber,
         store,
         onProgress: input.onProgress,
+        signal: input.signal,
       })
     }
     return this.#paddle.parse({
@@ -143,7 +183,7 @@ export class DocumentPageParser {
     pageNumber: number,
   ): Promise<ParsedDocumentPage | null> {
     const parsers = [
-      "mistral-ocr-4-1-blocks-v1",
+      "mistral-ocr-4-1-blocks-v2",
       "paddleocr-vl-1.6-page-v1",
       "native-text-1.0-page-native-v1",
     ]
@@ -166,7 +206,7 @@ export class DocumentPageParser {
     pageNumber: number,
   ): Promise<ParsedDocumentPage | null> {
     const apiKey = await this.#ocrCredentials.apiKey()
-    const parserDir = apiKey ? "mistral-ocr-4-1-blocks-v1" : "paddleocr-vl-1.6-page-v1"
+    const parserDir = apiKey ? "mistral-ocr-4-1-blocks-v2" : "paddleocr-vl-1.6-page-v1"
     const file = join(store.root, "parsed-pages", hash, parserDir, `page-${pageNumber}.json`)
     try {
       const raw = JSON.parse(await readFile(file, "utf8"))
@@ -183,7 +223,7 @@ export class DocumentPageParser {
       page.parser === "NativeText-1.0"
         ? "native-text-1.0-page-native-v1"
         : page.parser === "Mistral-OCR-4.1"
-          ? "mistral-ocr-4-1-blocks-v1"
+          ? "mistral-ocr-4-1-blocks-v2"
           : "paddleocr-vl-1.6-page-v1"
     const file = join(
       store.root,

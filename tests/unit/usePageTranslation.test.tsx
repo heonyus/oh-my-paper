@@ -138,11 +138,14 @@ describe("usePageTranslation partial results and cancellation", () => {
     // Incomplete output must NEVER be marked complete or cached
     expect(result.current.status).not.toBe("complete")
     expect(mockWriteCache).not.toHaveBeenCalled()
-    expect(window.scourgify.parseDocumentPage).toHaveBeenCalledWith({
-      id: testDoc.id,
-      pageNumber: 1,
-      forceOcr: true,
-    })
+    expect(window.scourgify.parseDocumentPage).toHaveBeenCalledWith(
+      {
+        id: testDoc.id,
+        pageNumber: 1,
+        forceOcr: true,
+      },
+      expect.any(AbortSignal),
+    )
   })
 
   it("aborts in-flight translation and prevents stale updates on unmount", async () => {

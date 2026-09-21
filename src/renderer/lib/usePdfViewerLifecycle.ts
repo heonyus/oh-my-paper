@@ -9,7 +9,6 @@ import { PdfAstRuntimeSession } from "./pdfAstRuntimeSession"
 import type { ViewerSession } from "./pdfColumnSupport"
 import * as Pdf from "./pdfColumnSupport"
 import type { PreparedSummary } from "./pdfDocumentFeatures"
-import { PdfLayoutWorkerPool } from "./pdfLayoutWorkerPool"
 import type { PdfOutlineEntry } from "./pdfOutline"
 import type { PageOverlayState } from "./pdfOverlayAnalysis"
 import { enrichOverlayCitations } from "./pdfOverlayBibliography"
@@ -108,7 +107,6 @@ export function usePdfViewerLifecycle({
     viewerElement.replaceChildren()
 
     const eventBus = new EventBus()
-    const layoutPool = new PdfLayoutWorkerPool()
     const linkService = new PDFLinkService({ eventBus, ignoreDestinationZoom: true })
     const viewer = new PDFViewer({
       container,
@@ -133,11 +131,8 @@ export function usePdfViewerLifecycle({
       document: resourceDocument,
       initialPage,
       astRuntime,
-      layoutPool,
       zoomRef,
-      bibliographyRef,
       outlineRef,
-      pageOverlaysRef,
       pageTextsRef,
       setPageOverlays,
       onOutlineChange,
@@ -212,7 +207,6 @@ export function usePdfViewerLifecycle({
       if (activeSession) sessionRef.current = null
       viewer.cleanup()
       bridge.dispose()
-      layoutPool.dispose()
       releaseExternalLinks()
       retrievalSession?.dispose()
       onRetrievalReady?.(null)

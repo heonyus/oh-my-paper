@@ -4,11 +4,13 @@ export type ParsedPageTranslationBlock = {
   readonly id: string
   readonly parsedBlockId: string
   readonly kind: "heading" | "body"
-  readonly structureKind: "heading" | "body" | "equation"
+  readonly structureKind: "heading" | "body" | "equation" | "table" | "figure"
   readonly source: string
   readonly sourceBounds: ParsedPageBlock["bounds"]
   readonly sourcePageWidth: number
   readonly sourcePageHeight: number
+  readonly sourceParser: ParsedDocumentPage["parser"]
+  readonly sourceParserConfigVersion: string
 }
 
 export type PlannedParsedPageTranslations = {
@@ -24,7 +26,11 @@ function translationKind(
     ? "heading"
     : label === "equation"
       ? "equation"
-      : "body"
+      : label === "table"
+        ? "table"
+        : label === "image"
+          ? "figure"
+          : "body"
 }
 
 function isNumberedMarker(value: string): boolean {
@@ -60,14 +66,22 @@ function sentenceSources(block: ParsedPageBlock, source: string): readonly strin
   return sentences.length > 0 ? attachNumberedMarkers(sentences) : [source]
 }
 
+function equationSource(block: ParsedPageBlock, source: string): string {
+  if (block.label !== "equation" || block.contentFormat !== "latex") return source
+  if (/\$\$|\\\(|\\\)|\\\[|\\\]/u.test(source)) return source
+  return `$$\n${source}\n$$`
+}
+
 export function pageTranslationBlocksFromParsedPage(
   page: ParsedDocumentPage,
 ): readonly ParsedPageTranslationBlock[] {
   return [...page.blocks]
     .sort((left, right) => left.order - right.order)
     .flatMap((block) => {
-      const source = block.content.trim()
-      if (block.translationPolicy !== "include" || !source) return []
+      const rawSource = block.content.trim() || (block.label === "image" ? "원본 그림" : "")
+      const source = equationSource(block, rawSource)
+      const preservedVisual = block.label === "table" || block.label === "image"
+      if ((!preservedVisual && block.translationPolicy !== "include") || !source) return []
       const structureKind = translationKind(block.label)
       return sentenceSources(block, source).map((sentence, index) => ({
         id:
@@ -81,6 +95,8 @@ export function pageTranslationBlocksFromParsedPage(
         sourceBounds: block.bounds,
         sourcePageWidth: page.width,
         sourcePageHeight: page.height,
+        sourceParser: page.parser,
+        sourceParserConfigVersion: page.configVersion,
       }))
     })
 }
@@ -90,14 +106,24 @@ export function planParsedPageTranslations(
 ): PlannedParsedPageTranslations {
   const completed = new Map<string, string>()
   const initial = blocks.map((block) => {
-    const translation = block.structureKind === "equation" ? block.source : ""
+    const translation =
+      block.structureKind === "equation" ||
+      block.structureKind === "table" ||
+      block.structureKind === "figure"
+        ? block.source
+        : ""
     if (translation) completed.set(block.id, translation)
     return { ...block, translation }
   })
   return {
     initial,
     completed,
-    translatable: blocks.filter((block) => block.structureKind !== "equation"),
+    translatable: blocks.filter(
+      (block) =>
+        block.structureKind !== "equation" &&
+        block.structureKind !== "table" &&
+        block.structureKind !== "figure",
+    ),
   }
 }
 

@@ -20,6 +20,12 @@ Preview, Library, Scholar Deep Search, Auto Highlight and Markup. Each needs rea
 behavior and persistence where applicable. Empty, loading, saving, error, cancelled
 and unavailable states must be explicit and actionable. No generated demo data.
 
+The local browser runtime has a blocking first-run credential gate. Library and reader
+content stay hidden until the user has saved both a personal OpenRouter API key and a
+personal Mistral OCR API key. The same gate selects the OpenRouter model. Credentials
+remain in the local data directory and generated OCR, translations and paper insights
+reuse their existing persistent caches; source distributions contain no user keys.
+
 Primary persona: Korean researcher reading English papers and checking their source.
 Keyboard-only and enlarged-text users must reach import, search, reading, source
 return and settings. Existing semantic colors, 4/8/12/16/24 spacing, bundled font
@@ -190,6 +196,10 @@ Shared state harness and final QA must include long Korean/English titles, keybo
 - Reader retains continuous vertically aligned PDF pages and spatial cards on either side; paper and cards pan/zoom together. Toolbar, outline and metadata rail remain fixed.
 - Preserve hand/select/note tools, undo/redo, zoom/fit, minimap, outline, highlights, selection actions, figure/table/equation actions, citations, discussion, and source return.
 - Page translation belongs next to its source page and follows its position/zoom. It never replaces the research sidebar. Show completed batches while later batches stream; cancellation stops pending work; auth/limits require user recovery, not blind retries.
+- Translation reading has three explicit modes in the page translation surface: `원문` keeps the PDF as the only reading column, `대조` places the source and Korean page blocks in parallel columns, and `함께 읽기` repeats each source paragraph immediately before its translation. Mode changes reuse the same parsed blocks, cache and AI job, so switching modes never starts another request.
+- Every translation block keeps its parsed block ID and source bounds. Hover, focus or keyboard activation on either side highlights the source region; selecting a translated paragraph exposes the same source anchor used by notes, highlights and explanations. Headings, lists, equations, tables and figure captions keep their source order, with equations rendered as math rather than plain text.
+- Figure blocks reuse one crop of the original PDF region and keep the source jump; the bilingual view does not redraw the same figure as a second translated copy. If a crop cannot be prepared, the control remains an honest source-return action.
+- The page surface owns a bounded scroll region. Controls wrap at narrow widths and 50–200% text; parallel columns stack only when the viewport cannot preserve readable line lengths. A document action can translate all pages with a visible page/block progress, resume completed cache entries, and cancel without discarding completed pages. PDF export uses the browser print dialog and an explicit print layout label until a verified direct exporter exists.
 - Import, opening settings, opening a PDF, and scrolling to a new document do not trigger AI/OCR. A deliberate automatic-translation toggle may process pages only within that document; reset consent on switching documents.
 - Research rail: expand or first mode activation opens transiently; activating the same open mode again pins it until explicit collapse. Selecting another mode opens that mode transiently. Pointer leave dismisses only unpinned content; hover/keyboard focus alone never pins. Collapse clears local pin state. Pin activation does not repeat translation toggles or sticky-tool actions; translation remains page-adjacent. Keep existing geometry, tokens and motion; expose expanded and pinned state accessibly.
 - Each scroll region owns its scrolling: settings content and sidebar/card bodies have bounded heights and `min-height: 0`; their wheel events do not pan the board. At 920×640 all settings actions remain reachable at 200% text.

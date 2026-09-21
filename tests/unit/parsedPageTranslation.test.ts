@@ -11,7 +11,7 @@ import {
 import { parsedDocumentPageSchema } from "../../src/shared/documentPageModel"
 
 describe("Paddle page translation blocks", () => {
-  it("preserves order and LaTeX while excluding visual and furniture blocks", () => {
+  it("preserves order, visual anchors and LaTeX while excluding furniture blocks", () => {
     const page = parsedDocumentPageSchema.parse({
       schemaVersion: "1.0.0",
       sourceHash: "b".repeat(64),
@@ -65,20 +65,23 @@ describe("Paddle page translation blocks", () => {
     expect(blocks.map((block) => block.source)).toEqual([
       "A coherent first sentence.",
       "A connected second sentence.",
+      "Question Long-Term Memory Code Interface",
       "$$E = mc^2$$",
     ])
     expect(blocks.map((block) => block.id)).toEqual([
       "page:1:block:0:sentence:1",
       "page:1:block:0:sentence:2",
+      "page:1:block:1",
       "page:1:block:2",
     ])
     expect(blocks.map((block) => block.parsedBlockId)).toEqual([
       "page:1:block:0",
       "page:1:block:0",
+      "page:1:block:1",
       "page:1:block:2",
     ])
     expect(parsedPageBodyText(page)).toBe(
-      "A coherent first sentence.\n\nA connected second sentence.\n\n$$E = mc^2$$",
+      "A coherent first sentence.\n\nA connected second sentence.\n\nQuestion Long-Term Memory Code Interface\n\n$$E = mc^2$$",
     )
   })
 
@@ -177,5 +180,60 @@ describe("Paddle page translation blocks", () => {
       "$$S_j = \\mathcal{M}(H_j)$$",
     ])
     expect([...plan.completed]).toEqual([["page:4:block:2", "$$S_j = \\mathcal{M}(H_j)$$"]])
+  })
+
+  it("wraps an un-delimited LaTeX equation for the Markdown math renderer", () => {
+    const page = parsedDocumentPageSchema.parse({
+      schemaVersion: "1.0.0",
+      sourceHash: "e".repeat(64),
+      parser: "Mistral-OCR-4.1",
+      configVersion: "blocks-v2",
+      pageNumber: 5,
+      width: 1_000,
+      height: 1_000,
+      blocks: [
+        {
+          id: "page:5:block:1",
+          label: "equation",
+          order: 0,
+          bounds: { x: 80, y: 220, width: 500, height: 80 },
+          content: "E = mc^2",
+          contentFormat: "latex",
+          translationPolicy: "include",
+        },
+      ],
+    })
+
+    expect(pageTranslationBlocksFromParsedPage(page)[0]?.source).toBe("$$\nE = mc^2\n$$")
+  })
+
+  it("keeps an image block with no OCR text as a source figure anchor", () => {
+    const page = parsedDocumentPageSchema.parse({
+      schemaVersion: "1.0.0",
+      sourceHash: "f".repeat(64),
+      parser: "Mistral-OCR-4.1",
+      configVersion: "blocks-v2",
+      pageNumber: 6,
+      width: 1_000,
+      height: 1_000,
+      blocks: [
+        {
+          id: "page:6:block:1",
+          label: "image",
+          order: 0,
+          bounds: { x: 80, y: 220, width: 500, height: 280 },
+          content: "",
+          contentFormat: "none",
+          translationPolicy: "exclude",
+        },
+      ],
+    })
+
+    const blocks = pageTranslationBlocksFromParsedPage(page)
+    const plan = planParsedPageTranslations(blocks)
+    expect(blocks[0]?.source).toBe("원본 그림")
+    expect(blocks[0]?.structureKind).toBe("figure")
+    expect(plan.initial[0]?.translation).toBe("원본 그림")
+    expect(plan.translatable).toHaveLength(0)
   })
 })

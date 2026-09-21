@@ -88,13 +88,21 @@ function withoutRepeatedPrefix(existing: string, continuation: string): string {
   return continuation
 }
 
+export function shouldContinueCompletion(
+  parameters: Pick<CompletionParameters, "response_format">,
+  finishReason: FinishReason,
+): boolean {
+  return finishReason === "length" && parameters.response_format === undefined
+}
+
 function nextMessagesOrThrow(
   messages: readonly ChatCompletionMessageParam[],
   segment: string,
   finishReason: FinishReason,
+  allowContinuation: boolean,
 ): readonly ChatCompletionMessageParam[] | null {
   if (finishReason === "stop") return null
-  if (finishReason === "length") return continuedMessages(messages, segment)
+  if (allowContinuation && finishReason === "length") return continuedMessages(messages, segment)
   throw new IncompleteCompletionError(finishReason)
 }
 
@@ -116,7 +124,12 @@ export async function completeChat(client: OpenAI, input: CompletionInput): Prom
     responseModel = response.model || responseModel
     const novel = round === 0 ? segment : withoutRepeatedPrefix(text, segment)
     text += novel
-    const next = nextMessagesOrThrow(messages, segment, choice.finish_reason)
+    const next = nextMessagesOrThrow(
+      messages,
+      segment,
+      choice.finish_reason,
+      shouldContinueCompletion(input.parameters, choice.finish_reason),
+    )
     if (!next) return { text, model: responseModel }
     messages = next
   }
@@ -154,7 +167,12 @@ export async function streamChat(
     const novel = round === 0 ? segment : withoutRepeatedPrefix(text, segment)
     text += novel
     if (round > 0 && novel) input.onDelta(novel)
-    const next = nextMessagesOrThrow(messages, segment, finishReason)
+    const next = nextMessagesOrThrow(
+      messages,
+      segment,
+      finishReason,
+      shouldContinueCompletion(input.parameters, finishReason),
+    )
     if (!next) return { text, model: responseModel }
     messages = next
   }

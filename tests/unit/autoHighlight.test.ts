@@ -22,8 +22,18 @@ describe("auto highlight response parsing", () => {
     expect(passages[0]?.reason).toBe("核心方法")
   })
 
+  it("parses candidate IDs without accepting model-generated quotes", () => {
+    const passages = parseAutoHighlightResponse(
+      JSON.stringify({
+        selections: [{ candidateId: "native:p2:s4", reason: "결정적 결과" }],
+      }),
+    )
+
+    expect(passages).toEqual([{ candidateId: "native:p2:s4", quote: "", reason: "결정적 결과" }])
+  })
+
   it("accepts a bare array and markdown fences", () => {
-    const text = '```json\n[{"quote":"' + long(30) + '","reason":"r"}]\n```'
+    const text = `\`\`\`json\n[{"quote":"${long(30)}","reason":"r"}]\n\`\`\``
     expect(parseAutoHighlightResponse(text)).toHaveLength(1)
   })
 
@@ -47,7 +57,7 @@ describe("auto highlight response parsing", () => {
     const text = JSON.stringify({
       passages: Array.from({ length: 12 }, (_, i) => ({
         quote: long(40) + i,
-        reason: "r" + i,
+        reason: `r${i}`,
       })),
     })
     expect(parseAutoHighlightResponse(text)).toHaveLength(AUTO_HIGHLIGHT_MAX_PASSAGES)
