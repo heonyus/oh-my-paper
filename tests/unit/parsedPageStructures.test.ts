@@ -121,7 +121,7 @@ describe("Paddle page structures", () => {
     const page = parsedDocumentPageSchema.parse({
       schemaVersion: "1.0.0",
       sourceHash: "b".repeat(64),
-      parser: "Mistral-OCR-4.1",
+      parser: "PDF.js+PaddleOCR-VL-1.6",
       configVersion: "blocks-v2",
       pageNumber: 9,
       width: 791,
@@ -162,7 +162,7 @@ describe("Paddle page structures", () => {
       parsedDocumentPageSchema.parse({
         schemaVersion: "1.0.0",
         sourceHash: "c".repeat(64),
-        parser: "Mistral-OCR-4.1",
+        parser: "PDF.js+PaddleOCR-VL-1.6",
         configVersion: "blocks-v2",
         pageNumber: 8,
         width: 791,
@@ -191,7 +191,7 @@ describe("Paddle page structures", () => {
       parsedDocumentPageSchema.parse({
         schemaVersion: "1.0.0",
         sourceHash: "c".repeat(64),
-        parser: "Mistral-OCR-4.1",
+        parser: "PDF.js+PaddleOCR-VL-1.6",
         configVersion: "blocks-v2",
         pageNumber: 9,
         width: 791,

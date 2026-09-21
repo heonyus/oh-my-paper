@@ -7,7 +7,6 @@ import type { AppearanceTheme } from "../../shared/schemas"
 import { uiFontScaleLabel, uiFontScalePercent, uiFontScalePresets } from "../../shared/uiAppearance"
 import { AiProviderSettings, useAiProviderForm } from "./AiProviderSettings"
 import { CodexSettings } from "./CodexSettings"
-import { DocumentOcrSettings, useDocumentOcrForm } from "./DocumentOcrSettings"
 import {
   HostedCredentialSettings,
   type HostedCredentialSettingsProps,
@@ -25,7 +24,6 @@ type SettingsModalProps = {
   readonly onSave: (config: ProviderConfig) => Promise<void>
   readonly onModeSave?: (mode: AiMode) => Promise<void>
   readonly ocrStatus?: DocumentOcrProviderStatus | undefined
-  readonly onOcrSave?: ((key: string) => Promise<void>) | undefined
   readonly onFontScaleChange: (scale: number) => void
   readonly onMinimapVisibleChange?: ((visible: boolean) => void) | undefined
   readonly theme?: AppearanceTheme | undefined
@@ -56,7 +54,6 @@ export function SettingsModal({
   appearanceOnly = false,
   hostedCredentials,
   ocrStatus,
-  onOcrSave,
   openRouterRequired = false,
   locked = false,
 }: SettingsModalProps): JSX.Element {
@@ -67,8 +64,7 @@ export function SettingsModal({
       ? sections.filter((candidate) => candidate.id !== "ai")
       : sections
   const aiProviderForm = useAiProviderForm(status, openRouterRequired)
-  const ocrForm = useDocumentOcrForm()
-  const credentialsReady = status.configured && ocrStatus?.configured === true
+  const credentialsReady = status.configured
   const dialog = useRef<HTMLDialogElement>(null)
   useLayoutEffect(() => {
     const element = dialog.current
@@ -110,7 +106,7 @@ export function SettingsModal({
               <h3>{visibleSections.find((item) => item.id === section)?.label}</h3>
               {section === "ai" ? (
                 <span className="settings-connection" data-ready={credentialsReady}>
-                  <i /> {credentialsReady ? "연결 준비됨" : "두 API 키 설정 필요"}
+                  <i /> {credentialsReady ? "연결 준비됨" : "OpenRouter API 키 설정 필요"}
                 </span>
               ) : null}
             </div>
@@ -197,11 +193,19 @@ export function SettingsModal({
                         }}
                       />
                     ) : null}
-                    {ocrStatus && onOcrSave ? (
-                      <DocumentOcrSettings status={ocrStatus} form={ocrForm} onSave={onOcrSave} />
-                    ) : null}
                   </>
                 )}
+                {ocrStatus ? (
+                  <fieldset className="settings-group">
+                    <legend>로컬 PDF 분석</legend>
+                    <div className="settings-row">
+                      <span>{ocrStatus.model}</span>
+                      <strong>
+                        {ocrStatus.configured ? "로컬 런타임 준비됨" : "로컬 런타임 설치 필요"}
+                      </strong>
+                    </div>
+                  </fieldset>
+                ) : null}
                 {!openRouterRequired && window.scourgify?.localInference ? (
                   <LocalAiPanel
                     api={window.scourgify.localInference}

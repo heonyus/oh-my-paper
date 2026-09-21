@@ -26,8 +26,7 @@ export async function completeDocumentRequest(
   const credential = input.imageDataUrl
     ? await resolveUserCredential(env, userId, "gemini")
     : await selectedTextCredential(env, userId)
-  if (!credential || credential.provider === "mistral")
-    throw new HttpError(409, "provider_key_required")
+  if (!credential) throw new HttpError(409, "provider_key_required")
   const userText = userInputFor(input)
   const userContent = input.imageDataUrl
     ? [

@@ -2,7 +2,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { AiModeStore } from "../../src/electron/aiModeStore"
 import type { CodexSubscriptionAdapter } from "../../src/electron/codexSubscriptionAdapter"
-import type { DocumentOcrCredentialService } from "../../src/electron/documentOcrCredentialService"
 import { ProviderConfigurationError } from "../../src/electron/providerConfigStore"
 import type { ProviderService } from "../../src/electron/providerService"
 import {
@@ -77,13 +76,6 @@ function provider(): Pick<
   }
 }
 
-function ocr(): Pick<DocumentOcrCredentialService, "saveKey" | "status"> {
-  return {
-    saveKey: async () => undefined,
-    status: async () => ({ configured: false, provider: "mistral", model: "mistral-ocr-4-1" }),
-  }
-}
-
 function unauthenticatedStatus() {
   return codexAccountStatusSchema.parse({
     available: true,
@@ -124,7 +116,7 @@ describe("provider IPC authentication boundary", () => {
       CodexSubscriptionAdapter,
       "getStatus" | "assertAuthenticated" | "runCompletion"
     >
-    const registration = registerProviderIpc(provider(), ocr(), codex, modes(), ipc)
+    const registration = registerProviderIpc(provider(), codex, modes(), ipc)
 
     await expect(ipc.invoke(ipcChannels.aiJobStart, request)).rejects.toMatchObject({
       name: "ProviderConfigurationError",
@@ -152,7 +144,7 @@ describe("provider IPC authentication boundary", () => {
       CodexSubscriptionAdapter,
       "getStatus" | "assertAuthenticated" | "runCompletion"
     >
-    const registration = registerProviderIpc(provider(), ocr(), codex, modes(), ipc)
+    const registration = registerProviderIpc(provider(), codex, modes(), ipc)
 
     await expect(ipc.invoke(ipcChannels.aiJobStart, request)).resolves.toEqual({
       jobId: request.jobId,

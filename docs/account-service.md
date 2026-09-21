@@ -435,8 +435,7 @@ an unsaved CodeMirror buffer without allowing interaction. Root should snapshot 
 and offer `saveRecoveryDraft`; it must not replace the retained tree with a new guest `App` instance.
 
 The free entitlement object is separate from account identity and from AI provider configuration.
-Neither a Google app login nor a free entitlement grants access to ChatGPT, Codex, Mistral, or a paid
-API.
+Neither a Google app login nor a free entitlement grants access to ChatGPT, Codex, or a paid API.
 
 Electron recommends the asynchronous `safeStorage` APIs on macOS so Keychain access can complete
 without blocking, and warns that `shell.openExternal` must not receive untrusted links:

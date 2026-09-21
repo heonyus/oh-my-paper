@@ -108,17 +108,14 @@ function completeBlocks(
 }
 
 export async function translateDocumentPages(input: DocumentTranslationRunnerInput): Promise<void> {
-  const ocr = await runStage(0, "ocr-status", () => window.scourgify.documentOcrStatus())
   let completedPages = 0
   let completedBlocks = 0
   let totalBlocks = 0
-  const forceOcr = ocr.configured
 
   for (let page = 1; page <= input.document.pageCount; page += 1) {
     if (input.signal.aborted) return
     const parsedPage = await runStage(page, "parse", () =>
       loadParsedDocumentPage(input.document.id, page, {
-        forceOcr,
         signal: input.signal,
       }),
     )

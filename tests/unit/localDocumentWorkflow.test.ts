@@ -7,251 +7,178 @@ import { buildStructuredPdf } from "../../scripts/document-fixtures/structured-p
 import { DocumentAnalysisService } from "../../src/electron/documentAnalysisService"
 import { importPaths } from "../../src/electron/documentImportIpc"
 import { createDocumentPageParser } from "../../src/electron/documentPageParser"
-import { MistralPageParserService } from "../../src/electron/mistralPageParserService"
 import { defaultWorkspace, WorkspaceStore } from "../../src/electron/workspaceStore"
+import { parsedDocumentPageSchema } from "../../src/shared/documentPageModel"
+import type { DocumentRecord } from "../../src/shared/schemas"
 
-function mistralTextResponse(pageCount: number) {
-  return {
-    model: "mistral-ocr-4-1",
-    usage_info: { pages_processed: pageCount, doc_size_bytes: 1_000 },
-    pages: Array.from({ length: pageCount }, (_, index) => ({
-      index,
-      markdown: `OCR extracted text page ${index + 1}`,
-      dimensions: { width: 600, height: 800 },
-      blocks: [
-        {
-          type: "text",
-          content: `OCR extracted text page ${index + 1}`,
-          top_left_x: 50,
-          top_left_y: 50,
-          bottom_right_x: 300,
-          bottom_right_y: 100,
-        },
-      ],
-    })),
-  }
+function paddlePage(document: DocumentRecord, pageNumber = 1) {
+  return parsedDocumentPageSchema.parse({
+    schemaVersion: "1.0.0",
+    sourceHash: document.hash,
+    parser: "PaddleOCR-VL-1.6",
+    configVersion: "page-v2",
+    pageNumber,
+    width: 1_200,
+    height: 1_600,
+    blocks: [
+      {
+        id: `page:${pageNumber}:block:0`,
+        label: "table",
+        order: 0,
+        bounds: { x: 100, y: 900, width: 1_000, height: 300 },
+        content: "<table><tr><td>39.92</td></tr></table>",
+        contentFormat: "html",
+        translationPolicy: "exclude",
+      },
+    ],
+  })
+}
+
+async function importFixture(
+  root: string,
+  store: WorkspaceStore,
+  name: string,
+  bytes: Uint8Array,
+): Promise<DocumentRecord> {
+  const pdfPath = join(root, name)
+  await writeFile(pdfPath, bytes)
+  const fakeEvent = { sender: { send: vi.fn() } }
+  const dummyAnalysis = { schedule: vi.fn(async () => undefined) }
+  const [imported] = await importPaths(fakeEvent, [pdfPath], dummyAnalysis, store)
+  if (!imported) throw new Error("Import failed")
+  return imported.document
+}
+
+function parserResult(
+  parser: ReturnType<typeof createDocumentPageParser>,
+  document: DocumentRecord,
+  pageNumber: number,
+) {
+  return parser.parse({ documentId: document.id, pageNumber })
 }
 
 describe("local document workflow", () => {
-  it("does not trigger local or remote OCR while importing a scan", async () => {
+  it("does not start Paddle while importing a scan", async () => {
     const root = await mkdtemp(join(tmpdir(), "scourgify-local-workflow-"))
     try {
       const store = new WorkspaceStore(root)
       await store.save(defaultWorkspace())
-
-      const mockProcess = vi.fn()
       const paddleParse = vi.fn().mockResolvedValue({
         status: "unavailable",
         reason: "runtime_missing",
       })
-      const ocrCredentials = { apiKey: async () => "mistral-valid-key-at-least-20-chars" }
-      const pdfBytes = await buildScannedMixedPdf()
       const pdfPath = join(root, "scanned.pdf")
-      await writeFile(pdfPath, pdfBytes)
-
-      const fakeEvent = {
-        sender: {
-          send: vi.fn(),
-        },
-      }
-
+      await writeFile(pdfPath, await buildScannedMixedPdf())
       const analysis = new DocumentAnalysisService(
         store,
-        createDocumentPageParser({
-          store,
-          paddlePageParser: { parse: paddleParse },
-          mistralPageParser: new MistralPageParserService(ocrCredentials, {
-            process: mockProcess,
-          }),
-          ocrCredentials,
-        }),
+        createDocumentPageParser({ store, paddlePageParser: { parse: paddleParse } }),
       )
 
-      const imported = await importPaths(fakeEvent, [pdfPath], analysis, store)
+      const imported = await importPaths({ sender: { send: vi.fn() } }, [pdfPath], analysis, store)
+
       expect(imported).toHaveLength(1)
       await analysis.dispose()
       expect(paddleParse).not.toHaveBeenCalled()
-      expect(mockProcess).not.toHaveBeenCalled()
     } finally {
       await rm(root, { recursive: true, force: true })
     }
   })
 
-  it("uses Mistral as the primary page parser when its key is configured", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-local-parse-"))
+  it("merges PDF.js text with Paddle structures for a digital page", async () => {
+    const root = await mkdtemp(join(tmpdir(), "scourgify-hybrid-parse-"))
     try {
       const store = new WorkspaceStore(root)
       await store.save(defaultWorkspace())
-
-      const mockProcess = vi.fn().mockResolvedValue(mistralTextResponse(3))
-      const mockOcrCredentials = {
-        apiKey: async () => "mistral-valid-key-at-least-20-chars",
-      }
-      const mistralService = new MistralPageParserService(mockOcrCredentials, {
-        process: mockProcess,
-      })
-
-      const pdfBytes = await buildStructuredPdf()
-      const pdfPath = join(root, "structured.pdf")
-      await writeFile(pdfPath, pdfBytes)
-
-      const fakeEvent = { sender: { send: vi.fn() } }
-      const dummyAnalysis = { schedule: vi.fn(async () => undefined) }
-      const [imported] = await importPaths(fakeEvent, [pdfPath], dummyAnalysis, store)
-      if (!imported) throw new Error("Import failed")
-
-      const { createDocumentPageParser } = await import("../../src/electron/documentPageParser")
-      const pageParser = createDocumentPageParser({
+      const document = await importFixture(
+        root,
         store,
-        paddlePageParser: {
-          parse: vi.fn().mockResolvedValue({ status: "unavailable", reason: "runtime_missing" }),
-        },
-        mistralPageParser: mistralService,
-        ocrCredentials: mockOcrCredentials,
+        "structured.pdf",
+        await buildStructuredPdf(),
+      )
+      const paddleParse = vi.fn().mockResolvedValue({
+        status: "ready",
+        page: paddlePage(document),
+      })
+      const parser = createDocumentPageParser({
+        store,
+        paddlePageParser: { parse: paddleParse },
       })
 
-      const result = await pageParser.parse({
-        documentId: imported.document.id,
-        pageNumber: 1,
-        store,
-      })
+      const result = await parser.parse({ documentId: document.id, pageNumber: 1 })
+
       expect(result.status).toBe("ready")
       if (result.status === "ready") {
-        expect(result.page.parser).toBe("Mistral-OCR-4.1")
+        expect(result.page.parser).toBe("PDF.js+PaddleOCR-VL-1.6")
+        expect(result.page.blocks.some((block) => block.label === "table")).toBe(true)
+        expect(result.page.blocks.some((block) => block.label === "text")).toBe(true)
       }
-      expect(mockProcess).toHaveBeenCalledTimes(1)
+      expect(paddleParse).toHaveBeenCalledOnce()
     } finally {
       await rm(root, { recursive: true, force: true })
     }
   })
 
-  it("uses Mistral for a scan-only page when its key is configured", async () => {
+  it("uses the complete Paddle page when the PDF has no usable text", async () => {
     const root = await mkdtemp(join(tmpdir(), "scourgify-scan-parse-"))
     try {
       const store = new WorkspaceStore(root)
       await store.save(defaultWorkspace())
-
-      const mockProcess = vi.fn().mockResolvedValue(mistralTextResponse(2))
-      const mockOcrCredentials = { apiKey: async () => "mistral-valid-key-at-least-20-chars" }
-      const mistralService = new MistralPageParserService(mockOcrCredentials, {
-        process: mockProcess,
-      })
-      const pdfBytes = await buildScannedMixedPdf()
-      const pdfPath = join(root, "scanned.pdf")
-      await writeFile(pdfPath, pdfBytes)
-      const fakeEvent = { sender: { send: vi.fn() } }
-      const dummyAnalysis = { schedule: vi.fn(async () => undefined) }
-      const [imported] = await importPaths(fakeEvent, [pdfPath], dummyAnalysis, store)
-      if (!imported) throw new Error("Import failed")
-
-      const { createDocumentPageParser } = await import("../../src/electron/documentPageParser")
-      const pageParser = createDocumentPageParser({
+      const document = await importFixture(root, store, "scanned.pdf", await buildScannedMixedPdf())
+      const page = paddlePage(document)
+      const paddleParse = vi.fn().mockResolvedValue({ status: "ready", page })
+      const parser = createDocumentPageParser({
         store,
-        paddlePageParser: {
-          parse: vi.fn().mockResolvedValue({ status: "unavailable", reason: "runtime_missing" }),
-        },
-        mistralPageParser: mistralService,
-        ocrCredentials: mockOcrCredentials,
+        paddlePageParser: { parse: paddleParse },
       })
 
-      const result = await pageParser.parse({
-        documentId: imported.document.id,
-        pageNumber: 1,
-        store,
-      })
-      expect(result.status).toBe("ready")
-      if (result.status === "ready") {
-        expect(result.page.parser).toBe("Mistral-OCR-4.1")
-      }
-      expect(mockProcess).toHaveBeenCalledTimes(1)
+      const result = await parser.parse({ documentId: document.id, pageNumber: 1 })
+
+      expect(result).toEqual({ status: "ready", page })
+      expect(paddleParse).toHaveBeenCalledOnce()
     } finally {
       await rm(root, { recursive: true, force: true })
     }
   })
 
-  it("reuses the Mistral cache for explicit OCR and rejects invalid page numbers", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-force-ocr-"))
+  it("reuses the hybrid cache and rejects invalid page numbers", async () => {
+    const root = await mkdtemp(join(tmpdir(), "scourgify-hybrid-cache-"))
     try {
       const store = new WorkspaceStore(root)
       await store.save(defaultWorkspace())
-
-      const mockProcess = vi.fn().mockResolvedValue(mistralTextResponse(3))
-      const mockOcrCredentials = { apiKey: async () => "mistral-valid-key-at-least-20-chars" }
-      const mistralService = new MistralPageParserService(mockOcrCredentials, {
-        process: mockProcess,
-      })
-      const pdfBytes = await buildStructuredPdf()
-      const pdfPath = join(root, "structured.pdf")
-      await writeFile(pdfPath, pdfBytes)
-
-      const fakeEvent = { sender: { send: vi.fn() } }
-      const dummyAnalysis = { schedule: vi.fn(async () => undefined) }
-      const [imported] = await importPaths(fakeEvent, [pdfPath], dummyAnalysis, store)
-      if (!imported) throw new Error("Import failed")
-
-      const { createDocumentPageParser } = await import("../../src/electron/documentPageParser")
-      const pageParser = createDocumentPageParser({
+      const document = await importFixture(
+        root,
         store,
-        paddlePageParser: {
-          parse: vi.fn().mockResolvedValue({ status: "unavailable", reason: "runtime_missing" }),
-        },
-        mistralPageParser: mistralService,
-        ocrCredentials: mockOcrCredentials,
+        "structured.pdf",
+        await buildStructuredPdf(),
+      )
+      const paddleParse = vi.fn().mockResolvedValue({
+        status: "ready",
+        page: paddlePage(document),
       })
-
-      const initial = await pageParser.parse({
-        documentId: imported.document.id,
-        pageNumber: 1,
+      const firstParser = createDocumentPageParser({
         store,
+        paddlePageParser: { parse: paddleParse },
       })
+      const initial = await firstParser.parse({ documentId: document.id, pageNumber: 1 })
       expect(initial.status).toBe("ready")
-      if (initial.status === "ready") {
-        expect(initial.page.parser).toBe("Mistral-OCR-4.1")
-      }
-      expect(mockProcess).toHaveBeenCalledTimes(1)
 
-      const forced = await pageParser.parse({
-        documentId: imported.document.id,
-        pageNumber: 1,
+      const reopenedParser = createDocumentPageParser({
         store,
-        forceOcr: true,
+        paddlePageParser: { parse: paddleParse },
       })
-      expect(forced.status).toBe("ready")
-      if (forced.status === "ready") {
-        expect(forced.page.parser).toBe("Mistral-OCR-4.1")
-      }
-      expect(mockProcess).toHaveBeenCalledTimes(1)
+      const reopened = await reopenedParser.parse({ documentId: document.id, pageNumber: 1 })
 
-      const afterOcr = await pageParser.parse({
-        documentId: imported.document.id,
-        pageNumber: 1,
-        store,
-      })
-      expect(afterOcr.status).toBe("ready")
-      if (afterOcr.status === "ready") {
-        expect(afterOcr.page.parser).toBe("Mistral-OCR-4.1")
-        expect(afterOcr.page.blocks[0]?.content).toBe("OCR extracted text page 1")
+      expect(reopened.status).toBe("ready")
+      if (reopened.status === "ready") {
+        expect(reopened.page.parser).toBe("PDF.js+PaddleOCR-VL-1.6")
       }
-
-      // Invalid page numbers (<= 0 or non-integer) must be rejected with invalid_page
-      expect(
-        await pageParser.parse({ documentId: imported.document.id, pageNumber: 0, store }),
-      ).toEqual({
-        status: "unavailable",
-        reason: "invalid_page",
-      })
-      expect(
-        await pageParser.parse({ documentId: imported.document.id, pageNumber: -1, store }),
-      ).toEqual({
-        status: "unavailable",
-        reason: "invalid_page",
-      })
-      expect(
-        await pageParser.parse({ documentId: imported.document.id, pageNumber: 1.5, store }),
-      ).toEqual({
-        status: "unavailable",
-        reason: "invalid_page",
-      })
+      expect(paddleParse).toHaveBeenCalledOnce()
+      for (const pageNumber of [0, -1, 1.5]) {
+        await expect(parserResult(reopenedParser, document, pageNumber)).resolves.toEqual({
+          status: "unavailable",
+          reason: "invalid_page",
+        })
+      }
     } finally {
       await rm(root, { recursive: true, force: true })
     }

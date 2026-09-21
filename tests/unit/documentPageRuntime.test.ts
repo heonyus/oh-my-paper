@@ -133,7 +133,7 @@ describe("parsed document page runtime", () => {
     const nativePage = page
     const ocrPage = parsedDocumentPageSchema.parse({
       ...page,
-      parser: "Mistral-OCR-4.1",
+      parser: "PDF.js+PaddleOCR-VL-1.6",
       blocks: [
         {
           id: "page:1:block:0",

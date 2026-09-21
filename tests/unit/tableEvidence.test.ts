@@ -15,7 +15,7 @@ describe("table evidence", () => {
     const page = parsedDocumentPageSchema.parse({
       schemaVersion: "1.0.0",
       sourceHash: "a".repeat(64),
-      parser: "Mistral-OCR-4.1",
+      parser: "PDF.js+PaddleOCR-VL-1.6",
       configVersion: "blocks-v1",
       pageNumber: 9,
       width: 1_000,
@@ -57,7 +57,7 @@ describe("table evidence", () => {
     const page = parsedDocumentPageSchema.parse({
       schemaVersion: "1.0.0",
       sourceHash: "b".repeat(64),
-      parser: "Mistral-OCR-4.1",
+      parser: "PDF.js+PaddleOCR-VL-1.6",
       configVersion: "blocks-v1",
       pageNumber: 2,
       width: 600,
@@ -109,7 +109,7 @@ describe("table evidence", () => {
     const parsedPage = parsedDocumentPageSchema.parse({
       schemaVersion: "1.0.0",
       sourceHash: "c".repeat(64),
-      parser: "Mistral-OCR-4.1",
+      parser: "PDF.js+PaddleOCR-VL-1.6",
       configVersion: "blocks-v1",
       pageNumber: 9,
       width: 600,

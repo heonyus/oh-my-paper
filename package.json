@@ -103,6 +103,10 @@
       {
         "from": "src/layout/paddle_vl_page_parser.py",
         "to": "layout/paddle_vl_page_parser.py"
+      },
+      {
+        "from": "src/layout/paddle_vl_blocks.py",
+        "to": "layout/paddle_vl_blocks.py"
       }
     ],
     "publish": {

@@ -5,7 +5,7 @@ import { inspectLocalPdf, type LocalPdf } from "./localPdf"
 
 function statusText(document: WebDocument): string {
   if (document.status === "queued") return "분석 대기 중"
-  if (document.status === "analyzing") return "Mistral 구조 분석 중"
+  if (document.status === "analyzing") return "로컬 문서 구조 분석 중"
   if (document.status === "failed") return "분석 실패 · 다시 업로드"
   return `${document.pageCount}페이지 · 준비 완료`
 }

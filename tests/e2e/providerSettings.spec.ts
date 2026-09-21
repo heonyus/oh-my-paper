@@ -4,12 +4,12 @@ import { join } from "node:path"
 import { expect, test } from "@playwright/test"
 import { launchSimulatedAuthenticatedApplication } from "../support/electron/launchSimulatedAuthenticatedApplication"
 
-test("provider settings stay usable with Mistral configured internally", async () => {
+test("provider settings show local Paddle without an OCR key", async () => {
   test.setTimeout(120_000)
   const temporaryRoot = await mkdtemp(join(tmpdir(), "scourgify-provider-settings-"))
   const evidenceRoot = join(
     process.cwd(),
-    ".omo/evidence/scourgify-local-product/2026-09-10-mistral-rollback/settings",
+    ".omo/evidence/scourgify-local-product/2026-09-21-local-paddle/settings",
   )
   await mkdir(evidenceRoot, { recursive: true })
   const qa = await launchSimulatedAuthenticatedApplication({
@@ -18,7 +18,6 @@ test("provider settings stay usable with Mistral configured internally", async (
       SCOURGIFY_USER_DATA_DIR: join(temporaryRoot, "user-data"),
       SCOURGIFY_AI_PROVIDER: "gemini",
       SCOURGIFY_AI_MODEL: "gemini-3.5-flash-lite",
-      MISTRAL_API_KEY: "mistral-e2e-key-at-least-twenty-characters",
     },
   })
   try {
@@ -37,10 +36,10 @@ test("provider settings stay usable with Mistral configured internally", async (
     await page.getByRole("button", { name: "암호화하여 저장" }).click()
     await expect(page.getByText("연결 준비됨")).toBeVisible()
     expect(await page.evaluate(() => window.scourgify.documentOcrStatus())).toMatchObject({
-      configured: true,
-      provider: "mistral",
+      provider: "paddle",
+      model: "PaddleOCR-VL-1.6",
     })
-    await expect(page.getByLabel("Mistral OCR API 키")).toHaveCount(0)
+    await expect(page.getByLabel(/OCR API 키/)).toHaveCount(0)
     await expect(page.getByRole("button", { name: "OCR 키 저장" })).toHaveCount(0)
 
     const browserWindow = await qa.application.browserWindow(page)
@@ -73,7 +72,7 @@ test("provider settings stay usable with Mistral configured internally", async (
         await page.getByLabel("화면 모드").selectOption(theme)
         await page.getByRole("button", { name: `${scale}%`, exact: true }).click()
         await page.getByRole("button", { name: "AI 모델", exact: true }).click()
-        await expect(page.getByLabel("Mistral OCR API 키")).toHaveCount(0)
+        await expect(page.getByLabel(/OCR API 키/)).toHaveCount(0)
         await page.screenshot({ path: join(evidenceRoot, `subscription-${theme}-${scale}.png`) })
       }
       await browserWindow.evaluate((window) => window.setContentSize(920, 640))

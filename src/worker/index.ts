@@ -5,8 +5,7 @@ import { completeDocumentRequest } from "./completion"
 import { credentialResponse } from "./credentials"
 import { documentFile, documentPage, listDocuments, uploadDocument } from "./documents"
 import { errorResponse, HttpError, routeSegments } from "./http"
-import { consumeOcrQueue } from "./ocr"
-import { type OcrJob, webDocumentIdSchema } from "./schemas"
+import { webDocumentIdSchema } from "./schemas"
 import { translatePage } from "./translation"
 
 async function apiResponse(
@@ -64,7 +63,4 @@ export default {
       return errorResponse(error)
     }
   },
-  async queue(batch, env): Promise<void> {
-    await consumeOcrQueue(batch.messages, env)
-  },
-} satisfies ExportedHandler<Env, OcrJob>
+} satisfies ExportedHandler<Env>

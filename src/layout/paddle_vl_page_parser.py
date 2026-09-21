@@ -17,137 +17,21 @@ from functools import partial
 from hashlib import file_digest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Final, Literal
+from typing import Final
 
 import pypdfium2 as pdfium
 import typer
-from pydantic import BaseModel, ConfigDict, Field
+from paddle_vl_blocks import (
+    ParsedPage,
+    RawEnvelope,
+    RawPayload,
+    convert_blocks,
+)
 
 SCHEMA_VERSION: Final = "1.0.0"
 PARSER: Final = "PaddleOCR-VL-1.6"
-CONFIG_VERSION: Final = "page-v1"
+CONFIG_VERSION: Final = "page-v2"
 RENDER_SCALE: Final = 2
-
-BlockLabel = Literal[
-    "doc_title",
-    "paragraph_title",
-    "text",
-    "list",
-    "code",
-    "equation",
-    "image",
-    "table",
-    "chart",
-    "figure_title",
-    "table_title",
-    "header",
-    "footer",
-    "page_number",
-    "aside_text",
-    "footnote",
-    "unknown",
-]
-
-LABELS: Final[dict[str, BlockLabel]] = {
-    "doc_title": "doc_title",
-    "paragraph_title": "paragraph_title",
-    "title": "paragraph_title",
-    "text": "text",
-    "content": "text",
-    "abstract": "text",
-    "reference": "text",
-    "reference_content": "text",
-    "list": "list",
-    "algorithm": "code",
-    "code": "code",
-    "display_formula": "equation",
-    "inline_formula": "equation",
-    "equation": "equation",
-    "image": "image",
-    "header_image": "header",
-    "footer_image": "footer",
-    "table": "table",
-    "chart": "chart",
-    "figure_title": "figure_title",
-    "table_title": "table_title",
-    "header": "header",
-    "footer": "footer",
-    "number": "page_number",
-    "page_number": "page_number",
-    "aside_text": "aside_text",
-    "footnote": "footnote",
-    "vision_footnote": "footnote",
-}
-
-EXCLUDED: Final[frozenset[BlockLabel]] = frozenset(
-    {
-        "image",
-        "table",
-        "chart",
-        "figure_title",
-        "table_title",
-        "header",
-        "footer",
-        "page_number",
-        "aside_text",
-        "footnote",
-        "unknown",
-    }
-)
-
-
-class RawBlock(BaseModel):
-    model_config = ConfigDict(extra="ignore", frozen=True)
-
-    block_bbox: tuple[float, float, float, float]
-    block_label: str
-    block_content: str = ""
-    block_id: int = Field(ge=0)
-    block_order: int | None = Field(default=None, ge=0)
-
-
-class RawPayload(BaseModel):
-    model_config = ConfigDict(extra="ignore", frozen=True)
-
-    parsing_res_list: tuple[RawBlock, ...] = ()
-
-
-class RawEnvelope(RawPayload):
-    res: RawPayload | None = None
-
-
-class Bounds(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    x: float = Field(ge=0)
-    y: float = Field(ge=0)
-    width: float = Field(gt=0)
-    height: float = Field(gt=0)
-
-
-class ParsedBlock(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    id: str
-    label: BlockLabel
-    order: int = Field(ge=0)
-    bounds: Bounds
-    content: str = Field(max_length=40_000)
-    contentFormat: Literal["text", "markdown", "latex", "html", "none"]
-    translationPolicy: Literal["include", "exclude"]
-
-
-class ParsedPage(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    schemaVersion: Literal["1.0.0"] = "1.0.0"
-    sourceHash: str = Field(pattern=r"^[a-f0-9]{64}$")
-    parser: Literal["PaddleOCR-VL-1.6"] = "PaddleOCR-VL-1.6"
-    configVersion: Literal["page-v1"] = "page-v1"
-    pageNumber: int = Field(gt=0)
-    width: int = Field(gt=0)
-    height: int = Field(gt=0)
-    blocks: tuple[ParsedBlock, ...]
 
 
 class ParserInputError(RuntimeError):
@@ -165,50 +49,6 @@ def render_page(pdf_path: Path, page_number: int, target: Path) -> tuple[int, in
         ):
             image.save(target, format="PNG")
             return image.width, image.height
-
-
-def content_format(
-    label: BlockLabel,
-) -> Literal["text", "markdown", "latex", "html", "none"]:
-    match label:
-        case "equation":
-            return "latex"
-        case "table":
-            return "html"
-        case "image" | "chart" | "unknown":
-            return "none"
-        case _:
-            return "markdown"
-
-
-def convert_blocks(
-    page_number: int, raw: tuple[RawBlock, ...]
-) -> tuple[ParsedBlock, ...]:
-    ordered = sorted(
-        raw,
-        key=lambda block: (
-            block.block_order
-            if block.block_order is not None
-            else 1_000_000 + block.block_id,
-            block.block_id,
-        ),
-    )
-    converted: list[ParsedBlock] = []
-    for order, block in enumerate(ordered):
-        x1, y1, x2, y2 = block.block_bbox
-        label = LABELS.get(block.block_label.lower(), "unknown")
-        converted.append(
-            ParsedBlock(
-                id=f"page:{page_number}:block:{block.block_id}",
-                label=label,
-                order=order,
-                bounds=Bounds(x=x1, y=y1, width=x2 - x1, height=y2 - y1),
-                content=block.block_content.strip()[:40_000],
-                contentFormat=content_format(label),
-                translationPolicy="exclude" if label in EXCLUDED else "include",
-            )
-        )
-    return tuple(converted)
 
 
 def main(

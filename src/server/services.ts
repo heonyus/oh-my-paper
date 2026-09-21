@@ -1,8 +1,9 @@
+import { fileURLToPath } from "node:url"
 import { lookupCitation } from "../electron/citationService"
 import { DocumentAstService } from "../electron/documentAstService"
 import { createDocumentPageParser } from "../electron/documentPageParser"
 import { importDocument, readDocumentBytes } from "../electron/documentService"
-import { MistralPageParserService } from "../electron/mistralPageParserService"
+import { PaddlePageParserService } from "../electron/paddlePageParserService"
 import { PageTranslationCacheService } from "../electron/pageTranslationCacheService"
 import { listScholarlyMetadata, saveScholarlyMetadata } from "../electron/scholarlyMetadata"
 import { searchScholarly } from "../electron/scholarlySearch"
@@ -14,11 +15,7 @@ import {
   discoverySaveInputSchema,
   discoverySaveResultSchema,
 } from "../shared/discoveryIpc"
-import { MISTRAL_OCR_MODEL } from "../shared/documentOcr"
-import type {
-  DocumentPageParseProgress,
-  DocumentPageParseResult,
-} from "../shared/documentPageModel"
+import type { DocumentOcrProviderStatus } from "../shared/documentOcr"
 import { type ProviderConfig, providerConfigSchema } from "../shared/ipc"
 import { isOpenRouterModel } from "../shared/providerModels"
 import type { DocumentId, Workspace } from "../shared/schemas"
@@ -28,30 +25,15 @@ import type { WebServerConfig } from "./config"
 import { JevDecisionService } from "./decisionService"
 import { LocalCredentialStore } from "./localCredentialStore"
 
-type PageParserInput = {
-  readonly documentId: DocumentId
-  readonly pageNumber: number
-  readonly store: WorkspaceStore
-  readonly onProgress?: (progress: DocumentPageParseProgress) => void
-}
-
-const noLocalOcrParser = {
-  parse: async (_input: PageParserInput): Promise<DocumentPageParseResult> => ({
-    status: "unavailable",
-    reason: "runtime_missing",
-  }),
-}
-
 export type WebServices = {
   readonly store: WorkspaceStore
   readonly ast: DocumentAstService
   readonly pages: ReturnType<typeof createDocumentPageParser>
   readonly translationCache: PageTranslationCacheService
-  readonly mistralConfigured: () => boolean
+  readonly ocrStatus: () => Promise<DocumentOcrProviderStatus>
   readonly ai: WebAiService
   readonly decisionService: () => JevDecisionService | null
   readonly saveProviderConfig: (config: ProviderConfig) => Promise<void>
-  readonly saveMistralKey: (key: string) => Promise<void>
   readonly startAiJob: (request: AiJobStartRequest) => AsyncIterable<Uint8Array>
   readonly cancelAiJob: (jobId: AiJobStartRequest["jobId"]) => void
   readonly lookupCitation: typeof lookupCitation
@@ -73,17 +55,17 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
       : null
   const credentials = await LocalCredentialStore.open(config.dataDir, {
     openrouter: environmentOpenRouter,
-    mistralApiKey: config.mistralApiKey,
   })
   const ast = new DocumentAstService(store)
-  const mistral = new MistralPageParserService({
-    apiKey: async () => credentials.mistralKey(),
+  const sourceRoot = fileURLToPath(new URL("../..", import.meta.url))
+  const paddle = new PaddlePageParserService({
+    appPath: sourceRoot,
+    resourcesPath: sourceRoot,
+    packaged: false,
   })
   const pages = createDocumentPageParser({
     store,
-    paddlePageParser: noLocalOcrParser,
-    mistralPageParser: mistral,
-    ocrCredentials: { apiKey: async () => credentials.mistralKey() },
+    paddlePageParser: paddle,
     astService: ast,
   })
   const initialProvider = credentials.openRouterConfig()
@@ -108,7 +90,7 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
     ast,
     pages,
     translationCache: new PageTranslationCacheService(store),
-    mistralConfigured: () => credentials.mistralKey() !== null,
+    ocrStatus: () => paddle.status(),
     ai,
     decisionService: () => decisions,
     saveProviderConfig: async (value) => {
@@ -118,7 +100,6 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
       ai.configure(parsed)
       decisions = new JevDecisionService(parsed.apiKey)
     },
-    saveMistralKey: async (key) => credentials.saveMistral(key),
     startAiJob: jobs.start,
     cancelAiJob: jobs.cancel,
     lookupCitation,
@@ -127,6 +108,7 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
     listSavedScholarlyMetadata: () => listScholarlyMetadata(store.repository),
     close: async () => {
       jobs.dispose()
+      paddle.dispose()
       await store.close()
     },
   }
@@ -157,5 +139,3 @@ export async function readDocumentBase64(id: DocumentId, services: WebServices):
 export async function readWorkspace(services: WebServices): Promise<Workspace> {
   return services.store.read()
 }
-
-export { MISTRAL_OCR_MODEL }

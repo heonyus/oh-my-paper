@@ -69,10 +69,6 @@ export function AppSettingsDialog({
         await window.scourgify.saveAiMode(mode)
         onProviderChange(await window.scourgify.providerStatus())
       }}
-      onOcrSave={async (key) => {
-        await window.scourgify.saveDocumentOcrKey(key)
-        onOcrStatusChange(await window.scourgify.documentOcrStatus())
-      }}
     />
   )
 }

@@ -11,7 +11,6 @@ export function useHostedCredentials(): {
     providers: {
       gemini: { source: "missing", model: "gemini-3.5-flash-lite" },
       groq: { source: "missing", model: "openai/gpt-oss-20b" },
-      mistral: { source: "missing", model: "mistral-ocr-4-1" },
     },
     preferredTextProvider: "gemini",
   })

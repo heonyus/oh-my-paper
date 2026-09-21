@@ -24,7 +24,6 @@ import {
   documentImportPathsRequestSchema,
   documentLayoutRequestSchema,
   documentLayoutResultSchema,
-  documentOcrKeySchema,
   documentOcrProviderStatusSchema,
   documentPageParseProgressSchema,
   documentPageParseRequestSchema,
@@ -144,9 +143,6 @@ const api: ScourgifyApi = {
     }
     ipcRenderer.on(ipcChannels.documentAnalysisUpdated, handler)
     return () => ipcRenderer.removeListener(ipcChannels.documentAnalysisUpdated, handler)
-  },
-  saveDocumentOcrKey: async (key) => {
-    await ipcRenderer.invoke(ipcChannels.documentOcrSaveKey, documentOcrKeySchema.parse(key))
   },
   documentOcrStatus: async () =>
     documentOcrProviderStatusSchema.parse(await ipcRenderer.invoke(ipcChannels.documentOcrStatus)),

@@ -37,7 +37,6 @@ function isMissingFile(error: unknown): boolean {
 function failureMessage(result: DocumentPageParseResult): string {
   if (result.status === "ready") return ""
   if (result.reason === "runtime_missing") return "로컬 PaddleOCR-VL 설치가 필요합니다"
-  if (result.reason === "provider_unconfigured") return "Mistral OCR API 키 설정이 필요합니다"
   if (result.reason === "model_unavailable") return "로컬 분석 모델을 시작하지 못했습니다"
   return "문서 구조 분석을 완료하지 못했습니다"
 }

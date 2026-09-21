@@ -9,7 +9,6 @@ export const ipcChannels = {
   documentPageParseProgress: "document:page-parse-progress",
   documentAnalysisRead: "document:analysis-read",
   documentAnalysisUpdated: "document:analysis-updated",
-  documentOcrSaveKey: "document:ocr-save-key",
   documentOcrStatus: "document:ocr-status",
   documentAst: "document:ast",
   workspaceRead: "workspace:read",

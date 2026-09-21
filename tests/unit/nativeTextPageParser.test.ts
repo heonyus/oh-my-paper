@@ -4,6 +4,128 @@ import { buildSourceDocumentAst } from "../../src/electron/sourceAst"
 import { sha256Schema } from "../../src/shared/schemas"
 
 describe("nativeTextPageParser", () => {
+  it("keeps PDF stream order for inline subscripts with offset geometry", () => {
+    const sourceHash = sha256Schema.parse("b".repeat(64))
+    const ast = buildSourceDocumentAst(sourceHash, [
+      {
+        page: 1,
+        width: 600,
+        height: 800,
+        items: [
+          {
+            str: "Value d",
+            dir: "ltr",
+            transform: [10, 0, 0, 10, 50, 700],
+            width: 45,
+            height: 10,
+            fontName: "Helvetica",
+            hasEOL: false,
+          },
+          {
+            str: "k",
+            dir: "ltr",
+            transform: [7, 0, 0, 7, 96, 696],
+            width: 6,
+            height: 7,
+            fontName: "Helvetica",
+            hasEOL: false,
+          },
+          {
+            str: " remains stable.",
+            dir: "ltr",
+            transform: [10, 0, 0, 10, 104, 700],
+            width: 90,
+            height: 10,
+            fontName: "Helvetica",
+            hasEOL: true,
+          },
+        ],
+      },
+    ])
+
+    const result = buildNativeParsedPage({ ast, pageNumber: 1, sourceHash })
+
+    expect(result?.status).toBe("ready")
+    if (result?.status === "ready") {
+      expect(result.page.blocks.map((block) => block.content)).toEqual([
+        "Value d k remains stable.",
+      ])
+    }
+  })
+
+  it("limits caption continuation and keeps later Table references as body text", () => {
+    const sourceHash = sha256Schema.parse("e".repeat(64))
+    const ast = buildSourceDocumentAst(sourceHash, [
+      {
+        page: 1,
+        width: 600,
+        height: 800,
+        items: [
+          {
+            str: "Table 2: BLEU scores and training",
+            dir: "ltr",
+            transform: [10, 0, 0, 10, 50, 700],
+            width: 300,
+            height: 10,
+            fontName: "Helvetica",
+            hasEOL: true,
+          },
+          {
+            str: "cost for each model.",
+            dir: "ltr",
+            transform: [10, 0, 0, 10, 50, 685],
+            width: 160,
+            height: 10,
+            fontName: "Helvetica",
+            hasEOL: true,
+          },
+          {
+            str: "Model BLEU Training Cost",
+            dir: "ltr",
+            transform: [14, 0, 0, 14, 50, 670],
+            width: 190,
+            height: 14,
+            fontName: "Helvetica",
+            hasEOL: true,
+          },
+          {
+            str: "Residual Dropout applies to every layer.",
+            dir: "ltr",
+            transform: [10, 0, 0, 10, 50, 650],
+            width: 260,
+            height: 10,
+            fontName: "Helvetica",
+            hasEOL: true,
+          },
+          {
+            str: "Table 2 summarizes our results.",
+            dir: "ltr",
+            transform: [10, 0, 0, 10, 50, 630],
+            width: 220,
+            height: 10,
+            fontName: "Helvetica",
+            hasEOL: true,
+          },
+        ],
+      },
+    ])
+
+    const result = buildNativeParsedPage({ ast, pageNumber: 1, sourceHash })
+
+    expect(result?.status).toBe("ready")
+    if (result?.status === "ready") {
+      expect(result.page.blocks.map((block) => block.label)).toEqual([
+        "table_title",
+        "text",
+        "text",
+        "text",
+      ])
+      expect(result.page.blocks[0]?.content).toBe(
+        "Table 2: BLEU scores and training cost for each model.",
+      )
+    }
+  })
+
   it("builds a valid ParsedDocumentPage from SourceDocumentAst for digital text without Paddle", () => {
     const sourceHash = sha256Schema.parse("c".repeat(64))
     const ast = buildSourceDocumentAst(sourceHash, [
@@ -13,7 +135,7 @@ describe("nativeTextPageParser", () => {
         height: 800,
         items: [
           {
-            str: "1 Introduction",
+            str: "3.2.1 Scaled Dot-Product Attention",
             dir: "ltr",
             transform: [14, 0, 0, 14, 50, 720],
             width: 150,
@@ -49,7 +171,8 @@ describe("nativeTextPageParser", () => {
       expect(parsed.page.pageNumber).toBe(1)
       expect(parsed.page.parser).toBe("NativeText-1.0")
       expect(parsed.page.blocks.length).toBeGreaterThan(0)
-      expect(parsed.page.blocks[0]?.content).toContain("1 Introduction")
+      expect(parsed.page.blocks[0]?.content).toContain("3.2.1 Scaled Dot-Product Attention")
+      expect(parsed.page.blocks[0]?.label).toBe("paragraph_title")
     }
   })
 

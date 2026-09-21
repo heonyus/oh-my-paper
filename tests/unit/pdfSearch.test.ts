@@ -232,7 +232,7 @@ describe("PDF search context", () => {
       parsedDocumentPageSchema.parse({
         schemaVersion: "1.0.0",
         sourceHash: ast.sourceHash,
-        parser: "Mistral-OCR-4.1",
+        parser: "PDF.js+PaddleOCR-VL-1.6",
         configVersion: "blocks-v2",
         pageNumber: 7,
         width: 600,
@@ -252,7 +252,7 @@ describe("PDF search context", () => {
       parsedDocumentPageSchema.parse({
         schemaVersion: "1.0.0",
         sourceHash: ast.sourceHash,
-        parser: "Mistral-OCR-4.1",
+        parser: "PDF.js+PaddleOCR-VL-1.6",
         configVersion: "blocks-v2",
         pageNumber: 8,
         width: 600,
@@ -316,7 +316,7 @@ describe("PDF search context", () => {
         parsedDocumentPageSchema.parse({
           schemaVersion: "1.0.0",
           sourceHash: ast.sourceHash,
-          parser: "Mistral-OCR-4.1",
+          parser: "PDF.js+PaddleOCR-VL-1.6",
           configVersion: "blocks-v2",
           pageNumber: 1,
           width: 600,
@@ -339,7 +339,7 @@ describe("PDF search context", () => {
         parsedDocumentPageSchema.parse({
           schemaVersion: "1.0.0",
           sourceHash: ast.sourceHash,
-          parser: "Mistral-OCR-4.1",
+          parser: "PDF.js+PaddleOCR-VL-1.6",
           configVersion: "blocks-v2",
           pageNumber: 2,
           width: 600,

@@ -186,7 +186,7 @@ describe("Paddle page translation blocks", () => {
     const page = parsedDocumentPageSchema.parse({
       schemaVersion: "1.0.0",
       sourceHash: "e".repeat(64),
-      parser: "Mistral-OCR-4.1",
+      parser: "PDF.js+PaddleOCR-VL-1.6",
       configVersion: "blocks-v2",
       pageNumber: 5,
       width: 1_000,
@@ -211,7 +211,7 @@ describe("Paddle page translation blocks", () => {
     const page = parsedDocumentPageSchema.parse({
       schemaVersion: "1.0.0",
       sourceHash: "f".repeat(64),
-      parser: "Mistral-OCR-4.1",
+      parser: "PDF.js+PaddleOCR-VL-1.6",
       configVersion: "blocks-v2",
       pageNumber: 6,
       width: 1_000,

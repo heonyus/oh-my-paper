@@ -114,9 +114,6 @@ export function installLocalReaderApi(): void {
     onDocumentPageParseProgress: pageParser.onProgress,
     readDocumentAnalysis: async () => [],
     onDocumentAnalysis: (_listener) => () => {},
-    saveDocumentOcrKey: async (key) => {
-      await localRpc("saveDocumentOcrKey", key, documentOcrProviderStatusSchema)
-    },
     documentOcrStatus: async (): Promise<DocumentOcrProviderStatus> => {
       return localRpc("documentOcrStatus", {}, documentOcrProviderStatusSchema)
     },

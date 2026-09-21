@@ -1,6 +1,5 @@
 import type { AiJobEvent } from "../shared/aiIpc"
 import type { DocumentAnalysisSnapshot } from "../shared/documentAnalysis"
-import { MISTRAL_OCR_MODEL } from "../shared/documentOcr"
 import type { DocumentPageParseProgress } from "../shared/documentPageModel"
 import {
   clipboardWriteTextRequestSchema,
@@ -11,7 +10,7 @@ import {
 } from "../shared/ipc"
 import type { DocumentId } from "../shared/schemas"
 import { unavailableWebFeature } from "../shared/unavailableWebFeatures"
-import { GEMINI_WEB_MODEL, GROQ_WEB_MODELS, MISTRAL_WEB_MODEL } from "../shared/webCredentials"
+import { GEMINI_WEB_MODEL, GROQ_WEB_MODELS } from "../shared/webCredentials"
 import { fetchHostedCredentialStatus, saveHostedCredential, WebApiError } from "./api"
 import { WebWorkspaceBridge } from "./webWorkspace"
 
@@ -110,17 +109,11 @@ export function installWebScourgifyApi(userId: string): void {
       return snapshot
     },
     onDocumentAnalysis: subscribeAnalysis,
-    saveDocumentOcrKey: async (apiKey) => {
-      await saveHostedCredential({ provider: "mistral", apiKey, model: MISTRAL_WEB_MODEL })
-    },
-    documentOcrStatus: async () => {
-      const status = await fetchHostedCredentialStatus()
-      return {
-        configured: status.providers.mistral.source !== "missing",
-        provider: "mistral",
-        model: MISTRAL_OCR_MODEL,
-      }
-    },
+    documentOcrStatus: async () => ({
+      configured: false,
+      provider: "paddle",
+      model: "PaddleOCR-VL-1.6",
+    }),
     readPageTranslationCache: async ({ id, pageNumber }) => {
       activeDocumentId = id
       const key = `${id}:${pageNumber}`

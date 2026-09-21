@@ -19,7 +19,6 @@ const publicChannels: ReadonlySet<string> = new Set([
   ipcChannels.providerSaveConfig,
   ipcChannels.providerSaveMode,
   ipcChannels.providerStatus,
-  ipcChannels.documentOcrSaveKey,
   ipcChannels.documentOcrStatus,
   ipcChannels.codexStatus,
   ipcChannels.codexLoginStart,

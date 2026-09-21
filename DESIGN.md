@@ -20,11 +20,12 @@ Preview, Library, Scholar Deep Search, Auto Highlight and Markup. Each needs rea
 behavior and persistence where applicable. Empty, loading, saving, error, cancelled
 and unavailable states must be explicit and actionable. No generated demo data.
 
-The local browser runtime has a blocking first-run credential gate. Library and reader
-content stay hidden until the user has saved both a personal OpenRouter API key and a
-personal Mistral OCR API key. The same gate selects the OpenRouter model. Credentials
-remain in the local data directory and generated OCR, translations and paper insights
-reuse their existing persistent caches; source distributions contain no user keys.
+The local browser runtime has a blocking first-run AI credential gate. Library and
+reader content stay hidden until the user has saved a personal OpenRouter API key and
+selected its model. PDF parsing requires no hosted OCR credential: digital text and
+geometry come from PDF.js, while local PaddleOCR-VL supplies figures, tables and
+equations. Parsed pages, translations and paper insights reuse their persistent caches;
+source distributions contain no user keys.
 
 Primary persona: Korean researcher reading English papers and checking their source.
 Keyboard-only and enlarged-text users must reach import, search, reading, source
@@ -47,11 +48,21 @@ Controls grow with their text. Flexible rows and grids must shrink or stack befo
 
 Acceptance uses synthetic populated workspaces, every tab in both themes, normal and enlarged text at desktop/narrow widths, and 50% text. Compare current screenshots and element bounds; verify settings scrolling, source return and saved note reopen. No new dependencies or replacement component framework are needed.
 
-## 2026-09-10 Internal Mistral OCR configuration
+## 2026-09-21 Local PDF.js and PaddleOCR-VL parsing
 
-The user reverted the subscription OCR experiment. Desktop document OCR uses the existing Mistral parser with `MISTRAL_API_KEY` supplied through the main process environment. Source development loads an uncommitted `.env`; installed apps load the local app-data `.env`. Never bundle the key in renderer code or distribute it inside the application. Hide the desktop Mistral key form and provider-specific setup instructions.
+Document parsing no longer uses Mistral or any hosted OCR credential. For digital PDFs,
+PDF.js remains authoritative for body text, captions and reading order. PaddleOCR-VL
+contributes only structural regions that PDF text cannot represent reliably: figures,
+tables, charts and display equations. Native text whose center lies inside one of those
+regions is replaced by the corresponding Paddle block, and equation numbers detected
+as adjacent blocks are joined to the display equation. Scanned pages without usable
+PDF text use the complete Paddle result.
 
-An explicit page translation uses configured Mistral structure extraction before translating, retaining existing block types, table/equation content, source geometry and document cache. Reading/importing a PDF still performs only local preparation. A missing key is an internal setup gap, not evidence that OCR is available. Existing ChatGPT chat/translation login and local-only writing suggestions remain separate.
+The local parser is cached by document hash, parser version and page. Opening a cached
+page must not start the model again. If the optional local runtime has not been installed,
+digital text remains readable through PDF.js and scan-only pages show an actionable
+local-runtime error. Import still performs local preparation only; background analysis
+and explicit reader actions may start the local model and remain cancellable.
 
 ## 2026-09-08 Explicit local owner access (current)
 

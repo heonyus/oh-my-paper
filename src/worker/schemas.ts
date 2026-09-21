@@ -30,13 +30,6 @@ export const webDocumentSchema = z.object({
 
 export const webDocumentListSchema = z.object({ documents: z.array(webDocumentSchema) })
 
-export const ocrJobSchema = z.object({
-  documentId: webDocumentIdSchema,
-  userId: z.string().min(1),
-  objectKey: z.string().min(1),
-  sourceHash: sha256Schema,
-})
-
 export const translationItemSchema = z.object({
   id: z.string().min(1),
   source: z.string(),
@@ -56,7 +49,6 @@ export const webPageTranslationSchema = z.object({
 
 export type WebDocumentId = z.infer<typeof webDocumentIdSchema>
 export type DocumentRow = z.infer<typeof documentRowSchema>
-export type OcrJob = z.infer<typeof ocrJobSchema>
 export type WebPageTranslation = z.infer<typeof webPageTranslationSchema>
 
 export function publicDocument(row: DocumentRow): z.infer<typeof webDocumentSchema> {

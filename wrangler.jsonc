@@ -19,7 +19,6 @@
       "GOOGLE_CLIENT_ID",
       "GOOGLE_CLIENT_SECRET",
       "CREDENTIAL_ENCRYPTION_KEY",
-      "MISTRAL_API_KEY",
       "GEMINI_API_KEY"
     ]
   },
@@ -36,22 +35,6 @@
       "bucket_name": "scourgify-documents"
     }
   ],
-  "queues": {
-    "producers": [
-      {
-        "binding": "OCR_QUEUE",
-        "queue": "scourgify-ocr"
-      }
-    ],
-    "consumers": [
-      {
-        "queue": "scourgify-ocr",
-        "max_batch_size": 1,
-        "max_batch_timeout": 5,
-        "max_retries": 3
-      }
-    ]
-  },
   "observability": {
     "enabled": true
   }

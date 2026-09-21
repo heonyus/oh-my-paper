@@ -66,11 +66,6 @@ const mockWriteCache = vi.fn(async () => {})
 Object.defineProperty(window, "scourgify", {
   value: {
     onDocumentPageParseProgress: vi.fn(() => () => {}),
-    documentOcrStatus: vi.fn(async () => ({
-      configured: true,
-      provider: "mistral",
-      model: "mistral-ocr-latest",
-    })),
     parseDocumentPage: vi.fn(async () => ({ status: "ready" as const, page: mockParsedPage })),
     readPageTranslationCache: vi.fn(async () => ({ status: "missing" as const })),
     writePageTranslationCache: mockWriteCache,
@@ -86,11 +81,6 @@ describe("usePageTranslation partial results and cancellation", () => {
     Object.defineProperty(window, "scourgify", {
       value: {
         onDocumentPageParseProgress: vi.fn(() => () => {}),
-        documentOcrStatus: vi.fn(async () => ({
-          configured: true,
-          provider: "mistral",
-          model: "mistral-ocr-latest",
-        })),
         parseDocumentPage: vi.fn(async () => ({ status: "ready" as const, page: mockParsedPage })),
         readPageTranslationCache: vi.fn(async () => ({ status: "missing" as const })),
         writePageTranslationCache: mockWriteCache,
@@ -142,7 +132,6 @@ describe("usePageTranslation partial results and cancellation", () => {
       {
         id: testDoc.id,
         pageNumber: 1,
-        forceOcr: true,
       },
       expect.any(AbortSignal),
     )

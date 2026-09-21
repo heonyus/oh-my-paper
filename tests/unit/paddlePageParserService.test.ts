@@ -44,7 +44,7 @@ describe("Paddle page parser service", () => {
         'if (["OPENAI_API_KEY", "OAUTH_ACCESS_TOKEN", "HTTPS_PROXY", "CODEX_AUTH_TOKEN"].some((key) => process.env[key] === "canary-secret")) process.exit(6)',
         'if (process.argv[6] !== "--vlm-server-url" || process.argv[7] !== "http://127.0.0.1:18111/" || process.argv[8] !== "--vlm-model" || process.argv[9] !== "/models/PaddleOCR-VL-1.6" || process.argv[10] !== "--vlm-api-key" || process.argv[11] !== "local-secret") process.exit(5)',
         "const page = Number(process.argv[4])",
-        'fs.writeFileSync(process.argv[5], JSON.stringify({schemaVersion:"1.0.0",sourceHash:process.argv[3],parser:"PaddleOCR-VL-1.6",configVersion:"page-v1",pageNumber:page,width:1000,height:1000,blocks:[{id:"page:"+page+":block:0",label:"text",order:0,bounds:{x:50,y:80,width:400,height:100},content:"Parsed paragraph.",contentFormat:"markdown",translationPolicy:"include"}]}))',
+        'fs.writeFileSync(process.argv[5], JSON.stringify({schemaVersion:"1.0.0",sourceHash:process.argv[3],parser:"PaddleOCR-VL-1.6",configVersion:"page-v2",pageNumber:page,width:1000,height:1000,blocks:[{id:"page:"+page+":block:0",label:"text",order:0,bounds:{x:50,y:80,width:400,height:100},content:"Parsed paragraph.",contentFormat:"markdown",translationPolicy:"include"}]}))',
       ].join("\n"),
       "utf8",
     )
@@ -89,6 +89,11 @@ describe("Paddle page parser service", () => {
     vi.stubEnv("CODEX_AUTH_TOKEN", "canary-secret")
 
     try {
+      await expect(service.status()).resolves.toEqual({
+        configured: true,
+        provider: "paddle",
+        model: "PaddleOCR-VL-1.6",
+      })
       const first = await service.parse({
         documentId,
         pageNumber: 1,

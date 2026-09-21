@@ -6,7 +6,6 @@ import {
   type HostedCredentialProvider,
   type HostedCredentialSave,
   type HostedCredentialStatus,
-  MISTRAL_WEB_MODEL,
 } from "../../shared/webCredentials"
 
 function sourceLabel(source: "personal" | "shared" | "missing"): string {
@@ -35,13 +34,13 @@ function CredentialForm({
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
     try {
-      if (provider === "gemini")
+      if (provider === "gemini") {
         await onSave({ provider, apiKey, model: model || GEMINI_WEB_MODEL })
-      else if (provider === "groq") {
+      } else {
         const selectedModel = GROQ_WEB_MODELS.find((item) => item === model)
         if (!selectedModel) return
         await onSave({ provider, apiKey, model: selectedModel })
-      } else await onSave({ provider, apiKey, model: MISTRAL_WEB_MODEL })
+      }
       setApiKey("")
       setMessage("저장됨")
     } catch (error) {
@@ -82,7 +81,7 @@ function CredentialForm({
           </select>
         </label>
       ) : (
-        <p>{provider === "gemini" ? GEMINI_WEB_MODEL : MISTRAL_WEB_MODEL}</p>
+        <p>{GEMINI_WEB_MODEL}</p>
       )}
       <footer>
         <span role="status">
@@ -93,7 +92,7 @@ function CredentialForm({
           ) : null}
         </span>
         <button type="submit" disabled={apiKey.trim().length < 20}>
-          {`${label} ${provider === "mistral" ? "OCR 키 저장" : "저장하고 기본으로 사용"}`}
+          {`${label} 저장하고 기본으로 사용`}
         </button>
       </footer>
     </form>
@@ -130,13 +129,6 @@ export function HostedCredentialSettings({
         label="Groq"
         status={status.providers.groq}
         preferred={status.preferredTextProvider === "groq"}
-        onSave={onSave}
-      />
-      <CredentialForm
-        provider="mistral"
-        label="Mistral OCR"
-        status={status.providers.mistral}
-        preferred={false}
         onSave={onSave}
       />
     </div>

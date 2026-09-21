@@ -1,5 +1,5 @@
 import { deriveDocumentReadingOrder } from "../renderer/lib/documentReadingOrder"
-import type { SourceDocumentAst } from "../shared/documentAst"
+import type { SourceDocumentAst, SourceRawItem } from "../shared/documentAst"
 import {
   type DocumentPageParseResult,
   normalizeParsedDocumentPage,
@@ -16,27 +16,61 @@ export type NativePageParserInput = {
   readonly height?: number
 }
 
+type NativeTextUnit = {
+  readonly sourceItemIds: readonly SourceRawItem["id"][]
+  readonly bounds: SourceRawItem["bounds"]
+}
+
+function streamTextUnits(ast: SourceDocumentAst, pageId: string): readonly NativeTextUnit[] {
+  const groups: SourceRawItem[][] = []
+  for (const item of ast.rawItems
+    .filter((candidate) => candidate.pageId === pageId)
+    .sort((left, right) => left.rawStart - right.rawStart)) {
+    const current = groups.at(-1)
+    const previous = current?.at(-1)
+    const previousCenter = previous ? previous.bounds.y + previous.bounds.height / 2 : 0
+    const center = item.bounds.y + item.bounds.height / 2
+    const lineShift = previous
+      ? Math.abs(center - previousCenter) >
+        Math.max(previous.bounds.height, item.bounds.height) * 1.5
+      : false
+    if (!current || previous?.hasEOL || lineShift) groups.push([item])
+    else current.push(item)
+  }
+  return groups.map((items) => {
+    const x = Math.min(...items.map((item) => item.bounds.x))
+    const y = Math.min(...items.map((item) => item.bounds.y))
+    const right = Math.max(...items.map((item) => item.bounds.x + item.bounds.width))
+    const bottom = Math.max(...items.map((item) => item.bounds.y + item.bounds.height))
+    return {
+      sourceItemIds: items.map((item) => item.id),
+      bounds: { x, y, width: right - x, height: bottom - y },
+    }
+  })
+}
+
 function detectBlockLabel(text: string): ParsedPageBlock["label"] {
   const trimmed = text.trim()
+  if (/^[0-9]+(?:\.[0-9]+)*\s+\S/u.test(trimmed) && trimmed.length < 80) return "paragraph_title"
   if (
     /^(?:[0-9]+(?:\.[0-9]+)*\s+)?(?:[A-Z][A-Za-z0-9\s]{2,50})$/.test(trimmed) &&
     trimmed.length < 80
   ) {
     if (
-      /^[0-9]+\s+[A-Z]/.test(trimmed) ||
+      /^[0-9]+(?:\.[0-9]+)*\s+[A-Z]/.test(trimmed) ||
       /^(?:abstract|introduction|conclusion|references|related work)\b/i.test(trimmed)
     ) {
       return "paragraph_title"
     }
   }
-  if (/^(?:Figure|Fig\.)\s+[0-9]+/i.test(trimmed)) return "figure_title"
-  if (/^Table\s+[0-9]+/i.test(trimmed)) return "table_title"
-  if (/^(?:figure|fig\.?|table|tab\.?|chart)\s*\d+/i.test(trimmed)) {
+  if (/^(?:Figure|Fig\.)\s+[0-9]+\s*[:.]/i.test(trimmed)) return "figure_title"
+  if (/^Table\s+[0-9]+\s*[:.]/i.test(trimmed)) return "table_title"
+  if (/^(?:figure|fig\.?|table|tab\.?|chart)\s*\d+\s*[:.]/i.test(trimmed)) {
     if (/^(?:table|tab\.?)/i.test(trimmed)) return "table_title"
     if (/^chart/i.test(trimmed)) return "chart"
     return "figure_title"
   }
-  if (/^(?:page\s+\d+|\d+\s*\/\s*\d+)$/i.test(trimmed)) return "page_number"
+  if (/^(?:page\s+\d+|\d+|\d+\s*\/\s*\d+)$/i.test(trimmed)) return "page_number"
   if (/^[-*•]\s+/.test(trimmed) || /^[0-9]+[.)]\s+/.test(trimmed)) return "list"
   return "text"
 }
@@ -72,11 +106,10 @@ export function buildNativeParsedPage(
 
   const width = input.width ?? astPage.width
   const height = input.height ?? astPage.height
-  const pageBlocks = input.ast.blocks.filter((block) => block.pageId === pageId)
+  const pageLines = input.ast.lines.filter((line) => line.pageId === pageId)
   const itemMap = new Map(
     input.ast.items.filter((item) => item.pageId === pageId).map((item) => [item.id, item]),
   )
-  const rawBlocks = pageBlocks.length > 0 ? pageBlocks : []
 
   const totalChars = input.ast.items
     .filter((item) => item.pageId === pageId)
@@ -86,25 +119,39 @@ export function buildNativeParsedPage(
     return { status: "unavailable", reason: "needs_ocr" }
   }
 
+  const streamUnits = streamTextUnits(input.ast, pageId)
   const readingOrder = deriveDocumentReadingOrder(input.ast)
   const orderedPage = readingOrder.pages.find((p) => p.pageId === pageId)
-  const orderedBlocks = orderedPage?.blocks ?? []
+  const lineMap = new Map((orderedPage?.lines ?? pageLines).map((line) => [line.id, line]))
+  const orderedLines = (orderedPage?.orderedLineIds ?? []).flatMap((id) => {
+    const line = lineMap.get(id)
+    return line ? [line] : []
+  })
   const sourceBlocks =
-    orderedBlocks.length > 0
-      ? orderedBlocks
-      : rawBlocks.sort((a, b) => a.bounds.y - b.bounds.y || a.bounds.x - b.bounds.x)
+    streamUnits.length > 0
+      ? streamUnits
+      : orderedLines.length > 0
+        ? orderedLines
+        : pageLines.sort((a, b) => a.bounds.y - b.bounds.y || a.bounds.x - b.bounds.x)
   const parsedBlocks: ParsedPageBlock[] = []
+  const continuedCaptions = new Set<string>()
   for (let i = 0; i < sourceBlocks.length; i++) {
     const block = sourceBlocks[i]
     if (!block) continue
     const text = block.sourceItemIds
-      .map((id) => itemMap.get(id)?.text ?? "")
+      .flatMap((id) => {
+        const item = itemMap.get(id)
+        return item ? [item] : []
+      })
+      .sort((left, right) => left.normalizedStart - right.normalizedStart)
+      .map((item) => item.text)
       .filter(Boolean)
       .join(" ")
+      .replace(/\s+/gu, " ")
       .trim()
     if (!text) continue
 
-    const label = detectBlockLabel(text)
+    const detectedLabel = detectBlockLabel(text)
     const blockBounds = {
       x: Math.max(0, Math.min(width - 1, block.bounds.x)),
       y: Math.max(0, Math.min(height - 1, block.bounds.y)),
@@ -112,6 +159,35 @@ export function buildNativeParsedPage(
       height: Math.max(1, Math.min(height - Math.max(0, block.bounds.y), block.bounds.height)),
     }
 
+    const previous = parsedBlocks.at(-1)
+    const previousBottom = previous ? previous.bounds.y + previous.bounds.height : 0
+    const continuesCaption =
+      detectedLabel === "text" &&
+      (previous?.label === "figure_title" || previous?.label === "table_title") &&
+      !continuedCaptions.has(previous.id) &&
+      /^(?:figure|fig\.?|table|tab\.?)\s*[0-9]+\s*[:.]/iu.test(previous.content) &&
+      previous.bounds.height <= blockBounds.height * 1.8 &&
+      blockBounds.y - previousBottom <= Math.max(previous.bounds.height, blockBounds.height) * 1.5
+    if (continuesCaption && previous) {
+      continuedCaptions.add(previous.id)
+      const x = Math.min(previous.bounds.x, blockBounds.x)
+      const y = Math.min(previous.bounds.y, blockBounds.y)
+      const right = Math.max(
+        previous.bounds.x + previous.bounds.width,
+        blockBounds.x + blockBounds.width,
+      )
+      const bottom = Math.max(
+        previous.bounds.y + previous.bounds.height,
+        blockBounds.y + blockBounds.height,
+      )
+      parsedBlocks[parsedBlocks.length - 1] = {
+        ...previous,
+        bounds: { x, y, width: right - x, height: bottom - y },
+        content: `${previous.content} ${text}`,
+      }
+      continue
+    }
+    const label = detectedLabel
     parsedBlocks.push({
       id: `page:${input.pageNumber}:block:${parsedBlocks.length}`,
       label,

@@ -11,8 +11,7 @@ describe("HostedCredentialSettings", () => {
         status={{
           providers: {
             gemini: { source: "shared", model: "gemini-3.5-flash-lite" },
-            groq: { source: "missing", model: "openai/gpt-oss-20b" },
-            mistral: { source: "personal", model: "mistral-ocr-4-1" },
+            groq: { source: "personal", model: "openai/gpt-oss-20b" },
           },
           preferredTextProvider: "gemini",
         }}

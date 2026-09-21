@@ -10,7 +10,7 @@ import {
 } from "../shared/documentPageModel"
 import type { DocumentId, DocumentRecord, Sha256 } from "../shared/schemas"
 import { DocumentAstService } from "./documentAstService"
-import type { MistralPageParserService, OcrCredentialSource } from "./mistralPageParserService"
+import { mergePdfJsAndPaddlePage } from "./hybridPageParser"
 import { buildNativeParsedPage } from "./nativeTextPageParser"
 import type { PaddlePageParserService } from "./paddlePageParserService"
 import type { WorkspaceStore } from "./workspaceStore"
@@ -39,24 +39,18 @@ function waitForAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> 
 export type DocumentPageParserOptions = {
   readonly store: WorkspaceStore
   readonly paddlePageParser: PaddlePageParser
-  readonly mistralPageParser: MistralPageParserService
-  readonly ocrCredentials: OcrCredentialSource
   readonly astService?: DocumentAstService
 }
 
 export class DocumentPageParser {
   readonly #store: WorkspaceStore
   readonly #paddle: PaddlePageParser
-  readonly #mistral: MistralPageParserService
-  readonly #ocrCredentials: OcrCredentialSource
   readonly #astService: DocumentAstService
   readonly #active = new Map<string, ActivePageParse>()
 
   constructor(options: DocumentPageParserOptions) {
     this.#store = options.store
     this.#paddle = options.paddlePageParser
-    this.#mistral = options.mistralPageParser
-    this.#ocrCredentials = options.ocrCredentials
     this.#astService = options.astService ?? new DocumentAstService(options.store)
   }
 
@@ -68,7 +62,7 @@ export class DocumentPageParser {
     readonly forceOcr?: boolean
     readonly signal?: AbortSignal | undefined
   }): Promise<DocumentPageParseResult> {
-    const key = `${input.documentId}:${input.pageNumber}:${input.forceOcr ? "ocr" : "auto"}`
+    const key = `${input.documentId}:${input.pageNumber}`
     let active = this.#active.get(key)
     if (!active) {
       const controller = new AbortController()
@@ -111,56 +105,26 @@ export class DocumentPageParser {
     if (input.pageNumber > document.pageCount)
       return { status: "unavailable", reason: "invalid_page" }
 
-    const mistralConfigured = (await this.#ocrCredentials.apiKey()) !== null
-    if (input.forceOcr || mistralConfigured) {
-      const ocrCached = await this.#readOcrCachedPage(store, document.hash, input.pageNumber)
-      if (ocrCached)
-        return documentPageParseResultSchema.parse({ status: "ready", page: ocrCached })
-      return this.#runOcr(input, document, store)
-    }
-
-    const cached = await this.#readAnyCachedPage(store, document.hash, input.pageNumber)
+    const cached = await this.#readCachedPage(store, document.hash, input.pageNumber)
     if (cached) return documentPageParseResultSchema.parse({ status: "ready", page: cached })
 
     const nativeResult = await this.#tryNativeParse(document, input.pageNumber, store)
-    if (nativeResult && nativeResult.status === "ready") {
-      await this.#writeCachedPage(store, nativeResult.page)
-      return nativeResult
-    }
-
-    if (nativeResult) return nativeResult
-    return {
-      status: "unavailable",
-      reason: document.quality.needsOcr ? "needs_ocr" : "execution_failed",
-    }
-  }
-
-  async #runOcr(
-    input: {
-      readonly documentId: DocumentId
-      readonly pageNumber: number
-      readonly onProgress?: (progress: DocumentPageParseProgress) => void
-      readonly signal?: AbortSignal | undefined
-    },
-    _document: DocumentRecord,
-    store: WorkspaceStore,
-  ): Promise<DocumentPageParseResult> {
-    const apiKey = await this.#ocrCredentials.apiKey()
-    if (apiKey) {
-      return this.#mistral.parse({
-        documentId: input.documentId,
-        pageNumber: input.pageNumber,
-        store,
-        onProgress: input.onProgress,
-        signal: input.signal,
-      })
-    }
-    return this.#paddle.parse({
+    const paddleResult = await this.#paddle.parse({
       documentId: input.documentId,
       pageNumber: input.pageNumber,
       store,
       onProgress: input.onProgress,
     })
+    if (paddleResult.status === "ready") {
+      if (nativeResult?.status !== "ready") return paddleResult
+      const page = mergePdfJsAndPaddlePage(nativeResult.page, paddleResult.page)
+      await this.#writeCachedPage(store, page)
+      return documentPageParseResultSchema.parse({ status: "ready", page })
+    }
+    if (nativeResult?.status === "ready") {
+      return nativeResult
+    }
+    return paddleResult
   }
 
   async #tryNativeParse(
@@ -177,59 +141,34 @@ export class DocumentPageParser {
     })
   }
 
-  async #readAnyCachedPage(
+  async #readCachedPage(
     store: WorkspaceStore,
     hash: Sha256,
     pageNumber: number,
   ): Promise<ParsedDocumentPage | null> {
-    const parsers = [
-      "mistral-ocr-4-1-blocks-v2",
-      "paddleocr-vl-1.6-page-v1",
-      "native-text-1.0-page-native-v1",
-    ]
-    for (const parserDir of parsers) {
-      const file = join(store.root, "parsed-pages", hash, parserDir, `page-${pageNumber}.json`)
-      try {
-        const raw = JSON.parse(await readFile(file, "utf8"))
-        const parsed = normalizeParsedDocumentPage(parsedDocumentPageSchema.parse(raw))
-        if (parsed.sourceHash === hash && parsed.pageNumber === pageNumber) return parsed
-      } catch {
-        // ignore and try next
-      }
-    }
-    return null
-  }
-
-  async #readOcrCachedPage(
-    store: WorkspaceStore,
-    hash: Sha256,
-    pageNumber: number,
-  ): Promise<ParsedDocumentPage | null> {
-    const apiKey = await this.#ocrCredentials.apiKey()
-    const parserDir = apiKey ? "mistral-ocr-4-1-blocks-v2" : "paddleocr-vl-1.6-page-v1"
-    const file = join(store.root, "parsed-pages", hash, parserDir, `page-${pageNumber}.json`)
+    const file = join(
+      store.root,
+      "parsed-pages",
+      hash,
+      "pdfjs-paddleocr-vl-1.6-hybrid-v9",
+      `page-${pageNumber}.json`,
+    )
     try {
       const raw = JSON.parse(await readFile(file, "utf8"))
       const parsed = normalizeParsedDocumentPage(parsedDocumentPageSchema.parse(raw))
       if (parsed.sourceHash === hash && parsed.pageNumber === pageNumber) return parsed
     } catch {
-      // ignore and return null
+      return null
     }
     return null
   }
 
   async #writeCachedPage(store: WorkspaceStore, page: ParsedDocumentPage): Promise<void> {
-    const dirName =
-      page.parser === "NativeText-1.0"
-        ? "native-text-1.0-page-native-v1"
-        : page.parser === "Mistral-OCR-4.1"
-          ? "mistral-ocr-4-1-blocks-v2"
-          : "paddleocr-vl-1.6-page-v1"
     const file = join(
       store.root,
       "parsed-pages",
       page.sourceHash,
-      dirName,
+      "pdfjs-paddleocr-vl-1.6-hybrid-v9",
       `page-${page.pageNumber}.json`,
     )
     await mkdir(dirname(file), { recursive: true })

@@ -52,7 +52,6 @@ test("web reader keeps the full research board and page-adjacent translation", a
         providers: {
           gemini: { source: "shared", model: "gemini-3.5-flash-lite" },
           groq: { source: "missing", model: "openai/gpt-oss-20b" },
-          mistral: { source: "shared", model: "mistral-ocr-4-1" },
         },
         preferredTextProvider: "gemini",
       },
@@ -89,7 +88,7 @@ test("web reader keeps the full research board and page-adjacent translation", a
       json: {
         schemaVersion: "1.0.0",
         sourceHash,
-        parser: "Mistral-OCR-4.1",
+        parser: "PDF.js+PaddleOCR-VL-1.6",
         configVersion: "web-e2e-v1",
         pageNumber: 1,
         width: 612,
@@ -122,7 +121,7 @@ test("web reader keeps the full research board and page-adjacent translation", a
   await page.getByRole("button", { name: "AI 모델" }).click()
   await expect(page.getByLabel("Gemini API 키")).toBeVisible()
   await expect(page.getByLabel("Groq API 키")).toBeVisible()
-  await expect(page.getByLabel("Mistral OCR API 키")).toBeVisible()
+  await expect(page.getByLabel(/OCR API 키/)).toHaveCount(0)
   await expect(page.getByLabel("Provider")).toHaveCount(0)
   const settingsPage = page.locator(".settings-page")
   const initialScroll = await settingsPage.evaluate((element) => ({

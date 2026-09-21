@@ -30,7 +30,9 @@ export const cachedPageTranslationBlockSchema = z.object({
   sourceBounds: sourceBoundsSchema.optional(),
   sourcePageWidth: z.number().finite().positive().optional(),
   sourcePageHeight: z.number().finite().positive().optional(),
-  sourceParser: z.enum(["PaddleOCR-VL-1.6", "Mistral-OCR-4.1", "NativeText-1.0"]).optional(),
+  sourceParser: z
+    .enum(["PDF.js+PaddleOCR-VL-1.6", "PaddleOCR-VL-1.6", "NativeText-1.0"])
+    .optional(),
   sourceParserConfigVersion: z.string().trim().min(1).max(64).optional(),
   translation: z.string().trim().min(1).max(40_000),
 })

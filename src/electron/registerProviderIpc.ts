@@ -10,8 +10,6 @@ import {
   aiStreamDeltaSchema,
   aiStreamRequestSchema,
   apiKeySchema,
-  documentOcrKeySchema,
-  documentOcrProviderStatusSchema,
   providerConfigSchema,
   providerStatusSchema,
 } from "../shared/ipc"
@@ -19,7 +17,6 @@ import { ipcChannels } from "../shared/ipcChannels"
 import { AiJobRegistry, publicAiJobEvent } from "./aiJobRegistry"
 import type { AiModeStore } from "./aiModeStore"
 import type { CodexSubscriptionAdapter } from "./codexSubscriptionAdapter"
-import type { DocumentOcrCredentialService } from "./documentOcrCredentialService"
 import type { ProviderService } from "./providerService"
 import { subscriptionPrompt } from "./subscriptionPrompt"
 
@@ -41,7 +38,6 @@ type ProviderRuntime = Pick<
   ProviderService,
   "saveKey" | "saveConfig" | "status" | "run" | "runStream"
 >
-type OcrRuntime = Pick<DocumentOcrCredentialService, "saveKey" | "status">
 type CodexRuntime = Pick<
   CodexSubscriptionAdapter,
   "getStatus" | "assertAuthenticated" | "runCompletion"
@@ -50,7 +46,6 @@ type AiModeRuntime = Pick<AiModeStore, "load" | "save" | "loadSettings">
 
 export function registerProviderIpc(
   provider: ProviderRuntime,
-  ocrCredentials: OcrRuntime,
   codexAdapter: CodexRuntime,
   aiModes: AiModeRuntime,
   ipc: ProviderIpcMain = ipcMain,
@@ -68,14 +63,6 @@ export function registerProviderIpc(
   ipc.handle(ipcChannels.providerSaveKey, async (_event, value: unknown) => {
     await provider.saveKey(apiKeySchema.parse(value))
   })
-
-  ipc.handle(ipcChannels.documentOcrSaveKey, async (_event, value: unknown) => {
-    await ocrCredentials.saveKey(documentOcrKeySchema.parse(value))
-  })
-
-  ipc.handle(ipcChannels.documentOcrStatus, async () =>
-    documentOcrProviderStatusSchema.parse(await ocrCredentials.status()),
-  )
 
   ipc.handle(ipcChannels.providerSaveConfig, async (_event, value: unknown) => {
     await provider.saveConfig(providerConfigSchema.parse(value))
@@ -207,8 +194,6 @@ export function registerProviderIpc(
   return {
     dispose: () => {
       ipc.removeHandler(ipcChannels.providerSaveKey)
-      ipc.removeHandler(ipcChannels.documentOcrSaveKey)
-      ipc.removeHandler(ipcChannels.documentOcrStatus)
       ipc.removeHandler(ipcChannels.providerSaveConfig)
       ipc.removeHandler(ipcChannels.providerSaveMode)
       ipc.removeHandler(ipcChannels.providerStatus)

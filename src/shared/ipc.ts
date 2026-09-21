@@ -35,11 +35,7 @@ import {
   documentLayoutRequestSchema,
   documentLayoutResultSchema,
 } from "./documentLayout"
-import {
-  type DocumentOcrProviderStatus,
-  documentOcrKeySchema,
-  documentOcrProviderStatusSchema,
-} from "./documentOcr"
+import { type DocumentOcrProviderStatus, documentOcrProviderStatusSchema } from "./documentOcr"
 import {
   type DocumentPageParseProgress,
   type DocumentPageParseRequest,
@@ -298,7 +294,6 @@ export type ScourgifyApi = {
   readonly onDocumentAnalysis: (
     listener: (snapshot: DocumentAnalysisSnapshot) => void,
   ) => () => void
-  readonly saveDocumentOcrKey: (key: string) => Promise<void>
   readonly documentOcrStatus: () => Promise<DocumentOcrProviderStatus>
   readonly readPageTranslationCache: (
     request: PageTranslationCacheReadRequest,
@@ -458,7 +453,6 @@ export {
   documentAstResultSchema,
   documentLayoutRequestSchema,
   documentLayoutResultSchema,
-  documentOcrKeySchema,
   documentOcrProviderStatusSchema,
   documentPageParseProgressSchema,
   documentPageParseRequestSchema,

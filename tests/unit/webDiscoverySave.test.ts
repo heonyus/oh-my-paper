@@ -24,7 +24,6 @@ describe("web scholarly metadata save", () => {
       staticDir: root,
       provider: null,
       model: null,
-      mistralApiKey: null,
       apiKeys: { openai: null, openrouter: null, gemini: null, groq: null },
     }
     const services = await createWebServices(config)

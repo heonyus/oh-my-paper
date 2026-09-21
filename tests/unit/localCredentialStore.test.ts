@@ -13,30 +13,21 @@ afterEach(async () => {
 })
 
 describe("LocalCredentialStore", () => {
-  it("persists user-owned OpenRouter and Mistral credentials across restarts", async () => {
+  it("persists only the user-owned OpenRouter credential across restarts", async () => {
     const root = await mkdtemp(join(tmpdir(), "scourgify-credentials-"))
     cleanup.push(root)
-    const first = await LocalCredentialStore.open(root, {
-      openrouter: null,
-      mistralApiKey: null,
-    })
+    const first = await LocalCredentialStore.open(root, { openrouter: null })
 
     await first.saveOpenRouter({
       provider: "openrouter",
       apiKey: "sk-or-user-owned-key-at-least-twenty-characters",
       model: "qwen/qwen3.8-flash",
     })
-    await first.saveMistral("mistral-user-owned-key-at-least-twenty-characters")
-
-    const reopened = await LocalCredentialStore.open(root, {
-      openrouter: null,
-      mistralApiKey: null,
-    })
+    const reopened = await LocalCredentialStore.open(root, { openrouter: null })
     expect(reopened.openRouterConfig()).toEqual({
       provider: "openrouter",
       apiKey: "sk-or-user-owned-key-at-least-twenty-characters",
       model: "qwen/qwen3.8-flash",
     })
-    expect(reopened.mistralKey()).toBe("mistral-user-owned-key-at-least-twenty-characters")
   })
 })

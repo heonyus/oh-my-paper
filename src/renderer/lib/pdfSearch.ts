@@ -349,11 +349,9 @@ export async function preparePaperContextForQuestion(
     if (page > 1) pagesToLoad.add(page - 1)
     pagesToLoad.add(page)
   }
-  const ocr = await window.scourgify.documentOcrStatus()
   await Promise.all(
     [...pagesToLoad].map((page) =>
       loadParsedDocumentPage(documentId, page, {
-        forceOcr: ocr.configured,
         signal,
       }),
     ),

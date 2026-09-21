@@ -3,8 +3,8 @@ import { documentIdSchema, sha256Schema } from "./schemas"
 
 const parsedPageSchemaVersion = z.literal("1.0.0")
 export const parsedPageParserSchema = z.enum([
+  "PDF.js+PaddleOCR-VL-1.6",
   "PaddleOCR-VL-1.6",
-  "Mistral-OCR-4.1",
   "NativeText-1.0",
 ])
 export const parsedPageBlockLabelSchema = z.enum([

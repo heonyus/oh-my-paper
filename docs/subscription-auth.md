@@ -33,7 +33,7 @@ Scourgify launches Codex App Server with an app-owned `CODEX_HOME`, `HOME`, and 
 
 The launch environment is an allowlist. It preserves the executable `PATH` and app-owned routing variables, while excluding inherited API credentials and endpoint overrides such as `OPENAI_API_KEY`, `CODEX_API_KEY`, and `OPENAI_BASE_URL`. Scourgify does not read or copy credentials from another Codex profile. This follows the official [Codex credential configuration](https://openai.com/index/running-codex-safely/) guidance for OS keyring storage; no real login or inference is part of this change.
 
-Provider-reported limits may be unavailable and are not replaced with invented values. Subscription usage is shared with the same account's other clients. ChatGPT access does not include Mistral OCR or every other provider's subscription.
+Provider-reported limits may be unavailable and are not replaced with invented values. Subscription usage is shared with the same account's other clients. PDF structure analysis is independent and runs locally through PDF.js and PaddleOCR-VL.
 
 ## Web implications
 

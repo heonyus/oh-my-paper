@@ -16,7 +16,6 @@ const environmentSchema = z.object({
   OPENROUTER_API_KEY: z.string().trim().min(20).optional(),
   GEMINI_API_KEY: z.string().trim().min(20).optional(),
   GROQ_API_KEY: z.string().trim().min(20).optional(),
-  MISTRAL_API_KEY: z.string().trim().min(20).optional(),
 })
 
 export type WebServerConfig = {
@@ -27,7 +26,6 @@ export type WebServerConfig = {
   readonly provider: z.infer<typeof providerSchema> | null
   readonly model: string | null
   readonly apiKeys: Readonly<Record<z.infer<typeof providerSchema>, string | null>>
-  readonly mistralApiKey: string | null
 }
 
 function configuredProvider(
@@ -66,6 +64,5 @@ export function readWebServerConfig(environment: NodeJS.ProcessEnv = process.env
       gemini: parsed.GEMINI_API_KEY ?? null,
       groq: parsed.GROQ_API_KEY ?? null,
     },
-    mistralApiKey: parsed.MISTRAL_API_KEY ?? null,
   }
 }

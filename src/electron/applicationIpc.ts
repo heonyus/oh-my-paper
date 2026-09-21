@@ -34,11 +34,9 @@ import { DocumentAnalysisService } from "./documentAnalysisService"
 import { DocumentAstService } from "./documentAstService"
 import { chooseAndImport, importFromPath, importPaths } from "./documentImportIpc"
 import { DocumentLayoutService } from "./documentLayoutService"
-import { DocumentOcrCredentialService } from "./documentOcrCredentialService"
 import { createDocumentPageParser } from "./documentPageParser"
 import { readDocumentBytes } from "./documentService"
 import { InterchangeService } from "./interchangeService"
-import { MistralPageParserService } from "./mistralPageParserService"
 import { PaddlePageParserService } from "./paddlePageParserService"
 import { PageTranslationCacheService } from "./pageTranslationCacheService"
 import { ProviderService } from "./providerService"
@@ -78,7 +76,6 @@ export function registerApplicationIpc(
     ? registerCollectionAssetProtocol(collection.files.root, authorize)
     : null
   const provider = new ProviderService(serviceRoot)
-  const ocrCredentials = new DocumentOcrCredentialService(serviceRoot, process.env)
   const codexAdapter = new CodexSubscriptionAdapter({ appRoot: serviceRoot })
   const aiModes = new AiModeStore(serviceRoot)
   const ast = new DocumentAstService(store)
@@ -115,7 +112,7 @@ export function registerApplicationIpc(
   )
   const disposeCodexIpc = registerCodexIpc(codexAdapter)
   const disposeInterchangeIpc = registerInterchangeIpc(interchangeService)
-  const providerIpc = registerProviderIpc(provider, ocrCredentials, codexAdapter, aiModes)
+  const providerIpc = registerProviderIpc(provider, codexAdapter, aiModes)
   const citations = new CitationLookupCache(store.root)
   const { SCOURGIFY_LAYOUT_PYTHON: layoutPython } = process.env
   const layout = new DocumentLayoutService({
@@ -135,12 +132,9 @@ export function registerApplicationIpc(
     python: paddlePython,
     readinessMarker: paddleReadinessMarker,
   })
-  const mistralPageParser = new MistralPageParserService(ocrCredentials)
   const pageParser = createDocumentPageParser({
     store,
     paddlePageParser,
-    mistralPageParser,
-    ocrCredentials,
   })
   const analysis = new DocumentAnalysisService(store, pageParser)
   const disposeAnalysisIpc = registerDocumentAnalysisIpc(analysis)
@@ -205,6 +199,7 @@ export function registerApplicationIpc(
       }),
     )
   })
+  ipcMain.handle(ipcChannels.documentOcrStatus, () => paddlePageParser.status())
   return async () => {
     disposeLocalInference()
     localInference.dispose()

@@ -27,7 +27,7 @@ function request(
   documentId: DocumentId,
   page: number,
   provider: ProviderStatus,
-  parser?: "PaddleOCR-VL-1.6" | "Mistral-OCR-4.1" | "NativeText-1.0",
+  parser?: "PDF.js+PaddleOCR-VL-1.6" | "PaddleOCR-VL-1.6" | "NativeText-1.0",
   parserConfigVersion?: string,
 ) {
   return {

@@ -1,7 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { z } from "zod"
-import { documentOcrKeySchema } from "../shared/documentOcr"
 import { apiKeySchema, type ProviderConfig } from "../shared/ipc"
 import { OPENROUTER_MODEL_OPTIONS } from "../shared/providerModels"
 
@@ -13,14 +12,12 @@ const openRouterConfigSchema = z.object({
 
 const storedCredentialSchema = z.object({
   openrouter: openRouterConfigSchema.nullable(),
-  mistralApiKey: documentOcrKeySchema.nullable(),
 })
 
 type StoredCredentials = z.infer<typeof storedCredentialSchema>
 
 export type LocalCredentialFallback = {
   readonly openrouter: z.infer<typeof openRouterConfigSchema> | null
-  readonly mistralApiKey: string | null
 }
 
 function missingFile(error: unknown): boolean {
@@ -55,7 +52,6 @@ export class LocalCredentialStore {
       if (!missingFile(error)) throw error
       return new LocalCredentialStore(root, fallback, {
         openrouter: null,
-        mistralApiKey: null,
       })
     }
   }
@@ -64,18 +60,9 @@ export class LocalCredentialStore {
     return this.#saved.openrouter ?? this.#fallback.openrouter
   }
 
-  mistralKey(): string | null {
-    return this.#saved.mistralApiKey ?? this.#fallback.mistralApiKey
-  }
-
   async saveOpenRouter(value: ProviderConfig): Promise<void> {
     const openrouter = openRouterConfigSchema.parse(value)
     await this.#save({ ...this.#saved, openrouter })
-  }
-
-  async saveMistral(value: string): Promise<void> {
-    const mistralApiKey = documentOcrKeySchema.parse(value)
-    await this.#save({ ...this.#saved, mistralApiKey })
   }
 
   async #save(next: StoredCredentials): Promise<void> {

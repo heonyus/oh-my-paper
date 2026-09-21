@@ -6,6 +6,10 @@ import { dirname, join } from "node:path"
 import { promisify } from "node:util"
 import { z } from "zod"
 import {
+  type DocumentOcrProviderStatus,
+  documentOcrProviderStatusSchema,
+} from "../shared/documentOcr"
+import {
   type DocumentPageParseProgress,
   type DocumentPageParseResult,
   documentPageParseResultSchema,
@@ -15,11 +19,16 @@ import {
 import type { DocumentId } from "../shared/schemas"
 import { resolveDocumentPath } from "./documentService"
 import { buildOfflineSubprocessEnv } from "./offlineSubprocessEnvironment"
-import { ApplePaddleVlmServer, type PaddleVlmServer } from "./paddleVlmServer"
+import {
+  ApplePaddleVlmServer,
+  type PaddleVlmServer,
+  paddleVlmModelDirectory,
+  paddleVlmRuntimePython,
+} from "./paddleVlmServer"
 import type { WorkspaceStore } from "./workspaceStore"
 
 const executeFile = promisify(execFile)
-const parserConfigVersion = "page-v1"
+const parserConfigVersion = "page-v2"
 
 function isMissingFile(error: unknown): boolean {
   return error instanceof Error && "code" in error && error.code === "ENOENT"
@@ -66,11 +75,47 @@ type PaddlePageParseInput = {
 export class PaddlePageParserService {
   readonly #active = new Map<string, Promise<DocumentPageParseResult>>()
   readonly #vlmServer: PaddleVlmServer
+  readonly #usesManagedVlm: boolean
   #tail: Promise<void> = Promise.resolve()
 
   constructor(readonly options: PaddlePageParserServiceOptions) {
+    this.#usesManagedVlm = options.vlmServer === undefined
     this.#vlmServer =
       options.vlmServer ?? new ApplePaddleVlmServer(options.home ? { home: options.home } : {})
+  }
+
+  async status(): Promise<DocumentOcrProviderStatus> {
+    const home = this.options.home ?? homedir()
+    const platform = this.options.platform ?? process.platform
+    const files = [
+      paddlePageParserRuntimePython(home, platform, this.options.python),
+      paddlePageParserScriptPath(
+        this.options.appPath,
+        this.options.resourcesPath,
+        this.options.packaged,
+      ),
+      this.options.readinessMarker ??
+        join(home, ".scourgify", "paddle-vl-runtime", ".ready-v1.6-layout-v2"),
+    ]
+    if (this.#usesManagedVlm && platform === "darwin" && process.arch === "arm64") {
+      files.push(
+        paddleVlmRuntimePython(home),
+        paddleVlmModelDirectory(home),
+        join(home, ".scourgify", "paddle-vl-mlx-runtime", ".ready-mlx-v1.6"),
+      )
+    }
+    let configured = true
+    try {
+      await Promise.all(files.map((file) => access(file)))
+    } catch (error) {
+      if (!isMissingFile(error)) throw error
+      configured = false
+    }
+    return documentOcrProviderStatusSchema.parse({
+      configured,
+      provider: "paddle",
+      model: "PaddleOCR-VL-1.6",
+    })
   }
 
   parse(input: PaddlePageParseInput): Promise<DocumentPageParseResult> {

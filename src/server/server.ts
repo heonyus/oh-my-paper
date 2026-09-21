@@ -10,7 +10,6 @@ import {
   discoverySaveResultSchema,
 } from "../shared/discoveryIpc"
 import { documentAstRequestSchema, documentAstResultSchema } from "../shared/documentAstIpc"
-import { documentOcrKeySchema, MISTRAL_OCR_MODEL } from "../shared/documentOcr"
 import { documentPageParseRequestSchema } from "../shared/documentPageModel"
 import { citationLookupRequestSchema, providerConfigSchema } from "../shared/ipc"
 import {
@@ -186,21 +185,7 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
             return
           }
           case "documentOcrStatus": {
-            sendJson(res, 200, {
-              configured: services.mistralConfigured(),
-              provider: "mistral",
-              model: MISTRAL_OCR_MODEL,
-            })
-            return
-          }
-          case "saveDocumentOcrKey": {
-            const input = await readJson(req, documentOcrKeySchema)
-            await services.saveMistralKey(input)
-            sendJson(res, 200, {
-              configured: services.mistralConfigured(),
-              provider: "mistral",
-              model: MISTRAL_OCR_MODEL,
-            })
+            sendJson(res, 200, await services.ocrStatus())
             return
           }
           case "parseDocumentPage": {

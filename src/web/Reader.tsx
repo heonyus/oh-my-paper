@@ -111,7 +111,7 @@ export function Reader({
               <p>
                 {document.status === "queued"
                   ? "구조 분석을 기다리고 있습니다."
-                  : "Mistral이 문장과 수식 위치를 분석하고 있습니다."}
+                  : "PaddleOCR-VL이 문장과 수식 위치를 분석하고 있습니다."}
               </p>
             </div>
           ) : null}

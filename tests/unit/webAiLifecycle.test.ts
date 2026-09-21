@@ -22,7 +22,6 @@ async function setup() {
     staticDir: root,
     provider: null,
     model: null,
-    mistralApiKey: null,
     apiKeys: { openai: null, openrouter: null, gemini: null, groq: null },
   }
   const services = await createWebServices(config)
@@ -85,7 +84,7 @@ describe("real web AI HTTP lifecycle", () => {
     expect(response.status).toBe(403)
   })
 
-  it("updates both required credential statuses through local RPC", async () => {
+  it("updates the AI credential and exposes local Paddle status", async () => {
     const { url } = await setup()
     const post = (method: string, body: unknown) =>
       fetch(`${url}/api/rpc/${method}`, {
@@ -99,17 +98,16 @@ describe("real web AI HTTP lifecycle", () => {
       apiKey: "sk-or-user-owned-key-at-least-twenty-characters",
       model: "qwen/qwen3.8-flash",
     })
-    const ocr = await post(
-      "saveDocumentOcrKey",
-      "mistral-user-owned-key-at-least-twenty-characters",
-    )
+    const ocr = await post("documentOcrStatus", {})
+    const retiredKeyRoute = await post("saveDocumentOcrKey", "retired-provider-key")
 
     expect(await provider.json()).toMatchObject({
       configured: true,
       provider: "openrouter",
       model: "qwen/qwen3.8-flash",
     })
-    expect(await ocr.json()).toMatchObject({ configured: true, provider: "mistral" })
+    expect(await ocr.json()).toMatchObject({ provider: "paddle", model: "PaddleOCR-VL-1.6" })
+    expect(retiredKeyRoute.status).toBe(404)
   })
 
   it("aborts the provider when the browser disconnects", async () => {

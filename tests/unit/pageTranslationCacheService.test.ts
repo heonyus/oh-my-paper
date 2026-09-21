@@ -39,7 +39,7 @@ describe("PageTranslationCacheService", () => {
       targetLanguage: "ko" as const,
       provider: "openrouter" as const,
       model: "translation-model-a",
-      parser: "Mistral-OCR-4.1" as const,
+      parser: "PDF.js+PaddleOCR-VL-1.6" as const,
       parserConfigVersion: "blocks-v2",
     }
     const blocks = [
@@ -48,7 +48,7 @@ describe("PageTranslationCacheService", () => {
         kind: "body" as const,
         source: "Hello.",
         translation: "안녕하세요.",
-        sourceParser: "Mistral-OCR-4.1" as const,
+        sourceParser: "PDF.js+PaddleOCR-VL-1.6" as const,
         sourceParserConfigVersion: "blocks-v2",
       },
     ]
@@ -72,7 +72,7 @@ describe("PageTranslationCacheService", () => {
       expect(
         await new PageTranslationCacheService(store).read({
           ...request,
-          parser: "Mistral-OCR-4.1",
+          parser: "PDF.js+PaddleOCR-VL-1.6",
           parserConfigVersion: "blocks-v2",
         }),
       ).toEqual({ status: "ready", blocks })

@@ -48,8 +48,7 @@ export function ReaderApp(): JSX.Element {
       </main>
     )
 
-  const credentialsReady =
-    app.provider.configured && app.provider.provider === "openrouter" && app.ocrStatus.configured
+  const credentialsReady = app.provider.configured && app.provider.provider === "openrouter"
 
   if (!credentialsReady)
     return (

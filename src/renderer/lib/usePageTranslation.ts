@@ -71,10 +71,7 @@ export function usePageTranslation({
         }
         setStatus("parser-running")
         setParserStage("engine-starting")
-        const ocr = await window.scourgify.documentOcrStatus()
-        if (cancelled || abortController.signal.aborted) return
         const parsedPage = await loadParsedDocumentPage(document.id, currentPage, {
-          forceOcr: ocr.configured,
           signal: abortController.signal,
         })
         if (cancelled || abortController.signal.aborted) return

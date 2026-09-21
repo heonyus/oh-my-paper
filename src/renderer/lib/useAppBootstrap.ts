@@ -1,5 +1,5 @@
 import { type Dispatch, type SetStateAction, useCallback, useEffect } from "react"
-import { type DocumentOcrProviderStatus, MISTRAL_OCR_MODEL } from "../../shared/documentOcr"
+import type { DocumentOcrProviderStatus } from "../../shared/documentOcr"
 import { type PreparationUpdate, type ProviderStatus, preparationSteps } from "../../shared/ipc"
 import type { Workspace } from "../../shared/schemas"
 import { normalizeWorkspaceTranslations } from "./cardPresentation"
@@ -13,8 +13,8 @@ export const initialProviderStatus: ProviderStatus = {
 
 export const initialOcrProviderStatus: DocumentOcrProviderStatus = {
   configured: false,
-  provider: "mistral",
-  model: MISTRAL_OCR_MODEL,
+  provider: "paddle",
+  model: "PaddleOCR-VL-1.6",
 }
 
 export function useAppBootstrap({

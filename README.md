@@ -102,6 +102,7 @@ Optional local runtimes:
 ```bash
 npm run setup:layout
 npm run setup:mineru
+npm run setup:paddle-vl
 ```
 
 They require Python 3.12 and `uv`; model downloads can be large.
@@ -114,9 +115,9 @@ Google app identity does not grant AI access. Configure a separate connection un
   an app-owned profile with OS-keyring credentials. It does not copy another app's login or silently
   fall back to a paid API. A working runtime and eligible user subscription are prerequisites;
   live login, inference, cancellation, and usage reporting still need verification.
-- API mode uses your own provider keys. Gemini, Groq, OpenAI, and OpenRouter connections, optional
-  Mistral OCR, and an existing local OpenCodex proxy are separate choices. ChatGPT subscription
-  access does not include Mistral OCR or these API charges.
+- API mode uses your own provider keys. Gemini, Groq, OpenAI, OpenRouter and an existing local
+  OpenCodex proxy are separate choices. PDF structure analysis stays local through PDF.js and
+  PaddleOCR-VL and does not need a hosted OCR key.
 
 See [subscription authentication](docs/subscription-auth.md) for the implementation boundary.
 

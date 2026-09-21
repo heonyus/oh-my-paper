@@ -92,54 +92,46 @@ describe("SettingsModal", () => {
     })
   })
 
-  it("requires a user-owned Mistral OCR key alongside OpenRouter", async () => {
-    const onOcrSave = vi.fn(async () => {})
+  it("shows local Paddle readiness without requesting an OCR key", () => {
     render(
       <SettingsModal
         status={{ configured: true, provider: "gemini", model: "gemini-3.5-flash-lite" }}
-        ocrStatus={{ configured: false, provider: "mistral", model: "mistral-ocr-4-1" }}
+        ocrStatus={{ configured: false, provider: "paddle", model: "PaddleOCR-VL-1.6" }}
         fontScale={1}
         onClose={vi.fn()}
         onSave={vi.fn(async () => {})}
-        onOcrSave={onOcrSave}
         onFontScaleChange={vi.fn()}
       />,
     )
 
-    await userEvent.type(
-      screen.getByLabelText("Mistral OCR API 키"),
-      "mistral-example-key-at-least-twenty-characters",
-    )
-    await userEvent.click(screen.getByRole("button", { name: "OCR 키 저장" }))
-
-    expect(onOcrSave).toHaveBeenCalledWith("mistral-example-key-at-least-twenty-characters")
+    expect(screen.getByText("PaddleOCR-VL-1.6")).toBeVisible()
+    expect(screen.getByText("로컬 런타임 설치 필요")).toBeVisible()
+    expect(screen.queryByLabelText(/OCR API 키/)).not.toBeInTheDocument()
   })
 
-  it("locks first run to OpenRouter and Mistral setup", async () => {
+  it("locks first run to OpenRouter setup only", async () => {
     const onSave = vi.fn(async () => {})
     const onModeSave = vi.fn(async () => {})
     render(
       <SettingsModal
         status={{ configured: false, provider: "openrouter", model: "qwen/qwen3.7-flash" }}
-        ocrStatus={{ configured: false, provider: "mistral", model: "mistral-ocr-4-1" }}
+        ocrStatus={{ configured: false, provider: "paddle", model: "PaddleOCR-VL-1.6" }}
         fontScale={1}
         locked
         openRouterRequired
         onClose={vi.fn()}
         onSave={onSave}
         onModeSave={onModeSave}
-        onOcrSave={vi.fn(async () => {})}
         onFontScaleChange={vi.fn()}
       />,
     )
 
-    expect(screen.getByText("두 API 키 설정 필요")).toBeVisible()
+    expect(screen.getByText("OpenRouter API 키 설정 필요")).toBeVisible()
     expect(screen.getByLabelText("OpenRouter API 키")).toBeVisible()
-    expect(screen.getByLabelText("Mistral OCR API 키")).toBeVisible()
+    expect(screen.queryByLabelText(/OCR API 키/)).not.toBeInTheDocument()
     expect(screen.queryByLabelText("Provider")).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "설정 닫기" })).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "OpenRouter 설정 저장" })).toBeDisabled()
-    expect(screen.getByRole("button", { name: "OCR 키 저장" })).toBeDisabled()
 
     await userEvent.type(
       screen.getByLabelText("OpenRouter API 키"),

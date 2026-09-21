@@ -2,5 +2,4 @@ BETTER_AUTH_SECRET=replace-with-at-least-32-random-characters
 GOOGLE_CLIENT_ID=replace-with-google-web-client-id
 GOOGLE_CLIENT_SECRET=replace-with-google-web-client-secret
 CREDENTIAL_ENCRYPTION_KEY=replace-with-base64-encoded-32-byte-key
-MISTRAL_API_KEY=replace-with-mistral-api-key
 GEMINI_API_KEY=replace-with-gemini-api-key

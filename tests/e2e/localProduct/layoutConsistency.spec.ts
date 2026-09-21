@@ -30,7 +30,6 @@ test("all workspace tabs retain readable bounded controls across appearance size
   await mkdir(output, { recursive: true })
   const qa = await launchSimulatedAuthenticatedApplication({
     environment: {
-      MISTRAL_API_KEY: "synthetic-layout-key-no-network-use",
       SCOURGIFY_QA_SCHOLARLY_FIXTURE: "1",
     },
   })
