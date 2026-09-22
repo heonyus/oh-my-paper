@@ -7,15 +7,15 @@ test("production entry fails closed without the account service and exposes no w
   isMobile,
 }, testInfo) => {
   expect(isMobile).toBe(false)
-  const root = await mkdtemp(join(tmpdir(), "scourgify-account-boundary-"))
+  const root = await mkdtemp(join(tmpdir(), "ohmypaper-account-boundary-"))
   const app = await electron.launch({
     args: ["."],
     env: {
       ...process.env,
-      SCOURGIFY_USER_DATA_DIR: join(root, "profile"),
-      SCOURGIFY_ACCOUNT_SERVICE_ORIGIN: "",
-      SCOURGIFY_ACCOUNT_ISSUER: "",
-      SCOURGIFY_GOOGLE_CLIENT_ID: "",
+      OH_MY_PAPER_USER_DATA_DIR: join(root, "profile"),
+      OH_MY_PAPER_ACCOUNT_SERVICE_ORIGIN: "",
+      OH_MY_PAPER_ACCOUNT_ISSUER: "",
+      OH_MY_PAPER_GOOGLE_CLIENT_ID: "",
     },
   })
   try {
@@ -24,7 +24,7 @@ test("production entry fails closed without the account service and exposes no w
     await expect(page.getByRole("region", { name: "PDF 라이브러리" })).not.toBeVisible()
     const result = await page.evaluate(async () => {
       try {
-        await window.scourgify.readWorkspace()
+        await window.ohmypaper.readWorkspace()
         return "exposed"
       } catch {
         return "denied"

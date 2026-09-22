@@ -16,7 +16,7 @@ afterEach(async () => {
 
 describe("web scholarly metadata save", () => {
   it("writes through the local knowledge repository and returns duplicate state", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-discovery-save-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-discovery-save-"))
     const config: WebServerConfig = {
       host: "127.0.0.1",
       port: 8799,

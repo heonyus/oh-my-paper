@@ -21,7 +21,7 @@ afterEach(async () => {
 })
 
 async function temporaryRoot(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), "scourgify-account-services-"))
+  const root = await mkdtemp(join(tmpdir(), "ohmypaper-account-services-"))
   roots.push(root)
   return root
 }
@@ -76,14 +76,14 @@ describe("account service root", () => {
     await expect(resolveAccountServiceRoot(root, status)).resolves.toEqual({
       accountId: accountA,
       kind: "local",
-      root: join(root, "scourgify"),
+      root: join(root, "ohmypaper"),
     })
     await expect(access(join(root, "account"))).rejects.toMatchObject({ code: "ENOENT" })
   })
 
   it("uses legacy credentials only after an irreversible owner binding", async () => {
     const root = await temporaryRoot()
-    await mkdir(join(root, "scourgify"), { recursive: true })
+    await mkdir(join(root, "ohmypaper"), { recursive: true })
     await expect(resolveAccountServiceRootForAccount(root, accountA)).resolves.toMatchObject({
       kind: "isolated",
     })
@@ -102,7 +102,7 @@ describe("account service root", () => {
     })
     await expect(resolveAccountServiceRoot(root, statusA)).resolves.toMatchObject({
       kind: "legacy",
-      root: join(root, "scourgify"),
+      root: join(root, "ohmypaper"),
     })
     await expect(resolveAccountServiceRoot(root, statusB)).resolves.toMatchObject({
       kind: "isolated",

@@ -156,7 +156,7 @@ function block(
     case "thematicBreak":
       return { type: "thematicBreak" }
     case "html":
-      if (node.value.trim() === "<!-- scourgify:page-break -->") {
+      if (node.value.trim() === "<!-- ohmypaper:page-break -->") {
         return { type: "html", value: node.value.trim() }
       }
       addExportLimitation(context.limitations, {

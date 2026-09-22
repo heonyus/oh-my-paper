@@ -21,7 +21,7 @@ afterEach(async () => {
 
 describe("CodexSubscriptionAdapter", () => {
   it("reports not available when codex executable is missing", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-codex-test-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-codex-test-"))
     roots.push(root)
     const adapter = new CodexSubscriptionAdapter({
       appRoot: root,
@@ -36,7 +36,7 @@ describe("CodexSubscriptionAdapter", () => {
   })
 
   it("reads official authenticated shape with requiresOpenaiAuth: true", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-codex-test-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-codex-test-"))
     roots.push(root)
 
     vi.spyOn(CodexAppServerClient.prototype, "readAccount").mockResolvedValue({
@@ -78,7 +78,7 @@ describe("CodexSubscriptionAdapter", () => {
   })
 
   it("tolerates null email and new official plan enums safely", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-codex-test-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-codex-test-"))
     roots.push(root)
 
     vi.spyOn(CodexAppServerClient.prototype, "readAccount").mockResolvedValue({
@@ -105,7 +105,7 @@ describe("CodexSubscriptionAdapter", () => {
   })
 
   it("stops the idle process without disposing persistent login listeners", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-codex-test-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-codex-test-"))
     roots.push(root)
 
     const disposeSpy = vi.spyOn(CodexAppServerClient.prototype, "dispose")
@@ -127,7 +127,7 @@ describe("CodexSubscriptionAdapter", () => {
   })
 
   it("strictly rejects non-chatgpt login types", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-codex-test-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-codex-test-"))
     roots.push(root)
 
     const adapter = new CodexSubscriptionAdapter({
@@ -139,7 +139,7 @@ describe("CodexSubscriptionAdapter", () => {
   })
 
   it("starts login and initiates OAuth url flow for chatgpt only", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-codex-test-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-codex-test-"))
     roots.push(root)
 
     vi.spyOn(CodexAppServerClient.prototype, "startLogin").mockResolvedValue({
@@ -162,7 +162,7 @@ describe("CodexSubscriptionAdapter", () => {
   })
 
   it("supports cancellation and logout", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-codex-test-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-codex-test-"))
     roots.push(root)
 
     const cancelSpy = vi
@@ -185,7 +185,7 @@ describe("CodexSubscriptionAdapter", () => {
   })
 
   it("isolates thread context per concurrent completion", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-codex-test-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-codex-test-"))
     roots.push(root)
 
     vi.spyOn(CodexAppServerClient.prototype, "ensureStarted").mockResolvedValue(undefined)
@@ -244,7 +244,7 @@ describe("CodexSubscriptionAdapter", () => {
   })
 
   it("handles early notifications arriving before startTurn completes", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-codex-test-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-codex-test-"))
     roots.push(root)
 
     vi.spyOn(CodexAppServerClient.prototype, "ensureStarted").mockResolvedValue(undefined)
@@ -285,7 +285,7 @@ describe("CodexSubscriptionAdapter", () => {
   })
 
   it("handles abort signal before starting turn", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-codex-test-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-codex-test-"))
     roots.push(root)
 
     const adapter = new CodexSubscriptionAdapter({
@@ -303,7 +303,7 @@ describe("CodexSubscriptionAdapter", () => {
   })
 
   it("handles completion timeout correctly", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-codex-test-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-codex-test-"))
     roots.push(root)
 
     vi.spyOn(CodexSession.prototype, "startThread").mockResolvedValue("thread-timeout")
@@ -324,7 +324,7 @@ describe("CodexSubscriptionAdapter", () => {
   })
 
   it("rejects completion before dispatch when the subscription is unauthenticated", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-codex-test-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-codex-test-"))
     roots.push(root)
     const adapter = new CodexSubscriptionAdapter({
       appRoot: root,

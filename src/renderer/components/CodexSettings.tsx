@@ -27,8 +27,8 @@ export function CodexSettings({
 
   const refresh = useCallback(async (): Promise<void> => {
     try {
-      setStatus(await window.scourgify.codex.getStatus())
-      const pStatus = await window.scourgify.providerStatus()
+      setStatus(await window.ohmypaper.codex.getStatus())
+      const pStatus = await window.ohmypaper.providerStatus()
       if (pStatus.codexModel) setSelectedModel(pStatus.codexModel)
       if (pStatus.codexReasoningEffort) setSelectedEffort(pStatus.codexReasoningEffort)
     } catch (error) {
@@ -38,7 +38,7 @@ export function CodexSettings({
 
   useEffect(() => {
     void refresh()
-    return window.scourgify.codex.onLoginCompleted((event) => {
+    return window.ohmypaper.codex.onLoginCompleted((event) => {
       setLoginId(null)
       setMessage(event.success ? "로그인 완료" : (event.error ?? "로그인 실패"))
       void refresh()
@@ -50,14 +50,14 @@ export function CodexSettings({
     setBusy(true)
     setMessage("")
     try {
-      const result = await window.scourgify.codex.startLogin(type)
-      await window.scourgify.saveAiMode("chatgpt")
+      const result = await window.ohmypaper.codex.startLogin(type)
+      await window.ohmypaper.saveAiMode("chatgpt")
       if (result.type === "chatgpt") {
         setLoginId(result.loginId)
-        await window.scourgify.openExternal({ url: result.authUrl })
+        await window.ohmypaper.openExternal({ url: result.authUrl })
       } else if (result.type === "chatgptDeviceCode") {
         setLoginId(result.loginId)
-        await window.scourgify.openExternal({ url: result.verificationUrl })
+        await window.ohmypaper.openExternal({ url: result.verificationUrl })
         setMessage(`코드: ${result.userCode}`)
       } else {
         setMessage("ChatGPT 로그인 응답을 이해할 수 없습니다")
@@ -73,7 +73,7 @@ export function CodexSettings({
     if (!loginId) return
     setBusy(true)
     try {
-      await window.scourgify.codex.cancelLogin(loginId)
+      await window.ohmypaper.codex.cancelLogin(loginId)
       setLoginId(null)
       setMessage("로그인 취소됨")
     } catch (error) {
@@ -86,7 +86,7 @@ export function CodexSettings({
   async function logout(): Promise<void> {
     setBusy(true)
     try {
-      await window.scourgify.codex.logout()
+      await window.ohmypaper.codex.logout()
       await refresh()
       await changed.current?.()
       setMessage("이 앱의 ChatGPT 연결을 해제했습니다")
@@ -100,7 +100,7 @@ export function CodexSettings({
   async function updateModel(nextModel: string): Promise<void> {
     setSelectedModel(nextModel)
     try {
-      await window.scourgify.saveAiMode({
+      await window.ohmypaper.saveAiMode({
         mode: "chatgpt",
         codexModel: nextModel,
         codexReasoningEffort: selectedEffort,
@@ -114,7 +114,7 @@ export function CodexSettings({
   async function updateEffort(nextEffort: CodexReasoningEffort): Promise<void> {
     setSelectedEffort(nextEffort)
     try {
-      await window.scourgify.saveAiMode({
+      await window.ohmypaper.saveAiMode({
         mode: "chatgpt",
         codexModel: selectedModel,
         codexReasoningEffort: nextEffort,

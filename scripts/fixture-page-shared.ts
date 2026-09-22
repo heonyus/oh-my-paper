@@ -13,7 +13,7 @@ export function drawFixtureHeaderFooter(
   context: FixturePageContext,
 ): void {
   const { width } = page.getSize()
-  page.drawText("Scourgify Technical Report — Deterministic Test Fixture", {
+  page.drawText("oh-my-paper Technical Report — Deterministic Test Fixture", {
     x: 50,
     y: 800,
     size: 8.5,

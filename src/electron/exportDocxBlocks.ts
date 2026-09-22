@@ -161,7 +161,7 @@ async function block(
     case "thematicBreak":
       return [new Paragraph({ text: "────────────────" })]
     case "html":
-      return node.value === "<!-- scourgify:page-break -->"
+      return node.value === "<!-- ohmypaper:page-break -->"
         ? [new Paragraph({ children: [new PageBreak()] })]
         : []
     case "definition":

@@ -5,7 +5,7 @@ describe("renderer note asset insertion", () => {
   it("adds the canonical note id while retaining the old no-context request", async () => {
     // Given
     const importAsset = vi.fn(async () => null)
-    Object.defineProperty(window, "scourgify", {
+    Object.defineProperty(window, "ohmypaper", {
       configurable: true,
       value: { collection: { importAsset } },
     })

@@ -60,7 +60,7 @@ export function DocumentThumbnail({
 
     void (async () => {
       try {
-        const encoded = await window.scourgify.readDocument(document.id)
+        const encoded = await window.ohmypaper.readDocument(document.id)
         if (!active) return
         const task = getDocument({ data: decodeBase64(encoded) })
         activeLoadingTask = task

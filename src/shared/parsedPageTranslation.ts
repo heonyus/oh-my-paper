@@ -66,17 +66,76 @@ function sentenceSources(block: ParsedPageBlock, source: string): readonly strin
   return sentences.length > 0 ? attachNumberedMarkers(sentences) : [source]
 }
 
+function mergeAdjacentTextBlocks(page: ParsedDocumentPage): readonly ParsedPageBlock[] {
+  const merged: ParsedPageBlock[] = []
+  for (const block of [...page.blocks].sort((left, right) => left.order - right.order)) {
+    const previous = merged.at(-1)
+    if (
+      previous &&
+      (previous.label === "text" || previous.label === "list") &&
+      (block.label === "text" || block.label === "list")
+    ) {
+      const columnDistance = Math.abs(previous.bounds.x - block.bounds.x)
+      const previousBottom = previous.bounds.y + previous.bounds.height
+      const verticalGap = block.bounds.y - previousBottom
+      const sameColumn = columnDistance <= Math.max(24, page.width * 0.06)
+      const adjacentLine =
+        verticalGap >= -previous.bounds.height * 0.25 &&
+        verticalGap <= Math.max(previous.bounds.height, block.bounds.height) * 1.2
+      if (sameColumn && adjacentLine) {
+        const right = Math.max(
+          previous.bounds.x + previous.bounds.width,
+          block.bounds.x + block.bounds.width,
+        )
+        const bottom = Math.max(
+          previous.bounds.y + previous.bounds.height,
+          block.bounds.y + block.bounds.height,
+        )
+        merged[merged.length - 1] = {
+          ...previous,
+          bounds: {
+            x: Math.min(previous.bounds.x, block.bounds.x),
+            y: Math.min(previous.bounds.y, block.bounds.y),
+            width: right - Math.min(previous.bounds.x, block.bounds.x),
+            height: bottom - Math.min(previous.bounds.y, block.bounds.y),
+          },
+          content: `${previous.content.trim()} ${block.content.trim()}`.trim(),
+        }
+        continue
+      }
+    }
+    merged.push(block)
+  }
+  return merged
+}
+
 function equationSource(block: ParsedPageBlock, source: string): string {
   if (block.label !== "equation" || block.contentFormat !== "latex") return source
   if (/\$\$|\\\(|\\\)|\\\[|\\\]/u.test(source)) return source
   return `$$\n${source}\n$$`
 }
 
+function isFigureLabel(block: ParsedPageBlock, page: ParsedDocumentPage): boolean {
+  if (block.label !== "text" && block.label !== "list") return false
+  if (!/^[a-z]$/iu.test(block.content.trim())) return false
+  const centerX = block.bounds.x + block.bounds.width / 2
+  const centerY = block.bounds.y + block.bounds.height / 2
+  return page.blocks.some(
+    (visual) =>
+      (visual.label === "image" || visual.label === "chart") &&
+      centerX >= visual.bounds.x &&
+      centerX <= visual.bounds.x + visual.bounds.width &&
+      centerY >= visual.bounds.y &&
+      centerY <= visual.bounds.y + visual.bounds.height,
+  )
+}
+
 export function pageTranslationBlocksFromParsedPage(
   page: ParsedDocumentPage,
 ): readonly ParsedPageTranslationBlock[] {
-  return [...page.blocks]
+  return [...mergeAdjacentTextBlocks(page)]
     .sort((left, right) => left.order - right.order)
+    .filter((block) => !isFigureLabel(block, page))
     .flatMap((block) => {
       const rawSource = block.content.trim() || (block.label === "image" ? "원본 그림" : "")
       const source = equationSource(block, rawSource)

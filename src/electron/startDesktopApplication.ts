@@ -39,7 +39,7 @@ export async function startDesktopApplication(options: DesktopApplicationOptions
   await app.whenReady()
   const directory = options.electronDirectory ?? __dirname
   let store: WorkspaceStore | null = await openApplicationStore(options.userDataRoot)
-  let serviceRoot = join(options.userDataRoot, "scourgify")
+  let serviceRoot = join(options.userDataRoot, "ohmypaper")
   let serviceAccountId: AccountId | null = null
   let disposeApplication: (() => Promise<void>) | null = null
   let account: ApplicationAccount | null = null

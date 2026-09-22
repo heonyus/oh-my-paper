@@ -17,7 +17,7 @@ describe("PDF column links", () => {
     span.className = "pdf-link-text"
     span.textContent = "URL https://arxiv.org/abs/2501.04227."
     const internal = document.createElement("a")
-    internal.href = "file:///Applications/Scourgify.app/index.html#figure.caption.1"
+    internal.href = "file:///Applications/oh-my-paper.app/index.html#figure.caption.1"
 
     expect(urlFromPdfClickTarget(span)).toBe("https://arxiv.org/abs/2501.04227")
     expect(urlFromPdfClickTarget(internal)).toBeNull()

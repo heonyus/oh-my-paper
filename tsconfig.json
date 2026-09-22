@@ -30,7 +30,7 @@
     "tests/unit/WebAppearanceSettings.test.tsx",
     "tests/unit/WebSignIn.test.tsx",
     "tests/unit/WebWorkspaceBridge.test.ts",
-    "tests/unit/webScourgifyApi.test.ts",
+    "tests/unit/webOhMyPaperApi.test.ts",
     "tests/unit/webUpload.test.ts"
   ]
 }

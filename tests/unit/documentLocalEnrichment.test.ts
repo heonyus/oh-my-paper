@@ -94,7 +94,7 @@ describe("selective local document enrichment", () => {
 describe("local enrichment adapter", () => {
   it("resolves dev and packaged scripts without changing the fast pass", () => {
     expect(localEnrichmentRuntimePython("/Users/test", "darwin")).toContain(
-      ".scourgify/layout-runtime/bin/python",
+      ".ohmypaper/layout-runtime/bin/python",
     )
     expect(localEnrichmentScriptPath("/repo", "/App/Resources", true)).toBe(
       "/App/Resources/layout/pp_structure_enrichment.py",

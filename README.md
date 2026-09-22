@@ -1,21 +1,21 @@
 <p align="center">
-  <img src="assets/branding/scourgify-leaf-mark.png" width="96" alt="Scourgify leaf mark">
+  <img src="assets/branding/ohmypaper-leaf-mark.png" width="96" alt="oh-my-paper leaf mark">
 </p>
 
-<h1 align="center">Scourgify</h1>
+<h1 align="center">oh-my-paper</h1>
 
 <p align="center">
   A local-first spatial workspace for reading research PDFs without flattening the paper.
 </p>
 
 <p align="center">
-  <a href="https://github.com/heonyus/scourgify/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/heonyus/scourgify/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://github.com/heonyus/scourgify/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/heonyus/scourgify"></a>
-  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/github/license/heonyus/scourgify"></a>
-  <a href="https://github.com/heonyus/scourgify/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/heonyus/scourgify?style=social"></a>
+  <a href="https://github.com/heonyus/oh-my-paper/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/heonyus/oh-my-paper/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/heonyus/oh-my-paper/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/heonyus/oh-my-paper"></a>
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/github/license/heonyus/oh-my-paper"></a>
+  <a href="https://github.com/heonyus/oh-my-paper/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/heonyus/oh-my-paper?style=social"></a>
 </p>
 
-Scourgify keeps the PDF in place and lets translations, explanations, notes, figures, and
+oh-my-paper keeps the PDF in place and lets translations, explanations, notes, figures, and
 citations stay connected to the exact page that produced them. Documents stay on your computer,
 but the official app requires Google sign-in through a separate account-only backend.
 The supported target is Apple Silicon macOS (arm64).
@@ -35,7 +35,7 @@ compatibility remain unverified; see [release readiness](docs/release-readiness.
 
 ## Install
 
-Existing [GitHub Releases](https://github.com/heonyus/scourgify/releases/latest) are historical
+Existing [GitHub Releases](https://github.com/heonyus/oh-my-paper/releases/latest) are historical
 artifacts, not evidence that the current 2.0 checkout is ready to install or distribute.
 Current packaging targets macOS arm64 only. The oldest supported macOS version has not been
 validated. See [Mac packaging](docs/mac-release.md) for local commands and distribution prerequisites.
@@ -46,8 +46,8 @@ Requirements: an Apple Silicon Mac, Node.js 22+, npm, and configured account inf
 normal authenticated use.
 
 ```bash
-git clone https://github.com/heonyus/scourgify.git
-cd scourgify
+git clone https://github.com/heonyus/oh-my-paper.git
+cd ohmypaper
 npm ci
 npm run build
 cp .env.example .env
@@ -62,9 +62,9 @@ the account bindings below. AI connections remain separate and explicit.
 
 For account-managed use, fill these three non-secret bindings in `.env` using an authorized account service:
 
-- `SCOURGIFY_ACCOUNT_SERVICE_ORIGIN`: account API HTTPS origin.
-- `SCOURGIFY_ACCOUNT_ISSUER`: expected session issuer, matching the backend's `APP_ISSUER`.
-- `SCOURGIFY_GOOGLE_CLIENT_ID`: Google Desktop OAuth client ID accepted by the backend's `GOOGLE_CLIENT_IDS`.
+- `OH_MY_PAPER_ACCOUNT_SERVICE_ORIGIN`: account API HTTPS origin.
+- `OH_MY_PAPER_ACCOUNT_ISSUER`: expected session issuer, matching the backend's `APP_ISSUER`.
+- `OH_MY_PAPER_GOOGLE_CLIENT_ID`: Google Desktop OAuth client ID accepted by the backend's `GOOGLE_CLIENT_IDS`.
 
 Both origins must have no path, trailing slash, query, fragment, or credentials. Google setup needs
 a Desktop OAuth client and appropriate consent-screen configuration. The account backend needs
@@ -122,7 +122,7 @@ Google app identity does not grant AI access. Configure a separate connection un
 See [subscription authentication](docs/subscription-auth.md) for the implementation boundary.
 
 Provider keys saved in the app are encrypted with Electron `safeStorage`. They are never exposed to
-the PDF renderer, committed to Git, or sent to a Scourgify server.
+the PDF renderer, committed to Git, or sent to a oh-my-paper server.
 
 The environment example contains only non-secret account bindings. Configure personal provider
 credentials in the app; never commit keys, tokens, or account-service signing material.
@@ -164,10 +164,10 @@ The 2.0 integration is still under QA. Useful contributions include reproducible
 fixtures, Apple Silicon packaging checks, local parser improvements, accessibility, and source-faithful
 translation geometry. Windows, Linux, and Intel Mac releases are outside the current target.
 The [active product plan](.omo/plans/README.md) describes intended work; the coordinator's
-[execution record](.omo/evidence/scourgify-local-product/2026-09-06/execution.md) tracks QA evidence.
+[execution record](.omo/evidence/ohmypaper-local-product/2026-09-06/execution.md) tracks QA evidence.
 Neither feature descriptions nor passing simulated tests establish release readiness.
 
-If Scourgify helps your research, [star the repository](https://github.com/heonyus/scourgify) so
+If oh-my-paper helps your research, [star the repository](https://github.com/heonyus/oh-my-paper) so
 other researchers can find it.
 
 ## License

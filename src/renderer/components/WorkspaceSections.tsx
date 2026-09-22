@@ -56,8 +56,8 @@ export function WorkspaceSections({
   if (mode !== "reader" && mode !== "knowledge" && !visitedViews.includes(mode)) {
     setVisitedViews([...visitedViews, mode])
   }
-  const discovery = window.scourgify?.discovery
-  const memory = window.scourgify?.memory
+  const discovery = window.ohmypaper?.discovery
+  const memory = window.ohmypaper?.memory
   const [error, setError] = useState<string | null>(null)
   const openNode = (id: KnowledgeNodeId): void => {
     onNodeSelect(id)
@@ -105,11 +105,11 @@ export function WorkspaceSections({
           <Suspense fallback={<p role="status">화면을 여는 중…</p>}>
             {visitedMode === "graph" ? (
               <ConnectionsWorkspace
-                graphApi={window.scourgify?.scholarlyGraph}
+                graphApi={window.ohmypaper?.scholarlyGraph}
                 discovery={discovery}
                 onSearch={() => onNavigate("search")}
                 onOpenExternal={(url) => {
-                  void window.scourgify
+                  void window.ohmypaper
                     .openExternal({ url })
                     .catch(() => setError("링크를 열지 못했습니다."))
                 }}
@@ -150,12 +150,12 @@ export function WorkspaceSections({
               <DiscoveryWorkspace
                 active={mode === "search"}
                 discovery={discovery}
-                graphApi={window.scourgify?.scholarlyGraph}
-                research={window.scourgify?.research}
+                graphApi={window.ohmypaper?.scholarlyGraph}
+                research={window.ohmypaper?.research}
                 clientOps={clientOps}
                 onOpenNode={openNode}
                 onOpenExternal={(url) => {
-                  void window.scourgify
+                  void window.ohmypaper
                     .openExternal({ url })
                     .catch(() => setError("링크를 열지 못했습니다."))
                 }}

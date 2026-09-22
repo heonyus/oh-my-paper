@@ -7,11 +7,11 @@ import {
 import type { KnowledgeNode } from "../../../shared/knowledgeSchemas"
 
 const CONTEXT_LENGTH = 180
-const SCOURGIFY_BLOCK_COMMENT =
-  /<!-- scourgify:block:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12} -->/gi
+const OH_MY_PAPER_BLOCK_COMMENT =
+  /<!-- ohmypaper:block:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12} -->/gi
 
 function hideBookkeepingComments(text: string): string {
-  return text.replace(SCOURGIFY_BLOCK_COMMENT, "")
+  return text.replace(OH_MY_PAPER_BLOCK_COMMENT, "")
 }
 
 function fragmentContext(body: string, location: FragmentLocation | null, quote: string) {

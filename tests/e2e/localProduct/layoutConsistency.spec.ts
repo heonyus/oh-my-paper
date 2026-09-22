@@ -21,16 +21,16 @@ interface LayoutMeasurement {
 
 test("all workspace tabs retain readable bounded controls across appearance sizes", async () => {
   test.setTimeout(180_000)
-  const { SCOURGIFY_LAYOUT_PHASE: phase = "after" } = process.env
+  const { OH_MY_PAPER_LAYOUT_PHASE: phase = "after" } = process.env
   const output = join(
     process.cwd(),
-    ".omo/evidence/scourgify-local-product/2026-09-10-layout",
+    ".omo/evidence/ohmypaper-local-product/2026-09-10-layout",
     phase,
   )
   await mkdir(output, { recursive: true })
   const qa = await launchSimulatedAuthenticatedApplication({
     environment: {
-      SCOURGIFY_QA_SCHOLARLY_FIXTURE: "1",
+      OH_MY_PAPER_QA_SCHOLARLY_FIXTURE: "1",
     },
   })
   const errors: string[] = []

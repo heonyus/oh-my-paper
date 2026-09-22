@@ -114,7 +114,7 @@ function block(node: BlockContent | DefinitionContent, snapshot: ExportSnapshot)
     case "thematicBreak":
       return "<hr>"
     case "html":
-      return node.value === "<!-- scourgify:page-break -->"
+      return node.value === "<!-- ohmypaper:page-break -->"
         ? '<div class="page-break" aria-hidden="true"></div>'
         : ""
     case "definition":

@@ -6,9 +6,9 @@ import { ipcChannels } from "../../src/shared/ipc"
 import { launchSimulatedAuthenticatedApplication } from "../support/electron/launchSimulatedAuthenticatedApplication"
 
 test("library is a responsive home that opens existing PDFs", async () => {
-  const temporaryRoot = await mkdtemp(join(tmpdir(), "scourgify-library-e2e-"))
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "ohmypaper-library-e2e-"))
   const userData = join(temporaryRoot, "user-data")
-  const storeRoot = join(userData, "scourgify")
+  const storeRoot = join(userData, "ohmypaper")
   const documentsRoot = join(storeRoot, "documents")
   const fixture = join(process.cwd(), "tests", "fixtures", "sample-paper.pdf")
   const bytes = await readFile(fixture)
@@ -67,7 +67,7 @@ test("library is a responsive home that opens existing PDFs", async () => {
   const qa = await launchSimulatedAuthenticatedApplication({
     userDataRoot: userData,
     environment: {
-      SCOURGIFY_PADDLE_VL_READY: join(temporaryRoot, "missing-paddle-runtime"),
+      OH_MY_PAPER_PADDLE_VL_READY: join(temporaryRoot, "missing-paddle-runtime"),
     },
   })
   try {
@@ -98,15 +98,15 @@ test("library is a responsive home that opens existing PDFs", async () => {
     await page.waitForTimeout(150)
     await page.screenshot({ path: join(evidence, "library-1536.png") })
     await page.evaluate(async (path) => {
-      await window.scourgify.importDocumentPath(path)
+      await window.ohmypaper.importDocumentPath(path)
     }, fixture)
     const importedId = await page.evaluate(async () => {
-      const workspace = await window.scourgify.readWorkspace()
+      const workspace = await window.ohmypaper.readWorkspace()
       return workspace.activeDocumentId
     })
     if (!importedId) throw new Error("imported document id is missing")
     await page.evaluate(async (id) => {
-      await window.scourgify.writePageTranslationCache({
+      await window.ohmypaper.writePageTranslationCache({
         id,
         pageNumber: 1,
         targetLanguage: "ko",
@@ -128,7 +128,7 @@ test("library is a responsive home that opens existing PDFs", async () => {
     expect(
       await page.evaluate(
         async (id) =>
-          window.scourgify.readPageTranslationCache({
+          window.ohmypaper.readPageTranslationCache({
             id,
             pageNumber: 1,
             targetLanguage: "ko",
@@ -151,6 +151,9 @@ test("library is a responsive home that opens existing PDFs", async () => {
             completedPages: 4,
             currentPage: 5,
             stage: "document-analyzing",
+            engine: "local",
+            attempt: 1,
+            maxAttempts: 2,
             state: "running",
           },
         ],

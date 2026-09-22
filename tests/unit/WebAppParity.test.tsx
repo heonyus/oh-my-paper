@@ -23,8 +23,8 @@ vi.mock("../../src/web/useDocuments", () => ({
   }),
 }))
 
-vi.mock("../../src/web/webScourgifyApi", () => ({
-  installWebScourgifyApi: mocks.install,
+vi.mock("../../src/web/webOhMyPaperApi", () => ({
+  installWebOhMyPaperApi: mocks.install,
 }))
 
 vi.mock("../../src/web/useHostedCredentials", () => ({

@@ -122,29 +122,34 @@ export function usePaperAiRequest(
   useEffect(() => {
     if (activeDocumentId) sourceGeneration.current += 1
     return () => {
-      for (const jobId of activeJobs.current) void window.scourgify.cancelAiJob(jobId)
+      for (const jobId of activeJobs.current) void window.ohmypaper.cancelAiJob(jobId)
       activeJobs.current.clear()
     }
   }, [activeDocumentId])
+  const documentRef = useRef(document)
+  useEffect(() => {
+    documentRef.current = document
+  }, [document])
   return useCallback(
     async (request, onDelta, signal) => {
-      if (!document) throw new Error("active document is missing")
+      const currentDocument = documentRef.current
+      if (!currentDocument) throw new Error("active document is missing")
       if (signal?.aborted) throw new PaperAiJobError("cancelled")
       const grounded = groundedAiRequest(
-        document,
+        currentDocument,
         summary,
-        document.overview || cachedPaperOverviewContext(document.id),
+        currentDocument.overview || cachedPaperOverviewContext(currentDocument.id),
         request,
       )
       if (usesDirectPaperCompletion(grounded.action, onDelta !== undefined) && !signal)
-        return (await window.scourgify.runAi(grounded)).text
+        return (await window.ohmypaper.runAi(grounded)).text
       const emitter = frameEmitter(onDelta)
       const jobId = createAiJobId(`job:${crypto.randomUUID()}`)
       activeJobs.current.add(jobId)
       let started = false
       const abortHandler = (): void => {
         emitter.cancel()
-        if (started) void window.scourgify.cancelAiJob(jobId).catch(() => undefined)
+        if (started) void window.ohmypaper.cancelAiJob(jobId).catch(() => undefined)
       }
       try {
         const result = await new Promise<string>((resolve, reject) => {
@@ -165,7 +170,7 @@ export function usePaperAiRequest(
             cancel()
             return
           }
-          unsubscribe = window.scourgify.onAiJobEvent((event) => {
+          unsubscribe = window.ohmypaper.onAiJobEvent((event) => {
             if (event.jobId !== jobId) return
             switch (event.kind) {
               case "started":
@@ -190,11 +195,11 @@ export function usePaperAiRequest(
           })
           if (signal) signal.addEventListener("abort", cancel, { once: true })
           started = true
-          void window.scourgify
+          void window.ohmypaper
             .startAiJob({
               jobId,
               role: aiRoleForAction(grounded.action),
-              documentId: document.id,
+              documentId: currentDocument.id,
               sourceGeneration: sourceGeneration.current,
               parents: [],
               priority: "current",
@@ -213,6 +218,6 @@ export function usePaperAiRequest(
         activeJobs.current.delete(jobId)
       }
     },
-    [document, summary],
+    [summary],
   )
 }

@@ -11,7 +11,7 @@ import { emptyAccountVault } from "../../../src/electron/accountSessionTypes"
 const roots: string[] = []
 
 async function temporaryRoot(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), "scourgify-account-test-"))
+  const root = await mkdtemp(join(tmpdir(), "ohmypaper-account-test-"))
   roots.push(root)
   return root
 }

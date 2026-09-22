@@ -29,7 +29,7 @@ describe("parsed document page runtime", () => {
 
   it("shares in-flight page parsing and keeps the ready page", async () => {
     const parseDocumentPage = vi.fn(async () => ({ status: "ready", page }) as const)
-    Object.defineProperty(window, "scourgify", {
+    Object.defineProperty(window, "ohmypaper", {
       configurable: true,
       value: { parseDocumentPage },
     })
@@ -53,7 +53,7 @@ describe("parsed document page runtime", () => {
     const pending = new Promise<DocumentPageParseResult>((resolve) => {
       deferred.resolve = resolve
     })
-    Object.defineProperty(window, "scourgify", {
+    Object.defineProperty(window, "ohmypaper", {
       configurable: true,
       value: { parseDocumentPage: () => pending },
     })
@@ -67,7 +67,7 @@ describe("parsed document page runtime", () => {
   })
 
   it("turns an IPC rejection into an unavailable page instead of leaving parsing active", async () => {
-    Object.defineProperty(window, "scourgify", {
+    Object.defineProperty(window, "ohmypaper", {
       configurable: true,
       value: { parseDocumentPage: async () => Promise.reject(new Error("ipc disconnected")) },
     })
@@ -88,7 +88,7 @@ describe("parsed document page runtime", () => {
       signals.push(signal)
       return pending
     })
-    Object.defineProperty(window, "scourgify", {
+    Object.defineProperty(window, "ohmypaper", {
       configurable: true,
       value: { parseDocumentPage },
     })
@@ -115,7 +115,7 @@ describe("parsed document page runtime", () => {
       deferred.resolve = resolve
     })
     const parseDocumentPage = vi.fn(() => pending)
-    Object.defineProperty(window, "scourgify", {
+    Object.defineProperty(window, "ohmypaper", {
       configurable: true,
       value: { parseDocumentPage },
     })
@@ -151,7 +151,7 @@ describe("parsed document page runtime", () => {
       expect(parsedDocumentPage(documentId, 1)).toBeNull()
       return { status: "ready", page: ocrPage } as const
     })
-    Object.defineProperty(window, "scourgify", {
+    Object.defineProperty(window, "ohmypaper", {
       configurable: true,
       value: { parseDocumentPage },
     })

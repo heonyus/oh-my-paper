@@ -39,7 +39,7 @@ afterEach(async () => {
 
 describe("account recovery IPC", () => {
   it("writes a new recovery-only file below the captured account and node", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-account-recovery-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-account-recovery-"))
     roots.push(root)
     const listeners: AccountDirtySaveListener[] = []
     const handlers = new Map<string, AccountIpcListener>()
@@ -83,7 +83,7 @@ describe("account recovery IPC", () => {
   })
 
   it("lists a bounded set and restores bytes only for the same account", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-account-recovery-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-account-recovery-"))
     roots.push(root)
     const store = new AccountRecoveryStore(root)
     const first = await store.save(accountId, draft)
@@ -100,8 +100,8 @@ describe("account recovery IPC", () => {
   })
 
   it("rejects a symlinked account directory before creating node directories", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-account-recovery-"))
-    const outside = await mkdtemp(join(tmpdir(), "scourgify-account-recovery-outside-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-account-recovery-"))
+    const outside = await mkdtemp(join(tmpdir(), "ohmypaper-account-recovery-outside-"))
     roots.push(root, outside)
     await symlink(outside, join(root, accountId))
     const store = new AccountRecoveryStore(root)
@@ -113,7 +113,7 @@ describe("account recovery IPC", () => {
   })
 
   it("durably stores a schema-valid maximum multibyte draft", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-account-recovery-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-account-recovery-"))
     roots.push(root)
     const store = new AccountRecoveryStore(root)
     const largeDraft = accountRecoveryDraftSchema.parse({

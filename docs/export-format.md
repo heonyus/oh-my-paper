@@ -1,6 +1,6 @@
-# Scourgify selected export format
+# oh-my-paper selected export format
 
-Scourgify exports one immutable selected-content snapshot to Markdown, HTML, DOCX, or PDF. Export construction never writes back to the canonical Markdown note. Destination selection, overwrite confirmation, staged filesystem writes, and partial-write recovery remain responsibilities of the calling interchange service.
+oh-my-paper exports one immutable selected-content snapshot to Markdown, HTML, DOCX, or PDF. Export construction never writes back to the canonical Markdown note. Destination selection, overwrite confirmation, staged filesystem writes, and partial-write recovery remain responsibilities of the calling interchange service.
 
 ## Integration API
 
@@ -21,7 +21,7 @@ The snapshot removes unsafe link targets, private absolute paths, raw HTML, and 
 
 ## Supported Markdown tree
 
-The shared tree supports headings, paragraphs, emphasis, strong text, deletion, inline code, fenced code, block quotes, ordered and unordered lists, GFM tables, safe links, selected local images, inline/display math, thematic breaks, and `<!-- scourgify:page-break -->`.
+The shared tree supports headings, paragraphs, emphasis, strong text, deletion, inline code, fenced code, block quotes, ordered and unordered lists, GFM tables, safe links, selected local images, inline/display math, thematic breaks, and `<!-- ohmypaper:page-break -->`.
 
 Raw HTML is removed. Reference-style links/images and footnotes are currently flattened or omitted and reported as limitations. No exporter claims lossless Markdown formatting or DOCX round-trip import.
 
@@ -29,7 +29,7 @@ Raw HTML is removed. Reference-style links/images and footnotes are currently fl
 
 The Markdown bundle contains one `.md` file and an `assets/` entry for each selected image. YAML frontmatter records the snapshot revision plus stable selected record IDs, aliases, document version hashes, evidence anchors, semantic relations, review state, and provenance. Bibliography, sources, source availability, and export limitations remain readable in ordinary editors.
 
-Scourgify-only source locators are preserved as text. They require the matching Scourgify collection and immutable document version; unavailable sources are not retargeted.
+oh-my-paper-only source locators are preserved as text. They require the matching oh-my-paper collection and immutable document version; unavailable sources are not retargeted.
 
 ## HTML
 
@@ -53,4 +53,4 @@ The print stylesheet repeats table headers, avoids splitting images, rows, code 
 - Raw HTML, footnotes, reference-style Markdown links/images, SVG, WebP, audio, video, and remote assets are unsupported.
 - Complex DOCX equations are rendered images with LaTeX alternative text, not native editable equations.
 - Browser pagination is bounded and practical, but cannot guarantee that every unusually large table row or equation fits on one page.
-- A Scourgify-only source locator is descriptive outside the matching local collection and application.
+- A oh-my-paper-only source locator is descriptive outside the matching local collection and application.

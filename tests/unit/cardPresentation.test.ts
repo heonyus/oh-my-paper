@@ -41,10 +41,19 @@ describe("card presentation", () => {
     ).toEqual({ title: "indicates", body: "1. **나타내다**\n2. 시사하다" })
   })
 
-  it("keeps a short English phrase as the title and returns only its translation", () => {
+  it("formats a short English phrase translation as numbered meanings with the best fit bold", () => {
+    expect(
+      parsedTranslationResponse(
+        '{"meanings":["검증 가능한 정답","확인 가능한 실제값"]}',
+        "verifiable ground truth",
+      ),
+    ).toEqual({
+      title: "verifiable ground truth",
+      body: "1. **검증 가능한 정답**\n2. 확인 가능한 실제값",
+    })
     expect(parsedTranslationResponse("검증 가능한 정답", "verifiable ground truth")).toEqual({
       title: "verifiable ground truth",
-      body: "검증 가능한 정답",
+      body: "1. **검증 가능한 정답**",
     })
   })
 

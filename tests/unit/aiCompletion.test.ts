@@ -28,8 +28,14 @@ describe("AI completion budget", () => {
       completionLimitParameters("openrouter", "z-ai/glm-5.3-flash", {
         ...request,
         action: "page_translation",
-      }).response_format?.json_schema.name,
-    ).toBe("page_translation")
+      }).response_format,
+    ).toBeDefined()
+    expect(
+      completionLimitParameters("openrouter", "tencent/hy-mt2-7b", {
+        ...request,
+        action: "page_translation",
+      }).response_format,
+    ).toBeUndefined()
   })
 
   it("requests strict structured output for multimodal page structure", () => {
@@ -141,6 +147,55 @@ describe("AI completion budget", () => {
       max_tokens: 64,
       temperature: 0,
     })
+  })
+
+  it("disables DeepSeek V4.1 hidden reasoning for short reader responses", () => {
+    expect(
+      completionLimitParameters("openrouter", "deepseek/deepseek-v4.1-flash", {
+        ...request,
+        action: "keywords",
+      }),
+    ).toMatchObject({
+      max_tokens: 224,
+      reasoning: { effort: "none", exclude: true },
+      temperature: 0,
+    })
+  })
+
+  it("routes every OpenRouter page translation to the dedicated Hy-MT2 model", () => {
+    expect(
+      routedModelForRequest("openrouter", "deepseek/deepseek-v4.1-flash", {
+        ...request,
+        action: "page_translation",
+      }),
+    ).toBe("tencent/hy-mt2-30b-a3b")
+    expect(
+      routedModelForRequest(
+        "openrouter",
+        "deepseek/deepseek-v4.1-flash",
+        { ...request, action: "page_translation" },
+        "qwen/qwen3-30b-a3b-instruct-2507",
+      ),
+    ).toBe("qwen/qwen3-30b-a3b-instruct-2507")
+    expect(
+      routedModelForRequest(
+        "openrouter",
+        "deepseek/deepseek-v4.1-flash",
+        { ...request, action: "page_translation" },
+        "main",
+      ),
+    ).toBe("deepseek/deepseek-v4.1-flash")
+    expect(
+      completionLimitParameters("openrouter", "tencent/hy-mt2-30b-a3b", {
+        ...request,
+        action: "page_translation",
+      }),
+    ).toEqual({ max_tokens: 4_096, temperature: 0 })
+    const translated = completionLimitParameters("openrouter", "qwen/qwen3-30b-a3b-instruct-2507", {
+      ...request,
+      action: "page_translation",
+    })
+    expect(translated.response_format).toBeDefined()
   })
 
   it("routes bounded OpenRouter reading actions through the Nitro variant", () => {

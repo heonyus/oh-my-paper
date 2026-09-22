@@ -10,7 +10,7 @@ test("an imported PDF links to a concept and returns to its measured text region
     await expect(page.getByRole("region", { name: "PDF 라이브러리" })).toBeVisible()
     const importedDocument = await page.evaluate(
       async (path) => {
-        const result = await window.scourgify.importDocumentPath(path)
+        const result = await window.ohmypaper.importDocumentPath(path)
         if (!result) throw new Error("Synthetic PDF import was cancelled")
         return result.document
       },
@@ -20,7 +20,7 @@ test("an imported PDF links to a concept and returns to its measured text region
     await page.getByRole("button", { name: `${importedDocument.title} 열기`, exact: true }).click()
     const span = page
       .locator('.pdfViewer .page[data-page-number="1"] .textLayer span')
-      .filter({ hasText: /Scourgify/ })
+      .filter({ hasText: /oh-my-paper/ })
       .first()
     await expect(span).toBeVisible({ timeout: 30_000 })
     const measured = await span.evaluate((element) => {
@@ -42,7 +42,7 @@ test("an imported PDF links to a concept and returns to its measured text region
     await page.evaluate(
       async ({ source, measured }) => {
         const { quote, ...fragment } = measured
-        await window.scourgify.knowledge.linkEvidence({
+        await window.ohmypaper.knowledge.linkEvidence({
           documentId: source.id,
           hash: source.hash,
           anchor: { page: 1, quote, x: fragment.x, y: fragment.y, fragments: [fragment] },
@@ -84,7 +84,7 @@ test("switching PDFs keeps page and card state scoped to the active document", a
       async (paths) => {
         const imported = []
         for (const path of paths) {
-          const result = await window.scourgify.importDocumentPath(path)
+          const result = await window.ohmypaper.importDocumentPath(path)
           if (!result) throw new Error(`Synthetic PDF import was cancelled: ${path}`)
           imported.push(result.document)
         }
@@ -99,8 +99,8 @@ test("switching PDFs keeps page and card state scoped to the active document", a
     if (!firstDocument || !secondDocument) throw new Error("Two synthetic PDFs are required")
     await page.evaluate(
       async ({ firstId, secondId, firstCardId, secondCardId }) => {
-        const workspace = await window.scourgify.readWorkspace()
-        await window.scourgify.saveWorkspace({
+        const workspace = await window.ohmypaper.readWorkspace()
+        await window.ohmypaper.saveWorkspace({
           ...workspace,
           activeDocumentId: firstId,
           cards: [

@@ -100,7 +100,19 @@ describe("page translation source mapping", () => {
 
     const batches = pageTranslationBatches(blocks)
     expect(batches.length).toBeGreaterThan(1)
-    expect(batches.every((batch) => pageTranslationRequest(batch).length <= 2_800)).toBe(true)
+    expect(batches.every((batch) => pageTranslationRequest(batch).length <= 5_000)).toBe(true)
+  })
+
+  it("keeps a prepared page near two requests when its source is about six thousand characters", () => {
+    const blocks = Array.from({ length: 18 }, (_, index) => ({
+      id: `page:1:block:${index}:sentence:1`,
+      kind: "body" as const,
+      source: "A representative academic sentence with terminology and citation context. ".repeat(
+        4,
+      ),
+    }))
+
+    expect(pageTranslationBatches(blocks)).toHaveLength(2)
   })
 
   it("repairs LaTeX commands returned as JSON control characters", () => {

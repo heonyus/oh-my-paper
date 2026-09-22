@@ -22,8 +22,8 @@ afterEach(async () => {
 
 describe("application backup adapter", () => {
   it("backs up canonical note bytes and metadata from the live collection", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-application-backup-"))
-    const destinationParent = await mkdtemp(join(tmpdir(), "scourgify-backup-destination-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-application-backup-"))
+    const destinationParent = await mkdtemp(join(tmpdir(), "ohmypaper-backup-destination-"))
     roots.push(root, destinationParent)
     await initializeCollection(root, randomUUID())
     const store = await WorkspaceStore.openCollection(root, join(root, "machine-index.sqlite"))
@@ -66,7 +66,7 @@ describe("application backup adapter", () => {
         destinationParent,
         backupDirectory,
         "payload",
-        ".scourgify",
+        ".ohmypaper",
         "metadata.sqlite",
       )
       const metadata = new DatabaseSync(metadataPath, { readOnly: true })

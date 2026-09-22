@@ -17,13 +17,13 @@ describe("document layout service paths", () => {
 
   it("resolves the managed macOS runtime", () => {
     expect(layoutRuntimePython("/Users/test", "darwin")).toBe(
-      "/Users/test/.scourgify/layout-runtime/bin/python",
+      "/Users/test/.ohmypaper/layout-runtime/bin/python",
     )
   })
 
   it("resolves the managed Windows runtime", () => {
     expect(layoutRuntimePython("C:\\Users\\test", "win32")).toContain(
-      ".scourgify/layout-runtime/Scripts/python.exe",
+      ".ohmypaper/layout-runtime/Scripts/python.exe",
     )
   })
 

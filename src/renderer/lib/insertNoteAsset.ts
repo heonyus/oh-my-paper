@@ -9,7 +9,7 @@ export async function insertNoteAsset(
   request: NoteAssetInsertRequest,
   noteId?: string,
 ): Promise<NoteAssetInsertResult | null> {
-  const api = window.scourgify.collection
+  const api = window.ohmypaper.collection
   if (!api) throw new Error("이 실행 환경에서는 로컬 이미지를 넣을 수 없습니다.")
   const normalizedNoteId = noteId === undefined ? undefined : noteIdSchema.parse(noteId)
   if (request.kind === "pick") {

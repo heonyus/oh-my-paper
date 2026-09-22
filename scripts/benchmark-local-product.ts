@@ -134,7 +134,7 @@ async function measureSearch(indexPath: string, iterations: number) {
 }
 
 async function measureCancellation() {
-  const root = await mkdtemp(join(os.tmpdir(), "scourgify-benchmark-cancel-"))
+  const root = await mkdtemp(join(os.tmpdir(), "ohmypaper-benchmark-cancel-"))
   const controller = new AbortController()
   let files: CollectionFiles | null = null
   let writes = 0
@@ -189,7 +189,7 @@ async function main(): Promise<void> {
   const sourceDigest = digest(await readFile(join(repoRoot, "scripts/benchmark-local-product.ts")))
   const diffDigest = digest(git.diff)
   const tier = TIERS[options.tier]
-  const root = await mkdtemp(join(os.tmpdir(), "scourgify-benchmark-"))
+  const root = await mkdtemp(join(os.tmpdir(), "ohmypaper-benchmark-"))
   let cleaned = false
   try {
     let peakBytes = 0

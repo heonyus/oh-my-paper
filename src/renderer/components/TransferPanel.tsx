@@ -52,7 +52,7 @@ export function TransferPanel({
     try {
       const existing = concepts.find((candidate) => candidate.id === conceptId)
       if (conceptId && !existing) throw new Error("대상 지식을 다시 선택하세요.")
-      const concept = await window.scourgify.knowledge.linkEvidence({
+      const concept = await window.ohmypaper.knowledge.linkEvidence({
         documentId: document.id,
         hash: document.hash,
         anchor: card.anchor,

@@ -162,7 +162,7 @@ export class CollectionService {
       reason: "close",
     })
     const source = await resolveCollectionPath(this.files.root, current.relativePath)
-    const recovery = join(this.files.root, ".scourgify", "recovery")
+    const recovery = join(this.files.root, ".ohmypaper", "recovery")
     await mkdir(recovery, { recursive: true })
     await rename(source.path, join(recovery, `deleted-${current.noteId}-${current.revision}.md`))
     this.index.remove(current.noteId)

@@ -1,4 +1,4 @@
-# Scourgify collection format
+# oh-my-paper collection format
 
 Status: schema version 1 local storage and repository integration. Renderer wiring and migration of
 the user's personal profile remain separate QA-gated actions.
@@ -11,7 +11,7 @@ the user's personal profile remain separate QA-gated actions.
   notes/
   papers/
   assets/
-  .scourgify/
+  .ohmypaper/
     metadata.sqlite
     journal/
     history/
@@ -21,7 +21,7 @@ the user's personal profile remain separate QA-gated actions.
 
 `notes/` contains the canonical note bodies. `papers/` is reserved for immutable managed PDF
 versions named by document-version ID. `assets/` stores immutable files as
-`<sha256>.<lowercase-extension>`. `.scourgify/metadata.sqlite` is portable bibliographic,
+`<sha256>.<lowercase-extension>`. `.ohmypaper/metadata.sqlite` is portable bibliographic,
 relation, evidence, placement, project, reader-state, and other non-note metadata. Note rows retain
 identity/title/aliases but their database body is empty. A machine-local
 `<userData>/collections/<collection-id>/index.sqlite` projects canonical note text and FTS and can
@@ -46,13 +46,13 @@ Each canonical note has one stable UUID in namespaced frontmatter:
 
 ```markdown
 ---
-scourgify:
+ohmypaper:
   id: 00000000-0000-4000-8000-000000000000
 ---
 # Note
 ```
 
-The reader also recognizes the equivalent `scourgify.id: <uuid>` spelling. It extracts only this
+The reader also recognizes the equivalent `ohmypaper.id: <uuid>` spelling. It extracts only this
 identity field. It does not parse, reorder, normalize, or serialize the remaining YAML or Markdown;
 all caller-supplied bytes, line endings, whitespace, and unrelated frontmatter are written exactly.
 Invalid UTF-8, missing identity, duplicate identity fields, and duplicate IDs across files are
@@ -63,7 +63,7 @@ external rename does not change identity because the frontmatter UUID remains au
 
 The SHA256 of the complete file bytes is its revision. Saving requires the revision the caller read,
 or `null` only when creating a new path. A mismatch returns a conflict and retains exact current and
-incoming bytes under `.scourgify/conflicts/`; it never overwrites the current note.
+incoming bytes under `.ohmypaper/conflicts/`; it never overwrites the current note.
 
 ## Exported file API
 
@@ -153,7 +153,7 @@ legacy PDFs remain reported as missing version IDs. Hash mismatch, unsupported f
 any interrupted stage leaves the active pointer unchanged and never erases the legacy source.
 
 No personal profile is migrated automatically. The staged backup lives under
-`.scourgify/migration-backup/`, and the original legacy root remains the rollback source.
+`.ohmypaper/migration-backup/`, and the original legacy root remains the rollback source.
 
 ## Import, export, and backup authority
 

@@ -10,6 +10,9 @@ import {
   OPENAI_MODEL_OPTIONS,
   OPENCODEX_MODEL_OPTIONS,
   OPENROUTER_MODEL_OPTIONS,
+  OPENROUTER_PAGE_TRANSLATION_MODEL,
+  OPENROUTER_PAGE_TRANSLATION_OPTIONS,
+  PAGE_TRANSLATION_MAIN_MODEL,
 } from "../../shared/providerModels"
 
 function providerModelOptions(provider: ProviderConfig["provider"]): readonly string[] {
@@ -64,8 +67,11 @@ export function AiProviderSettings({
     setProvider,
     model,
     setModel,
+    pageTranslationModel,
+    setPageTranslationModel,
     key,
     setKey,
+    keyConfigured,
     message,
     setMessage,
   } = form
@@ -75,8 +81,8 @@ export function AiProviderSettings({
     try {
       if (mode === "api") {
         await onSave(
-          openRouterOnly
-            ? { provider: "openrouter", model, apiKey: key }
+          provider === "openrouter"
+            ? { provider, model, apiKey: key, pageTranslationModel }
             : provider === "opencodex"
               ? { provider, model }
               : { provider, model, apiKey: key },
@@ -158,16 +164,47 @@ export function AiProviderSettings({
                 ))}
               </select>
             </label>
+            {provider === "openrouter" ? (
+              <label className="settings-row" htmlFor="page-translation-model">
+                <span>페이지 번역</span>
+                <select
+                  id="page-translation-model"
+                  aria-label="페이지 번역 모델"
+                  value={pageTranslationModel}
+                  onChange={(event) => setPageTranslationModel(event.currentTarget.value)}
+                >
+                  <option value={PAGE_TRANSLATION_MAIN_MODEL}>메인 모델 사용</option>
+                  {OPENROUTER_PAGE_TRANSLATION_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             {provider !== "opencodex" ? (
               <label className="settings-row" htmlFor="provider-key">
-                <span>{openRouterOnly ? "OpenRouter API 키" : "API 키"}</span>
+                <span>
+                  {openRouterOnly ? "OpenRouter API 키" : "API 키"}
+                  {keyConfigured ? (
+                    <small className="settings-key-status">
+                      <Check size={12} aria-hidden /> 저장된 키 사용 중
+                    </small>
+                  ) : null}
+                </span>
                 <input
                   id="provider-key"
                   aria-label={openRouterOnly ? "OpenRouter API 키" : "API 키"}
                   type="password"
                   autoComplete="off"
                   value={key}
-                  placeholder={provider === "groq" ? "gsk_…" : "API 키"}
+                  placeholder={
+                    keyConfigured
+                      ? "변경하려면 새 키 입력"
+                      : provider === "groq"
+                        ? "gsk_…"
+                        : "API 키"
+                  }
                   onChange={(event) => setKey(event.currentTarget.value)}
                 />
               </label>
@@ -210,8 +247,11 @@ export type AiProviderFormState = {
   readonly setProvider: Dispatch<SetStateAction<ProviderConfig["provider"]>>
   readonly model: string
   readonly setModel: Dispatch<SetStateAction<string>>
+  readonly pageTranslationModel: string
+  readonly setPageTranslationModel: Dispatch<SetStateAction<string>>
   readonly key: string
   readonly setKey: Dispatch<SetStateAction<string>>
+  readonly keyConfigured: boolean
   readonly message: string
   readonly setMessage: Dispatch<SetStateAction<string>>
 }
@@ -224,7 +264,24 @@ export function useAiProviderForm(
   const [provider, setProvider] = useState<ProviderConfig["provider"]>(initialProvider)
   const [mode, setMode] = useState<AiMode>(openRouterOnly ? "api" : (status.mode ?? "api"))
   const [model, setModel] = useState(initialModel(initialProvider, status.model))
+  const [pageTranslationModel, setPageTranslationModel] = useState(
+    status.pageTranslationModel ?? OPENROUTER_PAGE_TRANSLATION_MODEL,
+  )
   const [key, setKey] = useState("")
   const [message, setMessage] = useState("")
-  return { mode, setMode, provider, setProvider, model, setModel, key, setKey, message, setMessage }
+  return {
+    mode,
+    setMode,
+    provider,
+    setProvider,
+    model,
+    setModel,
+    pageTranslationModel,
+    setPageTranslationModel,
+    key,
+    setKey,
+    keyConfigured: status.configured && provider === status.provider,
+    message,
+    setMessage,
+  }
 }

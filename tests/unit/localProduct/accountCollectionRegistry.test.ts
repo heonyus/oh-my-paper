@@ -20,7 +20,7 @@ afterEach(async () => {
 })
 
 async function harness() {
-  const root = await mkdtemp(join(tmpdir(), "scourgify-account-registry-"))
+  const root = await mkdtemp(join(tmpdir(), "ohmypaper-account-registry-"))
   roots.push(root)
   let current = collectionA
   let failTarget: string | null = null

@@ -7,7 +7,7 @@ import {
 } from "../shared/accountSchemas"
 
 const ACCESS_AUDIENCE = "scourgify-account-api"
-const OFFLINE_AUDIENCE = "scourgify-desktop-offline"
+const OFFLINE_AUDIENCE = "ohmypaper-desktop-offline"
 const ACCESS_SECONDS = 15 * 60
 const OFFLINE_SECONDS = 7 * 24 * 60 * 60
 const RENEWAL_SECONDS = 30 * 24 * 60 * 60
@@ -84,7 +84,7 @@ export async function verifyAccountSessionGrant(
     access.aud !== ACCESS_AUDIENCE ||
     access.purpose !== "account-api" ||
     offline.aud !== OFFLINE_AUDIENCE ||
-    offline.purpose !== "scourgify-local-access" ||
+    offline.purpose !== "ohmypaper-local-access" ||
     access.sub !== grant.account.id ||
     offline.sub !== grant.account.id ||
     access.sid !== offline.sid ||

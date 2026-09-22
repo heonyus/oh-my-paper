@@ -11,6 +11,42 @@ import {
 import { parsedDocumentPageSchema } from "../../src/shared/documentPageModel"
 
 describe("Paddle page translation blocks", () => {
+  it("joins adjacent native text lines before splitting them into sentences", () => {
+    const page = parsedDocumentPageSchema.parse({
+      schemaVersion: "1.0.0",
+      sourceHash: "a".repeat(64),
+      parser: "PDF.js+PaddleOCR-VL-1.6",
+      configVersion: "blocks-v2",
+      pageNumber: 1,
+      width: 1_000,
+      height: 1_000,
+      blocks: [
+        {
+          id: "page:1:block:0",
+          label: "text",
+          order: 0,
+          bounds: { x: 80, y: 100, width: 700, height: 18 },
+          content: "The model predicts circulatory failure",
+          contentFormat: "markdown",
+          translationPolicy: "include",
+        },
+        {
+          id: "page:1:block:1",
+          label: "text",
+          order: 1,
+          bounds: { x: 82, y: 121, width: 680, height: 18 },
+          content: "within the next eight hours.",
+          contentFormat: "markdown",
+          translationPolicy: "include",
+        },
+      ],
+    })
+
+    expect(pageTranslationBlocksFromParsedPage(page).map((block) => block.source)).toEqual([
+      "The model predicts circulatory failure within the next eight hours.",
+    ])
+  })
+
   it("preserves order, visual anchors and LaTeX while excluding furniture blocks", () => {
     const page = parsedDocumentPageSchema.parse({
       schemaVersion: "1.0.0",
@@ -235,5 +271,40 @@ describe("Paddle page translation blocks", () => {
     expect(blocks[0]?.structureKind).toBe("figure")
     expect(plan.initial[0]?.translation).toBe("원본 그림")
     expect(plan.translatable).toHaveLength(0)
+  })
+
+  it("drops single-letter labels that belong inside a figure image", () => {
+    const page = parsedDocumentPageSchema.parse({
+      schemaVersion: "1.0.0",
+      sourceHash: "a".repeat(64),
+      parser: "PaddleOCR-VL-1.6",
+      configVersion: "page-v1",
+      pageNumber: 7,
+      width: 1_000,
+      height: 1_000,
+      blocks: [
+        {
+          id: "page:7:block:0",
+          label: "image",
+          order: 0,
+          bounds: { x: 100, y: 100, width: 800, height: 600 },
+          content: "",
+          contentFormat: "none",
+          translationPolicy: "include",
+        },
+        {
+          id: "page:7:block:1",
+          label: "text",
+          order: 1,
+          bounds: { x: 160, y: 180, width: 12, height: 12 },
+          content: "a",
+          contentFormat: "text",
+          translationPolicy: "include",
+        },
+      ],
+    })
+
+    expect(pageTranslationBlocksFromParsedPage(page)).toHaveLength(1)
+    expect(pageTranslationBlocksFromParsedPage(page)[0]?.structureKind).toBe("figure")
   })
 })

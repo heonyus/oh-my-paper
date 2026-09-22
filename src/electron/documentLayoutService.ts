@@ -25,7 +25,7 @@ export function layoutRuntimePython(
   configured?: string,
 ): string {
   if (configured) return configured
-  const root = join(home, ".scourgify", "layout-runtime")
+  const root = join(home, ".ohmypaper", "layout-runtime")
   return platform === "win32" ? join(root, "Scripts", "python.exe") : join(root, "bin", "python")
 }
 

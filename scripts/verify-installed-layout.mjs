@@ -1,6 +1,6 @@
 import { chromium } from "playwright"
 
-const endpoint = process.env.SCOURGIFY_CDP_ENDPOINT ?? "http://127.0.0.1:9225"
+const endpoint = process.env.OH_MY_PAPER_CDP_ENDPOINT ?? "http://127.0.0.1:9225"
 const documentId = "c1293aa46fae8610"
 const targets = [
   [1, "Figure 1"],
@@ -22,10 +22,10 @@ const page = browser
   .contexts()
   .flatMap((context) => context.pages())
   .at(-1)
-if (!page) throw new Error("Scourgify page is not open")
+if (!page) throw new Error("oh-my-paper page is not open")
 await page.waitForSelector(".pdfViewer .page", { timeout: 30_000 })
 const layout = await page.evaluate(
-  async (value) => window.scourgify.readDocumentLayout(value),
+  async (value) => window.ohmypaper.readDocumentLayout(value),
   documentId,
 )
 if (layout.status !== "ready" || layout.layout.version !== 2 || layout.layout.pages.length !== 43) {

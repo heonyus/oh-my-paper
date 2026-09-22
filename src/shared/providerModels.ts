@@ -33,6 +33,23 @@ export const OPENROUTER_MODEL_OPTIONS = [
   "google/gemini-3.1-flash-lite",
 ] as const
 
+export const OPENROUTER_PAGE_TRANSLATION_MODEL = "tencent/hy-mt2-30b-a3b" as const
+
+export const PAGE_TRANSLATION_MAIN_MODEL = "main" as const
+
+export const OPENROUTER_PAGE_TRANSLATION_OPTIONS = [
+  OPENROUTER_PAGE_TRANSLATION_MODEL,
+  "tencent/hy-mt2-7b",
+  "tencent/hy-mt2-1.8b",
+  "qwen/qwen3-30b-a3b-instruct-2507",
+  "upstage/solar-pro4",
+  "google/gemini-2.5-flash-lite",
+] as const
+
+export function isHyMtModel(model: string): boolean {
+  return model.startsWith("tencent/hy-mt")
+}
+
 export const GROQ_MODEL_OPTIONS = [
   "llama-3.3-70b-versatile",
   "llama-3.1-8b-instant",

@@ -18,7 +18,7 @@ afterEach(async () => {
 })
 
 async function root(): Promise<string> {
-  const path = await mkdtemp(join(tmpdir(), "scourgify-journal-"))
+  const path = await mkdtemp(join(tmpdir(), "ohmypaper-journal-"))
   roots.push(path)
   await initializeCollection(path, randomUUID())
   return path

@@ -1,12 +1,13 @@
 import { BookOpen, Library, Settings } from "lucide-react"
-import { type JSX, lazy, Suspense, useState } from "react"
-import leafMarkUrl from "../../assets/branding/scourgify-leaf-mark.png"
+import { type JSX, lazy, Suspense, useEffect, useRef, useState } from "react"
+import leafMarkUrl from "../../assets/branding/ohmypaper-leaf-mark.png"
 import { Topbar } from "../renderer/components/AppChrome"
 import { AppStatusOverlays } from "../renderer/components/AppStatusOverlays"
 import { LibraryHome } from "../renderer/components/LibraryHome"
 import { appShellStyle } from "../renderer/lib/uiFontScale"
 import { useAppWorkspace } from "../renderer/lib/useAppWorkspace"
-import type { DocumentId } from "../shared/schemas"
+import { documentReaderBlocked } from "../shared/documentAnalysis"
+import { type DocumentId, documentIdSchema } from "../shared/schemas"
 
 const ReaderWorkspace = lazy(() =>
   import("../renderer/components/ReaderWorkspace").then((module) => ({
@@ -22,7 +23,55 @@ const AppSettingsDialog = lazy(() =>
 export function ReaderApp(): JSX.Element {
   const app = useAppWorkspace()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [openImportUrl] = useState(() => {
+    const current = new URL(window.location.href)
+    return current.pathname === "/open" ? current.searchParams.get("url") : null
+  })
+  const [openDocumentId] = useState(() => new URL(window.location.href).searchParams.get("doc"))
+  const [openImportState, setOpenImportState] = useState<"idle" | "loading" | "done" | "failed">(
+    "idle",
+  )
+  const openDocumentHandled = useRef(false)
   const workspace = app.workspace
+  const credentialsReady = app.provider.configured && app.provider.provider === "openrouter"
+  const readerBlocked = app.activeDocument
+    ? documentReaderBlocked(app.documentAnalysisJobs, app.activeDocument.id)
+    : false
+  const libraryVisible = app.libraryView || readerBlocked
+
+  useEffect(() => {
+    if (!openImportUrl || !workspace || !credentialsReady || openImportState !== "idle") return
+    let cancelled = false
+    setOpenImportState("loading")
+    window.ohmypaper
+      .importDocumentUrl(openImportUrl)
+      .then(async (result) => {
+        window.history.replaceState(null, "", "/")
+        if (cancelled) return
+        if (result) {
+          const fresh = await window.ohmypaper.readWorkspace()
+          app.setWorkspace({ ...fresh, activeDocumentId: result.document.id })
+        }
+        if (!cancelled) setOpenImportState("done")
+      })
+      .catch(() => {
+        if (!cancelled) setOpenImportState("failed")
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [openImportUrl, workspace, credentialsReady, openImportState, app.setWorkspace])
+
+  useEffect(() => {
+    if (openDocumentHandled.current || !openDocumentId || !workspace) return
+    openDocumentHandled.current = true
+    window.history.replaceState(null, "", "/")
+    const imported = documentIdSchema.safeParse(openDocumentId)
+    if (!imported.success) return
+    const selected = workspace.documents.find((document) => document.id === imported.data)
+    if (!selected) return
+    app.setWorkspace({ ...workspace, activeDocumentId: imported.data })
+  }, [openDocumentId, workspace, app.setWorkspace])
 
   if (!workspace)
     return (
@@ -48,8 +97,6 @@ export function ReaderApp(): JSX.Element {
       </main>
     )
 
-  const credentialsReady = app.provider.configured && app.provider.provider === "openrouter"
-
   if (!credentialsReady)
     return (
       <main
@@ -73,8 +120,27 @@ export function ReaderApp(): JSX.Element {
       </main>
     )
 
+  if (openImportState === "loading")
+    return (
+      <main className="loading-screen" aria-live="polite">
+        <p>논문을 가져오는 중…</p>
+      </main>
+    )
+
+  if (openImportState === "failed")
+    return (
+      <main className="loading-screen" aria-live="polite">
+        <div role="alert">
+          <h1>논문을 가져오지 못했습니다</h1>
+          <p>링크가 공개 PDF를 제공하지 않거나 내려받기에 실패했습니다.</p>
+          <a href="/">라이브러리로 돌아가기</a>
+        </div>
+      </main>
+    )
+
   function openDocument(id: DocumentId): void {
     if (!workspace) return
+    if (documentReaderBlocked(app.documentAnalysisJobs, id)) return
     const selected = workspace.documents.find((document) => document.id === id)
     if (!selected) return
     app.evidence.dismiss()
@@ -105,7 +171,7 @@ export function ReaderApp(): JSX.Element {
         <nav aria-label="주 메뉴">
           <button
             type="button"
-            aria-current={app.libraryView ? "page" : undefined}
+            aria-current={libraryVisible ? "page" : undefined}
             onClick={() => app.setLibraryOpen(true)}
           >
             <Library size={16} aria-hidden="true" />
@@ -113,7 +179,7 @@ export function ReaderApp(): JSX.Element {
           </button>
           <button
             type="button"
-            aria-current={!app.libraryView ? "page" : undefined}
+            aria-current={!libraryVisible ? "page" : undefined}
             onClick={() => app.setLibraryOpen(false)}
           >
             <BookOpen size={16} aria-hidden="true" />
@@ -130,9 +196,9 @@ export function ReaderApp(): JSX.Element {
         </button>
       </header>
       <div className="web-reader-main-area">
-        {app.libraryView ? (
+        {libraryVisible ? (
           <LibraryHome
-            active={app.libraryView}
+            active={libraryVisible}
             documents={workspace.documents}
             activeId={workspace.activeDocumentId}
             onSelect={openDocument}
@@ -142,6 +208,7 @@ export function ReaderApp(): JSX.Element {
             onFileDrop={(files) => void app.importDroppedPdfs(files)}
             importProgress={app.importProgress}
             analysisJobs={app.documentAnalysisJobs}
+            onRetryAnalysis={(id) => void window.ohmypaper.retryDocumentAnalysis(id)}
           />
         ) : (
           <section

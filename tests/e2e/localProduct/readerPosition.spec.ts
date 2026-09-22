@@ -37,7 +37,7 @@ async function expectVisiblePage(page: Page, expected: number): Promise<void> {
 }
 
 test("reopens each PDF at its own saved reading page", async () => {
-  const root = await mkdtemp(join(tmpdir(), "scourgify-reader-position-e2e-"))
+  const root = await mkdtemp(join(tmpdir(), "ohmypaper-reader-position-e2e-"))
   const userDataRoot = join(root, "user-data")
   const qa = await launchSimulatedAuthenticatedApplication({ userDataRoot })
   let reopened: Awaited<ReturnType<typeof launchSimulatedAuthenticatedApplication>> | null = null
@@ -48,7 +48,7 @@ test("reopens each PDF at its own saved reading page", async () => {
       async (paths: readonly string[]) => {
         const imported = []
         for (const path of paths) {
-          const result = await window.scourgify.importDocumentPath(path)
+          const result = await window.ohmypaper.importDocumentPath(path)
           if (!result) throw new Error(`Synthetic PDF import was cancelled: ${path}`)
           imported.push(result.document)
         }
@@ -74,7 +74,7 @@ test("reopens each PDF at its own saved reading page", async () => {
     await expectVisiblePage(page, 2)
     await expect
       .poll(async () => {
-        const workspace = await page.evaluate(() => window.scourgify.readWorkspace())
+        const workspace = await page.evaluate(() => window.ohmypaper.readWorkspace())
         return workspace.documents.find((document) => document.id === first.id)?.lastReadPage
       })
       .toBe(2)

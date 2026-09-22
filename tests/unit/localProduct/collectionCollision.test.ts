@@ -18,7 +18,7 @@ afterEach(async () => {
 })
 
 async function root(): Promise<string> {
-  const path = await mkdtemp(join(tmpdir(), "scourgify-boundary-"))
+  const path = await mkdtemp(join(tmpdir(), "ohmypaper-boundary-"))
   roots.push(path)
   await initializeCollection(path, randomUUID())
   return path
@@ -65,7 +65,7 @@ describe("collection filesystem boundary", () => {
 
   it("rejects a symlink escape and leaves the external target untouched", async () => {
     const collection = await root()
-    const outside = await mkdtemp(join(tmpdir(), "scourgify-outside-"))
+    const outside = await mkdtemp(join(tmpdir(), "ohmypaper-outside-"))
     roots.push(outside)
     const external = Buffer.from("private external bytes")
     await writeFile(join(outside, "outside.md"), external)
@@ -79,7 +79,7 @@ describe("collection filesystem boundary", () => {
   })
 
   it("rejects a future collection schema before creating app state", async () => {
-    const collection = await mkdtemp(join(tmpdir(), "scourgify-future-"))
+    const collection = await mkdtemp(join(tmpdir(), "ohmypaper-future-"))
     roots.push(collection)
     await mkdir(join(collection, "notes"))
     const manifest = Buffer.from(
@@ -99,7 +99,7 @@ describe("collection filesystem boundary", () => {
     )
     expect(await readFile(join(collection, "collection.json"))).toEqual(manifest)
     await expect(
-      readFile(join(collection, ".scourgify", "writer.lock", "owner.json")),
+      readFile(join(collection, ".ohmypaper", "writer.lock", "owner.json")),
     ).rejects.toMatchObject({ code: "ENOENT" })
   })
 })

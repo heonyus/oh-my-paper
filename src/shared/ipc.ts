@@ -125,6 +125,9 @@ export const documentImportPathRequestSchema = z.object({
 export const documentImportPathsRequestSchema = z.object({
   paths: z.array(z.string().trim().min(1).max(4_096)).min(1).max(16),
 })
+export const documentImportUrlRequestSchema = z.object({
+  url: z.string().trim().min(1).max(4_096),
+})
 export const importProgressSchema = z.object({
   id: z.string().uuid(),
   fileName: z.string().min(1).max(512),
@@ -151,6 +154,7 @@ export const providerConfigSchema = z.discriminatedUnion("provider", [
     provider: z.literal("openrouter"),
     apiKey: apiKeySchema,
     model: z.string().trim().min(1).max(160),
+    pageTranslationModel: z.string().trim().min(1).max(160).optional(),
   }),
   z.object({
     provider: z.literal("gemini"),
@@ -180,6 +184,7 @@ export const providerStatusSchema = z.object({
   configured: z.boolean(),
   provider: providerKindSchema,
   model: z.string().min(1),
+  pageTranslationModel: z.string().min(1).optional(),
   mode: aiModeSchema.optional(),
   codexModel: z.string().optional(),
   codexReasoningEffort: codexReasoningEffortSchema.optional(),
@@ -263,7 +268,7 @@ export type {
   DocumentPageParseResult,
 }
 
-export type ScourgifyApi = {
+export type OhMyPaperApi = {
   readonly backup?: BackupApi
   readonly export?: ExportApi
   readonly account?: AccountApi
@@ -279,6 +284,7 @@ export type ScourgifyApi = {
   readonly importDocument: () => Promise<ImportResult>
   readonly importDocumentPath: (path: string) => Promise<ImportResult>
   readonly importDocumentPaths: (paths: readonly string[]) => Promise<readonly ImportResult[]>
+  readonly importDocumentUrl: (url: string) => Promise<ImportResult>
   readonly getDroppedFilePath: (file: File) => string
   readonly onImportProgress: (listener: (progress: ImportProgress) => void) => () => void
   readonly readDocument: (id: DocumentId) => Promise<string>
@@ -294,7 +300,9 @@ export type ScourgifyApi = {
   readonly onDocumentAnalysis: (
     listener: (snapshot: DocumentAnalysisSnapshot) => void,
   ) => () => void
+  readonly retryDocumentAnalysis: (id: DocumentId) => Promise<void>
   readonly documentOcrStatus: () => Promise<DocumentOcrProviderStatus>
+  readonly saveDocumentOcrKey: (key: string) => Promise<void>
   readonly readPageTranslationCache: (
     request: PageTranslationCacheReadRequest,
   ) => Promise<PageTranslationCacheResult>

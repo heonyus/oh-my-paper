@@ -2,7 +2,7 @@ import { type CSSProperties, useCallback, useState } from "react"
 import { type AppearancePreferences, appearancePreferencesSchema } from "../shared/schemas"
 import { uiFontFamilyStack } from "../shared/uiAppearance"
 
-const storageKey = "scourgify-web-appearance"
+const storageKey = "ohmypaper-web-appearance"
 const fallback = appearancePreferencesSchema.parse({})
 
 type WebAppearanceStyle = CSSProperties & {

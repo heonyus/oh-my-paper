@@ -105,7 +105,7 @@ export function CitationItem({
         <button
           type="button"
           className="citation-source-link"
-          onClick={() => void window.scourgify.openExternal({ url: sourceUrl })}
+          onClick={() => void window.ohmypaper.openExternal({ url: sourceUrl })}
         >
           <ExternalLink size={14} /> 실제 논문 열기
         </button>

@@ -42,10 +42,12 @@ describe("SettingsModal", () => {
 
     expect(screen.getByLabelText("모델 ID")).toHaveValue("google/gemini-2.5-flash-lite")
     expect(screen.queryByText(/ChatGPT Plus/)).not.toBeInTheDocument()
+    expect(screen.getByLabelText("페이지 번역 모델")).toHaveValue("tencent/hy-mt2-30b-a3b")
     expect(onSave).toHaveBeenCalledWith({
       provider: "openrouter",
       apiKey: "sk-or-example-key-at-least-twenty-characters",
       model: "google/gemini-2.5-flash-lite",
+      pageTranslationModel: "tencent/hy-mt2-30b-a3b",
     })
   })
 
@@ -64,6 +66,40 @@ describe("SettingsModal", () => {
     expect(model).toHaveValue("google/gemini-2.5-flash-lite")
     await userEvent.selectOptions(model, "deepseek/deepseek-v4.1-flash")
     expect(model).toHaveValue("deepseek/deepseek-v4.1-flash")
+  })
+
+  it("saves the selected page-translation model", async () => {
+    const onSave = vi.fn(async () => {})
+    render(
+      <SettingsModal
+        status={{
+          configured: true,
+          provider: "openrouter",
+          model: "qwen/qwen3.8-flash",
+          pageTranslationModel: "main",
+        }}
+        fontScale={1}
+        onClose={vi.fn()}
+        onSave={onSave}
+        onFontScaleChange={vi.fn()}
+      />,
+    )
+
+    const translation = screen.getByLabelText("페이지 번역 모델")
+    expect(translation).toHaveValue("main")
+    await userEvent.selectOptions(translation, "tencent/hy-mt2-7b")
+    await userEvent.type(
+      screen.getByLabelText("API 키"),
+      "sk-or-example-key-at-least-twenty-characters",
+    )
+    await userEvent.click(screen.getByRole("button", { name: "암호화하여 저장" }))
+
+    expect(onSave).toHaveBeenCalledWith({
+      provider: "openrouter",
+      apiKey: "sk-or-example-key-at-least-twenty-characters",
+      model: "qwen/qwen3.8-flash",
+      pageTranslationModel: "tencent/hy-mt2-7b",
+    })
   })
 
   it("saves Gemini Flash-Lite as a first-class provider", async () => {
@@ -92,7 +128,8 @@ describe("SettingsModal", () => {
     })
   })
 
-  it("shows local Paddle readiness without requesting an OCR key", () => {
+  it("shows local Paddle readiness and saves the optional Mistral fallback key", async () => {
+    const onOcrKeySave = vi.fn(async () => {})
     render(
       <SettingsModal
         status={{ configured: true, provider: "gemini", model: "gemini-3.5-flash-lite" }}
@@ -100,13 +137,20 @@ describe("SettingsModal", () => {
         fontScale={1}
         onClose={vi.fn()}
         onSave={vi.fn(async () => {})}
+        onOcrKeySave={onOcrKeySave}
         onFontScaleChange={vi.fn()}
       />,
     )
 
     expect(screen.getByText("PaddleOCR-VL-1.6")).toBeVisible()
     expect(screen.getByText("로컬 런타임 설치 필요")).toBeVisible()
-    expect(screen.queryByLabelText(/OCR API 키/)).not.toBeInTheDocument()
+    expect(screen.getByLabelText("Mistral OCR API 키")).toBeVisible()
+    await userEvent.type(
+      screen.getByLabelText("Mistral OCR API 키"),
+      "mistral-user-owned-key-at-least-twenty-characters",
+    )
+    await userEvent.click(screen.getByRole("button", { name: "폴백 키 저장" }))
+    expect(onOcrKeySave).toHaveBeenCalledWith("mistral-user-owned-key-at-least-twenty-characters")
   })
 
   it("locks first run to OpenRouter setup only", async () => {
@@ -208,6 +252,37 @@ describe("SettingsModal", () => {
 
     expect(onMinimapVisibleChange).toHaveBeenCalledWith(false)
     expect(screen.queryByLabelText("Provider")).not.toBeInTheDocument()
+  })
+
+  it("marks a stored API key with a check only for the configured provider", async () => {
+    render(
+      <SettingsModal
+        status={{ configured: true, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
+        fontScale={1}
+        onClose={vi.fn()}
+        onSave={vi.fn(async () => {})}
+        onFontScaleChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText("저장된 키 사용 중")).toBeVisible()
+
+    await userEvent.selectOptions(screen.getByLabelText("Provider"), "gemini")
+    expect(screen.queryByText("저장된 키 사용 중")).not.toBeInTheDocument()
+  })
+
+  it("does not mark the key row when nothing is configured", () => {
+    render(
+      <SettingsModal
+        status={{ configured: false, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
+        fontScale={1}
+        onClose={vi.fn()}
+        onSave={vi.fn(async () => {})}
+        onFontScaleChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByText("저장된 키 사용 중")).not.toBeInTheDocument()
   })
 
   it("keeps hosted credentials out of the web appearance-only settings", () => {

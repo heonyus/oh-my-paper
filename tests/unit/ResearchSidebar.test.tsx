@@ -132,13 +132,14 @@ describe("ResearchSidebar", () => {
 
   it("exposes each board-card category as its own sidebar mode", async () => {
     const onToolChange = vi.fn()
-    Object.defineProperty(window, "scourgify", {
+    Object.defineProperty(window, "ohmypaper", {
       configurable: true,
       value: { onDocumentPageParseProgress: () => () => undefined },
     })
     render(
       <>
         <div className="board-world" />
+        <div className="reader-workspace" />
         <ResearchSidebar
           document={documentFixture}
           currentPage={1}

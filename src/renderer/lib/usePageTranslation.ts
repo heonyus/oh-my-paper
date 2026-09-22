@@ -51,12 +51,18 @@ export function usePageTranslation({
     pageStatusRef.current = status
   }, [status])
 
+  const documentId = document.id
+  const aiRequestRef = useRef(onAiRequest)
+  useEffect(() => {
+    aiRequestRef.current = onAiRequest
+  }, [onAiRequest])
+
   useEffect(() => {
     const completedTranslations = new Map<string, string>()
     const abortController = new AbortController()
     let cancelled = false
-    const unsubscribeProgress = window.scourgify.onDocumentPageParseProgress((update) => {
-      if (update.id !== document.id || update.pageNumber !== currentPage || cancelled) return
+    const unsubscribeProgress = window.ohmypaper.onDocumentPageParseProgress((update) => {
+      if (update.id !== documentId || update.pageNumber !== currentPage || cancelled) return
       setParserStage(update.stage)
     })
     if (revision > 0) setProgress(0)
@@ -71,7 +77,7 @@ export function usePageTranslation({
         }
         setStatus("parser-running")
         setParserStage("engine-starting")
-        const parsedPage = await loadParsedDocumentPage(document.id, currentPage, {
+        const parsedPage = await loadParsedDocumentPage(documentId, currentPage, {
           signal: abortController.signal,
         })
         if (cancelled || abortController.signal.aborted) return
@@ -80,7 +86,7 @@ export function usePageTranslation({
           return
         }
         const cached = await readCachedPageTranslation(
-          document.id,
+          documentId,
           currentPage,
           provider,
           parsedPage.parser,
@@ -128,7 +134,7 @@ export function usePageTranslation({
             translation: completed.get(block.id) ?? "",
           }))
           if (!finished.some((block) => !block.translation)) {
-            await storeCachedPageTranslation(document.id, currentPage, provider, finished)
+            await storeCachedPageTranslation(documentId, currentPage, provider, finished)
             setBlocks(finished)
             setStatus("complete")
             return
@@ -146,7 +152,7 @@ export function usePageTranslation({
               const translated = await translatePageBatch({
                 batch,
                 page: currentPage,
-                onAiRequest,
+                onAiRequest: aiRequestRef.current,
                 signal: abortController.signal,
                 onPartial: (partial) => {
                   if (!cancelled && !abortController.signal.aborted) {
@@ -175,7 +181,7 @@ export function usePageTranslation({
           }))
           if (finished.some((block) => !block.translation))
             throw new Error("incomplete page translation")
-          await storeCachedPageTranslation(document.id, currentPage, provider, finished)
+          await storeCachedPageTranslation(documentId, currentPage, provider, finished)
           setBlocks(finished)
           setStatus("complete")
         } catch {
@@ -195,7 +201,7 @@ export function usePageTranslation({
       unsubscribeProgress()
       clearPageSourceMapping(currentPage)
     }
-  }, [citations, currentPage, document, onAiRequest, provider, revision])
+  }, [citations, currentPage, documentId, provider, revision])
 
   const documentTranslation = useDocumentTranslation({
     document,

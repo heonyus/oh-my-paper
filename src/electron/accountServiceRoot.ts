@@ -40,7 +40,7 @@ export async function resolveAccountServiceRoot(
     return {
       accountId: status.accountId,
       kind: "local",
-      root: join(userDataRoot, "scourgify"),
+      root: join(userDataRoot, "ohmypaper"),
     }
   }
   const accountId = serviceAccountId(status)
@@ -55,7 +55,7 @@ export async function resolveAccountServiceRootForAccount(
   const accountId = accountIdSchema.parse(accountIdValue)
   const legacyOwner = await readLegacyOwner(userDataRoot)
   if (legacyOwner === accountId) {
-    return { accountId, kind: "legacy", root: join(userDataRoot, "scourgify") }
+    return { accountId, kind: "legacy", root: join(userDataRoot, "ohmypaper") }
   }
   const root = join(userDataRoot, "account", "services", accountId)
   await mkdir(root, { recursive: true, mode: 0o700 })
@@ -73,7 +73,7 @@ export async function bindLegacyAccountServiceRoot(
   accountIdValue: AccountId,
 ): Promise<void> {
   const accountId = accountIdSchema.parse(accountIdValue)
-  const legacyRoot = join(userDataRoot, "scourgify")
+  const legacyRoot = join(userDataRoot, "ohmypaper")
   try {
     if (!(await stat(legacyRoot)).isDirectory()) throw new AccountServiceRootError("legacy_missing")
   } catch (error) {

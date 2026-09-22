@@ -11,17 +11,15 @@ export function useWorkspacePersistence(
   const latest = useRef<Workspace | null>(workspace)
   const saved = useRef<Workspace | null>(null)
   const inFlight = useRef<Promise<void> | null>(null)
-  const failedPayload = useRef<Workspace | null>(null)
+  const [retryAttempt, setRetryAttempt] = useState(0)
 
   const persistLatest = useCallback((): Promise<void> => {
     if (inFlight.current) return inFlight.current
     const operation = (async (): Promise<void> => {
       while (latest.current && latest.current !== saved.current) {
         const next = latest.current
-        if (next === failedPayload.current)
-          throw new Error("저장 충돌을 해결한 뒤 다시 시도하세요.")
         try {
-          const acknowledged = await window.scourgify.saveWorkspace({
+          const acknowledged = await window.ohmypaper.saveWorkspace({
             ...next,
             baseSnapshotToken: next.snapshotToken,
           })
@@ -30,11 +28,10 @@ export function useWorkspacePersistence(
             pending === next ? acknowledged : mergeWorkspaceForSave(next, acknowledged, pending)
           latest.current = merged
           saved.current = pending === next ? merged : acknowledged
-          failedPayload.current = null
           onAcknowledged((current) => (current === pending ? merged : current))
           setFailed(false)
+          setRetryAttempt(0)
         } catch (error) {
-          failedPayload.current = next
           setFailed(true)
           throw error
         }
@@ -49,17 +46,26 @@ export function useWorkspacePersistence(
   useEffect(() => {
     latest.current = workspace
     if (!workspace) return
-    const timer = window.setTimeout(() => {
-      void persistLatest().catch(() => setFailed(true))
-    }, 220)
+    const timer = window.setTimeout(
+      () => {
+        void persistLatest().catch(() => setFailed(true))
+      },
+      retryAttempt === 0 ? 220 : 0,
+    )
     return () => window.clearTimeout(timer)
-  }, [persistLatest, workspace])
+  }, [persistLatest, retryAttempt, workspace])
+
+  useEffect(() => {
+    if (!failed) return
+    const timer = window.setTimeout(() => setRetryAttempt(retryAttempt + 1), 500)
+    return () => window.clearTimeout(timer)
+  }, [failed, retryAttempt])
 
   useEffect(
     () =>
-      window.scourgify.onBeforeWorkspaceClose(async () => {
+      window.ohmypaper.onBeforeWorkspaceClose(async () => {
         await persistLatest()
-        await window.scourgify.flushWorkspace()
+        await window.ohmypaper.flushWorkspace()
       }),
     [persistLatest],
   )

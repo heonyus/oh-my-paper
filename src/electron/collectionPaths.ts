@@ -126,7 +126,7 @@ export async function collectionReliabilityWarning(root: string): Promise<string
 }
 
 export function collectionMetadataFile(root: string): string {
-  return join(root, ".scourgify", "metadata.sqlite")
+  return join(root, ".ohmypaper", "metadata.sqlite")
 }
 
 export function collectionIndexFile(userDataRoot: string, collectionId: string): string {

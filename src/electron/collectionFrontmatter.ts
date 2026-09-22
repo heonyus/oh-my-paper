@@ -27,9 +27,9 @@ export function readCanonicalNoteId(bytes: Uint8Array): NoteId {
   for (let index = 0; index < frontmatter.length; index += 1) {
     const line = frontmatter[index]
     if (line === undefined) continue
-    const dotted = line.match(/^scourgify\.id:\s*["']?([^\s"']+)["']?\s*$/)
+    const dotted = line.match(/^ohmypaper\.id:\s*["']?([^\s"']+)["']?\s*$/)
     if (dotted?.[1]) candidates.push(dotted[1])
-    const namespace = line.match(/^(\s*)scourgify:\s*$/)
+    const namespace = line.match(/^(\s*)ohmypaper:\s*$/)
     if (!namespace) continue
     const namespaceIndent = namespace[1]?.length ?? 0
     const children: string[] = []
@@ -84,7 +84,7 @@ export function replaceCanonicalNoteBody(bytes: Uint8Array, body: string): Uint8
 
 export function createCanonicalNoteBytes(noteId: string, body: string): Uint8Array {
   const id = noteIdSchema.parse(noteId)
-  return encoder.encode(`---\nscourgify:\n  id: ${id}\n---\n${body}`)
+  return encoder.encode(`---\nohmypaper:\n  id: ${id}\n---\n${body}`)
 }
 
 export function initialNoteRelativePath(noteId: string): NoteRelativePath {

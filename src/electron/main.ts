@@ -6,7 +6,7 @@ import "dotenv/config"
 import { app, dialog } from "electron"
 import { startDesktopApplication } from "./startDesktopApplication"
 
-const { SCOURGIFY_USER_DATA_DIR: configuredUserData } = process.env
+const { OH_MY_PAPER_USER_DATA_DIR: configuredUserData } = process.env
 const userDataDir = configuredUserData ?? app.getPath("userData")
 for (const candidate of [join(userDataDir, ".env"), join(homedir(), ".env")]) {
   if (existsSync(candidate)) dotenv.config({ path: candidate })

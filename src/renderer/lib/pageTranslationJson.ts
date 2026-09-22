@@ -1,5 +1,7 @@
 import { pageTranslationResponseSchema } from "../../shared/pageTranslationProtocol"
 
+const delimitedBlockPattern = /^\s*@@([A-Za-z0-9._:-]+)@@(?:\s?(.*))?\s*$/u
+
 function escapedControlCharacter(character: string): string {
   switch (character) {
     case "\b":
@@ -47,6 +49,38 @@ function repairJsonStringControls(value: string): string {
   return repaired
 }
 
+function parseDelimitedPageTranslation(value: string) {
+  const translations: Array<{ id: string; markdown: string }> = []
+  let currentId: string | undefined
+  let currentLines: string[] = []
+
+  function finishCurrent(): void {
+    if (!currentId) return
+    const markdown = currentLines.join("\n").trim()
+    if (markdown.length > 0) translations.push({ id: currentId, markdown })
+  }
+
+  for (const line of value.replace(/^```(?:text|markdown)?\s*$/gim, "").split("\n")) {
+    const match = delimitedBlockPattern.exec(line)
+    if (match) {
+      finishCurrent()
+      currentId = match[1]
+      currentLines = match[2] ? [match[2]] : []
+      continue
+    }
+    if (currentId) currentLines.push(line)
+  }
+  finishCurrent()
+
+  if (translations.length === 0) return null
+  try {
+    return pageTranslationResponseSchema.parse({ translations })
+  } catch (error) {
+    if (error instanceof Error) return null
+    throw error
+  }
+}
+
 export function parsePageTranslationResponse(value: string) {
   try {
     return pageTranslationResponseSchema.parse(JSON.parse(value))
@@ -54,11 +88,12 @@ export function parsePageTranslationResponse(value: string) {
     if (!(error instanceof Error)) throw error
   }
   const repaired = repairJsonStringControls(value)
-  if (repaired === value) return null
-  try {
-    return pageTranslationResponseSchema.parse(JSON.parse(repaired))
-  } catch (error) {
-    if (error instanceof Error) return null
-    throw error
+  if (repaired !== value) {
+    try {
+      return pageTranslationResponseSchema.parse(JSON.parse(repaired))
+    } catch (error) {
+      if (!(error instanceof Error)) throw error
+    }
   }
+  return parseDelimitedPageTranslation(value)
 }

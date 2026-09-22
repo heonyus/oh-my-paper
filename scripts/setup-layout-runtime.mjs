@@ -4,7 +4,7 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 
 const runtimeRoot =
-  process.env.SCOURGIFY_LAYOUT_RUNTIME ?? join(homedir(), ".scourgify", "layout-runtime")
+  process.env.OH_MY_PAPER_LAYOUT_RUNTIME ?? join(homedir(), ".ohmypaper", "layout-runtime")
 const python =
   process.platform === "win32"
     ? join(runtimeRoot, "Scripts", "python.exe")
@@ -33,4 +33,4 @@ run(python, [
   "-c",
   "from paddlex import create_model; create_model('PP-DocLayout_plus-L', engine='transformers', device='cpu')",
 ])
-process.stdout.write(`Scourgify local layout runtime: ${runtimeRoot}\n`)
+process.stdout.write(`oh-my-paper local layout runtime: ${runtimeRoot}\n`)

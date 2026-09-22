@@ -111,7 +111,7 @@ def convert_box(box: RawLayoutBox) -> LayoutBox | None:
 
 def main(pdf_path: Path, output_path: Path) -> None:
     """Run the PP-StructureV3 layout detector once and save page-local boxes."""
-    with TemporaryDirectory(prefix="scourgify-layout-") as temporary:
+    with TemporaryDirectory(prefix="ohmypaper-layout-") as temporary:
         rendered = render_pages(pdf_path, Path(temporary))
         model = create_model("PP-DocLayout_plus-L", engine="transformers", device="cpu")
         predictions = model.predict([str(item[0]) for item in rendered], batch_size=1)

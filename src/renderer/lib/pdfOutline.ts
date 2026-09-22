@@ -50,24 +50,37 @@ export async function extractPdfOutline(
   pdf: PDFDocumentProxy,
 ): Promise<readonly PdfOutlineEntry[]> {
   const entries = new Map<string, PdfOutlineEntry>()
-  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-    const page = await pdf.getPage(pageNumber)
-    const viewport = page.getViewport({ scale: 1 })
-    const text = await page.getTextContent()
-    const spans = mergePdfTextLines(
-      pageSpans(pageNumber, viewport.height, text.items),
-      viewport.width,
+  const outlineChunkSize = 4
+  for (let start = 1; start <= pdf.numPages; start += outlineChunkSize) {
+    const pageNumbers = Array.from(
+      { length: Math.min(outlineChunkSize, pdf.numPages - start + 1) },
+      (_, index) => start + index,
     )
-    const structures = detectPdfFeatures({
-      pageNumber,
-      pageWidth: viewport.width,
-      pageHeight: viewport.height,
-      spans,
-    })
-    for (const structure of structures) {
-      if (structure.kind !== "heading" && structure.kind !== "subheading") continue
-      const title = outlineTitle(structure.label)
-      if (title) entries.set(`${pageNumber}:${title}`, { title, page: pageNumber })
+    const pageStructures = await Promise.all(
+      pageNumbers.map(async (pageNumber) => {
+        const page = await pdf.getPage(pageNumber)
+        const viewport = page.getViewport({ scale: 1 })
+        const text = await page.getTextContent()
+        const spans = mergePdfTextLines(
+          pageSpans(pageNumber, viewport.height, text.items),
+          viewport.width,
+        )
+        return detectPdfFeatures({
+          pageNumber,
+          pageWidth: viewport.width,
+          pageHeight: viewport.height,
+          spans,
+        })
+      }),
+    )
+    for (const [index, structures] of pageStructures.entries()) {
+      const pageNumber = pageNumbers[index]
+      if (pageNumber === undefined) continue
+      for (const structure of structures) {
+        if (structure.kind !== "heading" && structure.kind !== "subheading") continue
+        const title = outlineTitle(structure.label)
+        if (title) entries.set(`${pageNumber}:${title}`, { title, page: pageNumber })
+      }
     }
   }
   return [...entries.values()].sort((left, right) => left.page - right.page)

@@ -1,5 +1,5 @@
 import { ArrowUpLeft } from "lucide-react"
-import type { JSX } from "react"
+import { type JSX, memo } from "react"
 import type { PageTranslationMode } from "../lib/pageTranslationMode"
 import {
   type PageTranslationBlock as Block,
@@ -9,7 +9,45 @@ import {
 import { MarkdownContent } from "./MarkdownContent"
 import { PageTranslationFigure } from "./PageTranslationFigure"
 
-export function PageTranslationBlock({
+function tableRows(source: string): readonly (readonly string[])[] {
+  if (typeof DOMParser === "undefined") return []
+  const document = new DOMParser().parseFromString(source, "text/html")
+  return [...document.querySelectorAll("tr")]
+    .map((row) =>
+      [...row.querySelectorAll("th, td")].map((cell) => (cell.textContent ?? "").trim()),
+    )
+    .filter((row) => row.length > 0 && row.some((cell) => cell.length > 0))
+}
+
+function TableContent({ source }: { readonly source: string }): JSX.Element {
+  const rows = tableRows(source)
+  if (rows.length === 0) return <MarkdownContent source={source} />
+  const [header, ...body] = rows
+  return (
+    <div className="page-translation-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            {header?.map((cell) => (
+              <th key={`header-${cell}`}>{cell}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {body.map((row) => (
+            <tr key={`row-${row.join("|")}`}>
+              {row.map((cell) => (
+                <td key={`cell-${cell}`}>{cell}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+export const PageTranslationBlock = memo(function PageTranslationBlock({
   block,
   page,
   startsGroup,
@@ -34,8 +72,15 @@ export function PageTranslationBlock({
 
   const sourceText = blocks.map((candidate) => candidate.source).join(" ")
   const translationText = blocks
-    .map((candidate) => candidate.translation.trim() || "_이 문단은 아직 번역되지 않았습니다._")
+    .map((candidate) => candidate.translation.trim())
+    .filter((text) => text.length > 0)
     .join(" ")
+  const renderContent = (text: string): JSX.Element =>
+    block.structureKind === "table" ? (
+      <TableContent source={text} />
+    ) : (
+      <MarkdownContent source={text} />
+    )
   const figure =
     block.structureKind === "figure" ? <PageTranslationFigure block={block} page={page} /> : null
   const source = figure ?? (
@@ -46,7 +91,7 @@ export function PageTranslationBlock({
       onFocus={focusSource}
       onClick={focusSource}
     >
-      <MarkdownContent source={sourceText} />
+      {renderContent(sourceText)}
     </button>
   )
   const translation = figure ?? (
@@ -62,7 +107,7 @@ export function PageTranslationBlock({
       >
         <ArrowUpLeft size={14} aria-hidden="true" />
       </button>
-      <MarkdownContent source={translationText} />
+      {renderContent(translationText)}
     </div>
   )
 
@@ -91,9 +136,9 @@ export function PageTranslationBlock({
       {mode === "bilingual" ? (
         <div className="page-translation-bilingual">
           {source}
-          {figure ? null : translation}
+          {figure || !translationText ? null : translation}
         </div>
       ) : null}
     </article>
   )
-}
+})

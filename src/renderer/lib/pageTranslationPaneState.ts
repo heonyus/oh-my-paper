@@ -41,8 +41,12 @@ export function mergePageTranslations(
   blocks: readonly PageTranslationBlock[],
   translations: ReadonlyMap<string, string>,
 ): readonly PageTranslationBlock[] {
-  return blocks.map((block) => ({
-    ...block,
-    translation: translations.get(block.id) ?? block.translation,
-  }))
+  let changed = false
+  const next = blocks.map((block) => {
+    const translation = translations.get(block.id)
+    if (translation === undefined || translation === block.translation) return block
+    changed = true
+    return { ...block, translation }
+  })
+  return changed ? next : blocks
 }

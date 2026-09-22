@@ -1217,6 +1217,29 @@
 .library-task-queue li[data-state="failed"] .library-task-fill {
   background: var(--error);
 }
+.library-task-retry {
+  justify-self: start;
+  min-height: 28px;
+  margin-top: 5px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--type-compact-size);
+  cursor: pointer;
+}
+.library-task-retry:hover,
+.library-task-retry:focus-visible {
+  border-color: var(--action);
+  color: var(--action);
+}
+.library-reader-action:disabled,
+.library-document-open:disabled,
+.library-recent button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
 @keyframes library-task-flow {
   to {
     transform: translateX(460%);

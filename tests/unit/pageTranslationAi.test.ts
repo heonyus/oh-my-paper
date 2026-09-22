@@ -5,6 +5,7 @@ import {
   translatePageBatch,
 } from "../../src/renderer/lib/pageTranslationAi"
 import { PaperAiJobError } from "../../src/renderer/lib/usePaperAiRequest"
+import { aiPolicy } from "../../src/shared/documentAiJobs"
 
 const batch = [
   { id: "p1-b1", kind: "heading", source: "Results" },
@@ -114,29 +115,31 @@ describe("mapped page translation response", () => {
         { id: "b1", markdown: "점수가 향상됐다." },
       ],
     })
+    const slotLimit = aiPolicy.concurrentTextJobs
     const releases: Array<() => void> = []
     const onAiRequest = vi.fn(() =>
-      releases.length < 2
+      releases.length < slotLimit
         ? new Promise<string>((resolve) => releases.push(() => resolve(response)))
         : Promise.resolve(response),
     )
-    const first = translatePageBatch({ batch, page: 1, onAiRequest, onPartial: vi.fn() })
-    const second = translatePageBatch({ batch, page: 2, onAiRequest, onPartial: vi.fn() })
+    const inFlight = Array.from({ length: slotLimit }, (_, index) =>
+      translatePageBatch({ batch, page: index + 1, onAiRequest, onPartial: vi.fn() }),
+    )
     const controller = new AbortController()
     const queued = translatePageBatch({
       batch,
-      page: 3,
+      page: slotLimit + 1,
       onAiRequest,
       onPartial: vi.fn(),
       signal: controller.signal,
     })
 
-    await vi.waitFor(() => expect(onAiRequest).toHaveBeenCalledTimes(2))
+    await vi.waitFor(() => expect(onAiRequest).toHaveBeenCalledTimes(slotLimit))
     controller.abort()
     for (const release of releases) release()
-    await Promise.all([first, second])
+    await Promise.all(inFlight)
     await expect(queued).rejects.toThrow("cancelled")
-    expect(onAiRequest).toHaveBeenCalledTimes(2)
+    expect(onAiRequest).toHaveBeenCalledTimes(slotLimit)
   })
 
   it("correctly distinguishes recoverable and non-recoverable AI errors", () => {
@@ -185,6 +188,43 @@ describe("mapped page translation response", () => {
     const partials = extractPartialTranslations(outOfOrderStream, batch)
     expect(partials.get("p1-b2")).toBe("두번째")
     expect(partials.get("p1-b1")).toBe("첫번째")
+  })
+
+  it("accepts the Hy-MT2 delimiter protocol and streams its partial blocks", async () => {
+    const onPartial = vi.fn()
+    const response = "@@b0@@ 결과\n@@b1@@ 점수가 향상됐다."
+    const onAiRequest = vi.fn(async (_req, onDelta) => {
+      onDelta?.("@@b0@@ 결과")
+      onDelta?.("\n@@b1@@ 점수가 향상됐다.")
+      return response
+    })
+
+    const translated = await translatePageBatch({
+      batch,
+      page: 1,
+      onAiRequest,
+      onPartial,
+    })
+
+    expect([...translated]).toEqual([
+      ["p1-b1", "결과"],
+      ["p1-b2", "점수가 향상됐다."],
+    ])
+    expect(onPartial.mock.calls[0]?.[0]).toEqual(new Map([["p1-b1", "결과"]]))
+  })
+
+  it("maps Hy-MT2 plain sequential output when the small model omits markers", async () => {
+    const translated = await translatePageBatch({
+      batch,
+      page: 1,
+      onAiRequest: vi.fn(async () => "결과\n\n점수가 향상됐다."),
+      onPartial: vi.fn(),
+    })
+
+    expect([...translated]).toEqual([
+      ["p1-b1", "결과"],
+      ["p1-b2", "점수가 향상됐다."],
+    ])
   })
 
   it.each([

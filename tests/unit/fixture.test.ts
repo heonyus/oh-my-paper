@@ -28,7 +28,7 @@ describe("Deterministic PDF Fixture Generator", () => {
     expect(doc.getSubject()).toBe(DEFAULT_FIXTURE_METADATA.subject)
     expect(doc.getProducer()).toBe(DEFAULT_FIXTURE_METADATA.producer)
     expect(doc.getCreator()).toBe(DEFAULT_FIXTURE_METADATA.creator)
-    expect(doc.getKeywords()).toContain("scourgify")
+    expect(doc.getKeywords()).toContain("ohmypaper")
     const creationDate = doc.getCreationDate()
     expect(creationDate?.toISOString()).toBe(DEFAULT_FIXTURE_METADATA.creationDate.toISOString())
   })
@@ -36,13 +36,13 @@ describe("Deterministic PDF Fixture Generator", () => {
   it("supports custom metadata and deterministic overrides", async () => {
     const customDate = new Date("2026-01-01T12:00:00.000Z")
     const pdfBytes = await buildFixturePdf({
-      title: "Custom Scourgify Test",
+      title: "Custom oh-my-paper Test",
       author: "Custom Author",
       creationDate: customDate,
     })
     const doc = await PDFDocument.load(pdfBytes)
 
-    expect(doc.getTitle()).toBe("Custom Scourgify Test")
+    expect(doc.getTitle()).toBe("Custom oh-my-paper Test")
     expect(doc.getAuthor()).toBe("Custom Author")
     const creationDate = doc.getCreationDate()
     expect(creationDate?.toISOString()).toBe(customDate.toISOString())

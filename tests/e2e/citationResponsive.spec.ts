@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test"
 import { launchSimulatedAuthenticatedApplication } from "../support/electron/launchSimulatedAuthenticatedApplication"
 
 test("citation cards reflow without clipping across the sidebar range", async () => {
-  const temporaryRoot = await mkdtemp(join(tmpdir(), "scourgify-citation-e2e-"))
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "ohmypaper-citation-e2e-"))
   const qa = await launchSimulatedAuthenticatedApplication({
     userDataRoot: join(temporaryRoot, "user-data"),
   })

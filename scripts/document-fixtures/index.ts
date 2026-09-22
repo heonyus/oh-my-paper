@@ -46,7 +46,7 @@ function hashBytes(bytes: Uint8Array): string {
 function createManifest(generated: readonly GeneratedFixture[]): DocumentFixtureManifest {
   return documentFixtureManifestSchema.parse({
     manifestVersion: "1.0.0",
-    generatedBy: "scourgify-synthetic-document-fixtures",
+    generatedBy: "ohmypaper-synthetic-document-fixtures",
     fixtures: generated.map(({ definition, bytes }) => ({
       ...definition,
       byteLength: bytes.byteLength,

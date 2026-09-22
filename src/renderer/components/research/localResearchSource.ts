@@ -4,7 +4,7 @@ export function parseLocalResearchSourceId(value: string): KnowledgeNodeId | nul
   try {
     const url = new URL(value)
     if (
-      url.protocol !== "scourgify:" ||
+      url.protocol !== "ohmypaper:" ||
       url.hostname !== "node" ||
       url.username !== "" ||
       url.password !== "" ||

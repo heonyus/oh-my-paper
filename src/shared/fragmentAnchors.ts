@@ -36,14 +36,14 @@ export function locateNoteFragment(
   let start = 0
   let end = text.length
   if (anchor.blockId) {
-    const marker = `<!-- scourgify:block:${anchor.blockId} -->`
+    const marker = `<!-- ohmypaper:block:${anchor.blockId} -->`
     const markerStart = text.indexOf(marker)
     if (markerStart < 0) return { status: "needs_repair", reason: "block_missing" }
     if (text.indexOf(marker, markerStart + marker.length) >= 0) {
       return { status: "needs_repair", reason: "ambiguous" }
     }
     start = markerStart + marker.length
-    const nextMarker = text.indexOf("<!-- scourgify:block:", start)
+    const nextMarker = text.indexOf("<!-- ohmypaper:block:", start)
     if (nextMarker >= 0) end = nextMarker
   }
   if (

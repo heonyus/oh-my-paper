@@ -52,7 +52,7 @@ describe("document:ast IPC contract and service", () => {
   })
 
   it("coalesces local rebuilds and returns safe stale/unknown states", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-ast-ipc-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-ast-ipc-"))
     try {
       const store = new WorkspaceStore(root)
       await store.save({ ...defaultWorkspace(), documents: [document()] })

@@ -9,13 +9,23 @@ import {
   discoverySaveInputSchema,
   discoverySaveResultSchema,
 } from "../shared/discoveryIpc"
+import {
+  documentAnalysisRequestSchema,
+  documentAnalysisSnapshotSchema,
+} from "../shared/documentAnalysis"
 import { documentAstRequestSchema, documentAstResultSchema } from "../shared/documentAstIpc"
+import { documentOcrKeySchema } from "../shared/documentOcr"
 import { documentPageParseRequestSchema } from "../shared/documentPageModel"
-import { citationLookupRequestSchema, providerConfigSchema } from "../shared/ipc"
+import {
+  citationLookupRequestSchema,
+  documentImportUrlRequestSchema,
+  providerConfigSchema,
+} from "../shared/ipc"
 import {
   pageTranslationCacheReadRequestSchema,
   pageTranslationCacheWriteRequestSchema,
 } from "../shared/pageTranslationCache"
+import { RemotePdfError, type RemotePdfErrorKind } from "../shared/remotePdf"
 import { documentIdSchema, workspaceSchema } from "../shared/schemas"
 import {
   scholarlySearchRequestSchema,
@@ -24,7 +34,7 @@ import {
 import type { WebServerConfig } from "./config"
 import { streamParsedPage } from "./pageParseStream"
 import type { WebServices } from "./services"
-import { importPdfBytes, readDocumentBase64, readWorkspace } from "./services"
+import { importPdfBytes, importPdfFromUrl, readDocumentBase64, readWorkspace } from "./services"
 
 function sendJson(res: ServerResponse, status: number, data: unknown): void {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8" })
@@ -33,6 +43,21 @@ function sendJson(res: ServerResponse, status: number, data: unknown): void {
 
 function sendError(res: ServerResponse, status: number, error: string): void {
   sendJson(res, status, { error })
+}
+
+function remotePdfErrorStatus(kind: RemotePdfErrorKind): number {
+  switch (kind) {
+    case "invalid_url":
+      return 400
+    case "no_pdf_link":
+      return 404
+    case "too_large":
+      return 413
+    case "not_pdf":
+      return 422
+    case "unreachable":
+      return 502
+  }
 }
 
 async function readBody(req: IncomingMessage): Promise<Buffer> {
@@ -90,8 +115,15 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
       const pathname = url.pathname
       const requestOrigin = req.headers.origin
       const localOrigin = `http://${req.headers.host ?? `${config.host}:${config.port}`}`
+      // Browser extensions run in the user's session and may upload PDFs the
+      // server cannot fetch itself (e.g. sites behind a browser challenge).
+      const extensionUpload =
+        req.method === "POST" &&
+        pathname === "/api/documents" &&
+        typeof requestOrigin === "string" &&
+        /^(chrome|moz|safari-web)-extension:\/\//.test(requestOrigin)
 
-      if (requestOrigin && requestOrigin !== localOrigin) {
+      if (requestOrigin && requestOrigin !== localOrigin && !extensionUpload) {
         sendError(res, 403, "cross_origin_request_rejected")
         return
       }
@@ -133,10 +165,33 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
         return
       }
 
+      if (pathname === "/api/events/document-analysis" && req.method === "GET") {
+        res.writeHead(200, {
+          "content-type": "text/event-stream; charset=utf-8",
+          "cache-control": "no-store",
+          connection: "keep-alive",
+        })
+        const send = (snapshot: ReturnType<typeof services.analysis.snapshot>): void => {
+          if (!res.destroyed)
+            res.write(`data: ${JSON.stringify(documentAnalysisSnapshotSchema.parse(snapshot))}\n\n`)
+        }
+        send(services.analysis.snapshot())
+        const unsubscribe = services.analysis.subscribe(send)
+        res.on("close", unsubscribe)
+        return
+      }
+
       if (pathname === "/api/documents" && req.method === "POST") {
         const name = url.searchParams.get("name") ?? "document.pdf"
         const bytes = await readBody(req)
         const result = await importPdfBytes(new Uint8Array(bytes), name, services)
+        sendJson(res, 200, result)
+        return
+      }
+
+      if (pathname === "/api/documents/url" && req.method === "POST") {
+        const { url: remoteUrl } = await readJson(req, documentImportUrlRequestSchema)
+        const result = await importPdfFromUrl(remoteUrl, services)
         sendJson(res, 200, result)
         return
       }
@@ -186,6 +241,22 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
           }
           case "documentOcrStatus": {
             sendJson(res, 200, await services.ocrStatus())
+            return
+          }
+          case "saveDocumentOcrKey": {
+            const key = await readJson(req, documentOcrKeySchema)
+            await services.saveDocumentOcrKey(key)
+            sendJson(res, 200, await services.ocrStatus())
+            return
+          }
+          case "documentAnalysisStatus": {
+            sendJson(res, 200, services.analysis.snapshot())
+            return
+          }
+          case "retryDocumentAnalysis": {
+            const input = await readJson(req, documentAnalysisRequestSchema)
+            await services.analysis.reschedule(input.id)
+            sendJson(res, 200, services.analysis.snapshot())
             return
           }
           case "parseDocumentPage": {
@@ -299,7 +370,9 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
     } catch (error) {
       const message = error instanceof Error ? error.message : "internal_server_error"
       if (res.headersSent) res.destroy()
-      else sendError(res, 500, message)
+      else if (error instanceof RemotePdfError) {
+        sendError(res, remotePdfErrorStatus(error.kind), message)
+      } else sendError(res, 500, message)
     }
   })
 }

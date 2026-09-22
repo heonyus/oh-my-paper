@@ -6,10 +6,10 @@ import {
   codexLoginStartRequestSchema,
   codexLoginStartResultSchema,
 } from "../shared/codexIpc"
-import type { ScourgifyApi } from "../shared/ipc"
+import type { OhMyPaperApi } from "../shared/ipc"
 import { ipcChannels } from "../shared/ipcChannels"
 
-export function createPreloadCodex(): ScourgifyApi["codex"] {
+export function createPreloadCodex(): OhMyPaperApi["codex"] {
   return {
     getStatus: async () =>
       codexAccountStatusSchema.parse(await ipcRenderer.invoke(ipcChannels.codexStatus)),

@@ -86,7 +86,7 @@ describe("JSON Canvas v1.0 and Sidecar Adapter", () => {
     updatedAt: "2026-09-05T00:00:00.000Z",
   }
 
-  it("exports valid JSON Canvas v1.0 and Scourgify sidecar metadata", () => {
+  it("exports valid JSON Canvas v1.0 and oh-my-paper sidecar metadata", () => {
     const result = exportBoardToJsonCanvas(boardId, [p1, p2], [node1, node2], [rel], [])
     expect(result.canvas.nodes).toHaveLength(2)
     expect(result.canvas.edges).toHaveLength(1)

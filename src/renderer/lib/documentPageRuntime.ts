@@ -54,7 +54,11 @@ export function parsedDocumentPages(documentId: DocumentId): readonly ParsedDocu
 export function loadParsedDocumentPage(
   documentId: DocumentId,
   pageNumber: number,
-  options: { readonly forceOcr?: boolean; readonly signal?: AbortSignal | undefined } = {},
+  options: {
+    readonly forceOcr?: boolean
+    readonly preparedOnly?: boolean
+    readonly signal?: AbortSignal | undefined
+  } = {},
 ): Promise<ParsedDocumentPage | null> {
   const key = requestKey(documentId, pageNumber)
   let active = activeRequests.get(key)
@@ -69,12 +73,13 @@ export function loadParsedDocumentPage(
   let operation = active
   if (!operation) {
     const controller = new AbortController()
-    const promise = window.scourgify
+    const promise = window.ohmypaper
       .parseDocumentPage(
         {
           id: documentId,
           pageNumber,
           ...(options.forceOcr ? { forceOcr: true } : {}),
+          ...(options.preparedOnly ? { preparedOnly: true } : {}),
         },
         controller.signal,
       )

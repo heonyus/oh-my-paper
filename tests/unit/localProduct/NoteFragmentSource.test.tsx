@@ -7,7 +7,7 @@ import { knowledgeNodeSchema } from "../../../src/shared/knowledgeSchemas"
 describe("NoteFragmentSource", () => {
   it("keeps the raw source exact while hiding its bookkeeping marker from default context", async () => {
     // Given
-    const marker = "<!-- scourgify:block:22222222-2222-4222-8222-222222222222 -->"
+    const marker = "<!-- ohmypaper:block:22222222-2222-4222-8222-222222222222 -->"
     const userCommentBefore = "<!-- keep this user note -->"
     const userCommentAfter = "<!-- keep this HTML note -->"
     const quote = "Evidence must remain linked to its source."

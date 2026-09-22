@@ -19,7 +19,7 @@ export function mineruRuntimeCommand(
   configured?: string,
 ): string {
   if (configured) return configured
-  const root = join(home, ".scourgify", "mineru-runtime")
+  const root = join(home, ".ohmypaper", "mineru-runtime")
   return platform === "win32" ? join(root, "Scripts", "mineru.exe") : join(root, "bin", "mineru")
 }
 
@@ -51,7 +51,7 @@ export async function runMineruLayout(input: {
     throw error
   }
 
-  const outputRoot = await mkdtemp(join(tmpdir(), "scourgify-mineru-"))
+  const outputRoot = await mkdtemp(join(tmpdir(), "ohmypaper-mineru-"))
   try {
     await executeFile(
       command,

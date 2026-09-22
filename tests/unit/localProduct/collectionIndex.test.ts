@@ -14,7 +14,7 @@ afterEach(async () => {
 })
 
 async function fixture(): Promise<{ readonly root: string; readonly indexFile: string }> {
-  const root = await mkdtemp(join(tmpdir(), "scourgify-index-"))
+  const root = await mkdtemp(join(tmpdir(), "ohmypaper-index-"))
   roots.push(root)
   await initializeCollection(root, randomUUID())
   return { root, indexFile: join(root, "machine", "index.sqlite") }

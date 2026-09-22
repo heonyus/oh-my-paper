@@ -1,5 +1,6 @@
 import { type JSX, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { DocumentAnalysisJob } from "../../shared/documentAnalysis"
+import { documentReaderBlocked } from "../../shared/documentAnalysis"
 import type { ImportProgress } from "../../shared/ipc"
 import type { KnowledgeNodeId } from "../../shared/knowledgeSchemas"
 import type { KnowledgeClientOps } from "../lib/knowledgeTypes"
@@ -32,6 +33,7 @@ type LibraryHomeProps = {
   readonly importLabel?: string | undefined
   readonly importProgress?: readonly ImportProgress[]
   readonly analysisJobs?: readonly DocumentAnalysisJob[]
+  readonly onRetryAnalysis?: ((id: DocumentId) => void) | undefined
   readonly recentDocumentId?: DocumentId | null | undefined
   readonly recentPage?: number | null | undefined
 }
@@ -60,6 +62,7 @@ export function LibraryHome({
   importLabel = "PDF 가져오기",
   importProgress = [],
   analysisJobs = [],
+  onRetryAnalysis,
   recentDocumentId,
   recentPage,
 }: LibraryHomeProps): JSX.Element {
@@ -80,6 +83,10 @@ export function LibraryHome({
     activeId ?? documents[0]?.id ?? null,
   )
   const openReader = onOpenReader ?? onSelect
+  const openPreparedReader = (id: DocumentId): void => {
+    if (documentReaderBlocked(analysisJobs, id)) return
+    openReader(id)
+  }
 
   const refreshCollections = useCallback(async (): Promise<boolean> => {
     const generation = refreshGeneration.current + 1
@@ -270,7 +277,8 @@ export function LibraryHome({
         onCreateCollection={createCollection}
         onViewChange={setView}
         onPreview={setSelectedId}
-        onOpenReader={openReader}
+        onOpenReader={openPreparedReader}
+        readerBlocked={(id) => documentReaderBlocked(analysisJobs, id)}
         onOpenKnowledge={onOpenKnowledge}
         onOpenNode={onOpenNode}
         onOpenGraph={onOpenGraph}
@@ -279,7 +287,11 @@ export function LibraryHome({
         onImport={onImport}
         onToggleMembership={(documentId, boardId) => void toggleMembership(documentId, boardId)}
       />
-      <LibraryTaskQueue imports={importProgress} analyses={analysisJobs} />
+      <LibraryTaskQueue
+        imports={importProgress}
+        analyses={analysisJobs}
+        onRetryAnalysis={onRetryAnalysis}
+      />
     </section>
   )
 }

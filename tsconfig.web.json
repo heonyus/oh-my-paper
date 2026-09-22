@@ -12,7 +12,7 @@
     "tests/unit/WebAppearanceSettings.test.tsx",
     "tests/unit/WebSignIn.test.tsx",
     "tests/unit/WebWorkspaceBridge.test.ts",
-    "tests/unit/webScourgifyApi.test.ts",
+    "tests/unit/webOhMyPaperApi.test.ts",
     "tests/unit/webUpload.test.ts",
     "tests/e2e/webBoardParity.spec.ts",
     "tests/e2e/webOnboarding.spec.ts"

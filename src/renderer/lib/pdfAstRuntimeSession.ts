@@ -11,7 +11,7 @@ import { clearDocumentLayoutPages } from "./documentLayoutRuntime"
 export class PdfAstRuntimeSession {
   readonly #documentId: DocumentId
   readonly #sourceHash: DocumentRecord["hash"]
-  readonly #session = new DocumentAstSession(window.scourgify.readDocumentAst)
+  readonly #session = new DocumentAstSession(window.ohmypaper.readDocumentAst)
   readonly #generation: number
 
   constructor(document: Pick<DocumentRecord, "id" | "hash">) {

@@ -264,7 +264,7 @@ def run(request: Request) -> dict[str, JsonValue]:
         lang="en",
         ocr_version="PP-OCRv5",
     )
-    with TemporaryDirectory(prefix="scourgify-enrichment-") as temporary:
+    with TemporaryDirectory(prefix="ohmypaper-enrichment-") as temporary:
         rendered = render_targets(request, Path(temporary))
         records: list[JsonValue] = []
         for target_index, (target, image_path) in enumerate(rendered):

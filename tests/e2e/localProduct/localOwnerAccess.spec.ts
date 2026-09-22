@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { _electron as electron, expect, test } from "@playwright/test"
 
 test("explicit local owner opens production workspace and preserves papers and notes after restart", async () => {
-  const root = await mkdtemp(join(tmpdir(), "scourgify-local-owner-"))
+  const root = await mkdtemp(join(tmpdir(), "ohmypaper-local-owner-"))
   const profile = join(root, "profile")
   const accountId = randomUUID()
   await mkdir(profile)
@@ -18,9 +18,9 @@ test("explicit local owner opens production workspace and preserves papers and n
     }),
     { mode: 0o600 },
   )
-  const output = join(process.cwd(), ".omo/evidence/scourgify-local-product/2026-09-08-local-owner")
+  const output = join(process.cwd(), ".omo/evidence/ohmypaper-local-product/2026-09-08-local-owner")
   await mkdir(output, { recursive: true })
-  const { SCOURGIFY_LOCAL_OWNER_EXECUTABLE: executable } = process.env
+  const { OH_MY_PAPER_LOCAL_OWNER_EXECUTABLE: executable } = process.env
   let paperHash = ""
   try {
     for (const reopening of [false, true]) {
@@ -29,10 +29,10 @@ test("explicit local owner opens production workspace and preserves papers and n
         args: executable ? [] : ["."],
         env: {
           ...process.env,
-          SCOURGIFY_USER_DATA_DIR: profile,
-          SCOURGIFY_ACCOUNT_SERVICE_ORIGIN: "",
-          SCOURGIFY_ACCOUNT_ISSUER: "",
-          SCOURGIFY_GOOGLE_CLIENT_ID: "",
+          OH_MY_PAPER_USER_DATA_DIR: profile,
+          OH_MY_PAPER_ACCOUNT_SERVICE_ORIGIN: "",
+          OH_MY_PAPER_ACCOUNT_ISSUER: "",
+          OH_MY_PAPER_GOOGLE_CLIENT_ID: "",
         },
       })
       try {
@@ -42,13 +42,13 @@ test("explicit local owner opens production workspace and preserves papers and n
         await expect(page.getByRole("region", { name: "PDF 라이브러리" })).toBeVisible()
         await expect(page.getByText("이 Mac · 로컬", { exact: true })).toBeVisible()
         await expect(page.getByRole("button", { name: "로그아웃", exact: true })).toHaveCount(0)
-        expect(await page.evaluate(() => window.scourgify.account?.status())).toEqual({
+        expect(await page.evaluate(() => window.ohmypaper.account?.status())).toEqual({
           state: "local",
           accountId,
         })
         if (!reopening) {
           const imported = await page.evaluate(
-            (path) => window.scourgify.importDocumentPath(path),
+            (path) => window.ohmypaper.importDocumentPath(path),
             join(process.cwd(), "tests/fixtures/sample-paper.pdf"),
           )
           if (!imported) throw new Error("Synthetic local PDF import failed")
@@ -84,7 +84,7 @@ test("explicit local owner opens production workspace and preserves papers and n
         await expect
           .poll(() =>
             page.evaluate(async () => {
-              const notes = await window.scourgify.knowledge.findNodes({
+              const notes = await window.ohmypaper.knowledge.findNodes({
                 search: "로컬 사용 저장 확인",
               })
               return notes.find((note) => note.title === "로컬 사용 저장 확인")?.body

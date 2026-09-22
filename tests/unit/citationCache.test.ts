@@ -12,7 +12,7 @@ afterEach(async () => {
 
 describe("citation lookup cache", () => {
   it("reuses a verified citation result across service instances", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-citation-cache-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-citation-cache-"))
     roots.push(root)
     const transport = vi.fn(async () => ({
       statusCode: 200,
@@ -42,7 +42,7 @@ describe("citation lookup cache", () => {
   })
 
   it("does not cache provider failures as a negative result", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-citation-cache-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-citation-cache-"))
     roots.push(root)
     let unavailable = true
     const transport = vi.fn(async () =>

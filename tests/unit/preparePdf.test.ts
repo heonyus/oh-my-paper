@@ -7,7 +7,7 @@ async function createPdf(): Promise<Uint8Array> {
   const font = await document.embedFont(StandardFonts.Helvetica)
   document.setTitle("Local Paper")
   document.setAuthor("Leaf Research")
-  document.setSubject("doi:10.1234/scourgify.2026")
+  document.setSubject("doi:10.1234/ohmypaper.2026")
   document.addPage([612, 792]).drawText("Local preparation extracts searchable text.", {
     x: 72,
     y: 700,
@@ -54,7 +54,7 @@ describe("local PDF preparation", () => {
     expect(prepared.pageCount).toBe(2)
     expect(prepared.title).toBe("Local Paper")
     expect(prepared.authors).toEqual(["Leaf Research"])
-    expect(prepared.doi).toBe("10.1234/scourgify.2026")
+    expect(prepared.doi).toBe("10.1234/ohmypaper.2026")
     expect(prepared.year).toBeNull()
     expect(prepared.quality.needsOcr).toBe(false)
     expect(prepared.anchors.length).toBeGreaterThan(0)

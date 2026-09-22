@@ -8,8 +8,8 @@ import { resolveWikiLinks } from "../../lib/knowledgeLinks"
 import { safeNoteImageSource } from "./noteRichContent"
 import "./notePreview.css"
 
-const WIKI_URL_PREFIX = "scourgify-wiki:"
-const BLOCK_MARKER = /^<!-- scourgify:block:[a-f0-9-]{36} -->\s*$/gmu
+const WIKI_URL_PREFIX = "ohmypaper-wiki:"
+const BLOCK_MARKER = /^<!-- ohmypaper:block:[a-f0-9-]{36} -->\s*$/gmu
 const WIKI_LINK = /\[\[([^\]]+)\]\]/gu
 
 export interface NotePreviewProps {
@@ -58,7 +58,7 @@ export function NotePreview({ source, nodes, onNodeSelect }: NotePreviewProps): 
           href={href}
           onClick={(event) => {
             event.preventDefault()
-            void window.scourgify.openExternal({ url: href })
+            void window.ohmypaper.openExternal({ url: href })
           }}
         >
           {children}

@@ -210,7 +210,7 @@ describe("Knowledge UI Views", () => {
       configurable: true,
       value: () => [],
     })
-    Object.defineProperty(window, "scourgify", {
+    Object.defineProperty(window, "ohmypaper", {
       configurable: true,
       value: { localInference: null },
     })

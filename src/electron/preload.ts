@@ -1,7 +1,11 @@
 import { contextBridge, ipcRenderer, webUtils } from "electron"
 import { z } from "zod"
 import { createClosePreparation } from "../shared/closePreparation"
-import { documentAnalysisSnapshotSchema } from "../shared/documentAnalysis"
+import {
+  documentAnalysisRequestSchema,
+  documentAnalysisSnapshotSchema,
+} from "../shared/documentAnalysis"
+import { documentOcrKeySchema } from "../shared/documentOcr"
 import {
   aiJobCancelRequestSchema,
   aiJobEventSchema,
@@ -22,6 +26,7 @@ import {
   documentBytesResultSchema,
   documentImportPathRequestSchema,
   documentImportPathsRequestSchema,
+  documentImportUrlRequestSchema,
   documentLayoutRequestSchema,
   documentLayoutResultSchema,
   documentOcrProviderStatusSchema,
@@ -31,11 +36,11 @@ import {
   importProgressSchema,
   importResultSchema,
   ipcChannels,
+  type OhMyPaperApi,
   openExternalRequestSchema,
   preparationUpdateSchema,
   providerConfigSchema,
   providerStatusSchema,
-  type ScourgifyApi,
   workspaceReadResultSchema,
   workspaceSaveRequestSchema,
 } from "../shared/ipc"
@@ -67,7 +72,7 @@ ipcRenderer.on(ipcChannels.workspacePrepareClose, () => {
     .catch(() => ipcRenderer.send(ipcChannels.workspaceCloseReady, false))
 })
 
-const api: ScourgifyApi = {
+const api: OhMyPaperApi = {
   backup: createPreloadBackup(),
   export: createPreloadExport(),
   account: createPreloadAccount(),
@@ -99,6 +104,12 @@ const api: ScourgifyApi = {
     return z
       .array(importResultSchema)
       .parse(await ipcRenderer.invoke(ipcChannels.documentImportPaths, request))
+  },
+  importDocumentUrl: async (url) => {
+    const request = documentImportUrlRequestSchema.parse({ url })
+    return importResultSchema.parse(
+      await ipcRenderer.invoke(ipcChannels.documentImportUrl, request),
+    )
   },
   getDroppedFilePath: (file) => webUtils.getPathForFile(file),
   onImportProgress: (listener) => {
@@ -144,8 +155,17 @@ const api: ScourgifyApi = {
     ipcRenderer.on(ipcChannels.documentAnalysisUpdated, handler)
     return () => ipcRenderer.removeListener(ipcChannels.documentAnalysisUpdated, handler)
   },
+  retryDocumentAnalysis: async (id) => {
+    await ipcRenderer.invoke(
+      ipcChannels.documentAnalysisRetry,
+      documentAnalysisRequestSchema.parse({ id }),
+    )
+  },
   documentOcrStatus: async () =>
     documentOcrProviderStatusSchema.parse(await ipcRenderer.invoke(ipcChannels.documentOcrStatus)),
+  saveDocumentOcrKey: async (key) => {
+    await ipcRenderer.invoke(ipcChannels.documentOcrSaveKey, documentOcrKeySchema.parse(key))
+  },
   readPageTranslationCache: async (request) =>
     pageTranslationCacheResultSchema.parse(
       await ipcRenderer.invoke(
@@ -249,4 +269,4 @@ const api: ScourgifyApi = {
   interchange: createPreloadInterchange(),
 }
 
-contextBridge.exposeInMainWorld("scourgify", api)
+contextBridge.exposeInMainWorld("ohmypaper", api)

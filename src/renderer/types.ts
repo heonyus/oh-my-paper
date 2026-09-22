@@ -1,4 +1,4 @@
-import type { AiRequest, ScourgifyApi } from "../shared/ipc"
+import type { AiRequest, OhMyPaperApi } from "../shared/ipc"
 
 export type BoardTool = "select" | "pan" | "sticky"
 export type AiDeltaHandler = (delta: string) => void
@@ -22,6 +22,6 @@ export type {
 
 declare global {
   interface Window {
-    readonly scourgify: ScourgifyApi
+    readonly ohmypaper: OhMyPaperApi
   }
 }

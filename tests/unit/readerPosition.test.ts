@@ -41,7 +41,7 @@ describe("reader position continuity", () => {
   })
 
   it("keeps each document's saved page across workspace projection", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-reader-position-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-reader-position-"))
     temporaryRoots.push(root)
     const first = documentRecordSchema.parse({
       id: "aabbccddeeff0011",

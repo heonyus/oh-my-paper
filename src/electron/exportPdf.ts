@@ -56,7 +56,7 @@ async function readyWindow(
   if (byteLength > MAX_HTML_BYTES) throw new ExportRenderError("html_too_large")
   if (signal.aborted) throw new ExportCancelledError()
   const { BrowserWindow, session } = await import("electron")
-  const isolatedSession = session.fromPartition(`scourgify-export-${randomUUID()}`, {
+  const isolatedSession = session.fromPartition(`ohmypaper-export-${randomUUID()}`, {
     cache: false,
   })
   isolatedSession.webRequest.onBeforeRequest(

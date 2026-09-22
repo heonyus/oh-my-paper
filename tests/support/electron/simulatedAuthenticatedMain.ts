@@ -4,9 +4,9 @@ import { accountStatusSchema } from "../../../src/shared/accountSchemas"
 import { installScholarlyGraphFixture } from "./scholarlyGraphFixture"
 
 const {
-  SCOURGIFY_QA_USER_DATA_ROOT: userDataRoot,
-  SCOURGIFY_QA_ELECTRON_DIRECTORY: electronDirectory,
-  SCOURGIFY_QA_SCHOLARLY_FIXTURE: scholarlyFixture,
+  OH_MY_PAPER_QA_USER_DATA_ROOT: userDataRoot,
+  OH_MY_PAPER_QA_ELECTRON_DIRECTORY: electronDirectory,
+  OH_MY_PAPER_QA_SCHOLARLY_FIXTURE: scholarlyFixture,
 } = process.env
 
 if (!userDataRoot || !electronDirectory) {

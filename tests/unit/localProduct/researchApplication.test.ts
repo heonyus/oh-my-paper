@@ -14,8 +14,8 @@ const localId = knowledgeNodeIdSchema.parse("123e4567-e89b-42d3-a456-42661417404
 const source = researchSourceSchema.parse({
   id: localId,
   title: "Local canonical note",
-  url: "scourgify://knowledge/123e4567-e89b-42d3-a456-426614174040",
-  finalUrl: "scourgify://knowledge/123e4567-e89b-42d3-a456-426614174040",
+  url: "ohmypaper://knowledge/123e4567-e89b-42d3-a456-426614174040",
+  finalUrl: "ohmypaper://knowledge/123e4567-e89b-42d3-a456-426614174040",
   page: null,
   snippet: "Validated local evidence",
   access: "local_excerpt",

@@ -16,7 +16,7 @@ export function useDocumentImportFlow({
 
   useEffect(
     () =>
-      window.scourgify.onImportProgress((update) => {
+      window.ohmypaper.onImportProgress((update) => {
         setProgress((current) => [...current.filter((item) => item.id !== update.id), update])
       }),
     [],
@@ -24,7 +24,7 @@ export function useDocumentImportFlow({
 
   const finish = useCallback(
     async (result: ImportedDocument): Promise<void> => {
-      const current = normalizeWorkspaceTranslations(await window.scourgify.readWorkspace())
+      const current = normalizeWorkspaceTranslations(await window.ohmypaper.readWorkspace())
       onImported({ ...current, activeDocumentId: result.document.id }, result.document)
       setProgress([])
     },
@@ -35,7 +35,7 @@ export function useDocumentImportFlow({
     setProgress([])
     onStart()
     try {
-      const result = await window.scourgify.importDocument()
+      const result = await window.ohmypaper.importDocument()
       if (result) await finish(result)
     } catch {
       return
@@ -47,10 +47,10 @@ export function useDocumentImportFlow({
       setProgress([])
       onStart()
       const paths = files
-        .map((file) => window.scourgify.getDroppedFilePath(file))
+        .map((file) => window.ohmypaper.getDroppedFilePath(file))
         .filter((path) => path.length > 0)
       try {
-        const results = await window.scourgify.importDocumentPaths(paths)
+        const results = await window.ohmypaper.importDocumentPaths(paths)
         const imported = results.filter((result): result is ImportedDocument => result !== null)
         const last = imported.at(-1)
         if (last) await finish(last)

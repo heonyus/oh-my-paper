@@ -45,7 +45,7 @@ export function openPageTranslation(page: number): void {
 
 export function openAutomaticPageTranslation(page: number): void {
   if (session.openPages.includes(page)) return
-  const retainCount = Math.max(0, aiPolicy.concurrentTextJobs - 1)
+  const retainCount = Math.min(Math.max(0, aiPolicy.concurrentTextJobs - 1), 2)
   const retained = retainCount === 0 ? [] : session.openPages.slice(-retainCount)
   publish({
     ...session,

@@ -58,8 +58,8 @@ function parserResult(
 }
 
 describe("local document workflow", () => {
-  it("does not start Paddle while importing a scan", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-local-workflow-"))
+  it("starts bounded Paddle preparation immediately after importing a scan", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-local-workflow-"))
     try {
       const store = new WorkspaceStore(root)
       await store.save(defaultWorkspace())
@@ -77,15 +77,20 @@ describe("local document workflow", () => {
       const imported = await importPaths({ sender: { send: vi.fn() } }, [pdfPath], analysis, store)
 
       expect(imported).toHaveLength(1)
+      await vi.waitFor(() =>
+        expect(analysis.snapshot().find((job) => job.id === imported[0]?.document.id)?.state).toBe(
+          "failed",
+        ),
+      )
       await analysis.dispose()
-      expect(paddleParse).not.toHaveBeenCalled()
+      expect(paddleParse).toHaveBeenCalledTimes(2)
     } finally {
       await rm(root, { recursive: true, force: true })
     }
   })
 
   it("merges PDF.js text with Paddle structures for a digital page", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-hybrid-parse-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-hybrid-parse-"))
     try {
       const store = new WorkspaceStore(root)
       await store.save(defaultWorkspace())
@@ -119,7 +124,7 @@ describe("local document workflow", () => {
   })
 
   it("uses the complete Paddle page when the PDF has no usable text", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-scan-parse-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-scan-parse-"))
     try {
       const store = new WorkspaceStore(root)
       await store.save(defaultWorkspace())
@@ -141,7 +146,7 @@ describe("local document workflow", () => {
   })
 
   it("reuses the hybrid cache and rejects invalid page numbers", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-hybrid-cache-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-hybrid-cache-"))
     try {
       const store = new WorkspaceStore(root)
       await store.save(defaultWorkspace())

@@ -19,7 +19,7 @@ test("real Electron export preserves a synthetic Korean note across four formats
   isMobile,
 }, testInfo) => {
   expect(isMobile).toBe(false)
-  const temporaryRoot = await mkdtemp(join(tmpdir(), "scourgify-export-consumer-"))
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "ohmypaper-export-consumer-"))
   const exportRoot = join(temporaryRoot, "exports")
   const evidenceRoot = testInfo.outputPath("artifacts")
   await mkdir(exportRoot, { recursive: true })
@@ -52,7 +52,7 @@ test("real Electron export preserves a synthetic Korean note across four formats
     await expect(page.getByRole("region", { name: "PDF 라이브러리" })).toBeVisible()
     const note = await page.evaluate(
       async ({ title: noteTitle, body }) => {
-        const knowledge = window.scourgify.knowledge
+        const knowledge = window.ohmypaper.knowledge
         if (!knowledge) throw new Error("Knowledge preload is unavailable")
         return knowledge.createNode({ kind: "note", title: noteTitle, body })
       },

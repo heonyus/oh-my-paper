@@ -66,7 +66,7 @@ describe("PageTranslationPortal", () => {
   })
 
   it("does not reopen the new document from the previous document's auto consent", () => {
-    document.body.innerHTML = '<div class="board-world"></div>'
+    document.body.innerHTML = '<div class="reader-workspace"></div>'
     const { result } = renderHook(() => usePageTranslationSession())
     act(() => {
       setPageTranslationDocument(firstDocument.id)
@@ -83,7 +83,7 @@ describe("PageTranslationPortal", () => {
   })
 
   it("keeps only the bounded recent auto panes during rapid page changes", () => {
-    document.body.innerHTML = '<div class="board-world"></div>'
+    document.body.innerHTML = '<div class="reader-workspace"></div>'
     const { result } = renderHook(() => usePageTranslationSession())
     act(() => {
       setPageTranslationDocument(firstDocument.id)
@@ -109,6 +109,6 @@ describe("PageTranslationPortal", () => {
       />,
     )
 
-    expect(result.current.openPages).toEqual([2, 3])
+    expect(result.current.openPages).toEqual([1, 2, 3])
   })
 })

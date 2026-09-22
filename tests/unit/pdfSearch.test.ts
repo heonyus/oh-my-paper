@@ -156,7 +156,7 @@ describe("PDF search context", () => {
         },
       ],
     })
-    Object.defineProperty(window, "scourgify", {
+    Object.defineProperty(window, "ohmypaper", {
       configurable: true,
       value: { parseDocumentPage: async () => ({ status: "ready", page: parsed }) },
     })
@@ -279,7 +279,7 @@ describe("PDF search context", () => {
         ],
       }),
     ]
-    Object.defineProperty(window, "scourgify", {
+    Object.defineProperty(window, "ohmypaper", {
       configurable: true,
       value: {
         parseDocumentPage: async ({ pageNumber }: { readonly pageNumber: number }) => ({
@@ -371,7 +371,7 @@ describe("PDF search context", () => {
       status: "ready" as const,
       page: parsedByPage.get(pageNumber),
     }))
-    Object.defineProperty(window, "scourgify", {
+    Object.defineProperty(window, "ohmypaper", {
       configurable: true,
       value: {
         documentOcrStatus: async () => ({ configured: true }),

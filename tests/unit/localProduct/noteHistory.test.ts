@@ -19,7 +19,7 @@ afterEach(async () => {
 
 describe("NoteHistory", () => {
   it("throttles typing snapshots but preserves boundaries and exact restore bytes", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-history-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-history-"))
     roots.push(root)
     await initializeCollection(root, randomUUID())
     let now = new Date("2026-01-01T00:00:00.000Z")
@@ -41,7 +41,7 @@ describe("NoteHistory", () => {
   })
 
   it("keeps unresolved conflict evidence past 30 days and preserves pre-restore content", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-history-retention-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-history-retention-"))
     roots.push(root)
     await initializeCollection(root, randomUUID())
     let now = new Date("2026-01-01T00:00:00.000Z")
@@ -87,7 +87,7 @@ describe("NoteHistory", () => {
   })
 
   it("prunes an unprotected snapshot only after the 30-day boundary", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-history-prune-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-history-prune-"))
     roots.push(root)
     await initializeCollection(root, randomUUID())
     let now = new Date("2026-01-01T00:00:00.000Z")

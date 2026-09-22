@@ -105,7 +105,7 @@ describe("BoardCard controls", () => {
 
   it("copies a completed AI output from the card footer", async () => {
     const writeClipboardText = vi.fn(async () => undefined)
-    Object.defineProperty(window, "scourgify", {
+    Object.defineProperty(window, "ohmypaper", {
       configurable: true,
       value: { writeClipboardText },
     })

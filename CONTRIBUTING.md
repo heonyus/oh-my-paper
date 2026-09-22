@@ -1,4 +1,4 @@
-# Contributing to Scourgify
+# Contributing to oh-my-paper
 
 Thanks for helping improve local-first research reading.
 
@@ -16,7 +16,7 @@ npm run dev
 ```
 
 The development launcher owns both processes and stops Vite when Electron exits. Use a fresh
-temporary `SCOURGIFY_USER_DATA_DIR` for manual acceptance checks so local app state is not reused.
+temporary `OH_MY_PAPER_USER_DATA_DIR` for manual acceptance checks so local app state is not reused.
 
 Before opening a pull request:
 

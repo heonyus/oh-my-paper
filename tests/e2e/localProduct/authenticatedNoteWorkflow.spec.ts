@@ -17,7 +17,7 @@ test("simulated auth saves a note and returns to its image and history surfaces"
     await expect(page.getByRole("region", { name: "PDF 라이브러리" })).toBeVisible()
 
     const asset = await page.evaluate(async (bytes) => {
-      const collection = window.scourgify.collection
+      const collection = window.ohmypaper.collection
       if (!collection) throw new Error("Collection preload is unavailable")
       return collection.importAsset({
         kind: "bytes",
@@ -47,7 +47,7 @@ test("simulated auth saves a note and returns to its image and history surfaces"
       .poll(
         async () => {
           const matches = await page.evaluate(async () =>
-            window.scourgify.knowledge.findNodes({ search: "인증 컬렉션 노트" }),
+            window.ohmypaper.knowledge.findNodes({ search: "인증 컬렉션 노트" }),
           )
           return matches.find((node) => node.title === "인증 컬렉션 노트")?.body ?? null
         },

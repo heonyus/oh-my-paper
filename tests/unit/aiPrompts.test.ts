@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { systemPromptFor, userInputFor } from "../../src/electron/aiPrompts"
+import { systemPromptFor, systemPromptForRequest, userInputFor } from "../../src/electron/aiPrompts"
 import { aiActionSchema, aiRequestSchema } from "../../src/shared/ipc"
 
 const request = aiRequestSchema.parse({
@@ -37,5 +37,27 @@ describe("research prompt routing contract", () => {
     expect(positions.every((position) => position >= 0)).toBe(true)
     expect(positions).toEqual([...positions].sort((left, right) => left - right))
     expect(input).toContain("<USER_QUESTION_OR_TARGET>\ntarget\n</USER_QUESTION_OR_TARGET>")
+  })
+
+  it("uses the delimiter protocol for the dedicated Hy-MT2 translator", () => {
+    expect(systemPromptForRequest("page_translation", "tencent/hy-mt2-1.8b")).toContain(
+      "@@BLOCK_ID@@",
+    )
+    expect(systemPromptForRequest("page_translation", "deepseek/deepseek-v4.1-flash")).toContain(
+      "return JSON only",
+    )
+  })
+
+  it("keeps academic terms as English followed by a parenthesized Korean translation", () => {
+    for (const model of [
+      "tencent/hy-mt2-30b-a3b",
+      "tencent/hy-mt2-7b",
+      "qwen/qwen3-30b-a3b-instruct-2507",
+      undefined,
+    ]) {
+      expect(systemPromptForRequest("page_translation", model)).toContain(
+        "`English term(한국어 번역)`",
+      )
+    }
   })
 })

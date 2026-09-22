@@ -147,10 +147,10 @@ export function usePdfViewerLifecycle({
       isDisposed: () => disposed,
     })
 
-    const releaseExternalLinks = Pdf.bindPdfExternalLinks(container, window.scourgify.openExternal)
+    const releaseExternalLinks = Pdf.bindPdfExternalLinks(container, window.ohmypaper.openExternal)
     overlayRefreshRef.current = bridge.scheduleOverlayRefresh
 
-    void window.scourgify
+    void window.ohmypaper
       .readDocument(resourceDocument.id)
       .then(async (encoded) => {
         const loadingTask = getDocument({ data: decodeBase64(encoded) })

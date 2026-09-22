@@ -13,7 +13,7 @@ the returned provider pages are interleaved into at most the requested display s
 Every item retains its provider record ID and available DOI, versioned arXiv ID, or OpenAlex ID.
 Entries from different providers are not merged, even when an identifier agrees but metadata
 conflicts. Metadata, abstract, and full-text access are separate states. A metadata result does
-not mean that Scourgify downloaded or read the paper.
+not mean that oh-my-paper downloaded or read the paper.
 
 Every provider has its own success or error state. A successful empty response is distinct from
 a malformed response. Rate limits include a parsed `Retry-After` delay when supplied. There are
@@ -37,7 +37,7 @@ transport or wire stream without weakening the production limits.
   metadata fields. Crossref documents public access without registration and deprecates
   `query.title` in favor of `query.bibliographic`.
 - arXiv uses the Atom query API with `start`, `max_results`, relevance sorting, and an optional
-  submitted-date range. Scourgify makes one arXiv request per explicit search action; clients
+  submitted-date range. oh-my-paper makes one arXiv request per explicit search action; clients
   should avoid rapidly repeating page requests because arXiv asks callers to pace consecutive
   requests.
 - OpenAlex uses works search with basic page/per-page pagination and selected metadata fields.

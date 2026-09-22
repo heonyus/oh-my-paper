@@ -16,7 +16,7 @@ afterEach(async () => {
 
 describe("Knowledge Storage & Migration", () => {
   it("migrates legacy workspace.json transactionally with backup and does not re-import on repeat open", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-kmig-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-kmig-"))
     temporaryRoots.push(root)
 
     const legacy = {
@@ -110,7 +110,7 @@ describe("Knowledge Storage & Migration", () => {
   })
 
   it("handles corrupt workspace.json cleanly without corrupting the store", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-corrupt-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-corrupt-"))
     temporaryRoots.push(root)
 
     await writeFile(join(root, "workspace.json"), "{ corrupt json !!", "utf8")
@@ -124,7 +124,7 @@ describe("Knowledge Storage & Migration", () => {
   })
 
   it("ensures source version immutability and anchor stability", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-version-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-version-"))
     temporaryRoots.push(root)
 
     const store = new WorkspaceStore(root)
@@ -165,7 +165,7 @@ describe("Knowledge Storage & Migration", () => {
   })
 
   it("preserves knowledge nodes when placements are removed from boards", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-placements-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-placements-"))
     temporaryRoots.push(root)
 
     const store = new WorkspaceStore(root)

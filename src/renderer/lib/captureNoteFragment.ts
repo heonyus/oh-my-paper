@@ -22,9 +22,9 @@ export async function captureNoteFragment(
   while (block && !(block.from <= from && block.to >= to)) block = block.nextSibling
   if (!block || block.name === "HTMLBlock") throw new Error("한 문단 안에서 구절을 선택하세요.")
   const preceding = source.slice(0, block.from)
-  const existing = /<!-- scourgify:block:([a-f0-9-]{36}) -->\s*$/.exec(preceding)
+  const existing = /<!-- ohmypaper:block:([a-f0-9-]{36}) -->\s*$/.exec(preceding)
   const blockId = existing?.[1] ?? crypto.randomUUID()
-  const marker = existing ? "" : `<!-- scourgify:block:${blockId} -->\n\n`
+  const marker = existing ? "" : `<!-- ohmypaper:block:${blockId} -->\n\n`
   const body = `${preceding}${marker}${source.slice(block.from)}`
   const shiftedFrom = from + marker.length
   const shiftedTo = to + marker.length

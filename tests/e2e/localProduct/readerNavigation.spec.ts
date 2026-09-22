@@ -12,7 +12,7 @@ test("Reader keeps global navigation and identifies the retained paper", async (
     await browserWindow.evaluate((window) => window.setContentSize(1440, 960))
     const output = join(
       process.cwd(),
-      ".omo/evidence/scourgify-local-product/2026-09-08-reader-navigation",
+      ".omo/evidence/ohmypaper-local-product/2026-09-08-reader-navigation",
     )
     await mkdir(output, { recursive: true })
     await expect(page.getByRole("region", { name: "PDF 라이브러리" })).toBeVisible()
@@ -23,7 +23,7 @@ test("Reader keeps global navigation and identifies the retained paper", async (
     await page.getByRole("button", { name: "라이브러리", exact: true }).click()
     const otherDocument = await page.evaluate(
       async (path) => {
-        const result = await window.scourgify.importDocumentPath(path)
+        const result = await window.ohmypaper.importDocumentPath(path)
         if (!result) throw new Error("Synthetic PDF import was cancelled")
         return result.document
       },
@@ -31,7 +31,7 @@ test("Reader keeps global navigation and identifies the retained paper", async (
     )
     const document = await page.evaluate(
       async (path) => {
-        const result = await window.scourgify.importDocumentPath(path)
+        const result = await window.ohmypaper.importDocumentPath(path)
         if (!result) throw new Error("Synthetic PDF import was cancelled")
         return result.document
       },

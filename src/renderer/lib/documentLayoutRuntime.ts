@@ -6,7 +6,7 @@ const layoutPagesByDocument = new Map<DocumentId, ReadonlyMap<number, DocumentLa
 export async function loadDocumentLayoutPages(
   documentId: DocumentId,
 ): Promise<ReadonlyMap<number, DocumentLayoutPage> | null> {
-  const result = await window.scourgify.readDocumentLayout(documentId)
+  const result = await window.ohmypaper.readDocumentLayout(documentId)
   if (result.status !== "ready") return null
   const pages = new Map(result.layout.pages.map((page) => [page.pageNumber, page] as const))
   layoutPagesByDocument.set(documentId, pages)

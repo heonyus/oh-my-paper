@@ -59,8 +59,8 @@ async function grantFixture(
   })
   const lease = await signJwt(keys.privateKey, key.kid, {
     ...common,
-    aud: "scourgify-desktop-offline",
-    purpose: "scourgify-local-access",
+    aud: "ohmypaper-desktop-offline",
+    purpose: "ohmypaper-local-access",
     jti: "offline-lease-id-001",
     exp: now + 604_800,
     verified_at: now,

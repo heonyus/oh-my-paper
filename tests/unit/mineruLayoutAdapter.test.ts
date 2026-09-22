@@ -13,10 +13,10 @@ describe("MinerU layout adapter", () => {
 
   it("resolves a dedicated managed runtime", () => {
     expect(mineruRuntimeCommand("/Users/test", "darwin")).toBe(
-      "/Users/test/.scourgify/mineru-runtime/bin/mineru",
+      "/Users/test/.ohmypaper/mineru-runtime/bin/mineru",
     )
     expect(mineruRuntimeCommand("C:\\Users\\test", "win32")).toContain(
-      ".scourgify/mineru-runtime/Scripts/mineru.exe",
+      ".ohmypaper/mineru-runtime/Scripts/mineru.exe",
     )
   })
 

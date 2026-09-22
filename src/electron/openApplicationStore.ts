@@ -7,7 +7,7 @@ export async function openApplicationStore(userDataRoot: string): Promise<Worksp
   const active = await readActiveCollection(userDataRoot)
   const collectionId =
     active?.collectionId ??
-    (await migrateLegacyCollection(join(userDataRoot, "scourgify"), userDataRoot)).collectionId
+    (await migrateLegacyCollection(join(userDataRoot, "ohmypaper"), userDataRoot)).collectionId
   return WorkspaceStore.openCollection(
     collectionRootForId(userDataRoot, collectionId),
     collectionIndexFile(userDataRoot, collectionId),

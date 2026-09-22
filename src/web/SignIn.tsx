@@ -1,7 +1,7 @@
 import { ArrowDown, LogIn } from "lucide-react"
 import type { JSX } from "react"
-import leafMarkUrl from "../../assets/branding/scourgify-leaf-mark.png"
-import sceneUrl from "../../assets/branding/scourgify-onboarding-golden-leaves-v1.jpg"
+import leafMarkUrl from "../../assets/branding/ohmypaper-leaf-mark.png"
+import sceneUrl from "../../assets/branding/ohmypaper-onboarding-golden-leaves-v1.jpg"
 import { authClient } from "./authClient"
 import { OnboardingStory } from "./OnboardingStory"
 

@@ -6,6 +6,7 @@ export const parsedPageParserSchema = z.enum([
   "PDF.js+PaddleOCR-VL-1.6",
   "PaddleOCR-VL-1.6",
   "NativeText-1.0",
+  "Mistral-OCR-4.1",
 ])
 export const parsedPageBlockLabelSchema = z.enum([
   "doc_title",
@@ -85,6 +86,7 @@ export const documentPageParseRequestSchema = z.object({
   id: documentIdSchema,
   pageNumber: z.number().int().positive(),
   forceOcr: z.boolean().optional(),
+  preparedOnly: z.boolean().optional(),
 })
 
 export const documentPageParseStageSchema = z.enum([

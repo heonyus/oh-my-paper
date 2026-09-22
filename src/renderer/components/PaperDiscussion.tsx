@@ -10,7 +10,7 @@ type ChatEntry = AiHistoryMessage & { readonly id: string }
 const MAX_PERSISTED_ENTRIES = 60
 
 function storageKey(documentId: string): string {
-  return `scourgify:discussion:${documentId}`
+  return `ohmypaper:discussion:${documentId}`
 }
 
 function loadEntries(documentId: string): readonly ChatEntry[] {

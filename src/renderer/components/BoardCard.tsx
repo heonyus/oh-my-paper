@@ -74,7 +74,7 @@ export function BoardCard({
 
   async function copyCardBody(): Promise<void> {
     try {
-      await window.scourgify.writeClipboardText(card.body)
+      await window.ohmypaper.writeClipboardText(card.body)
       setCopyState("copied")
     } catch (error: unknown) {
       if (!(error instanceof Error)) throw error
@@ -213,7 +213,7 @@ export function BoardCard({
             <button
               type="button"
               className="source-link"
-              onClick={() => void window.scourgify.openExternal({ url: sourceUrl })}
+              onClick={() => void window.ohmypaper.openExternal({ url: sourceUrl })}
             >
               논문 열기 <ExternalLink size={13} />
             </button>

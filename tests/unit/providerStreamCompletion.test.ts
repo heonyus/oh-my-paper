@@ -54,7 +54,7 @@ async function* completionStream(parts: readonly StreamPart[]) {
 }
 
 async function service(): Promise<ProviderService> {
-  const root = await mkdtemp(join(tmpdir(), "scourgify-provider-stream-"))
+  const root = await mkdtemp(join(tmpdir(), "ohmypaper-provider-stream-"))
   roots.push(root)
   const provider = new ProviderService(root)
   await provider.saveConfig({

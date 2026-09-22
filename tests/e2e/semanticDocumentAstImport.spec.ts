@@ -11,7 +11,7 @@ const semanticSidecarSchema = z.object({ semantic: semanticDocumentAstSchema })
 
 test("PDF import composes a semantic sidecar after local preparation", async () => {
   // Given
-  const temporaryRoot = await mkdtemp(join(tmpdir(), "scourgify-semantic-e2e-"))
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "ohmypaper-semantic-e2e-"))
   const userData = join(temporaryRoot, "user-data")
   const fixture = join(process.cwd(), "tests", "fixtures", "sample-paper.pdf")
   const fixtureBytes = await readFile(fixture)
@@ -25,17 +25,17 @@ test("PDF import composes a semantic sidecar after local preparation", async () 
     args: ["."],
     env: {
       ...process.env,
-      SCOURGIFY_LAYOUT_PYTHON: join(homedir(), ".scourgify", "layout-runtime", "bin", "python"),
-      SCOURGIFY_USER_DATA_DIR: userData,
+      OH_MY_PAPER_LAYOUT_PYTHON: join(homedir(), ".ohmypaper", "layout-runtime", "bin", "python"),
+      OH_MY_PAPER_USER_DATA_DIR: userData,
     },
   })
 
   // When
-  let imported: Awaited<ReturnType<typeof window.scourgify.importDocumentPath>>
+  let imported: Awaited<ReturnType<typeof window.ohmypaper.importDocumentPath>>
   try {
     const page = await application.firstWindow()
     imported = await page.evaluate(
-      async (sourcePath) => window.scourgify.importDocumentPath(sourcePath),
+      async (sourcePath) => window.ohmypaper.importDocumentPath(sourcePath),
       fixture,
     )
   } finally {
@@ -44,7 +44,7 @@ test("PDF import composes a semantic sidecar after local preparation", async () 
 
   // Then
   expect(imported).not.toBeNull()
-  const sidecarDirectory = join(userData, "scourgify", "document-ast", sourceHash)
+  const sidecarDirectory = join(userData, "ohmypaper", "document-ast", sourceHash)
   const files = await readdir(sidecarDirectory)
   expect(files).toContain(`${fingerprint}.json`)
   const semanticFile = files.find((file) => file.endsWith(".semantic.json"))
@@ -57,7 +57,7 @@ test("PDF import composes a semantic sidecar after local preparation", async () 
   expect(["ready", "degraded"]).toContain(semantic.semantic.status)
   expect(
     createHash("sha256")
-      .update(await readFile(join(userData, "scourgify", "documents", `${sourceHash}.pdf`)))
+      .update(await readFile(join(userData, "ohmypaper", "documents", `${sourceHash}.pdf`)))
       .digest("hex"),
   ).toBe(sourceHash)
   await rm(temporaryRoot, { recursive: true, force: true })

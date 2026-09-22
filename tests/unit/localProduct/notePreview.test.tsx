@@ -20,7 +20,7 @@ describe("NotePreview", () => {
   it("renders rich Markdown and hides source block markers", () => {
     // Given
     const source = [
-      "<!-- scourgify:block:22222222-2222-4222-8222-222222222222 -->",
+      "<!-- ohmypaper:block:22222222-2222-4222-8222-222222222222 -->",
       "# 제목",
       "**핵심** and $x^2$",
       "",
@@ -39,7 +39,7 @@ describe("NotePreview", () => {
     expect(screen.getByText("핵심").tagName).toBe("STRONG")
     expect(container.querySelector(".katex")).not.toBeNull()
     expect(screen.getByRole("table")).toBeVisible()
-    expect(container.textContent).not.toContain("scourgify:block")
+    expect(container.textContent).not.toContain("ohmypaper:block")
   })
 
   it("keeps stable wiki links clickable", () => {

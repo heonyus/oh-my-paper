@@ -51,10 +51,10 @@ export class WorkspaceStore {
   ) {
     this.collectionService = collectionService
     this.workspaceFile = collectionService
-      ? join(root, ".scourgify", "workspace-projection.json")
+      ? join(root, ".ohmypaper", "workspace-projection.json")
       : join(root, "workspace.json")
     this.databaseFile = collectionService
-      ? join(root, ".scourgify", "metadata.sqlite")
+      ? join(root, ".ohmypaper", "metadata.sqlite")
       : join(root, "knowledge.sqlite")
     this.documentsDirectory = join(root, collectionService ? "papers" : "documents")
     this.db = collectionService?.repository.db ?? openKnowledgeDatabase(this.databaseFile)

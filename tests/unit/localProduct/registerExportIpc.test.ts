@@ -68,7 +68,7 @@ function register(): () => void {
 
 describe("export IPC file commit", () => {
   it("does not clobber an existing file and leaves no temporary files", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-export-ipc-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-export-ipc-"))
     roots.push(root)
     const target = join(root, "note.md")
     await writeFile(target, "original note")
@@ -84,7 +84,7 @@ describe("export IPC file commit", () => {
   })
 
   it("cancels without creating a destination", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-export-cancel-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-export-cancel-"))
     roots.push(root)
     const target = join(root, "note.md")
     electron.dialog.showSaveDialog.mockResolvedValue({ canceled: true, filePath: "" })

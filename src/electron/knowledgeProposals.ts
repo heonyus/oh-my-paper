@@ -63,7 +63,7 @@ export function commitProposals(
       repo.createRelation({
         ...relation,
         reviewState: "proposed",
-        provenance: { source: "ai", model, extractorVersion: "scourgify-relations-v1" },
+        provenance: { source: "ai", model, extractorVersion: "ohmypaper-relations-v1" },
       }),
     ),
   )

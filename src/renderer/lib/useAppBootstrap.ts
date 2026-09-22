@@ -15,6 +15,7 @@ export const initialOcrProviderStatus: DocumentOcrProviderStatus = {
   configured: false,
   provider: "paddle",
   model: "PaddleOCR-VL-1.6",
+  fallback: { configured: false, provider: "mistral", model: "mistral-ocr-4-1" },
 }
 
 export function useAppBootstrap({
@@ -41,18 +42,18 @@ export function useAppBootstrap({
     [setBootstrapError],
   )
   useEffect(() => {
-    void window.scourgify
+    void window.ohmypaper
       .readWorkspace()
       .then(normalizeWorkspaceTranslations)
       .then(resetWorkspace)
       .catch(report)
     void Promise.all([
-      window.scourgify.providerStatus().then(setProvider),
-      window.scourgify.documentOcrStatus().then(setOcrStatus),
+      window.ohmypaper.providerStatus().then(setProvider),
+      window.ohmypaper.documentOcrStatus().then(setOcrStatus),
     ])
       .catch(report)
       .finally(() => setCredentialsChecked(true))
-    return window.scourgify.onPreparation((update) => {
+    return window.ohmypaper.onPreparation((update) => {
       setPreparation((current) => [...current.filter((item) => item.step !== update.step), update])
     })
   }, [resetWorkspace, setCredentialsChecked, setOcrStatus, setPreparation, setProvider, report])

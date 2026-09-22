@@ -58,7 +58,7 @@ describe("CollectionFiles", () => {
     const root = await collectionRoot()
     const noteId = randomUUID()
     const source = Buffer.from(
-      `---\ntitle: "Spacing: stays"\naliases: [한글, English]\nscourgify:\n    id: ${noteId}\n    future: keep\n---\n\n-  exact  spacing\n`,
+      `---\ntitle: "Spacing: stays"\naliases: [한글, English]\nohmypaper:\n    id: ${noteId}\n    future: keep\n---\n\n-  exact  spacing\n`,
     )
     const files = await CollectionFiles.open(root)
 

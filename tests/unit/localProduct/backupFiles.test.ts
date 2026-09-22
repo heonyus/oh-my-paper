@@ -31,21 +31,21 @@ afterEach(async () => {
 })
 
 async function collectionRoot(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), "scourgify-backup-"))
+  const root = await mkdtemp(join(tmpdir(), "ohmypaper-backup-"))
   roots.push(root)
   await mkdir(join(root, "notes"), { recursive: true })
   await mkdir(join(root, "papers"), { recursive: true })
   await mkdir(join(root, "assets"), { recursive: true })
-  await mkdir(join(root, ".scourgify"), { recursive: true })
-  await mkdir(join(root, ".scourgify", "history"), { recursive: true })
+  await mkdir(join(root, ".ohmypaper"), { recursive: true })
+  await mkdir(join(root, ".ohmypaper", "history"), { recursive: true })
   const collectionId = randomUUID()
   await writeFile(
     join(root, "collection.json"),
     `${JSON.stringify({ format: "scourgify-collection", schemaVersion: 1, collectionId })}\n`,
   )
   await writeFile(join(root, "notes", "note.md"), "---\n---\nbackup me\n")
-  await writeFile(join(root, ".scourgify", "metadata.sqlite"), "metadata")
-  await writeFile(join(root, ".scourgify", "history", "old.md"), "history")
+  await writeFile(join(root, ".ohmypaper", "metadata.sqlite"), "metadata")
+  await writeFile(join(root, ".ohmypaper", "history", "old.md"), "history")
   return root
 }
 
@@ -58,7 +58,7 @@ describe("filesystem backup adapters", () => {
     const apiBackupRoot = join(sourceRoot, "..", `collection-backup-api-${randomUUID()}`)
     roots.push(apiBackupRoot)
     const source = await createFileBackupSource(sourceRoot, async () =>
-      readFile(join(sourceRoot, ".scourgify", "metadata.sqlite")),
+      readFile(join(sourceRoot, ".ohmypaper", "metadata.sqlite")),
     )
     const writer = await createDirectoryBackupWriter(backupRoot)
     const manifest = await createBackup(source, writer)
@@ -69,16 +69,16 @@ describe("filesystem backup adapters", () => {
       targetCollectionId,
     })
     const apiResult = await createLocalBackup(sourceRoot, apiBackupRoot, async () =>
-      readFile(join(sourceRoot, ".scourgify", "metadata.sqlite")),
+      readFile(join(sourceRoot, ".ohmypaper", "metadata.sqlite")),
     )
 
-    expect(manifest.entries.map((entry) => entry.path)).not.toContain(".scourgify/history/old.md")
+    expect(manifest.entries.map((entry) => entry.path)).not.toContain(".ohmypaper/history/old.md")
     expect(apiResult.entryCount).toBeGreaterThan(0)
     expect(restored.targetCollectionId).toBe(targetCollectionId)
     expect(await readFile(join(targetRoot, "notes", "note.md"))).toEqual(
       Buffer.from("---\n---\nbackup me\n"),
     )
-    expect(await readFile(join(targetRoot, ".scourgify", "metadata.sqlite"))).toEqual(
+    expect(await readFile(join(targetRoot, ".ohmypaper", "metadata.sqlite"))).toEqual(
       Buffer.from("metadata"),
     )
   })
@@ -127,8 +127,8 @@ describe("filesystem backup adapters", () => {
   })
 
   it("rejects a symlinked archive parent before reading its payload", async () => {
-    const backupRoot = await mkdtemp(join(tmpdir(), "scourgify-backup-reader-"))
-    const outside = await mkdtemp(join(tmpdir(), "scourgify-backup-reader-outside-"))
+    const backupRoot = await mkdtemp(join(tmpdir(), "ohmypaper-backup-reader-"))
+    const outside = await mkdtemp(join(tmpdir(), "ohmypaper-backup-reader-outside-"))
     roots.push(backupRoot, outside)
     await writeFile(join(outside, "manifest.json"), "private")
     await symlink(outside, join(backupRoot, "payload"))

@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { PaperDiscussion } from "../../src/renderer/components/PaperDiscussion"
 
-const key = "scourgify:discussion:aabbccddeeff0011"
+const key = "ohmypaper:discussion:aabbccddeeff0011"
 
 describe("PaperDiscussion", () => {
   beforeEach(() => {

@@ -35,7 +35,8 @@ type SourceRun = {
   readonly height: number
 }
 
-const translationChunkLimit = 2_800
+const translationChunkLimit = 5_000
+const translationBatchBlockLimit = 12
 
 function median(values: readonly number[]): number {
   if (values.length === 0) return 0
@@ -196,7 +197,11 @@ export function pageTranslationBatches(
   let current: PageSourceBlock[] = []
   for (const block of blocks) {
     const candidate = [...current, block]
-    if (current.length > 0 && pageTranslationRequest(candidate).length > translationChunkLimit) {
+    if (
+      current.length > 0 &&
+      (current.length >= translationBatchBlockLimit ||
+        pageTranslationRequest(candidate).length > translationChunkLimit)
+    ) {
       batches.push(current)
       current = []
     }

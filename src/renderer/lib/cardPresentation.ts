@@ -3,7 +3,7 @@ import type { BoardCard, Workspace } from "../types"
 
 const genericSuffix = /\s*(?:해설|분석|카드)$/u
 const wordTranslationSchema = z.object({
-  meanings: z.array(z.string().trim().min(1)).length(3),
+  meanings: z.array(z.string().trim().min(1)).min(1).max(3),
 })
 
 export function translationSelectionTitle(value: string): string | null {
@@ -11,16 +11,20 @@ export function translationSelectionTitle(value: string): string | null {
   return /^[A-Za-z][A-Za-z'-]*$/u.test(trimmed) ? trimmed : null
 }
 
+function shortEnglishSelection(value: string): boolean {
+  const normalized = value.trim().replace(/\s+/gu, " ")
+  if (normalized.length > 60) return false
+  const words = normalized.split(" ")
+  return (
+    words.length <= 5 && words.every((word) => /^[A-Za-z0-9][A-Za-z0-9'’-]*[.,;:!?]?$/u.test(word))
+  )
+}
+
 export function translationCardTitle(value: string): string {
   const normalized = value.trim().replace(/\s+/gu, " ")
-  if (translationSelectionTitle(normalized)) return normalized
-  const words = normalized.split(" ")
-  const shortEnglishPhrase =
-    words.length >= 2 &&
-    words.length <= 5 &&
-    normalized.length <= 60 &&
-    words.every((word) => /^[A-Za-z0-9][A-Za-z0-9'’-]*[.,;:!?]?$/u.test(word))
-  return shortEnglishPhrase ? normalized : "문단 번역"
+  const word = translationSelectionTitle(normalized)
+  if (word) return word
+  return shortEnglishSelection(normalized) ? normalized : "문단 번역"
 }
 
 function cleanMeaning(value: string): string {
@@ -92,7 +96,7 @@ export function parsedTranslationResponse(
   selectedText: string,
 ): { readonly title: string; readonly body: string } {
   const title = translationCardTitle(selectedText)
-  if (!translationSelectionTitle(selectedText)) return { title, body: value.trim() }
+  if (!shortEnglishSelection(selectedText)) return { title, body: value.trim() }
   let parsed: unknown
   try {
     parsed = JSON.parse(value)

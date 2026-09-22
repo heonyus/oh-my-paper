@@ -18,7 +18,7 @@ describe("llama.cpp engine boundaries", () => {
         LANG: "en_US.UTF-8",
         LC_ALL: "en_US.UTF-8",
         PATH: "/usr/bin",
-        TMPDIR: "/tmp/scourgify",
+        TMPDIR: "/tmp/ohmypaper",
         HOME: "/Users/private",
         OPENAI_API_KEY: "secret",
       }),
@@ -26,7 +26,7 @@ describe("llama.cpp engine boundaries", () => {
       LANG: "en_US.UTF-8",
       LC_ALL: "en_US.UTF-8",
       PATH: "/usr/bin",
-      TMPDIR: "/tmp/scourgify",
+      TMPDIR: "/tmp/ohmypaper",
     })
   })
 

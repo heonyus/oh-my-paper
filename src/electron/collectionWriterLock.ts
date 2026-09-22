@@ -45,9 +45,9 @@ export class CollectionWriterLock {
   ) {}
 
   static async acquire(root: string, now: Date): Promise<CollectionWriterLock> {
-    const lockDirectory = join(root, ".scourgify", "writer.lock")
+    const lockDirectory = join(root, ".ohmypaper", "writer.lock")
     const token = randomUUID()
-    await mkdir(join(root, ".scourgify"), { recursive: true })
+    await mkdir(join(root, ".ohmypaper"), { recursive: true })
     try {
       await mkdir(lockDirectory)
     } catch (error) {
@@ -82,7 +82,7 @@ export class CollectionWriterLock {
 
   async release(): Promise<void> {
     if (this.released) return
-    const lockDirectory = join(this.root, ".scourgify", "writer.lock")
+    const lockDirectory = join(this.root, ".ohmypaper", "writer.lock")
     const owner = writerOwnerSchema.parse(
       JSON.parse(await readFile(join(lockDirectory, "owner.json"), "utf8")),
     )

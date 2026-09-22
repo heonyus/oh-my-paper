@@ -49,7 +49,7 @@ async function openFixture(): Promise<{
   readonly documentId: string
   readonly hash: string
 }> {
-  const root = await mkdtemp(join(tmpdir(), "scourgify-link-evidence-"))
+  const root = await mkdtemp(join(tmpdir(), "ohmypaper-link-evidence-"))
   roots.push(root)
   await initializeCollection(root, randomUUID())
   const collection = await CollectionService.open(root, join(root, "machine-index.sqlite"))

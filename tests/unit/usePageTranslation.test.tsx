@@ -63,7 +63,7 @@ const mockParsedPage = parsedDocumentPageSchema.parse({
 
 const mockWriteCache = vi.fn(async () => {})
 
-Object.defineProperty(window, "scourgify", {
+Object.defineProperty(window, "ohmypaper", {
   value: {
     onDocumentPageParseProgress: vi.fn(() => () => {}),
     parseDocumentPage: vi.fn(async () => ({ status: "ready" as const, page: mockParsedPage })),
@@ -78,7 +78,7 @@ Object.defineProperty(window, "scourgify", {
 describe("usePageTranslation partial results and cancellation", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    Object.defineProperty(window, "scourgify", {
+    Object.defineProperty(window, "ohmypaper", {
       value: {
         onDocumentPageParseProgress: vi.fn(() => () => {}),
         parseDocumentPage: vi.fn(async () => ({ status: "ready" as const, page: mockParsedPage })),
@@ -128,7 +128,7 @@ describe("usePageTranslation partial results and cancellation", () => {
     // Incomplete output must NEVER be marked complete or cached
     expect(result.current.status).not.toBe("complete")
     expect(mockWriteCache).not.toHaveBeenCalled()
-    expect(window.scourgify.parseDocumentPage).toHaveBeenCalledWith(
+    expect(window.ohmypaper.parseDocumentPage).toHaveBeenCalledWith(
       {
         id: testDoc.id,
         pageNumber: 1,

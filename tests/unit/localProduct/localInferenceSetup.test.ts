@@ -52,7 +52,7 @@ describe("local inference setup verification", () => {
   })
 
   it("rejects an unpinned archive before invoking tar", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-local-setup-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-local-setup-"))
     const runtimePath = join(root, "llama-server")
     const runtimeArchivePath = join(root, "llama.tar.gz")
     const modelPath = join(root, "qwen.gguf")

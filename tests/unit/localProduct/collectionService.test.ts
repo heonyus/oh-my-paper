@@ -24,7 +24,7 @@ async function openService(): Promise<{
   readonly root: string
   readonly service: CollectionService
 }> {
-  const root = await mkdtemp(join(tmpdir(), "scourgify-service-"))
+  const root = await mkdtemp(join(tmpdir(), "ohmypaper-service-"))
   roots.push(root)
   await initializeCollection(root, randomUUID())
   return { root, service: await CollectionService.open(root, join(root, "local-index.sqlite")) }
@@ -37,7 +37,7 @@ describe("CollectionService", () => {
     const indexed = fixture.service.index.get(note.id)
     if (!indexed) throw new Error("note was not indexed")
     const external = Buffer.from(
-      `---\ntitle: untouched\nscourgify:\n  id: ${note.id}\ncustom:  two spaces\n---\nfirst\n`,
+      `---\ntitle: untouched\nohmypaper:\n  id: ${note.id}\ncustom:  two spaces\n---\nfirst\n`,
     )
     await writeFile(join(fixture.root, indexed.relativePath), external)
     await fixture.service.rescan()
@@ -95,7 +95,7 @@ describe("CollectionService", () => {
     const note = await fixture.service.createNode({ kind: "note", title: "Note", body: "first\n" })
     const indexed = fixture.service.index.get(note.id)
     if (!indexed) throw new Error("note was not indexed")
-    const external = Buffer.from(`---\nscourgify.id: ${note.id}\n---\nexternal  bytes\r\n`)
+    const external = Buffer.from(`---\nohmypaper.id: ${note.id}\n---\nexternal  bytes\r\n`)
     await writeFile(join(fixture.root, indexed.relativePath), external)
 
     const conflict = fixture.service.updateNode({
@@ -115,7 +115,7 @@ describe("CollectionService", () => {
     const retained = await fixture.service.files.history.readConflict(metadata.conflictId)
     expect(retained.currentBytes).toEqual(external)
     expect(retained.incomingBytes).toEqual(
-      Buffer.from(`---\nscourgify.id: ${note.id}\n---\nincoming\n`),
+      Buffer.from(`---\nohmypaper.id: ${note.id}\n---\nincoming\n`),
     )
     await fixture.service.close()
   })
@@ -223,7 +223,7 @@ describe("CollectionService", () => {
     expect(
       snapshotBytes.some((bytes) =>
         Buffer.from(bytes).equals(
-          Buffer.from(`---\nscourgify:\n  id: ${note.id}\n---\nsecond  \n`),
+          Buffer.from(`---\nohmypaper:\n  id: ${note.id}\n---\nsecond  \n`),
         ),
       ),
     ).toBe(true)

@@ -142,7 +142,7 @@ export async function buildStructuredPdf(): Promise<Uint8Array> {
   document.setTitle("Synthetic Structured Document")
   document.setAuthor("Synthetic Fixture Generator")
   document.setSubject("Deterministic document structure test")
-  document.setCreator("Scourgify Synthetic Fixtures")
+  document.setCreator("oh-my-paper Synthetic Fixtures")
   document.setCreationDate(new Date("2026-01-01T00:00:00.000Z"))
   document.setModificationDate(new Date("2026-01-01T00:00:00.000Z"))
   const fonts: FixtureFonts = {

@@ -90,7 +90,7 @@ const fixtureEntrySchema = z.object({
 export const documentFixtureManifestSchema = z
   .object({
     manifestVersion: z.literal("1.0.0"),
-    generatedBy: z.literal("scourgify-synthetic-document-fixtures"),
+    generatedBy: z.literal("ohmypaper-synthetic-document-fixtures"),
     fixtures: z.array(fixtureEntrySchema).min(1),
   })
   .superRefine((manifest, context) => {

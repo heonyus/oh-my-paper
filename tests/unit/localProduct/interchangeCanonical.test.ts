@@ -24,7 +24,7 @@ async function openCollection(): Promise<{
   readonly root: string
   readonly collection: CollectionService
 }> {
-  const root = await mkdtemp(join(tmpdir(), "scourgify-interchange-"))
+  const root = await mkdtemp(join(tmpdir(), "ohmypaper-interchange-"))
   roots.push(root)
   await initializeCollection(root, randomUUID())
   return {

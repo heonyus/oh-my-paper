@@ -18,7 +18,7 @@ describe("Knowledge Review Regressions", () => {
   let tmpRoot: string
 
   beforeEach(async () => {
-    tmpRoot = await mkdtemp(join(tmpdir(), "scourgify-regress-"))
+    tmpRoot = await mkdtemp(join(tmpdir(), "ohmypaper-regress-"))
   })
 
   afterEach(async () => {

@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "oh-my-paper Connector",
+  "version": "0.1.0",
+  "description": "Open paper links and PDFs directly in the local oh-my-paper reader.",
+  "permissions": ["webRequest", "tabs"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://arxiv.org/*",
+        "*://www.arxiv.org/*",
+        "*://semanticscholar.org/*",
+        "*://www.semanticscholar.org/*",
+        "*://openreview.net/*",
+        "*://www.openreview.net/*",
+        "*://aclanthology.org/*",
+        "*://www.aclanthology.org/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

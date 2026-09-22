@@ -1,6 +1,6 @@
 # macOS arm64 release boundary
 
-Scourgify release commands support Apple Silicon macOS only. The Windows and Linux builder configuration remains in `package.json` as historical context, but their npm release entry points stop with an unsupported-target error.
+oh-my-paper release commands support Apple Silicon macOS only. The Windows and Linux builder configuration remains in `package.json` as historical context, but their npm release entry points stop with an unsupported-target error.
 
 ## Safe local commands
 

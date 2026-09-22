@@ -6,18 +6,18 @@ import { launchSimulatedAuthenticatedApplication } from "../support/electron/lau
 
 test("provider settings show local Paddle without an OCR key", async () => {
   test.setTimeout(120_000)
-  const temporaryRoot = await mkdtemp(join(tmpdir(), "scourgify-provider-settings-"))
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "ohmypaper-provider-settings-"))
   const evidenceRoot = join(
     process.cwd(),
-    ".omo/evidence/scourgify-local-product/2026-09-21-local-paddle/settings",
+    ".omo/evidence/ohmypaper-local-product/2026-09-21-local-paddle/settings",
   )
   await mkdir(evidenceRoot, { recursive: true })
   const qa = await launchSimulatedAuthenticatedApplication({
     userDataRoot: join(temporaryRoot, "user-data"),
     environment: {
-      SCOURGIFY_USER_DATA_DIR: join(temporaryRoot, "user-data"),
-      SCOURGIFY_AI_PROVIDER: "gemini",
-      SCOURGIFY_AI_MODEL: "gemini-3.5-flash-lite",
+      OH_MY_PAPER_USER_DATA_DIR: join(temporaryRoot, "user-data"),
+      OH_MY_PAPER_AI_PROVIDER: "gemini",
+      OH_MY_PAPER_AI_MODEL: "gemini-3.5-flash-lite",
     },
   })
   try {
@@ -35,7 +35,7 @@ test("provider settings show local Paddle without an OCR key", async () => {
       .fill("gemini-e2e-key-at-least-twenty-characters")
     await page.getByRole("button", { name: "암호화하여 저장" }).click()
     await expect(page.getByText("연결 준비됨")).toBeVisible()
-    expect(await page.evaluate(() => window.scourgify.documentOcrStatus())).toMatchObject({
+    expect(await page.evaluate(() => window.ohmypaper.documentOcrStatus())).toMatchObject({
       provider: "paddle",
       model: "PaddleOCR-VL-1.6",
     })

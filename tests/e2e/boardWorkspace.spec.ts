@@ -6,9 +6,9 @@ import { expect, test } from "@playwright/test"
 import { launchSimulatedAuthenticatedApplication } from "../support/electron/launchSimulatedAuthenticatedApplication"
 
 test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", async () => {
-  const temporaryRoot = await mkdtemp(join(tmpdir(), "scourgify-board-e2e-"))
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "ohmypaper-board-e2e-"))
   const userData = join(temporaryRoot, "user-data")
-  const storeRoot = join(userData, "scourgify")
+  const storeRoot = join(userData, "ohmypaper")
   const documents = join(storeRoot, "documents")
   const fixture = join(process.cwd(), "tests", "fixtures", "sample-paper.pdf")
   const bytes = await readFile(fixture)
@@ -33,7 +33,7 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
           bytes: bytes.length,
           importedAt: "2026-08-28T00:00:00.000Z",
           pageCount: 3,
-          title: "Scourgify deterministic fixture",
+          title: "oh-my-paper deterministic fixture",
           authors: [],
           year: null,
           doi: null,
@@ -84,7 +84,7 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
   try {
     const page = await application.firstWindow()
     await expect(page.getByRole("region", { name: "PDF 라이브러리" })).toBeVisible()
-    await page.getByRole("button", { name: "Scourgify deterministic fixture 열기" }).click()
+    await page.getByRole("button", { name: "oh-my-paper deterministic fixture 열기" }).click()
     await page.waitForSelector(".pdfViewer .page canvas", { timeout: 30_000 })
     const board = page.locator(".board-viewport")
     const researchRail = page.getByRole("navigation", { name: "연구 사이드바 모드" })
@@ -393,7 +393,7 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
       })
     expect(density).toBeGreaterThanOrEqual(0.95)
     await expect(page.getByText("논문을 보드에 준비하는 중")).toBeHidden({ timeout: 5_000 })
-    await mkdir(join(process.cwd(), ".omo", "evidence", "scourgify-board-polish"), {
+    await mkdir(join(process.cwd(), ".omo", "evidence", "ohmypaper-board-polish"), {
       recursive: true,
     })
     await page.screenshot({
@@ -401,7 +401,7 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
         process.cwd(),
         ".omo",
         "evidence",
-        "scourgify-board-polish",
+        "ohmypaper-board-polish",
         "actual-1536x1024.png",
       ),
     })
@@ -410,7 +410,7 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
         process.cwd(),
         ".omo",
         "evidence",
-        "scourgify-board-polish",
+        "ohmypaper-board-polish",
         "minimap-actual.png",
       ),
     })
@@ -430,7 +430,7 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
         process.cwd(),
         ".omo",
         "evidence",
-        "scourgify-board-polish",
+        "ohmypaper-board-polish",
         "actual-dark-1536x1024.png",
       ),
     })

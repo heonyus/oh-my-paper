@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test"
 import { launchSimulatedAuthenticatedApplication } from "../support/electron/launchSimulatedAuthenticatedApplication"
 
 test("font settings show every loaded family as a distinct specimen", async () => {
-  const root = await mkdtemp(join(tmpdir(), "scourgify-font-settings-"))
+  const root = await mkdtemp(join(tmpdir(), "ohmypaper-font-settings-"))
   const qa = await launchSimulatedAuthenticatedApplication({ userDataRoot: root })
   try {
     const page = await qa.application.firstWindow()

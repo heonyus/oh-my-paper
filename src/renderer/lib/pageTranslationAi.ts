@@ -144,6 +144,16 @@ export function extractPartialTranslations(
     }
   }
 
+  const delimited = parsePageTranslationResponse(accumulated)
+  if (delimited) {
+    for (const translation of delimited.translations) {
+      if (expectedIds.has(translation.id) && !seenIds.has(translation.id)) {
+        result.set(translation.id, translation.markdown)
+        seenIds.add(translation.id)
+      }
+    }
+  }
+
   return result
 }
 
@@ -164,6 +174,21 @@ function assertKnownUniqueIds(response: string, blocks: readonly PageSourceBlock
       )
     seenIds.add(id)
   }
+}
+
+function parsePositionalTranslation(
+  response: string,
+  blocks: readonly PageSourceBlock[],
+): ReadonlyMap<string, string> | null {
+  const trimmed = response.trim()
+  if (!trimmed) return null
+  const chunks = trimmed.split(/\n\s*\n+/u).map((chunk) => chunk.trim())
+  if (blocks.length === 1) {
+    const block = blocks[0]
+    return block ? new Map([[block.id, trimmed]]) : null
+  }
+  if (chunks.length !== blocks.length || chunks.some((chunk) => chunk.length === 0)) return null
+  return new Map(blocks.map((block, index) => [block.id, chunks[index] ?? ""]))
 }
 
 function wireBlocksForRequest(blocks: readonly PageSourceBlock[]): {
@@ -230,6 +255,14 @@ async function requestBlocks(
     const retried = await requestBlocks(input, missing, false)
     return new Map([...partials, ...retried])
   }
+  const parsedResponse = parsePageTranslationResponse(result)
+  if (!parsedResponse) {
+    const positional = parsePositionalTranslation(result, wire.blocks)
+    if (!positional) return new Map()
+    const restored = restoreStableIds(positional, wire.stableIds)
+    input.onPartial(restored)
+    return restored
+  }
   assertKnownUniqueIds(result, wire.blocks)
   const parsed = parsePageTranslationStream(result)
   const restored = restoreStableIds(parsed, wire.stableIds)
@@ -242,10 +275,34 @@ export async function translatePageBatch(
 ): Promise<ReadonlyMap<string, string>> {
   const translated = new Map(await requestBlocks(input, input.batch))
   if (input.signal?.aborted) return translated
-  const missing = input.batch.filter((block) => !translated.get(block.id)?.trim())
-  if (missing.length > 0 && !input.signal?.aborted) {
-    const retried = await requestBlocks(input, missing)
-    for (const [id, value] of retried) translated.set(id, value)
+  const retryGroups: PageSourceBlock[][] = []
+  let pending: PageSourceBlock[] = []
+  for (const block of input.batch.filter((candidate) => !translated.get(candidate.id)?.trim())) {
+    pending.push(block)
+    if (pending.length === 4) {
+      retryGroups.push(pending)
+      pending = []
+    }
+  }
+  if (pending.length > 0) retryGroups.push(pending)
+  for (const group of retryGroups) {
+    if (input.signal?.aborted) break
+    try {
+      const retried = await requestBlocks(input, group)
+      for (const [id, value] of retried) translated.set(id, value)
+    } catch {
+      // 그룹 재시도 실패는 개별 재시도로 이어진다
+    }
+  }
+  const stillMissing = input.batch.filter((block) => !translated.get(block.id)?.trim())
+  for (const block of stillMissing) {
+    if (input.signal?.aborted) break
+    try {
+      const retried = await requestBlocks(input, [block])
+      for (const [id, value] of retried) translated.set(id, value)
+    } catch {
+      // 개별 블록 재시도 실패는 아래 unresolved 검사에서 최종 판정한다
+    }
   }
   const unresolved = input.batch.find((block) => !translated.get(block.id)?.trim())
   if (unresolved) throw new Error(`missing page translation block ${unresolved.id}`)

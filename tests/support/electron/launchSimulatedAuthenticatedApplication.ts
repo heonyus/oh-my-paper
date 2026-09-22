@@ -25,7 +25,7 @@ export async function launchSimulatedAuthenticatedApplication(
   const electronDirectory = resolve(projectRoot, "dist-electron/electron")
   const rendererEntry = resolve(electronDirectory, "../../dist/index.html")
   const pdfJsModule = resolve(projectRoot, "node_modules/pdfjs-dist/legacy/build/pdf.mjs")
-  const temporaryRoot = await mkdtemp(join(tmpdir(), "scourgify-simulated-auth-"))
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "ohmypaper-simulated-auth-"))
   const userDataRoot = options.userDataRoot ?? join(temporaryRoot, "user-data")
   const entry = join(temporaryRoot, "simulated-auth-main.js")
 
@@ -61,8 +61,8 @@ export async function launchSimulatedAuthenticatedApplication(
       env: {
         ...process.env,
         ...options.environment,
-        SCOURGIFY_QA_ELECTRON_DIRECTORY: electronDirectory,
-        SCOURGIFY_QA_USER_DATA_ROOT: userDataRoot,
+        OH_MY_PAPER_QA_ELECTRON_DIRECTORY: electronDirectory,
+        OH_MY_PAPER_QA_USER_DATA_ROOT: userDataRoot,
       },
     })
     return {

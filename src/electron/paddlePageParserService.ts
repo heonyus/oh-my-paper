@@ -40,7 +40,7 @@ export function paddlePageParserRuntimePython(
   configured?: string,
 ): string {
   if (configured) return configured
-  const root = join(home, ".scourgify", "paddle-vl-runtime")
+  const root = join(home, ".ohmypaper", "paddle-vl-runtime")
   return platform === "win32" ? join(root, "Scripts", "python.exe") : join(root, "bin", "python")
 }
 
@@ -95,13 +95,13 @@ export class PaddlePageParserService {
         this.options.packaged,
       ),
       this.options.readinessMarker ??
-        join(home, ".scourgify", "paddle-vl-runtime", ".ready-v1.6-layout-v2"),
+        join(home, ".ohmypaper", "paddle-vl-runtime", ".ready-v1.6-layout-v2"),
     ]
     if (this.#usesManagedVlm && platform === "darwin" && process.arch === "arm64") {
       files.push(
         paddleVlmRuntimePython(home),
         paddleVlmModelDirectory(home),
-        join(home, ".scourgify", "paddle-vl-mlx-runtime", ".ready-mlx-v1.6"),
+        join(home, ".ohmypaper", "paddle-vl-mlx-runtime", ".ready-mlx-v1.6"),
       )
     }
     let configured = true
@@ -175,7 +175,7 @@ export class PaddlePageParserService {
     )
     const marker =
       this.options.readinessMarker ??
-      join(home, ".scourgify", "paddle-vl-runtime", ".ready-v1.6-layout-v2")
+      join(home, ".ohmypaper", "paddle-vl-runtime", ".ready-v1.6-layout-v2")
     try {
       await Promise.all([access(python), access(script), access(marker)])
     } catch (error) {

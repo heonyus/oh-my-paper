@@ -114,7 +114,7 @@ describe("ScholarSearchPanel", () => {
     )
     const saveMetadata = vi.fn(async () => ({ status: "saved", node: {} }))
     vi.stubGlobal("fetch", fetchMock)
-    Object.defineProperty(window, "scourgify", {
+    Object.defineProperty(window, "ohmypaper", {
       configurable: true,
       value: { discovery: { saveMetadata } },
     })
@@ -125,6 +125,6 @@ describe("ScholarSearchPanel", () => {
 
     expect(saveMetadata).toHaveBeenCalledOnce()
     expect(await screen.findByRole("button", { name: "저장됨" })).toBeVisible()
-    Reflect.deleteProperty(window, "scourgify")
+    Reflect.deleteProperty(window, "ohmypaper")
   })
 })

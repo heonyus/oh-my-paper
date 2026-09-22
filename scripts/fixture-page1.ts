@@ -4,14 +4,14 @@ import { drawFixtureHeaderFooter, type FixturePageContext } from "./fixture-page
 
 export function renderFixturePage1(page: PDFPage, context: FixturePageContext): void {
   drawFixtureHeaderFooter(page, 1, context)
-  page.drawText("Scourgify: Deterministic Spatial PDF Fixture", {
+  page.drawText("oh-my-paper: Deterministic Spatial PDF Fixture", {
     x: 50,
     y: 750,
     size: 16,
     font: context.bold,
     color: rgb(0.1, 0.1, 0.1),
   })
-  page.drawText("Scourgify Research Team • Spatial Computing & Document Intelligence", {
+  page.drawText("oh-my-paper Research Team • Spatial Computing & Document Intelligence", {
     x: 50,
     y: 730,
     size: 9.5,
@@ -35,7 +35,7 @@ export function renderFixturePage1(page: PDFPage, context: FixturePageContext): 
     color: rgb(0.15, 0.15, 0.15),
   })
   const abstract = [
-    "Scourgify is a local-first spatial canvas engineered for rigorous scientific document reading,",
+    "oh-my-paper is a local-first spatial canvas engineered for rigorous scientific document reading,",
     "bidirectional card linking, and offline annotation. This deterministic multi-page fixture guarantees",
     "reproducible ingestion, robust text coordinate extraction, and structured tabular validation.",
   ]
@@ -58,7 +58,7 @@ export function renderFixturePage1(page: PDFPage, context: FixturePageContext): 
   const introduction = [
     "Scientific inquiry demands seamless cross-referencing between hypotheses, mathematical derivations,",
     "and tabular empirical evidence. Traditional linear PDF viewers constrain cognitive synthesis.",
-    "Scourgify treats document pages as spatially addressable artifacts on an infinite vector canvas.",
+    "oh-my-paper treats document pages as spatially addressable artifacts on an infinite vector canvas.",
     "Users excerpt verbatim passages into atomic cards, cluster findings, and preserve provenance links.",
   ]
   introduction.forEach((line, index) => {

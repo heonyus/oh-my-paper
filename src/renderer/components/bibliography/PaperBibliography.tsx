@@ -10,7 +10,7 @@ export function PaperBibliography({
   readonly id: KnowledgeNodeId
   readonly onSaved: () => void
 }): JSX.Element | null {
-  const api = window.scourgify?.bibliography
+  const api = window.ohmypaper?.bibliography
   const [paper, setPaper] = useState<BibliographyPaper | null>(null)
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {

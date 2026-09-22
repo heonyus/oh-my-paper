@@ -14,12 +14,15 @@ import { syncViewerWidth } from "./pdfOverlayRefresh"
 import type { PdfRetrievalRuntime, PdfRetrievalSession } from "./pdfRetrievalRuntime"
 
 export type EventBridgeParams = {
-  readonly viewer: PDFViewer
-  readonly eventBus: EventBus
+  readonly viewer: Pick<
+    PDFViewer,
+    "currentPageNumber" | "currentScale" | "getPageView" | "scrollPageIntoView"
+  >
+  readonly eventBus: Pick<EventBus, "on" | "off">
   readonly container: HTMLDivElement
   readonly document: Pick<DocumentRecord, "id" | "hash">
   readonly initialPage: number
-  readonly astRuntime: PdfAstRuntimeSession
+  readonly astRuntime: Pick<PdfAstRuntimeSession, "bind">
   readonly zoomRef: React.RefObject<number>
   readonly outlineRef: React.RefObject<Map<string, PdfOutlineEntry>>
   readonly pageTextsRef: React.RefObject<string[]>
@@ -52,8 +55,6 @@ export function bindViewerEventBridge(params: EventBridgeParams): {
   readonly scheduleOverlayRefresh: () => void
   readonly dispose: () => void
 } {
-  let restoringInitialPage = true
-
   const applyParsedPage = (parsed: ParsedDocumentPage, pageDiv: HTMLElement): void => {
     if (params.isDisposed() || !pageDiv.isConnected) return
     const pageRect = pageDiv.getBoundingClientRect()
@@ -80,24 +81,6 @@ export function bindViewerEventBridge(params: EventBridgeParams): {
     }))
   }
 
-  const loadActivePage = (pageNumber: number, pageDiv: HTMLElement): void => {
-    void loadParsedDocumentPage(params.document.id, pageNumber).then((parsed) => {
-      if (parsed) applyParsedPage(parsed, pageDiv)
-    })
-  }
-
-  const handlePageChanging = ({ pageNumber }: { readonly pageNumber: number }): void => {
-    if (restoringInitialPage) {
-      if (pageNumber === params.initialPage) restoringInitialPage = false
-      return
-    }
-    params.onPageActive(pageNumber)
-    const pageDiv = params.container.querySelector<HTMLElement>(
-      `.page[data-page-number="${pageNumber}"]`,
-    )
-    if (pageDiv) loadActivePage(pageNumber, pageDiv)
-  }
-
   const refreshOverlays = (): void => {
     for (const pageDiv of params.container.querySelectorAll<HTMLElement>(".page")) {
       const pageNumberText = pageDiv.getAttribute("data-page-number")
@@ -106,10 +89,16 @@ export function bindViewerEventBridge(params: EventBridgeParams): {
       const parsed = parsedDocumentPage(params.document.id, pageNumber)
       if (parsed) {
         applyParsedPage(parsed, pageDiv)
-        continue
       }
-      loadActivePage(pageNumber, pageDiv)
     }
+  }
+
+  const loadPreparedPage = (pageNumber: number, pageDiv: HTMLElement): void => {
+    void loadParsedDocumentPage(params.document.id, pageNumber, { preparedOnly: true }).then(
+      (parsed) => {
+        if (parsed) applyParsedPage(parsed, pageDiv)
+      },
+    )
   }
 
   const scheduleOverlayRefresh = (): void => {
@@ -144,10 +133,9 @@ export function bindViewerEventBridge(params: EventBridgeParams): {
     if (!(pageDiv instanceof HTMLElement)) return
     params.astRuntime.bind(pageNumber)
     params.getRetrievalSession()?.applyToRenderedPage(pageNumber, pageDiv)
-    loadActivePage(pageNumber, pageDiv)
+    loadPreparedPage(pageNumber, pageDiv)
   }
 
-  params.eventBus.on("pagechanging", handlePageChanging)
   params.eventBus.on("pagesinit", handlePagesInit)
   params.eventBus.on("scalechanging", scheduleOverlayRefresh)
   params.eventBus.on("pagerendered", scheduleOverlayRefresh)
@@ -163,7 +151,6 @@ export function bindViewerEventBridge(params: EventBridgeParams): {
   return {
     scheduleOverlayRefresh,
     dispose: () => {
-      params.eventBus.off("pagechanging", handlePageChanging)
       params.eventBus.off("pagesinit", handlePagesInit)
       params.eventBus.off("scalechanging", scheduleOverlayRefresh)
       params.eventBus.off("pagerendered", scheduleOverlayRefresh)

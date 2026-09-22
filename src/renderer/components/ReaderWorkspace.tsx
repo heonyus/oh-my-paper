@@ -128,8 +128,6 @@ export function ReaderWorkspace(props: {
         onInsightChange={props.updateInsight}
         tool={props.tool}
         onToolChange={props.setTool}
-        viewport={workspace.viewport}
-        onViewportChange={onViewportChange}
       />
     </>
   )

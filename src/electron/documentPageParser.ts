@@ -1,5 +1,6 @@
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
+import { z } from "zod"
 import {
   type DocumentPageParseProgress,
   type DocumentPageParseResult,
@@ -60,6 +61,8 @@ export class DocumentPageParser {
     readonly store?: WorkspaceStore
     readonly onProgress?: (progress: DocumentPageParseProgress) => void
     readonly forceOcr?: boolean
+    readonly requireStructuredOcr?: boolean
+    readonly preparedOnly?: boolean
     readonly signal?: AbortSignal | undefined
   }): Promise<DocumentPageParseResult> {
     const key = `${input.documentId}:${input.pageNumber}`
@@ -93,6 +96,8 @@ export class DocumentPageParser {
     readonly store?: WorkspaceStore
     readonly onProgress?: (progress: DocumentPageParseProgress) => void
     readonly forceOcr?: boolean
+    readonly requireStructuredOcr?: boolean
+    readonly preparedOnly?: boolean
     readonly signal?: AbortSignal | undefined
   }): Promise<DocumentPageParseResult> {
     if (!Number.isInteger(input.pageNumber) || input.pageNumber <= 0) {
@@ -107,6 +112,7 @@ export class DocumentPageParser {
 
     const cached = await this.#readCachedPage(store, document.hash, input.pageNumber)
     if (cached) return documentPageParseResultSchema.parse({ status: "ready", page: cached })
+    if (input.preparedOnly) return { status: "unavailable", reason: "needs_ocr" }
 
     const nativeResult = await this.#tryNativeParse(document, input.pageNumber, store)
     const paddleResult = await this.#paddle.parse({
@@ -121,7 +127,7 @@ export class DocumentPageParser {
       await this.#writeCachedPage(store, page)
       return documentPageParseResultSchema.parse({ status: "ready", page })
     }
-    if (nativeResult?.status === "ready") {
+    if (nativeResult?.status === "ready" && !input.requireStructuredOcr) {
       return nativeResult
     }
     return paddleResult
@@ -146,19 +152,21 @@ export class DocumentPageParser {
     hash: Sha256,
     pageNumber: number,
   ): Promise<ParsedDocumentPage | null> {
-    const file = join(
-      store.root,
-      "parsed-pages",
-      hash,
-      "pdfjs-paddleocr-vl-1.6-hybrid-v9",
-      `page-${pageNumber}.json`,
-    )
-    try {
-      const raw = JSON.parse(await readFile(file, "utf8"))
-      const parsed = normalizeParsedDocumentPage(parsedDocumentPageSchema.parse(raw))
-      if (parsed.sourceHash === hash && parsed.pageNumber === pageNumber) return parsed
-    } catch {
-      return null
+    for (const cacheVersion of ["pdfjs-paddleocr-vl-1.6-hybrid-v9", "mistral-ocr-4-1-blocks-v2"]) {
+      const file = join(store.root, "parsed-pages", hash, cacheVersion, `page-${pageNumber}.json`)
+      try {
+        const raw = JSON.parse(await readFile(file, "utf8"))
+        const parsed = normalizeParsedDocumentPage(parsedDocumentPageSchema.parse(raw))
+        if (parsed.sourceHash === hash && parsed.pageNumber === pageNumber) return parsed
+      } catch (error) {
+        if (
+          error instanceof SyntaxError ||
+          error instanceof z.ZodError ||
+          (error instanceof Error && "code" in error && error.code === "ENOENT")
+        )
+          continue
+        throw error
+      }
     }
     return null
   }

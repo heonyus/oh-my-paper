@@ -4,7 +4,7 @@ import type {
 } from "openai/resources/chat/completions"
 import type { z } from "zod"
 import { completionLimitParameters, routedModelForRequest } from "../electron/aiCompletion"
-import { systemPromptFor, userInputFor } from "../electron/aiPrompts"
+import { systemPromptForRequest, userInputForRequest } from "../electron/aiPrompts"
 import { providerClient, providerFailure } from "../electron/providerClient"
 import { completeChat, streamChat } from "../electron/providerCompletion"
 import {
@@ -17,6 +17,10 @@ import {
 
 type AiRequest = z.infer<typeof aiRequestSchema>
 type AiResult = z.infer<typeof aiResultSchema>
+
+function translationModel(config: ProviderConfig): string | undefined {
+  return config.provider === "openrouter" ? config.pageTranslationModel : undefined
+}
 
 export class WebAiService {
   #providerConfig: ProviderConfig | null
@@ -35,6 +39,7 @@ export class WebAiService {
         configured: true,
         provider: this.#providerConfig.provider,
         model: this.#providerConfig.model,
+        pageTranslationModel: translationModel(this.#providerConfig),
       })
     }
     return providerStatusSchema.parse({
@@ -44,8 +49,8 @@ export class WebAiService {
     })
   }
 
-  #buildMessages(request: AiRequest): ChatCompletionMessageParam[] {
-    const input = userInputFor(request)
+  #buildMessages(request: AiRequest, model: string): ChatCompletionMessageParam[] {
+    const input = userInputForRequest(request, model)
     const userMessage: ChatCompletionUserMessageParam = request.imageDataUrl
       ? {
           role: "user",
@@ -57,7 +62,7 @@ export class WebAiService {
       : { role: "user", content: input }
 
     return [
-      { role: "system", content: systemPromptFor(request.action) },
+      { role: "system", content: systemPromptForRequest(request.action, model) },
       ...(request.history ?? []),
       userMessage,
     ]
@@ -69,20 +74,18 @@ export class WebAiService {
     }
     const request = aiRequestSchema.parse(value)
     const client = providerClient(this.#providerConfig)
-    const messages = this.#buildMessages(request)
+    const model = routedModelForRequest(
+      this.#providerConfig.provider,
+      this.#providerConfig.model,
+      request,
+      translationModel(this.#providerConfig),
+    )
+    const messages = this.#buildMessages(request, model)
     try {
       const completion = await completeChat(client, {
-        model: routedModelForRequest(
-          this.#providerConfig.provider,
-          this.#providerConfig.model,
-          request,
-        ),
+        model,
         messages,
-        parameters: completionLimitParameters(
-          this.#providerConfig.provider,
-          this.#providerConfig.model,
-          request,
-        ),
+        parameters: completionLimitParameters(this.#providerConfig.provider, model, request),
       })
       return aiResultSchema.parse(completion)
     } catch (error) {
@@ -100,21 +103,18 @@ export class WebAiService {
     }
     const request = aiRequestSchema.parse(value)
     const client = providerClient(this.#providerConfig)
-    const messages = this.#buildMessages(request)
     const model = routedModelForRequest(
       this.#providerConfig.provider,
       this.#providerConfig.model,
       request,
+      translationModel(this.#providerConfig),
     )
+    const messages = this.#buildMessages(request, model)
     try {
       const completion = await streamChat(client, {
         model,
         messages,
-        parameters: completionLimitParameters(
-          this.#providerConfig.provider,
-          this.#providerConfig.model,
-          request,
-        ),
+        parameters: completionLimitParameters(this.#providerConfig.provider, model, request),
         onDelta,
         ...(signal ? { signal } : {}),
       })

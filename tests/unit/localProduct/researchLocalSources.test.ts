@@ -12,7 +12,7 @@ import {
 import { WorkspaceStore } from "../../../src/electron/workspaceStore"
 
 it("reads the selected canonical file, bounds its excerpt, and never invents PDF content", async () => {
-  const root = await mkdtemp(join(tmpdir(), "scourgify-research-local-"))
+  const root = await mkdtemp(join(tmpdir(), "ohmypaper-research-local-"))
   await initializeCollection(root, randomUUID())
   const store = await WorkspaceStore.openCollection(root, join(root, "index.sqlite"))
   try {
@@ -36,7 +36,7 @@ it("reads the selected canonical file, bounds its excerpt, and never invents PDF
     const source = await read(note.id, new AbortController().signal)
     expect(source.access).toBe("local_excerpt")
     expect(source.content).toBe(changed.slice(0, 20_000))
-    expect(source.url).toBe(`scourgify://node/${note.id}`)
+    expect(source.url).toBe(`ohmypaper://node/${note.id}`)
     expect(await read(paper.id, new AbortController().signal)).toMatchObject({
       access: "metadata_only",
       content: null,

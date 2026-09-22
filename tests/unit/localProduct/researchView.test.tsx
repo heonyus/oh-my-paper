@@ -257,8 +257,8 @@ describe("ResearchView consent boundary", () => {
         {
           id: localId,
           title: "Canonical local note",
-          url: `scourgify://node/${localId}`,
-          finalUrl: `scourgify://node/${localId}`,
+          url: `ohmypaper://node/${localId}`,
+          finalUrl: `ohmypaper://node/${localId}`,
           page: null,
           snippet: "Local excerpt",
           access: "local_excerpt",

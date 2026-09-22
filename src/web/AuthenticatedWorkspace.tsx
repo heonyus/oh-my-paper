@@ -21,14 +21,14 @@ import { type JSX, useState } from "react"
 import { App as ResearchApp } from "../renderer/App"
 import { authClient } from "./authClient"
 import { useHostedCredentials } from "./useHostedCredentials"
-import { installWebScourgifyApi } from "./webScourgifyApi"
+import { installWebOhMyPaperApi } from "./webOhMyPaperApi"
 
 export function AuthenticatedWorkspace({
   user,
 }: {
   readonly user: { readonly id: string; readonly name: string }
 }): JSX.Element {
-  useState(() => installWebScourgifyApi(user.id))
+  useState(() => installWebOhMyPaperApi(user.id))
   const credentials = useHostedCredentials()
   return (
     <ResearchApp

@@ -13,7 +13,7 @@ import {
 } from "../shared/ipc"
 import { DEFAULT_OPENROUTER_MODEL } from "../shared/providerModels"
 import { completionLimitParameters, routedModelForRequest } from "./aiCompletion"
-import { systemPromptFor, userInputFor } from "./aiPrompts"
+import { systemPromptForRequest, userInputForRequest } from "./aiPrompts"
 import { providerClient, providerFailure } from "./providerClient"
 import { CompletionAbortedError, completeChat, streamChat } from "./providerCompletion"
 import { ProviderConfigStore, ProviderConfigurationError } from "./providerConfigStore"
@@ -23,6 +23,10 @@ export { ProviderConfigurationError }
 
 type AiRequest = z.infer<typeof aiRequestSchema>
 type AiResult = z.infer<typeof aiResultSchema>
+
+function translationModel(config: ProviderConfig): string | undefined {
+  return config.provider === "openrouter" ? config.pageTranslationModel : undefined
+}
 
 export class ProviderService {
   readonly #store: ProviderConfigStore
@@ -54,7 +58,12 @@ export class ProviderService {
   async status(): Promise<z.infer<typeof providerStatusSchema>> {
     try {
       const config = await this.#store.loadConfig()
-      return { configured: true, provider: config.provider, model: config.model }
+      return {
+        configured: true,
+        provider: config.provider,
+        model: config.model,
+        pageTranslationModel: translationModel(config),
+      }
     } catch (error) {
       if (error instanceof ProviderConfigurationError && error.kind === "missing_key") {
         return {
@@ -71,7 +80,13 @@ export class ProviderService {
     const request = aiRequestSchema.parse(value)
     const config = await this.#store.loadConfig()
     const client = providerClient(config)
-    const input = userInputFor(request)
+    const model = routedModelForRequest(
+      config.provider,
+      config.model,
+      request,
+      translationModel(config),
+    )
+    const input = userInputForRequest(request, model)
     const userMessage: ChatCompletionUserMessageParam = request.imageDataUrl
       ? {
           role: "user",
@@ -82,15 +97,15 @@ export class ProviderService {
         }
       : { role: "user", content: input }
     const messages: ChatCompletionMessageParam[] = [
-      { role: "system", content: systemPromptFor(request.action) },
+      { role: "system", content: systemPromptForRequest(request.action, model) },
       ...(request.history ?? []),
       userMessage,
     ]
     try {
       const completion = await completeChat(client, {
-        model: routedModelForRequest(config.provider, config.model, request),
+        model,
         messages,
-        parameters: completionLimitParameters(config.provider, config.model, request),
+        parameters: completionLimitParameters(config.provider, model, request),
       })
       return aiResultSchema.parse(completion)
     } catch (error) {
@@ -110,7 +125,13 @@ export class ProviderService {
     const request = aiRequestSchema.parse(value)
     const config = await this.#store.loadConfig()
     const client = providerClient(config)
-    const input = userInputFor(request)
+    const model = routedModelForRequest(
+      config.provider,
+      config.model,
+      request,
+      translationModel(config),
+    )
+    const input = userInputForRequest(request, model)
     const userMessage: ChatCompletionUserMessageParam = request.imageDataUrl
       ? {
           role: "user",
@@ -121,16 +142,15 @@ export class ProviderService {
         }
       : { role: "user", content: input }
     const messages: ChatCompletionMessageParam[] = [
-      { role: "system", content: systemPromptFor(request.action) },
+      { role: "system", content: systemPromptForRequest(request.action, model) },
       ...(request.history ?? []),
       userMessage,
     ]
-    const model = routedModelForRequest(config.provider, config.model, request)
     try {
       const completion = await streamChat(client, {
         model,
         messages,
-        parameters: completionLimitParameters(config.provider, config.model, request),
+        parameters: completionLimitParameters(config.provider, model, request),
         onDelta,
         ...(signal ? { signal } : {}),
       })

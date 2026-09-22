@@ -81,9 +81,9 @@ export async function createApplicationAccount(
 
 function configuredAccountClient() {
   const {
-    SCOURGIFY_ACCOUNT_SERVICE_ORIGIN: serviceOrigin,
-    SCOURGIFY_ACCOUNT_ISSUER: issuer,
-    SCOURGIFY_GOOGLE_CLIENT_ID: googleClientId,
+    OH_MY_PAPER_ACCOUNT_SERVICE_ORIGIN: serviceOrigin,
+    OH_MY_PAPER_ACCOUNT_ISSUER: issuer,
+    OH_MY_PAPER_GOOGLE_CLIENT_ID: googleClientId,
   } = process.env
   if (!serviceOrigin || !issuer || !googleClientId) return null
   try {

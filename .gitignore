@@ -24,3 +24,5 @@ AGENTS.md
 output/
 __pycache__/
 *.py[cod]
+menubar/bin/
+.codegraph

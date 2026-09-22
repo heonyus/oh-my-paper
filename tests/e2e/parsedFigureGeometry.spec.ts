@@ -6,9 +6,9 @@ import { expect, test } from "@playwright/test"
 import { launchSimulatedAuthenticatedApplication } from "../support/electron/launchSimulatedAuthenticatedApplication"
 
 test("groups Paddle multi-panel blocks into one stable Figure target", async () => {
-  const temporaryRoot = await mkdtemp(join(tmpdir(), "scourgify-parsed-figure-"))
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "ohmypaper-parsed-figure-"))
   const userData = join(temporaryRoot, "user-data")
-  const storeRoot = join(userData, "scourgify")
+  const storeRoot = join(userData, "ohmypaper")
   const fixture = join(process.cwd(), "tests", "fixtures", "sample-paper.pdf")
   const bytes = await readFile(fixture)
   const hash = createHash("sha256").update(bytes).digest("hex")

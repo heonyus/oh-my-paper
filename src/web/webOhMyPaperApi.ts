@@ -4,9 +4,9 @@ import type { DocumentPageParseProgress } from "../shared/documentPageModel"
 import {
   clipboardWriteTextRequestSchema,
   type ImportProgress,
+  type OhMyPaperApi,
   openExternalRequestSchema,
   type PreparationUpdate,
-  type ScourgifyApi,
 } from "../shared/ipc"
 import type { DocumentId } from "../shared/schemas"
 import { unavailableWebFeature } from "../shared/unavailableWebFeatures"
@@ -16,7 +16,7 @@ import { WebWorkspaceBridge } from "./webWorkspace"
 
 let installedUserId: string | null = null
 
-export function installWebScourgifyApi(userId: string): void {
+export function installWebOhMyPaperApi(userId: string): void {
   if (installedUserId === userId) return
   const bridge = new WebWorkspaceBridge(userId)
   const importListeners = new Set<(progress: ImportProgress) => void>()
@@ -70,7 +70,7 @@ export function installWebScourgifyApi(userId: string): void {
     for (const listener of aiListeners) listener(event)
   }
 
-  const api: ScourgifyApi = {
+  const api: OhMyPaperApi = {
     readWorkspace: () => bridge.read(),
     saveWorkspace: async (workspace) => {
       await bridge.save(workspace)
@@ -81,6 +81,7 @@ export function installWebScourgifyApi(userId: string): void {
     importDocumentPaths: (tokens) =>
       refreshAfterImport(Promise.all(tokens.map((token) => bridge.importToken(token)))),
     getDroppedFilePath: (file) => bridge.rememberDroppedFile(file),
+    importDocumentUrl: unavailableWebFeature("document.importUrl"),
     onImportProgress: (listener) => {
       importListeners.add(listener)
       return () => importListeners.delete(listener)
@@ -109,11 +110,13 @@ export function installWebScourgifyApi(userId: string): void {
       return snapshot
     },
     onDocumentAnalysis: subscribeAnalysis,
+    retryDocumentAnalysis: unavailableWebFeature("documentAnalysis.retry"),
     documentOcrStatus: async () => ({
       configured: false,
       provider: "paddle",
       model: "PaddleOCR-VL-1.6",
     }),
+    saveDocumentOcrKey: unavailableWebFeature("documentOcr.saveKey"),
     readPageTranslationCache: async ({ id, pageNumber }) => {
       activeDocumentId = id
       const key = `${id}:${pageNumber}`
@@ -288,6 +291,6 @@ export function installWebScourgifyApi(userId: string): void {
       saveFile: unavailableWebFeature("interchange.saveFile"),
     },
   }
-  Object.defineProperty(window, "scourgify", { value: api, configurable: true })
+  Object.defineProperty(window, "ohmypaper", { value: api, configurable: true })
   installedUserId = userId
 }

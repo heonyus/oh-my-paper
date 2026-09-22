@@ -17,7 +17,7 @@ export class ApplicationBackupError extends Error {
 }
 
 export async function snapshotMetadataDatabase(database: DatabaseSync): Promise<Uint8Array> {
-  const temporaryRoot = await mkdtemp(join(tmpdir(), "scourgify-metadata-backup-"))
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "ohmypaper-metadata-backup-"))
   const temporaryDatabase = join(temporaryRoot, "metadata.sqlite")
   try {
     await backup(database, temporaryDatabase)

@@ -7,7 +7,7 @@ import { seedSixScreenWorkspace } from "./sixScreenWorkflowSetup"
 
 test("research navigation preserves library context and keeps secondary tools reachable", async () => {
   const qa = await launchSimulatedAuthenticatedApplication()
-  const output = join(process.cwd(), ".omo/evidence/scourgify-local-product/2026-09-08-paper-graph")
+  const output = join(process.cwd(), ".omo/evidence/ohmypaper-local-product/2026-09-08-paper-graph")
   await mkdir(output, { recursive: true })
   try {
     const page = await qa.application.firstWindow()
@@ -16,10 +16,10 @@ test("research navigation preserves library context and keeps secondary tools re
     const seeded = await seedSixScreenWorkspace(page)
     await page.getByRole("button", { name: "라이브러리", exact: true }).click()
     const query = page.getByRole("searchbox", { name: "라이브러리 검색" })
-    await query.fill("Scourgify")
+    await query.fill("oh-my-paper")
     await page.getByRole("button", { name: "지식", exact: true }).click()
     await page.getByRole("button", { name: "라이브러리", exact: true }).click()
-    await expect(query).toHaveValue("Scourgify")
+    await expect(query).toHaveValue("oh-my-paper")
     await query.clear()
     await page
       .getByRole("button", { name: `${seeded.documents[0].title} 미리보기`, exact: true })

@@ -28,11 +28,11 @@ afterEach(async () => {
 
 describe("ProviderService saved configuration", () => {
   it("does not configure or persist inherited environment credentials", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-provider-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-provider-"))
     temporaryRoots.push(root)
     vi.stubEnv("OPENROUTER_API_KEY", "sk-or-example-key-at-least-twenty-characters")
-    vi.stubEnv("SCOURGIFY_AI_PROVIDER", "openrouter")
-    vi.stubEnv("SCOURGIFY_AI_MODEL", "deepseek/deepseek-v4-flash-0731")
+    vi.stubEnv("OH_MY_PAPER_AI_PROVIDER", "openrouter")
+    vi.stubEnv("OH_MY_PAPER_AI_MODEL", "deepseek/deepseek-v4-flash-0731")
     const service = new ProviderService(root)
 
     expect(await service.status()).toMatchObject({
@@ -46,7 +46,7 @@ describe("ProviderService saved configuration", () => {
   })
 
   it("preserves saved user configuration instead of overwriting with environment defaults", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-provider-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-provider-"))
     temporaryRoots.push(root)
     const service = new ProviderService(root)
     await service.saveConfig({
@@ -70,7 +70,7 @@ describe("ProviderService saved configuration", () => {
   })
 
   it("preserves the legacy saved key when inherited credentials exist", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-provider-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-provider-"))
     temporaryRoots.push(root)
     await writeFile(
       join(root, "openai-key.bin"),
@@ -89,12 +89,12 @@ describe("ProviderService saved configuration", () => {
   })
 
   it("does not share inherited credentials between account roots", async () => {
-    const firstRoot = await mkdtemp(join(tmpdir(), "scourgify-provider-account-a-"))
-    const secondRoot = await mkdtemp(join(tmpdir(), "scourgify-provider-account-b-"))
+    const firstRoot = await mkdtemp(join(tmpdir(), "ohmypaper-provider-account-a-"))
+    const secondRoot = await mkdtemp(join(tmpdir(), "ohmypaper-provider-account-b-"))
     temporaryRoots.push(firstRoot, secondRoot)
     vi.stubEnv("OPENAI_API_KEY", "sk-example-key-at-least-twenty-characters")
-    vi.stubEnv("SCOURGIFY_AI_PROVIDER", "openai")
-    vi.stubEnv("SCOURGIFY_AI_MODEL", "gpt-5")
+    vi.stubEnv("OH_MY_PAPER_AI_PROVIDER", "openai")
+    vi.stubEnv("OH_MY_PAPER_AI_MODEL", "gpt-5")
 
     const first = new ProviderService(firstRoot)
     const second = new ProviderService(secondRoot)
@@ -115,7 +115,7 @@ describe("ProviderService saved configuration", () => {
   })
 
   it("produces a recovery error when encrypted configuration is corrupt rather than silently overwriting", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-provider-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-provider-"))
     temporaryRoots.push(root)
     await writeFile(join(root, "provider-config.bin"), "unreadable", "utf8")
     vi.stubEnv("OPENROUTER_API_KEY", "sk-or-current-key-at-least-twenty-characters")

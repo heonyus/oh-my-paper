@@ -54,20 +54,24 @@ export function AppSettingsDialog({
               error: hostedCredentials.error,
               onSave: async (credential) => {
                 await hostedCredentials.onSave(credential)
-                onProviderChange(await window.scourgify.providerStatus())
-                onOcrStatusChange(await window.scourgify.documentOcrStatus())
+                onProviderChange(await window.ohmypaper.providerStatus())
+                onOcrStatusChange(await window.ohmypaper.documentOcrStatus())
               },
             }
           : undefined
       }
       onClose={onClose}
       onSave={async (config) => {
-        await window.scourgify.saveProviderConfig(config)
-        onProviderChange(await window.scourgify.providerStatus())
+        await window.ohmypaper.saveProviderConfig(config)
+        onProviderChange(await window.ohmypaper.providerStatus())
       }}
       onModeSave={async (mode: AiMode) => {
-        await window.scourgify.saveAiMode(mode)
-        onProviderChange(await window.scourgify.providerStatus())
+        await window.ohmypaper.saveAiMode(mode)
+        onProviderChange(await window.ohmypaper.providerStatus())
+      }}
+      onOcrKeySave={async (key) => {
+        await window.ohmypaper.saveDocumentOcrKey(key)
+        onOcrStatusChange(await window.ohmypaper.documentOcrStatus())
       }}
     />
   )

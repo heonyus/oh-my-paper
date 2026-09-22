@@ -23,7 +23,7 @@ export function createBackupMainFactory(
       await dependencies.flushAndQuiesceCurrentCollection()
       return await createLocalBackup(
         dependencies.currentCollectionRoot(),
-        join(parentRoot, `scourgify-backup-${randomUUID()}`),
+        join(parentRoot, `ohmypaper-backup-${randomUUID()}`),
         dependencies.snapshotCurrentMetadataDatabase,
       )
     },
@@ -31,7 +31,7 @@ export function createBackupMainFactory(
       const targetCollectionId = collectionIdSchema.parse(randomUUID())
       return await restoreLocalBackup({
         backupRoot,
-        targetRoot: join(parentRoot, `scourgify-restored-${targetCollectionId}`),
+        targetRoot: join(parentRoot, `ohmypaper-restored-${targetCollectionId}`),
         targetCollectionId,
       })
     },

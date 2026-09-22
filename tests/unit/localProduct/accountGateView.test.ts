@@ -50,7 +50,7 @@ describe("account gate view", () => {
     )
     expect(screen.getByLabelText("Draft")).toBeInTheDocument()
     expect(view.container.querySelector(".account-gate__content")).not.toHaveAttribute("inert")
-    expect(screen.queryByRole("heading", { name: "Scourgify에 로그인" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("heading", { name: "oh-my-paper에 로그인" })).not.toBeInTheDocument()
   })
   it("keeps an unlocked draft mounted and makes it inert after lease expiry", async () => {
     const authenticated = accountStatusSchema.parse({

@@ -1,10 +1,10 @@
-# Scourgify interaction and visual contract
+# oh-my-paper interaction and visual contract
 
 ## 2026-09-15 Browser-first paper reading (current)
 
 This section supersedes the expanded desktop navigation below for the browser
 product.
-Keep Scourgify's leaf identity, bundled typography, neutral surface and focus tokens.
+Keep oh-my-paper's leaf identity, bundled typography, neutral surface and focus tokens.
 The product is a paper library and continuous PDF reader, with context-aware AI
 beside the source. Library recommendations remain in scope; general knowledge
 graphs, comparison/project boards and agent memory are outside the browser shell.
@@ -22,10 +22,13 @@ and unavailable states must be explicit and actionable. No generated demo data.
 
 The local browser runtime has a blocking first-run AI credential gate. Library and
 reader content stay hidden until the user has saved a personal OpenRouter API key and
-selected its model. PDF parsing requires no hosted OCR credential: digital text and
-geometry come from PDF.js, while local PaddleOCR-VL supplies figures, tables and
-equations. Parsed pages, translations and paper insights reuse their persistent caches;
-source distributions contain no user keys.
+selected its model. Every imported PDF completes page parsing and validation before its
+reader action becomes available. PDF.js supplies digital text and geometry, while local
+PaddleOCR-VL supplies figures, tables and equations. The library shows page-level
+progress, the active engine and bounded retries. After two local failures, an optional
+user-supplied Mistral key permits one final OCR 4.1 fallback; without that key the job
+stays failed with a retry action. Parsed pages, translations and paper insights reuse
+their persistent caches; source distributions contain no user keys.
 
 Primary persona: Korean researcher reading English papers and checking their source.
 Keyboard-only and enlarged-text users must reach import, search, reading, source
@@ -48,21 +51,22 @@ Controls grow with their text. Flexible rows and grids must shrink or stack befo
 
 Acceptance uses synthetic populated workspaces, every tab in both themes, normal and enlarged text at desktop/narrow widths, and 50% text. Compare current screenshots and element bounds; verify settings scrolling, source return and saved note reopen. No new dependencies or replacement component framework are needed.
 
-## 2026-09-21 Local PDF.js and PaddleOCR-VL parsing
+## 2026-09-21 Prepared PDF entry with local-first OCR
 
-Document parsing no longer uses Mistral or any hosted OCR credential. For digital PDFs,
-PDF.js remains authoritative for body text, captions and reading order. PaddleOCR-VL
-contributes only structural regions that PDF text cannot represent reliably: figures,
-tables, charts and display equations. Native text whose center lies inside one of those
-regions is replaced by the corresponding Paddle block, and equation numbers detected
-as adjacent blocks are joined to the display equation. Scanned pages without usable
-PDF text use the complete Paddle result.
+PDF.js remains authoritative for digital body text, captions and reading order.
+PaddleOCR-VL contributes structural regions that PDF text cannot represent reliably:
+figures, tables, charts and display equations. Native text whose center lies inside one
+of those regions is replaced by the corresponding Paddle block, and adjacent equation
+numbers are joined to the display equation. Scanned pages use the complete Paddle
+result. Mistral OCR 4.1 is a paid, last-resort fallback only after bounded local retries.
 
-The local parser is cached by document hash, parser version and page. Opening a cached
-page must not start the model again. If the optional local runtime has not been installed,
-digital text remains readable through PDF.js and scan-only pages show an actionable
-local-runtime error. Import still performs local preparation only; background analysis
-and explicit reader actions may start the local model and remain cancellable.
+The parser is cached by document hash, parser version and page. Import registers the PDF,
+then prepares and validates every page before the reader can open it. Cached pages do not
+start a model again. The library keeps the document visible while preparation runs,
+disables its reader action, and shows actual page progress. A failed job remains visible
+with a retry action. Restarting the app resumes unfinished jobs and preserves completed
+readiness. The optional Mistral fallback uses each user's own API key and never ships a
+project credential.
 
 ## 2026-09-08 Explicit local owner access (current)
 
@@ -90,7 +94,7 @@ Paper graph node colors encode references (muted blue #3b88b0), cited-by (teal #
 
 At 150–200% text, research navigation wraps in a dedicated lower header area, with the brand and account above it. The graph inspector grows to 480px on wide windows; source, save and exploration actions share a persistent footer while article text scrolls independently. Short windows may scroll the footer itself rather than cut off controls. Narrow windows retain the stacked graph and inspector.
 
-The explicit rejection of generic generated UI supersede the decorative treatment of the previous checkpoint. This is a functional paper exploration requirement, not just graph styling. Preserve Scourgify branding, local records and all existing reader/knowledge tools.
+The explicit rejection of generic generated UI supersede the decorative treatment of the previous checkpoint. This is a functional paper exploration requirement, not just graph styling. Preserve oh-my-paper branding, local records and all existing reader/knowledge tools.
 
 - Research graph: a large left graph stage with a 320–360px right article inspector. Circular paper marks, author/year labels, visible selected paper, highlighted incident edges and quiet unrelated nodes. Citation and semantic-related edges are distinct. References and cited-by expand actual external scholarly metadata after an explicit user action; related results identify the provider/method. Do not call title search similarity, fabricate citations or invent counts.
 - A year/citation layout uses observed metadata, with unknown values visibly identified; no invented timeline. Directed citation edges mean source cites target. References, cited-by, related exploration, back/forward, selection, zoom, pan, fit and graph/list modes must be usable. History is bounded and restored without another network request; abandoned requests are cancelled or ignored by generation.
@@ -104,7 +108,7 @@ The explicit rejection of generic generated UI supersede the decorative treatmen
 
 ## 2026-09-08 Non-reader screen layout revision (current)
 
-This revision supersedes the earlier labelled-rail layout for non-reader screens. Use a clear information hierarchy and panel proportions using Scourgify branding and real local records. The reference is an interaction/layout target, not permission to fabricate article metadata or citation networks.
+This revision supersedes the earlier labelled-rail layout for non-reader screens. Use a clear information hierarchy and panel proportions using oh-my-paper branding and real local records. The reference is an interaction/layout target, not permission to fabricate article metadata or citation networks.
 
 - Research flow: top navigation for discovery, library, notes, connections and projects; selection previews an item in place, explicit actions open its PDF or note. The continuous PDF reader retains its working toolbar and navigation. Library collection/list context and exploration history must survive inspection.
 - Layout at 1440px: 72px top chrome; 20–24px outer padding; 200px collection/list sidebar (reduced by the user's latest explicit feedback); flexible primary canvas; roughly 320px selected-record inspector. Collection and graph lists can collapse; the retained reader rail is a 56px icon rail with accessible names/tooltips. Use 12px panel radius, white panel surfaces, subtle borders, 36px minimum controls, and compact 4/8/12/16/24px spacing. At narrow widths panels reflow or scroll within their own bounded area; no clipped controls. Text scaling remains 50–200%.
@@ -146,9 +150,9 @@ Use plain labels: `라이브러리`, `읽기`, `지식`, `연결`, `비교`, `�
 
 Quiet, legible desktop research software. Natural green identity with restrained warmth, not a gold/ivory dashboard. No blue brand accents, repeating dot grid, gradients behind controls, oversized pills, excessive nested cards, or ambient motion inside the reader. Do not copy Anthropic/Apple layouts or logos.
 
-Latest reference grammar: use the reference's alignment, crisp hierarchy, near-neutral palette, and spacious layout as inspiration for Scourgify's own natural-green system. Keep accents sparse and purposeful; this is not a clone, and the approved leaf mark, bundled readable fonts, and restrained glass navigation remain Scourgify-specific.
+Latest reference grammar: use the reference's alignment, crisp hierarchy, near-neutral palette, and spacious layout as inspiration for oh-my-paper's own natural-green system. Keep accents sparse and purposeful; this is not a clone, and the approved leaf mark, bundled readable fonts, and restrained glass navigation remain oh-my-paper-specific.
 
-Approved branding: `assets/branding/scourgify-leaf-mark.png`. Render the full raster with `object-fit: contain`, stable aspect ratio and clear padding. Never crop the leaf inside a wordmark viewport. The optional onboarding scene is `assets/branding/scourgify-onboarding-golden-leaves-v1.jpg`; do not load it in normal reading views.
+Approved branding: `assets/branding/ohmypaper-leaf-mark.png`. Render the full raster with `object-fit: contain`, stable aspect ratio and clear padding. Never crop the leaf inside a wordmark viewport. The optional onboarding scene is `assets/branding/ohmypaper-onboarding-golden-leaves-v1.jpg`; do not load it in normal reading views.
 
 ### Accent treatment prohibition
 
@@ -206,15 +210,17 @@ Shared state harness and final QA must include long Korean/English titles, keybo
 - Fixed top toolbar and compact left rail. The five destinations remain reachable. Library remains a separate home action. Long titles truncate only in navigation, not in content/editors.
 - Reader retains continuous vertically aligned PDF pages and spatial cards on either side; paper and cards pan/zoom together. Toolbar, outline and metadata rail remain fixed.
 - Preserve hand/select/note tools, undo/redo, zoom/fit, minimap, outline, highlights, selection actions, figure/table/equation actions, citations, discussion, and source return.
-- Page translation belongs next to its source page and follows its position/zoom. It never replaces the research sidebar. Show completed batches while later batches stream; cancellation stops pending work; auth/limits require user recovery, not blind retries.
+- Page translation remains source-linked to its page but the open reading panel is anchored to the reader workspace viewport. It never replaces the research sidebar. Show completed batches while later batches stream; cancellation stops pending work; auth/limits require user recovery, not blind retries.
+- The open page-translation panel is anchored to the reader workspace viewport, so scrolling or panning the PDF does not move, reset, or remount the translation reading surface. Its page content changes only when automatic translation advances to a new page.
 - Translation reading has three explicit modes in the page translation surface: `원문` keeps the PDF as the only reading column, `대조` places the source and Korean page blocks in parallel columns, and `함께 읽기` repeats each source paragraph immediately before its translation. Mode changes reuse the same parsed blocks, cache and AI job, so switching modes never starts another request.
 - Every translation block keeps its parsed block ID and source bounds. Hover, focus or keyboard activation on either side highlights the source region; selecting a translated paragraph exposes the same source anchor used by notes, highlights and explanations. Headings, lists, equations, tables and figure captions keep their source order, with equations rendered as math rather than plain text.
+- OpenRouter page translation uses the dedicated Tencent Hy-MT2 1.8B route with a delimiter response protocol because that model does not provide JSON schema output. The selected general OpenRouter model remains available for summaries, chat and explanations.
 - Figure blocks reuse one crop of the original PDF region and keep the source jump; the bilingual view does not redraw the same figure as a second translated copy. If a crop cannot be prepared, the control remains an honest source-return action.
 - The page surface owns a bounded scroll region. Controls wrap at narrow widths and 50–200% text; parallel columns stack only when the viewport cannot preserve readable line lengths. A document action can translate all pages with a visible page/block progress, resume completed cache entries, and cancel without discarding completed pages. PDF export uses the browser print dialog and an explicit print layout label until a verified direct exporter exists.
-- Import, opening settings, opening a PDF, and scrolling to a new document do not trigger AI/OCR. A deliberate automatic-translation toggle may process pages only within that document; reset consent on switching documents.
+- Import starts bounded local PDF preparation immediately. A document cannot enter the reader until every page passes parsing and validation. Opening settings and scrolling never start another parse; explicit translation reuses the prepared cache. Local failure retries twice, then uses Mistral OCR 4.1 only when the user configured a fallback key.
 - Research rail: expand or first mode activation opens transiently; activating the same open mode again pins it until explicit collapse. Selecting another mode opens that mode transiently. Pointer leave dismisses only unpinned content; hover/keyboard focus alone never pins. Collapse clears local pin state. Pin activation does not repeat translation toggles or sticky-tool actions; translation remains page-adjacent. Keep existing geometry, tokens and motion; expose expanded and pinned state accessibly.
 - Each scroll region owns its scrolling: settings content and sidebar/card bodies have bounded heights and `min-height: 0`; their wheel events do not pan the board. At 920×640 all settings actions remain reachable at 200% text.
-- Local preparation status appears only for current jobs. Completed rows disappear shortly; errors remain actionable. Never restore old completed documents as a live queue.
+- Local preparation status shows current jobs and compact completed readiness. Errors remain actionable with retry. Completed readiness persists so reopening the app never reprocesses an unchanged PDF.
 
 ## 4. One knowledge model, five views
 
@@ -257,7 +263,7 @@ An explicit AI proposal action displays its scope before sending selected eviden
 - Data recovery lists only the signed-in account's interrupted drafts. Preview is read-only; restoring creates a new standalone note and never silently overwrites its original. Keep the recovery copy available and clearly label the new note. Normal note history remains a separate revision-aware restore action.
 
 - Markdown exports carry stable IDs, aliases, document versions, evidence, relations and provenance. Import previews conflicts; explicit commit revalidates and is atomic. Do not overwrite existing notes silently.
-- JSON Canvas carries layout and visual edges; a sidecar carries Scourgify semantics. Explain the pair, missing-node constraints and partial-save failures. A Canvas-only import is not claimed to preserve PDF anchors.
+- JSON Canvas carries layout and visual edges; a sidecar carries oh-my-paper semantics. Explain the pair, missing-node constraints and partial-save failures. A Canvas-only import is not claimed to preserve PDF anchors.
 - Native bibliography management preserves imported legacy IDs and reviewed identifier matches; no Zotero application connector or automatic synchronization. Metadata-only records remain labelled until their full text is actually read.
 - Experiment JSONL accepts bounded aggregate records with code/data/evaluation versions. Optional Inspect conversion uses the official log reader header mode, not execution of imported code or raw patient traces.
 - API and ChatGPT subscription modes are visibly distinct. Local OpenCodex remains an API-compatible local proxy option. Credentials stay main-process-only. Display actual connection state, cancellation, expiry/error and unknown usage honestly.

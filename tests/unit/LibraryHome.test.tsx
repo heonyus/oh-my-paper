@@ -174,6 +174,9 @@ describe("LibraryHome", () => {
             completedPages: 4,
             currentPage: 5,
             stage: "document-analyzing",
+            engine: "local",
+            attempt: 2,
+            maxAttempts: 2,
             state: "running",
           },
           {
@@ -188,8 +191,40 @@ describe("LibraryHome", () => {
     )
 
     expect(screen.getByText("2개 진행 중")).toBeVisible()
-    expect(screen.getByText("5 / 18페이지 · 구조 분석 중")).toBeVisible()
+    expect(
+      screen.getByText("5 / 18페이지 · 로컬 PaddleOCR · 2/2차 시도 · 구조 분석 중"),
+    ).toBeVisible()
     expect(screen.getByText("0 / 12페이지 · 분석 대기 중")).toBeVisible()
+  })
+
+  it("blocks reader entry until preparation completes and exposes failed-job retry", () => {
+    const onSelect = vi.fn()
+    const onRetryAnalysis = vi.fn()
+    render(
+      <LibraryHome
+        documents={[report]}
+        activeId={report.id}
+        onSelect={onSelect}
+        onImport={vi.fn()}
+        onFileDrop={vi.fn()}
+        onRetryAnalysis={onRetryAnalysis}
+        analysisJobs={[
+          {
+            id: report.id,
+            title: report.title,
+            pageCount: report.pageCount,
+            completedPages: 3,
+            state: "failed",
+            message: "Mistral OCR API 키가 필요합니다",
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getByRole("button", { name: `${report.title} 열기` })).toBeDisabled()
+    expect(onSelect).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole("button", { name: `${report.title} 다시 시도` }))
+    expect(onRetryAnalysis).toHaveBeenCalledWith(report.id)
   })
 
   it("keeps existing documents visible while another PDF is preparing", () => {

@@ -1,8 +1,10 @@
 import { fileURLToPath } from "node:url"
 import { lookupCitation } from "../electron/citationService"
+import { DocumentAnalysisService } from "../electron/documentAnalysisService"
 import { DocumentAstService } from "../electron/documentAstService"
 import { createDocumentPageParser } from "../electron/documentPageParser"
 import { importDocument, readDocumentBytes } from "../electron/documentService"
+import { MistralPageParserService } from "../electron/mistralPageParserService"
 import { PaddlePageParserService } from "../electron/paddlePageParserService"
 import { PageTranslationCacheService } from "../electron/pageTranslationCacheService"
 import { listScholarlyMetadata, saveScholarlyMetadata } from "../electron/scholarlyMetadata"
@@ -16,6 +18,7 @@ import {
   discoverySaveResultSchema,
 } from "../shared/discoveryIpc"
 import type { DocumentOcrProviderStatus } from "../shared/documentOcr"
+import { MISTRAL_OCR_MODEL } from "../shared/documentOcr"
 import { type ProviderConfig, providerConfigSchema } from "../shared/ipc"
 import { isOpenRouterModel } from "../shared/providerModels"
 import type { DocumentId, Workspace } from "../shared/schemas"
@@ -29,11 +32,13 @@ export type WebServices = {
   readonly store: WorkspaceStore
   readonly ast: DocumentAstService
   readonly pages: ReturnType<typeof createDocumentPageParser>
+  readonly analysis: DocumentAnalysisService
   readonly translationCache: PageTranslationCacheService
   readonly ocrStatus: () => Promise<DocumentOcrProviderStatus>
   readonly ai: WebAiService
   readonly decisionService: () => JevDecisionService | null
   readonly saveProviderConfig: (config: ProviderConfig) => Promise<void>
+  readonly saveDocumentOcrKey: (key: string) => Promise<void>
   readonly startAiJob: (request: AiJobStartRequest) => AsyncIterable<Uint8Array>
   readonly cancelAiJob: (jobId: AiJobStartRequest["jobId"]) => void
   readonly lookupCitation: typeof lookupCitation
@@ -55,6 +60,7 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
       : null
   const credentials = await LocalCredentialStore.open(config.dataDir, {
     openrouter: environmentOpenRouter,
+    mistral: config.mistralApiKey ?? null,
   })
   const ast = new DocumentAstService(store)
   const sourceRoot = fileURLToPath(new URL("../..", import.meta.url))
@@ -68,6 +74,14 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
     paddlePageParser: paddle,
     astService: ast,
   })
+  const mistral = new MistralPageParserService({
+    apiKey: async () => credentials.mistralApiKey(),
+  })
+  const analysis = new DocumentAnalysisService(store, pages, {
+    maxConcurrency: 1,
+    fallbackParser: mistral,
+  })
+  await analysis.resumePending()
   const initialProvider = credentials.openRouterConfig()
   const ai = new WebAiService(initialProvider)
   let decisions = initialProvider ? new JevDecisionService(initialProvider.apiKey) : null
@@ -89,8 +103,16 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
     store,
     ast,
     pages,
+    analysis,
     translationCache: new PageTranslationCacheService(store),
-    ocrStatus: () => paddle.status(),
+    ocrStatus: async () => ({
+      ...(await paddle.status()),
+      fallback: {
+        configured: credentials.mistralApiKey() !== null,
+        provider: "mistral",
+        model: MISTRAL_OCR_MODEL,
+      },
+    }),
     ai,
     decisionService: () => decisions,
     saveProviderConfig: async (value) => {
@@ -100,6 +122,7 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
       ai.configure(parsed)
       decisions = new JevDecisionService(parsed.apiKey)
     },
+    saveDocumentOcrKey: async (key) => credentials.saveMistralApiKey(key),
     startAiJob: jobs.start,
     cancelAiJob: jobs.cancel,
     lookupCitation,
@@ -108,6 +131,7 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
     listSavedScholarlyMetadata: () => listScholarlyMetadata(store.repository),
     close: async () => {
       jobs.dispose()
+      await analysis.dispose()
       paddle.dispose()
       await store.close()
     },
@@ -126,10 +150,21 @@ export async function importPdfBytes(
   const temporaryPath = `${uploadDir}/${Date.now()}-${safeName}`
   await writeFile(temporaryPath, bytes, { mode: 0o600 })
   try {
-    return await importDocument(temporaryPath, services.store, fileName)
+    const result = await importDocument(temporaryPath, services.store, fileName)
+    if (result) await services.analysis.schedule(result.document.id)
+    return result
   } finally {
     await rm(temporaryPath, { force: true }).catch(() => undefined)
   }
+}
+
+export async function importPdfFromUrl(
+  url: string,
+  services: WebServices,
+): Promise<Awaited<ReturnType<typeof importDocument>>> {
+  const { downloadRemotePdf } = await import("../shared/remotePdf")
+  const { bytes, fileName } = await downloadRemotePdf(url)
+  return importPdfBytes(bytes, fileName, services)
 }
 
 export async function readDocumentBase64(id: DocumentId, services: WebServices): Promise<string> {

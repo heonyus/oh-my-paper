@@ -18,7 +18,7 @@ afterEach(async () => {
 
 describe("canonical WorkspaceStore", () => {
   it("routes workspace card bodies through the collection without a database copy", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-workspace-collection-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-workspace-collection-"))
     roots.push(root)
     await initializeCollection(root, randomUUID())
     const store = await WorkspaceStore.openCollection(root, join(root, "machine-index.sqlite"))
@@ -55,7 +55,7 @@ describe("canonical WorkspaceStore", () => {
   })
 
   it("keeps exact external bytes when a workspace save has no renderer baseline", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-workspace-baseline-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-workspace-baseline-"))
     roots.push(root)
     await initializeCollection(root, randomUUID())
     const store = await WorkspaceStore.openCollection(root, join(root, "machine-index.sqlite"))
@@ -79,7 +79,7 @@ describe("canonical WorkspaceStore", () => {
     await store.save({ ...first, cards: [card] })
     const indexed = store.collection?.index.list()[0]
     if (!indexed) throw new Error("workspace note was not indexed")
-    const external = Buffer.from(`---\nscourgify.id: ${indexed.noteId}\n---\nexternal  bytes\r\n`)
+    const external = Buffer.from(`---\nohmypaper.id: ${indexed.noteId}\n---\nexternal  bytes\r\n`)
     const notePath = join(root, indexed.relativePath)
     await writeFile(notePath, external)
 

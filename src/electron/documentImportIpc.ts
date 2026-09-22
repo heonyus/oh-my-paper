@@ -50,7 +50,7 @@ function emitImportProgress(
 export async function importFromPath(
   event: ImportEvent,
   sourcePath: string,
-  _analysis: AnalysisScheduler,
+  analysis: AnalysisScheduler,
   store: WorkspaceStore,
 ): Promise<ImportResult> {
   return withImportSlot(async () => {
@@ -68,6 +68,7 @@ export async function importFromPath(
       progress("extracting", "active", 0.2, "텍스트와 메타데이터 추출 중")
       const imported = await importDocument(sourcePath, store)
       if (!imported) return imported
+      await analysis.schedule(imported.document.id)
       progress("complete", "complete", 1, "라이브러리에 추가됨")
       return imported
     } catch (error) {

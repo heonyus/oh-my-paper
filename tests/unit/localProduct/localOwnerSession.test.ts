@@ -40,7 +40,7 @@ afterEach(async () => {
 })
 
 async function temporaryRoot(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), "scourgify-local-owner-"))
+  const root = await mkdtemp(join(tmpdir(), "ohmypaper-local-owner-"))
   roots.push(root)
   return root
 }

@@ -7,6 +7,7 @@ import type { AppearanceTheme } from "../../shared/schemas"
 import { uiFontScaleLabel, uiFontScalePercent, uiFontScalePresets } from "../../shared/uiAppearance"
 import { AiProviderSettings, useAiProviderForm } from "./AiProviderSettings"
 import { CodexSettings } from "./CodexSettings"
+import { DocumentOcrSettings } from "./DocumentOcrSettings"
 import {
   HostedCredentialSettings,
   type HostedCredentialSettingsProps,
@@ -24,6 +25,7 @@ type SettingsModalProps = {
   readonly onSave: (config: ProviderConfig) => Promise<void>
   readonly onModeSave?: (mode: AiMode) => Promise<void>
   readonly ocrStatus?: DocumentOcrProviderStatus | undefined
+  readonly onOcrKeySave?: ((key: string) => Promise<void>) | undefined
   readonly onFontScaleChange: (scale: number) => void
   readonly onMinimapVisibleChange?: ((visible: boolean) => void) | undefined
   readonly theme?: AppearanceTheme | undefined
@@ -54,6 +56,7 @@ export function SettingsModal({
   appearanceOnly = false,
   hostedCredentials,
   ocrStatus,
+  onOcrKeySave,
   openRouterRequired = false,
   locked = false,
 }: SettingsModalProps): JSX.Element {
@@ -195,20 +198,15 @@ export function SettingsModal({
                     ) : null}
                   </>
                 )}
-                {ocrStatus ? (
-                  <fieldset className="settings-group">
-                    <legend>로컬 PDF 분석</legend>
-                    <div className="settings-row">
-                      <span>{ocrStatus.model}</span>
-                      <strong>
-                        {ocrStatus.configured ? "로컬 런타임 준비됨" : "로컬 런타임 설치 필요"}
-                      </strong>
-                    </div>
-                  </fieldset>
+                {ocrStatus && !locked ? (
+                  <DocumentOcrSettings
+                    status={ocrStatus}
+                    onSave={onOcrKeySave ?? (async () => {})}
+                  />
                 ) : null}
-                {!openRouterRequired && window.scourgify?.localInference ? (
+                {!openRouterRequired && window.ohmypaper?.localInference ? (
                   <LocalAiPanel
-                    api={window.scourgify.localInference}
+                    api={window.ohmypaper.localInference}
                     nodeTitle="로컬 제안 설정"
                     draft=""
                     imeComposing={false}

@@ -55,7 +55,7 @@ describe("DocumentThumbnail and thumbnail cache", () => {
   beforeEach(() => {
     clearThumbnailCache()
     vi.clearAllMocks()
-    Object.defineProperty(window, "scourgify", {
+    Object.defineProperty(window, "ohmypaper", {
       value: {
         readDocument: vi.fn(async () => "base64data"),
       },
@@ -107,7 +107,7 @@ describe("DocumentThumbnail and thumbnail cache", () => {
     const { unmount } = render(<DocumentThumbnail document={testDoc} />)
 
     await waitFor(() => {
-      expect(window.scourgify.readDocument).toHaveBeenCalledTimes(1)
+      expect(window.ohmypaper.readDocument).toHaveBeenCalledTimes(1)
       expect(mockTaskDestroy).toHaveBeenCalledTimes(1)
     })
 
@@ -118,7 +118,7 @@ describe("DocumentThumbnail and thumbnail cache", () => {
 
     await waitFor(() => {
       // Should NOT read or decode the document again because it is cached
-      expect(window.scourgify.readDocument).toHaveBeenCalledTimes(1)
+      expect(window.ohmypaper.readDocument).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -135,7 +135,7 @@ describe("DocumentThumbnail and thumbnail cache", () => {
 
     // Wait until readDocument has been called
     await waitFor(() => {
-      expect(window.scourgify.readDocument).toHaveBeenCalled()
+      expect(window.ohmypaper.readDocument).toHaveBeenCalled()
     })
 
     // Unmount before render promise resolves

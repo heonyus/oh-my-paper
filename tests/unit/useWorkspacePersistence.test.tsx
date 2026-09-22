@@ -18,7 +18,7 @@ describe("useWorkspacePersistence", () => {
     vi.useFakeTimers()
     const saveWorkspace = vi.fn(async (value: Workspace) => value)
     const onAcknowledged = vi.fn()
-    Object.defineProperty(window, "scourgify", {
+    Object.defineProperty(window, "ohmypaper", {
       configurable: true,
       value: {
         saveWorkspace,
@@ -44,5 +44,31 @@ describe("useWorkspacePersistence", () => {
     expect(saveWorkspace).toHaveBeenCalledWith(
       expect.objectContaining({ viewport: expect.objectContaining({ x: 20 }) }),
     )
+  })
+
+  it("retries an unchanged workspace after a temporary save failure", async () => {
+    vi.useFakeTimers()
+    const saveWorkspace = vi
+      .fn<(value: Workspace) => Promise<Workspace>>()
+      .mockRejectedValueOnce(new Error("temporary failure"))
+      .mockImplementation(async (value) => value)
+    Object.defineProperty(window, "ohmypaper", {
+      configurable: true,
+      value: {
+        saveWorkspace,
+        onBeforeWorkspaceClose: () => () => {},
+        flushWorkspace: async () => {},
+      },
+    })
+
+    const { result } = renderHook(() => useWorkspacePersistence(workspace, vi.fn()))
+
+    await act(async () => vi.advanceTimersByTimeAsync(250))
+    expect(result.current).toBe(true)
+    expect(saveWorkspace).toHaveBeenCalledTimes(1)
+
+    await act(async () => vi.advanceTimersByTimeAsync(1_000))
+    expect(saveWorkspace).toHaveBeenCalledTimes(2)
+    expect(result.current).toBe(false)
   })
 })

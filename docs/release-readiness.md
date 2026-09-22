@@ -3,7 +3,7 @@
 As of 2026-09-06, version 2.0 is in integration QA. It is not commercially or publicly ready.
 A blank-reader regression is being fixed; a successful build or simulated UI run does not establish
 that the current reader workflow works. This page describes release limitations, not a second QA
-ledger. The coordinator owns the [execution record](../.omo/evidence/scourgify-local-product/2026-09-06/execution.md)
+ledger. The coordinator owns the [execution record](../.omo/evidence/ohmypaper-local-product/2026-09-06/execution.md)
 for the [active product plan](../.omo/plans/README.md).
 
 ## Runtime prerequisites
@@ -13,8 +13,8 @@ remain local. A separate account-only Worker/D1 backend supports mandatory Googl
 sessions; it does not host documents or provider credentials. Offline access is bounded to a valid
 lease of up to seven days after online verification, not unrestricted signed-out use.
 
-The desktop main process needs `SCOURGIFY_ACCOUNT_SERVICE_ORIGIN`, `SCOURGIFY_ACCOUNT_ISSUER`, and
-`SCOURGIFY_GOOGLE_CLIENT_ID`. The first two are exact HTTPS origins; the issuer must match backend
+The desktop main process needs `OH_MY_PAPER_ACCOUNT_SERVICE_ORIGIN`, `OH_MY_PAPER_ACCOUNT_ISSUER`, and
+`OH_MY_PAPER_GOOGLE_CLIENT_ID`. The first two are exact HTTPS origins; the issuer must match backend
 `APP_ISSUER`, and the Desktop OAuth client ID must be accepted by `GOOGLE_CLIENT_IDS`. Blank or invalid
 values fail closed. The root `.env.example` contains only these non-secret desktop bindings.
 

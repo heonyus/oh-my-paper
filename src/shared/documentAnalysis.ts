@@ -18,6 +18,9 @@ export const documentAnalysisJobSchema = z.discriminatedUnion("state", [
     completedPages: z.number().int().nonnegative(),
     currentPage: z.number().int().positive(),
     stage: documentPageParseStageSchema,
+    engine: z.enum(["local", "mistral"]),
+    attempt: z.number().int().positive(),
+    maxAttempts: z.number().int().positive(),
   }),
   documentAnalysisBaseSchema.extend({
     state: z.literal("complete"),
@@ -31,6 +34,15 @@ export const documentAnalysisJobSchema = z.discriminatedUnion("state", [
 ])
 
 export const documentAnalysisSnapshotSchema = z.array(documentAnalysisJobSchema).max(64).readonly()
+export const documentAnalysisRequestSchema = z.object({ id: documentIdSchema })
 
 export type DocumentAnalysisJob = z.infer<typeof documentAnalysisJobSchema>
 export type DocumentAnalysisSnapshot = z.infer<typeof documentAnalysisSnapshotSchema>
+
+export function documentReaderBlocked(
+  snapshot: DocumentAnalysisSnapshot,
+  id: z.infer<typeof documentIdSchema>,
+): boolean {
+  const job = snapshot.find((candidate) => candidate.id === id)
+  return job !== undefined && job.state !== "complete"
+}

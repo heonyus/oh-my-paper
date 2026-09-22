@@ -13,8 +13,8 @@ afterEach(async () => {
 })
 
 describe("LocalCredentialStore", () => {
-  it("persists only the user-owned OpenRouter credential across restarts", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-credentials-"))
+  it("persists user-owned OpenRouter and Mistral credentials across restarts", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-credentials-"))
     cleanup.push(root)
     const first = await LocalCredentialStore.open(root, { openrouter: null })
 
@@ -23,11 +23,28 @@ describe("LocalCredentialStore", () => {
       apiKey: "sk-or-user-owned-key-at-least-twenty-characters",
       model: "qwen/qwen3.8-flash",
     })
+    await first.saveMistralApiKey("mistral-user-owned-key-at-least-twenty-characters")
     const reopened = await LocalCredentialStore.open(root, { openrouter: null })
     expect(reopened.openRouterConfig()).toEqual({
       provider: "openrouter",
       apiKey: "sk-or-user-owned-key-at-least-twenty-characters",
       model: "qwen/qwen3.8-flash",
     })
+    expect(reopened.mistralApiKey()).toBe("mistral-user-owned-key-at-least-twenty-characters")
+  })
+
+  it("persists the selected page-translation model and defaults for legacy files", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-credentials-"))
+    cleanup.push(root)
+    const first = await LocalCredentialStore.open(root, { openrouter: null })
+
+    await first.saveOpenRouter({
+      provider: "openrouter",
+      apiKey: "sk-or-user-owned-key-at-least-twenty-characters",
+      model: "qwen/qwen3.8-flash",
+      pageTranslationModel: "tencent/hy-mt2-7b",
+    })
+    const reopened = await LocalCredentialStore.open(root, { openrouter: null })
+    expect(reopened.openRouterConfig()?.pageTranslationModel).toBe("tencent/hy-mt2-7b")
   })
 })

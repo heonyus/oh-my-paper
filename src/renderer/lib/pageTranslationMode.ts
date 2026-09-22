@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 export type PageTranslationMode = "source" | "parallel" | "bilingual"
 
 const defaultMode: PageTranslationMode = "bilingual"
-const storagePrefix = "scourgify:page-translation-mode:v1:"
+const storagePrefix = "ohmypaper:page-translation-mode:v1:"
 
 function isPageTranslationMode(value: string | null): value is PageTranslationMode {
   return value === "source" || value === "parallel" || value === "bilingual"

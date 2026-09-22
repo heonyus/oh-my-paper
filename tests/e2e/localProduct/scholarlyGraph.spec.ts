@@ -7,9 +7,9 @@ import { setTheme } from "./sixScreenWorkflowHelpers"
 test("paper graph traverses real IPC and HTTP adapter with bounded fixture metadata", async () => {
   // Given: only the external HTTP provider is simulated; main validation and local persistence run.
   const qa = await launchSimulatedAuthenticatedApplication({
-    environment: { SCOURGIFY_QA_SCHOLARLY_FIXTURE: "1" },
+    environment: { OH_MY_PAPER_QA_SCHOLARLY_FIXTURE: "1" },
   })
-  const output = join(process.cwd(), ".omo/evidence/scourgify-local-product/2026-09-08-paper-graph")
+  const output = join(process.cwd(), ".omo/evidence/ohmypaper-local-product/2026-09-08-paper-graph")
   await mkdir(output, { recursive: true })
   try {
     const page = await qa.application.firstWindow()
@@ -52,7 +52,7 @@ test("paper graph traverses real IPC and HTTP adapter with bounded fixture metad
     await expect
       .poll(() =>
         page.evaluate(async () => {
-          const saved = await window.scourgify.knowledge.findNodes({ search: "Synthetic study 2:" })
+          const saved = await window.ohmypaper.knowledge.findNodes({ search: "Synthetic study 2:" })
           return saved.filter((node) => node.kind === "paper").length
         }),
       )
@@ -92,7 +92,7 @@ test("paper graph traverses real IPC and HTTP adapter with bounded fixture metad
     await expect
       .poll(() =>
         page.evaluate(async () => {
-          const saved = await window.scourgify.knowledge.findNodes({ search: "Synthetic study 2:" })
+          const saved = await window.ohmypaper.knowledge.findNodes({ search: "Synthetic study 2:" })
           return saved.filter((node) => node.kind === "paper").length
         }),
       )

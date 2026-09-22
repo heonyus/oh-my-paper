@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from "vitest"
 import type { WebServerConfig } from "../../src/server/config"
 import { createLocalWebServer } from "../../src/server/server"
 import { createWebServices } from "../../src/server/services"
-import { createAiJobId } from "../../src/shared/documentAiJobs"
+import { aiPolicy, createAiJobId } from "../../src/shared/documentAiJobs"
 
 const cleanup: (() => Promise<void>)[] = []
 afterEach(async () => {
@@ -14,7 +14,7 @@ afterEach(async () => {
 })
 
 async function setup() {
-  const root = await mkdtemp(join(tmpdir(), "scourgify-stream-"))
+  const root = await mkdtemp(join(tmpdir(), "ohmypaper-stream-"))
   const config: WebServerConfig = {
     host: "127.0.0.1",
     port: 8799,
@@ -99,7 +99,10 @@ describe("real web AI HTTP lifecycle", () => {
       model: "qwen/qwen3.8-flash",
     })
     const ocr = await post("documentOcrStatus", {})
-    const retiredKeyRoute = await post("saveDocumentOcrKey", "retired-provider-key")
+    const fallbackKey = await post(
+      "saveDocumentOcrKey",
+      "mistral-user-owned-key-at-least-twenty-characters",
+    )
 
     expect(await provider.json()).toMatchObject({
       configured: true,
@@ -107,7 +110,10 @@ describe("real web AI HTTP lifecycle", () => {
       model: "qwen/qwen3.8-flash",
     })
     expect(await ocr.json()).toMatchObject({ provider: "paddle", model: "PaddleOCR-VL-1.6" })
-    expect(retiredKeyRoute.status).toBe(404)
+    expect(fallbackKey.status).toBe(200)
+    expect(await fallbackKey.json()).toMatchObject({
+      fallback: { configured: true, provider: "mistral", model: "mistral-ocr-4-1" },
+    })
   })
 
   it("aborts the provider when the browser disconnects", async () => {
@@ -166,15 +172,17 @@ describe("real web AI HTTP lifecycle", () => {
       )
       return { text: "late", model: "test/model" }
     }
-    const first = await start(url, 30)
-    const second = await start(url, 31)
-    const third = await start(url, 32)
-    expect(await third.text()).toContain('"code":"queue_full"')
-    services.cancelAiJob(createAiJobId("job:http-30"))
-    services.cancelAiJob(createAiJobId("job:http-31"))
-    await Promise.all([first.text(), second.text()])
+    const running = await Promise.all(
+      Array.from({ length: aiPolicy.concurrentJobs }, (_, index) => start(url, 30 + index)),
+    )
+    const overflow = await start(url, 30 + aiPolicy.concurrentJobs)
+    expect(await overflow.text()).toContain('"code":"queue_full"')
+    for (let index = 0; index < aiPolicy.concurrentJobs; index += 1) {
+      services.cancelAiJob(createAiJobId(`job:http-${30 + index}`))
+    }
+    await Promise.all(running.map((response) => response.text()))
     services.ai.stream = async () => ({ text: "next", model: "test/model" })
-    expect(await (await start(url, 33)).text()).toContain('"kind":"completed"')
+    expect(await (await start(url, 50)).text()).toContain('"kind":"completed"')
   })
 
   it.each([400, 429, 504])(

@@ -176,7 +176,7 @@ export function KnowledgeView({
 
   useEffect(
     () =>
-      window.scourgify?.collection?.onChanged(() => {
+      window.ohmypaper?.collection?.onChanged(() => {
         setReloadToken((token) => token + 1)
         if (selectedNodeId && !editingNodeId) void loadSelection(selectedNodeId)
       }),

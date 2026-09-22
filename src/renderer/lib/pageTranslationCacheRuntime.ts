@@ -27,7 +27,7 @@ function request(
   documentId: DocumentId,
   page: number,
   provider: ProviderStatus,
-  parser?: "PDF.js+PaddleOCR-VL-1.6" | "PaddleOCR-VL-1.6" | "NativeText-1.0",
+  parser?: CachedPageTranslationBlock["sourceParser"],
   parserConfigVersion?: string,
 ) {
   return {
@@ -73,7 +73,7 @@ export async function readCachedPageTranslation(
   )
   if (cached) return cached
   try {
-    const stored = await window.scourgify.readPageTranslationCache(
+    const stored = await window.ohmypaper.readPageTranslationCache(
       request(documentId, page, provider, parser, parserConfigVersion),
     )
     if (stored.status !== "ready") return null
@@ -108,7 +108,7 @@ export async function storeCachedPageTranslation(
     blocks,
   )
   try {
-    await window.scourgify.writePageTranslationCache({
+    await window.ohmypaper.writePageTranslationCache({
       ...request(
         documentId,
         page,
@@ -131,7 +131,7 @@ export async function clearCachedPageTranslation(
   const prefix = pageTranslationCachePrefix(documentId, page, provider)
   for (const key of sessionCache.keys()) if (key.startsWith(prefix)) sessionCache.delete(key)
   try {
-    await window.scourgify.clearPageTranslationCache(request(documentId, page, provider))
+    await window.ohmypaper.clearPageTranslationCache(request(documentId, page, provider))
   } catch (error) {
     if (!(error instanceof Error)) throw error
   }

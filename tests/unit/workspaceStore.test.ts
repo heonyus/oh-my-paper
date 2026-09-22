@@ -25,7 +25,7 @@ describe("WorkspaceStore", () => {
   })
 
   it("migrates the former default sidebar width once", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-workspace-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-workspace-"))
     temporaryRoots.push(root)
     const legacy = { ...defaultWorkspace(), researchSidebarWidth: 340 }
     await writeFile(join(root, "workspace.json"), JSON.stringify(legacy), "utf8")
@@ -40,7 +40,7 @@ describe("WorkspaceStore", () => {
   })
 
   it("preserves a user-resized research sidebar", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-workspace-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-workspace-"))
     temporaryRoots.push(root)
     const store = new WorkspaceStore(root)
 
@@ -50,7 +50,7 @@ describe("WorkspaceStore", () => {
   })
 
   it("migrates legacy source anchors without deleting saved cards", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-workspace-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-workspace-"))
     temporaryRoots.push(root)
     const legacy = {
       documents: [],
@@ -80,7 +80,7 @@ describe("WorkspaceStore", () => {
   })
 
   it("serializes rapid workspace saves without losing the newest state", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-workspace-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-workspace-"))
     temporaryRoots.push(root)
     const store = new WorkspaceStore(root)
     const workspace = defaultWorkspace()
@@ -95,7 +95,7 @@ describe("WorkspaceStore", () => {
   })
 
   it("does not erase a newly imported document when a stale renderer snapshot saves", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-workspace-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-workspace-"))
     temporaryRoots.push(root)
     const store = new WorkspaceStore(root)
     const stale = defaultWorkspace()

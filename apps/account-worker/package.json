@@ -1,5 +1,5 @@
 {
-  "name": "@scourgify/account-worker",
+  "name": "@ohmypaper/account-worker",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,7 +8,7 @@
     "typecheck": "wrangler types --check && tsc --noEmit",
     "test": "vitest run",
     "dev:local": "wrangler dev --local",
-    "db:migrate:local": "wrangler d1 migrations apply scourgify-account-local --local"
+    "db:migrate:local": "wrangler d1 migrations apply ohmypaper-account-local --local"
   },
   "dependencies": {
     "jose": "^6.2.10",

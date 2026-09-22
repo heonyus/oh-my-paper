@@ -1,5 +1,5 @@
 import { FileDown, FileText, Languages, Printer, RefreshCw, Square, Type, X } from "lucide-react"
-import { type JSX, useEffect, useState } from "react"
+import { type JSX, useEffect, useMemo, useRef, useState } from "react"
 import type { ProviderStatus } from "../../shared/ipc"
 import { type PageTranslationMode, usePageTranslationMode } from "../lib/pageTranslationMode"
 import { nextTextSize, parserStageMessage, type TextSize } from "../lib/pageTranslationPaneState"
@@ -50,8 +50,17 @@ export function PageTranslationPane({
     onAiRequest,
   })
 
-  const visibleBlocks = blocks
-  const bilingualGroups: readonly (readonly (typeof blocks)[number][])[] = (() => {
+  const visibleBlocks = useMemo(
+    () =>
+      mode === "parallel"
+        ? blocks.filter(
+            (block) => block.translation.trim().length > 0 || block.structureKind === "figure",
+          )
+        : blocks,
+    [blocks, mode],
+  )
+  const previousGroups = useRef<readonly (readonly (typeof blocks)[number][])[]>([])
+  const bilingualGroups = useMemo(() => {
     const groups: (typeof blocks)[number][][] = []
     for (const block of visibleBlocks) {
       const previous = groups.at(-1)
@@ -63,8 +72,19 @@ export function PageTranslationPane({
         previous.push(block)
       else groups.push([block])
     }
-    return groups
-  })()
+    // 스트리밍 델타로 blocks 배열이 바뀌어도 멤버가 동일한 그룹은 이전 배열을 재사용해
+    // memo된 PageTranslationBlock이 리렌더를 건너뛸 수 있게 한다
+    const shared = groups.map((group, index) => {
+      const previous = previousGroups.current[index]
+      return previous &&
+        previous.length === group.length &&
+        previous.every((block, position) => block === group[position])
+        ? previous
+        : group
+    })
+    previousGroups.current = shared
+    return shared
+  }, [visibleBlocks])
 
   function printTranslation(): void {
     globalThis.document.body.setAttribute("data-print-translation", "current")

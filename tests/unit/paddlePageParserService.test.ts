@@ -19,7 +19,7 @@ describe("Paddle page parser service", () => {
 
   it("resolves the managed runtime independently from other layout models", () => {
     expect(paddlePageParserRuntimePython("/Users/test", "darwin")).toBe(
-      "/Users/test/.scourgify/paddle-vl-runtime/bin/python",
+      "/Users/test/.ohmypaper/paddle-vl-runtime/bin/python",
     )
   })
 

@@ -73,7 +73,7 @@ export class CollectionJournal {
   readonly directory: string
 
   constructor(readonly root: string) {
-    this.directory = join(root, ".scourgify", "journal")
+    this.directory = join(root, ".ohmypaper", "journal")
   }
 
   private entryPath(operationId: string): string {
@@ -87,8 +87,8 @@ export class CollectionJournal {
   ): Promise<CollectionJournalEntry> {
     await mkdir(this.directory, { recursive: true })
     const operationId = randomUUID()
-    const previousRelativePath = previousBytes ? `.scourgify/journal/${operationId}.previous` : null
-    const incomingRelativePath = `.scourgify/journal/${operationId}.incoming`
+    const previousRelativePath = previousBytes ? `.ohmypaper/journal/${operationId}.previous` : null
+    const incomingRelativePath = `.ohmypaper/journal/${operationId}.incoming`
     const temporaryRelativePath = `${dirname(input.relativePath)}/.${basename(input.relativePath)}.${operationId}.tmp`
     if (previousBytes && previousRelativePath) {
       await writeNewFlushed(join(this.root, previousRelativePath), previousBytes)

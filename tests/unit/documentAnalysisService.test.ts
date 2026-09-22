@@ -71,6 +71,106 @@ class Deferred<T> {
 }
 
 describe("DocumentAnalysisService", () => {
+  it("retries a page locally before marking the document failed", async () => {
+    const root = await mkdtemp(join(tmpdir(), "document-analysis-retry-"))
+    const store = new WorkspaceStore(root)
+    const document = record("9", "Retry paper")
+    await store.save({ ...defaultWorkspace(), documents: [document] })
+    let attempts = 0
+    const parser = {
+      parse: vi.fn(async (input: { readonly pageNumber: number }) => {
+        attempts += 1
+        if (attempts === 1)
+          return { status: "unavailable" as const, reason: "execution_failed" as const }
+        return readyPage(document.hash, input.pageNumber)
+      }),
+    }
+    const service = new DocumentAnalysisService(store, parser, { maxConcurrency: 1 })
+
+    try {
+      await service.schedule(document.id)
+      await vi.waitFor(() =>
+        expect(service.snapshot().find((job) => job.id === document.id)?.state).toBe("complete"),
+      )
+      expect(parser.parse).toHaveBeenCalledTimes(3)
+    } finally {
+      await service.dispose()
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it("uses the Mistral fallback after both local attempts fail", async () => {
+    const root = await mkdtemp(join(tmpdir(), "document-analysis-fallback-"))
+    const store = new WorkspaceStore(root)
+    const document = record("7", "Fallback paper")
+    await store.save({ ...defaultWorkspace(), documents: [document] })
+    const localParser = {
+      parse: vi.fn(async () => ({
+        status: "unavailable" as const,
+        reason: "execution_failed" as const,
+      })),
+    }
+    const fallbackParser = {
+      parse: vi.fn(async (input: { readonly pageNumber: number }) =>
+        readyPage(document.hash, input.pageNumber),
+      ),
+    }
+    const service = new DocumentAnalysisService(store, localParser, {
+      maxConcurrency: 1,
+      fallbackParser,
+    })
+    const snapshots: unknown[] = []
+    service.subscribe((snapshot) => snapshots.push(...snapshot))
+
+    try {
+      await service.schedule(document.id)
+      await vi.waitFor(() =>
+        expect(service.snapshot().find((job) => job.id === document.id)?.state).toBe("complete"),
+      )
+      expect(localParser.parse).toHaveBeenCalledTimes(2)
+      expect(fallbackParser.parse).toHaveBeenCalledTimes(document.pageCount)
+      expect(snapshots).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ state: "running", engine: "local", attempt: 2 }),
+          expect.objectContaining({ state: "running", engine: "mistral", attempt: 1 }),
+        ]),
+      )
+    } finally {
+      await service.dispose()
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it("restores completed readiness without parsing the unchanged document again", async () => {
+    const root = await mkdtemp(join(tmpdir(), "document-analysis-ready-"))
+    const store = new WorkspaceStore(root)
+    const document = record("8", "Ready paper")
+    await store.save({ ...defaultWorkspace(), documents: [document] })
+    const parser = {
+      parse: vi.fn(async (input: { readonly pageNumber: number }) =>
+        readyPage(document.hash, input.pageNumber),
+      ),
+    }
+    const first = new DocumentAnalysisService(store, parser)
+
+    await first.schedule(document.id)
+    await vi.waitFor(() =>
+      expect(first.snapshot().find((job) => job.id === document.id)?.state).toBe("complete"),
+    )
+    await first.dispose()
+    const callsAfterFirstRun = parser.parse.mock.calls.length
+
+    const reopened = new DocumentAnalysisService(store, parser)
+    try {
+      await reopened.resumePending()
+      expect(reopened.snapshot().find((job) => job.id === document.id)?.state).toBe("complete")
+      expect(parser.parse).toHaveBeenCalledTimes(callsAfterFirstRun)
+    } finally {
+      await reopened.dispose()
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
   it("cancels and drains in-flight work while preserving the pending queue", async () => {
     const root = await mkdtemp(join(tmpdir(), "document-analysis-dispose-"))
     const store = new WorkspaceStore(root)
@@ -104,8 +204,9 @@ describe("DocumentAnalysisService", () => {
     expect(parser.parse).toHaveBeenCalledOnce()
     expect(service.snapshot().every((job) => job.state !== "complete")).toBe(true)
     expect(JSON.parse(await readFile(join(root, "document-analysis-queue.json"), "utf8"))).toEqual({
-      version: 1,
-      documentIds: expect.arrayContaining([first.id, second.id]),
+      version: 2,
+      pendingIds: expect.arrayContaining([first.id, second.id]),
+      readyIds: [],
     })
     await store.close()
     await rm(root, { recursive: true, force: true })
@@ -173,8 +274,9 @@ describe("DocumentAnalysisService", () => {
       expect(
         JSON.parse(await readFile(join(root, "document-analysis-queue.json"), "utf8")),
       ).toEqual({
-        version: 1,
-        documentIds: [],
+        version: 2,
+        pendingIds: [],
+        readyIds: expect.arrayContaining([first.id, second.id]),
       })
     } finally {
       await service.dispose()
@@ -213,7 +315,12 @@ describe("DocumentAnalysisService", () => {
         expect(secondJob?.state).toBe("complete")
       })
 
-      expect(executionOrder).toEqual([`${first.id}:1`, `${second.id}:1`, `${second.id}:2`])
+      expect(executionOrder).toEqual([
+        `${first.id}:1`,
+        `${first.id}:1`,
+        `${second.id}:1`,
+        `${second.id}:2`,
+      ])
 
       await service.schedule(first.id)
       const snapAfter = service.snapshot()
@@ -225,7 +332,7 @@ describe("DocumentAnalysisService", () => {
     }
   })
 
-  it("does not retry failed jobs on restart and allows deliberate reschedule", async () => {
+  it("resumes a persistently failed preparation after restart", async () => {
     const root = await mkdtemp(join(tmpdir(), "document-analysis-fail-restart-"))
     const store = new WorkspaceStore(root)
     const failDoc = record("e", "Failed paper")
@@ -235,7 +342,7 @@ describe("DocumentAnalysisService", () => {
     const parser = {
       parse: vi.fn(async () => {
         parseAttempts += 1
-        if (parseAttempts === 1) {
+        if (parseAttempts <= 2) {
           return { status: "unavailable" as const, reason: "runtime_missing" as const }
         }
         return readyPage(failDoc.hash, 1)
@@ -250,21 +357,15 @@ describe("DocumentAnalysisService", () => {
     })
     await service1.dispose()
 
-    // Verify pending queue file does not contain failed job
     const queueFile = JSON.parse(await readFile(join(root, "document-analysis-queue.json"), "utf8"))
-    expect(queueFile.documentIds).not.toContain(failDoc.id)
+    expect(queueFile.pendingIds).toContain(failDoc.id)
 
-    // Reopen service - resumePending should not restart inference for the failed job
     const service2 = new DocumentAnalysisService(store, parser)
     await service2.resumePending()
-    expect(parseAttempts).toBe(1)
-    expect(service2.snapshot()).toHaveLength(0)
-
-    // Explicit reschedule works
-    await service2.reschedule(failDoc.id)
     await vi.waitFor(() => {
-      expect(parseAttempts).toBeGreaterThan(1)
+      expect(service2.snapshot().find((job) => job.id === failDoc.id)?.state).toBe("complete")
     })
+    expect(parseAttempts).toBe(4)
     await service2.dispose()
     await rm(root, { recursive: true, force: true })
   })

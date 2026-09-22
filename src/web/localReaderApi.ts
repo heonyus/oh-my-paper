@@ -8,6 +8,7 @@ import {
   discoverySaveResultSchema,
   discoverySearchInputSchema,
 } from "../shared/discoveryIpc"
+import { documentAnalysisSnapshotSchema } from "../shared/documentAnalysis"
 import type { DocumentAstRequest } from "../shared/documentAstIpc"
 import { documentAstResultSchema } from "../shared/documentAstIpc"
 import type { DocumentOcrProviderStatus } from "../shared/documentOcr"
@@ -16,13 +17,15 @@ import type {
   CitationLookupResult,
   DocumentPageParseRequest,
   DocumentPageParseResult,
+  OhMyPaperApi,
   PreparationUpdate,
   ProviderStatus,
-  ScourgifyApi,
 } from "../shared/ipc"
 import {
   citationLookupResultSchema,
+  documentImportUrlRequestSchema,
   documentOcrProviderStatusSchema,
+  importResultSchema,
   providerStatusSchema,
 } from "../shared/ipc"
 import type {
@@ -76,7 +79,7 @@ export function installLocalReaderApi(): void {
     },
   }
 
-  const api: ScourgifyApi = {
+  const api: OhMyPaperApi = {
     discovery,
     readWorkspace: async (): Promise<Workspace> => {
       const response = await fetch("/api/workspace", { signal: AbortSignal.timeout(30_000) })
@@ -94,6 +97,15 @@ export function installLocalReaderApi(): void {
     importDocument: importer.importDocument,
     importDocumentPath: importer.importDocumentPath,
     importDocumentPaths: importer.importDocumentPaths,
+    importDocumentUrl: async (url: string) => {
+      const response = await fetch("/api/documents/url", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(documentImportUrlRequestSchema.parse({ url })),
+        signal: AbortSignal.timeout(180_000),
+      })
+      return readLocalResponse(response, importResultSchema)
+    },
     getDroppedFilePath: importer.getDroppedFilePath,
     onImportProgress: importer.onImportProgress,
     readDocument: async (id: DocumentId): Promise<string> => {
@@ -112,10 +124,22 @@ export function installLocalReaderApi(): void {
       return pageParser.parse(request, signal)
     },
     onDocumentPageParseProgress: pageParser.onProgress,
-    readDocumentAnalysis: async () => [],
-    onDocumentAnalysis: (_listener) => () => {},
+    readDocumentAnalysis: async () =>
+      localRpc("documentAnalysisStatus", {}, documentAnalysisSnapshotSchema),
+    onDocumentAnalysis: (listener) => {
+      const events = new EventSource("/api/events/document-analysis")
+      events.onmessage = (event) =>
+        listener(documentAnalysisSnapshotSchema.parse(JSON.parse(event.data)))
+      return () => events.close()
+    },
+    retryDocumentAnalysis: async (id) => {
+      await localRpc("retryDocumentAnalysis", { id }, documentAnalysisSnapshotSchema)
+    },
     documentOcrStatus: async (): Promise<DocumentOcrProviderStatus> => {
       return localRpc("documentOcrStatus", {}, documentOcrProviderStatusSchema)
+    },
+    saveDocumentOcrKey: async (key) => {
+      await localRpc("saveDocumentOcrKey", key, documentOcrProviderStatusSchema)
     },
     readPageTranslationCache: async (
       request: PageTranslationCacheReadRequest,
@@ -239,5 +263,5 @@ export function installLocalReaderApi(): void {
     },
   }
 
-  Object.defineProperty(window, "scourgify", { value: api, configurable: true })
+  Object.defineProperty(window, "ohmypaper", { value: api, configurable: true })
 }

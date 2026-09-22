@@ -14,7 +14,7 @@ import {
 
 const MANIFEST_PATH = "manifest.json"
 const COLLECTION_MANIFEST_PATH = "collection.json"
-const METADATA_PATH = ".scourgify/metadata.sqlite"
+const METADATA_PATH = ".ohmypaper/metadata.sqlite"
 
 export type BackupSourceEntry = {
   readonly relativePath: string

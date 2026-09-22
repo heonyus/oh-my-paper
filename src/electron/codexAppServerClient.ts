@@ -62,7 +62,7 @@ export class CodexAppServerClient {
         "initialize",
         {
           clientInfo: {
-            name: "scourgify",
+            name: "ohmypaper",
             title: "oh-my-paper Reader",
             version: "2.0.0",
           },

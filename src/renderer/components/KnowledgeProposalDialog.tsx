@@ -20,11 +20,11 @@ export function KnowledgeProposalDialog({
   const [relations, setRelations] = useState<readonly KnowledgeRelation[]>([])
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState("")
-  const api = window.scourgify.knowledge
+  const api = window.ohmypaper.knowledge
   useEffect(() => {
     let current = true
     const timer = setTimeout(() => {
-      void window.scourgify.knowledge
+      void window.ohmypaper.knowledge
         .findNodes({ search: query, limit: 100 })
         .then((items) => {
           if (current) setNodes(items)

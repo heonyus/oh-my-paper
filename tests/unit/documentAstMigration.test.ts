@@ -68,7 +68,7 @@ describe("document AST migration", () => {
   })
 
   it("rebuilds a malformed sidecar without changing the workspace or source", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-ast-migration-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-ast-migration-"))
     try {
       const document = documentRecordSchema.parse({
         id,

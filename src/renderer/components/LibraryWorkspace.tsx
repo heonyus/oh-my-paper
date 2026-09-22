@@ -13,7 +13,7 @@ export function LibraryWorkspace(props: ComponentProps<typeof LibraryHome>): JSX
   async function openExternal(url: string): Promise<void> {
     setError(null)
     try {
-      await window.scourgify.openExternal({ url })
+      await window.ohmypaper.openExternal({ url })
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "논문 링크를 열지 못했습니다.")
     }

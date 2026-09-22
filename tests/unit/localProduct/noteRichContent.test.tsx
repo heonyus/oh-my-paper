@@ -40,7 +40,7 @@ describe("note rich content", () => {
     )
     expect(safeNoteImageSource("https://example.com/tracker.png")).toBeNull()
     expect(safeNoteImageSource("//example.com/tracker.png")).toBeNull()
-    expect(safeNoteImageSource("file:///tmp/scourgify/image.png")).toBeNull()
+    expect(safeNoteImageSource("file:///tmp/ohmypaper/image.png")).toBeNull()
     expect(safeNoteImageSource("app://assets/private.png")).toBeNull()
     expect(safeNoteImageSource(`assets/../${hash}.png`)).toBeNull()
     expect(safeNoteImageSource(`../assets/../${hash}.png`)).toBeNull()

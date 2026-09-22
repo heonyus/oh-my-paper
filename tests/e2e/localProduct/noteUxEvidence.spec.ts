@@ -81,7 +81,7 @@ test("document-first note editing keeps identity, save state, and populated visu
     await expect
       .poll(async () => {
         const matches = await page.evaluate(async () =>
-          window.scourgify.knowledge.findNodes({ search: "한국어 연구 노트" }),
+          window.ohmypaper.knowledge.findNodes({ search: "한국어 연구 노트" }),
         )
         return matches.find((node) => node.title === "한국어 연구 노트")?.body ?? null
       })

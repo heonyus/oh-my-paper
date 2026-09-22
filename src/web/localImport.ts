@@ -71,8 +71,24 @@ export function createLocalImporter() {
     importDocument: pick,
     importDocumentPath: importToken,
     importDocumentPaths: async (tokens: readonly string[]) => {
-      const results: ImportResult[] = []
-      for (const token of tokens) results.push(await importToken(token))
+      const results = new Array<ImportResult>(tokens.length)
+      let nextIndex = 0
+      let failed = false
+      const worker = async (): Promise<void> => {
+        while (!failed && nextIndex < tokens.length) {
+          const index = nextIndex
+          nextIndex += 1
+          const token = tokens[index]
+          if (!token) return
+          try {
+            results[index] = await importToken(token)
+          } catch (error) {
+            failed = true
+            throw error
+          }
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(3, tokens.length) }, worker))
       return results
     },
     getDroppedFilePath: (file: File): string => {

@@ -1265,6 +1265,13 @@ button:focus-visible {
   font-weight: 400;
   text-wrap: pretty;
 }
+.settings-row .settings-key-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--success);
+  font-weight: 500;
+}
 .settings-modal input,
 .settings-modal select {
   flex: 0 1 260px;

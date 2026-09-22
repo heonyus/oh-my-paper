@@ -42,7 +42,7 @@ function snapshot() {
       {
         id: "source-1",
         label: "Paper page 3",
-        locator: "Scourgify source source-1, page 3",
+        locator: "oh-my-paper source source-1, page 3",
         url: null,
         availability: "scourgify_only",
       },
@@ -65,7 +65,7 @@ describe("Markdown and HTML export", () => {
       "다국어-report.md",
       "assets/plot.png",
     ])
-    expect(markdown).toContain("format: scourgify-selected-export")
+    expect(markdown).toContain("format: ohmypaper-selected-export")
     expect(markdown).toContain("![Result plot](assets/plot.png)")
     expect(markdown).toContain("| 조건")
     expect(markdown).toContain("| split | test |")

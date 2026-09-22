@@ -46,7 +46,7 @@ async function legacyFixture(): Promise<{
   readonly collectionId: string
   readonly noteId: KnowledgeNodeId
 }> {
-  const root = await mkdtemp(join(tmpdir(), "scourgify-prepare-library-"))
+  const root = await mkdtemp(join(tmpdir(), "ohmypaper-prepare-library-"))
   roots.push(root)
   const legacyRoot = join(root, "legacy")
   const userDataRoot = join(root, "user-data")

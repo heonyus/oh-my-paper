@@ -5,8 +5,8 @@ export const RENEWAL_TTL_SECONDS = 30 * 24 * 60 * 60
 export const OFFLINE_LEASE_TTL_SECONDS = 7 * 24 * 60 * 60
 export const CHALLENGE_TTL_SECONDS = 10 * 60
 export const ACCESS_AUDIENCE = "scourgify-account-api"
-export const OFFLINE_AUDIENCE = "scourgify-desktop-offline"
-export const OFFLINE_PURPOSE = "scourgify-local-access"
+export const OFFLINE_AUDIENCE = "ohmypaper-desktop-offline"
+export const OFFLINE_PURPOSE = "ohmypaper-local-access"
 
 const TokenSchema = z.string().min(32).max(8_192)
 
@@ -84,5 +84,5 @@ export const ErrorResponseSchema = z
   .strict()
 
 export const HealthResponseSchema = z
-  .object({ ok: z.literal(true), service: z.literal("scourgify-account"), version: z.literal(1) })
+  .object({ ok: z.literal(true), service: z.literal("ohmypaper-account"), version: z.literal(1) })
   .strict()

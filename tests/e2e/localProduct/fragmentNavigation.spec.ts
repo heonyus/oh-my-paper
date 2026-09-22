@@ -10,11 +10,11 @@ test("a note passage links through real IPC and returns from its backlink", asyn
     const page = await qa.application.firstWindow()
     await expect(page.getByRole("region", { name: "PDF 라이브러리" })).toBeVisible()
     const ids = await page.evaluate(async () => {
-      const target = await window.scourgify.knowledge.createNode({
+      const target = await window.ohmypaper.knowledge.createNode({
         kind: "concept",
         title: "검증 방법",
       })
-      const note = await window.scourgify.knowledge.createNode({
+      const note = await window.ohmypaper.knowledge.createNode({
         kind: "note",
         title: "검토 노트",
         body: "Evidence must remain linked to its source.",
@@ -30,7 +30,7 @@ test("a note passage links through real IPC and returns from its backlink", asyn
     await page.getByRole("button", { name: "선택한 구절 연결", exact: true }).click()
     await expect(page.getByText("선택한 구절을 연결했습니다.", { exact: true })).toBeVisible()
     const anchor = await page.evaluate(async (id) => {
-      const relations = await window.scourgify.knowledge.findRelations({ nodeId: id })
+      const relations = await window.ohmypaper.knowledge.findRelations({ nodeId: id })
       const endpoint = relations
         .map((relation) => relation.sourceEndpoint)
         .find((candidate) => candidate?.kind === "note-fragment")

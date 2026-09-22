@@ -25,7 +25,7 @@ export function localEnrichmentRuntimePython(
   configured?: string,
 ): string {
   if (configured) return configured
-  const root = join(home, ".scourgify", "layout-runtime")
+  const root = join(home, ".ohmypaper", "layout-runtime")
   return platform === "win32" ? join(root, "Scripts", "python.exe") : join(root, "bin", "python")
 }
 
@@ -83,7 +83,7 @@ export class LocalEnrichmentAdapter {
       throw error
     }
 
-    const temporaryRoot = await mkdtemp(join(tmpdir(), "scourgify-local-enrichment-"))
+    const temporaryRoot = await mkdtemp(join(tmpdir(), "ohmypaper-local-enrichment-"))
     const inputPath = join(temporaryRoot, "request.json")
     const outputPath = join(temporaryRoot, "result.json")
     try {

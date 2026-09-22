@@ -85,10 +85,10 @@ export async function initializeCollection(
         "notes",
         "papers",
         "assets",
-        ".scourgify/journal",
-        ".scourgify/history",
-        ".scourgify/conflicts",
-        ".scourgify/recovery",
+        ".ohmypaper/journal",
+        ".ohmypaper/history",
+        ".ohmypaper/conflicts",
+        ".ohmypaper/recovery",
       ].map((path) => mkdir(join(root, path), { recursive: true })),
     )
     const manifest = collectionManifestSchema.parse({

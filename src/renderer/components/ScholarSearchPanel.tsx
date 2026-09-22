@@ -128,7 +128,7 @@ export function ScholarSearchPanel({
       }
       const data = scholarlySearchResultSchema.parse(await response.json())
       const ranked = rankScholarlyRecommendations(document, citations, data.results)
-      const decideAi = window.scourgify?.decideAi
+      const decideAi = window.ohmypaper?.decideAi
       if (decideAi && ranked.length > 1) {
         try {
           const decision = await decideAi(
@@ -194,7 +194,7 @@ export function ScholarSearchPanel({
 
   async function save(item: ScholarlySearchItem): Promise<void> {
     const key = itemKey(item)
-    const discovery = window.scourgify?.discovery
+    const discovery = window.ohmypaper?.discovery
     if (!discovery) {
       setSaveStates((current) => ({
         ...current,

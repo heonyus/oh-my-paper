@@ -25,7 +25,7 @@ export function createHandler(dependencies: HandlerDependencies): AccountHandler
     try {
       const url = new URL(request.url)
       if (url.pathname === "/health" && request.method === "GET") {
-        return json({ ok: true, service: "scourgify-account", version: 1 })
+        return json({ ok: true, service: "ohmypaper-account", version: 1 })
       }
 
       const nowSeconds = dependencies.now()

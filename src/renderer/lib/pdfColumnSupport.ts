@@ -1,6 +1,6 @@
 import type { PDFDocumentLoadingTask, PDFDocumentProxy } from "pdfjs-dist/legacy/build/pdf.mjs"
 import type { PDFViewer } from "pdfjs-dist/legacy/web/pdf_viewer.mjs"
-import type { ScourgifyApi } from "../../shared/ipc"
+import type { OhMyPaperApi } from "../../shared/ipc"
 
 const PDF_URL_PATTERN = /https:\/\/[^\s<>"')]+/iu
 
@@ -39,7 +39,7 @@ export function urlFromPdfClickTarget(_target: EventTarget | null): string | nul
 
 export function bindPdfExternalLinks(
   container: HTMLElement,
-  openExternal: ScourgifyApi["openExternal"],
+  openExternal: OhMyPaperApi["openExternal"],
 ): () => void {
   const handleClick = (event: MouseEvent): void => {
     const url = urlFromPdfClickTarget(event.target)

@@ -22,11 +22,11 @@ import {
   zoteroCommitResultSchema,
   zoteroImportPreviewSchema,
 } from "../shared/interchangeIpc"
-import type { ScourgifyApi } from "../shared/ipc"
+import type { OhMyPaperApi } from "../shared/ipc"
 import { ipcChannels } from "../shared/ipcChannels"
 import { knowledgeNodeSchema, placementRecordSchema } from "../shared/knowledgeSchemas"
 
-export function createPreloadInterchange(): ScourgifyApi["interchange"] {
+export function createPreloadInterchange(): OhMyPaperApi["interchange"] {
   return {
     exportMarkdown: async (nodeId) =>
       z

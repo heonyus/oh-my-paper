@@ -14,13 +14,13 @@ test("simulated-auth six-screen research workflow persists shared evidence and p
   isMobile,
 }) => {
   expect(isMobile).toBe(false)
-  const temporaryRoot = await mkdtemp(join(tmpdir(), "scourgify-six-screen-"))
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "ohmypaper-six-screen-"))
   const userDataRoot = join(temporaryRoot, "user-data")
   const evidenceRoot = join(
     process.cwd(),
     ".omo",
     "evidence",
-    "scourgify-local-product",
+    "ohmypaper-local-product",
     "2026-09-08-paper-graph",
   )
   await mkdir(evidenceRoot, { recursive: true })
@@ -191,9 +191,9 @@ test("simulated-auth six-screen research workflow persists shared evidence and p
 
     const beforeReopen = await page.evaluate(
       async ({ conceptId, noteId, boardId }) => ({
-        concept: await window.scourgify.knowledge.getNode(conceptId),
-        note: await window.scourgify.knowledge.getNode(noteId),
-        placements: await window.scourgify.knowledge.findPlacementsForBoard(boardId),
+        concept: await window.ohmypaper.knowledge.getNode(conceptId),
+        note: await window.ohmypaper.knowledge.getNode(noteId),
+        placements: await window.ohmypaper.knowledge.findPlacementsForBoard(boardId),
       }),
       { conceptId: concept.id, noteId: note.id, boardId: board.id },
     )
@@ -210,9 +210,9 @@ test("simulated-auth six-screen research workflow persists shared evidence and p
     await expect(reopenedPage.getByText("2개 문서", { exact: true })).toBeVisible()
     const afterReopen = await reopenedPage.evaluate(
       async ({ conceptId, noteId, boardId }) => ({
-        concept: await window.scourgify.knowledge.getNode(conceptId),
-        note: await window.scourgify.knowledge.getNode(noteId),
-        placements: await window.scourgify.knowledge.findPlacementsForBoard(boardId),
+        concept: await window.ohmypaper.knowledge.getNode(conceptId),
+        note: await window.ohmypaper.knowledge.getNode(noteId),
+        placements: await window.ohmypaper.knowledge.findPlacementsForBoard(boardId),
       }),
       { conceptId: concept.id, noteId: note.id, boardId: board.id },
     )

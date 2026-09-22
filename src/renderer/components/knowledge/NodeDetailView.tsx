@@ -71,7 +71,7 @@ export function NodeDetailView({
   const { editing: isEditing, saving, error, setError } = draft
   const [selection, setSelection] = useState({ from: 0, to: 0 })
   const [historyOpen, setHistoryOpen] = useState(false)
-  const collection = window.scourgify?.collection
+  const collection = window.ohmypaper?.collection
   const autoEditedNodeId = useRef<KnowledgeNodeId | null>(null)
   useEffect(() => {
     if (node?.kind !== "note" || autoEditedNodeId.current === node.id) return
@@ -183,7 +183,7 @@ export function NodeDetailView({
               : undefined
           }
           localInferenceApi={
-            currentNode.kind === "note" ? (window.scourgify.localInference ?? null) : null
+            currentNode.kind === "note" ? (window.ohmypaper.localInference ?? null) : null
           }
           onSave={() => void draft.save(currentNode.kind === "note")}
           onSaveShortcut={() => void draft.save(true)}

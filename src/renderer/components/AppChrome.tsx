@@ -10,7 +10,7 @@ import {
   ZoomOut,
 } from "lucide-react"
 import type { JSX } from "react"
-import leafMarkUrl from "../../../assets/branding/scourgify-leaf-mark.png"
+import leafMarkUrl from "../../../assets/branding/ohmypaper-leaf-mark.png"
 import {
   toggleAutomaticPageTranslation,
   usePageTranslationSession,

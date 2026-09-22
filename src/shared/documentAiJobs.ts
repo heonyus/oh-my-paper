@@ -2,9 +2,9 @@ import { z } from "zod"
 import { type DocumentId, documentIdSchema } from "./schemas"
 
 export const aiPolicy = {
-  concurrentJobs: 3,
+  concurrentJobs: 9,
   concurrentVisionJobs: 1,
-  concurrentTextJobs: 2,
+  concurrentTextJobs: 8,
   structureJobs: 20,
   structureBudgetUsd: 0.5,
   sessionRequests: 64,

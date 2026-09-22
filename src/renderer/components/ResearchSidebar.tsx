@@ -20,19 +20,12 @@ import { researchSidebarLayout } from "../../shared/uiLayout"
 import { togglePageTranslation } from "../lib/pageTranslationToggle"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
 import { saveCitationAssessment, saveSidebarInsight } from "../lib/sidebarCards"
-import type {
-  AiRequestRunner,
-  BoardCard,
-  BoardTool,
-  CardId,
-  DocumentRecord,
-  Viewport,
-} from "../types"
+import type { AiRequestRunner, BoardCard, BoardTool, CardId, DocumentRecord } from "../types"
 import { AiOverviewPanel } from "./AiOverviewPanel"
 import { AutoHighlightControls } from "./AutoHighlightControls"
 import { BoardIndexPanel } from "./BoardIndexPanel"
 import { CitationPanel } from "./CitationPanel"
-import { PageTranslationPortal, visibleResearchSidebarWidth } from "./PageTranslationPortal"
+import { PageTranslationPortal } from "./PageTranslationPortal"
 import { ScholarSearchPanel } from "./ScholarSearchPanel"
 import { SidebarResizeHandle } from "./SidebarResizeHandle"
 
@@ -68,8 +61,6 @@ export function ResearchSidebar({
   onInsightChange,
   tool,
   onToolChange,
-  viewport,
-  onViewportChange,
 }: {
   readonly document: DocumentRecord | null
   readonly currentPage: number
@@ -88,8 +79,6 @@ export function ResearchSidebar({
   readonly onInsightChange?: ((kind: DocumentInsightKind, value: string) => void) | undefined
   readonly tool: BoardTool
   readonly onToolChange: (tool: BoardTool) => void
-  readonly viewport?: Viewport | undefined
-  readonly onViewportChange?: ((viewport: Viewport) => void) | undefined
 }): JSX.Element {
   const [mode, setMode] = useState<ResearchMode>("ai")
   const [flyout, setFlyout] = useState<"hover" | "open" | "pinned">("hover")
@@ -147,13 +136,6 @@ export function ResearchSidebar({
       citations={citations}
       provider={provider}
       onAiRequest={onAiRequest}
-      viewport={viewport}
-      onViewportChange={onViewportChange}
-      sidebarReservedWidth={
-        expanded
-          ? visibleResearchSidebarWidth(flyout, mode, width)
-          : researchSidebarLayout.railWidth
-      }
     />
   ) : null
   if (!expanded) {

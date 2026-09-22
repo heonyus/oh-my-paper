@@ -34,7 +34,7 @@ function ast() {
 
 describe("DocumentAstStore", () => {
   it("writes and reads a content-addressed sidecar without workspace embedding", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-ast-store-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-ast-store-"))
     roots.push(root)
     const store = new DocumentAstStore(root)
 
@@ -47,7 +47,7 @@ describe("DocumentAstStore", () => {
   })
 
   it("ignores stale, malformed, and interrupted artifacts", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-ast-invalid-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-ast-invalid-"))
     roots.push(root)
     const store = new DocumentAstStore(root)
     const path = astSidecarPath(root, sourceHash, fingerprint)
@@ -60,7 +60,7 @@ describe("DocumentAstStore", () => {
   })
 
   it("keeps the previous sidecar when rename is interrupted", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-ast-interrupted-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-ast-interrupted-"))
     roots.push(root)
     const stable = new DocumentAstStore(root)
     await stable.write(ast(), fingerprint)

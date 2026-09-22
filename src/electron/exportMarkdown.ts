@@ -19,7 +19,7 @@ export function exportFilenameBase(title: string): string {
     .replace(/[^\p{L}\p{N}._-]+/gu, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 120)
-  return base || "scourgify-export"
+  return base || "ohmypaper-export"
 }
 
 function appendReferences(snapshot: ExportSnapshot, body: string): string {
@@ -44,7 +44,7 @@ function appendReferences(snapshot: ExportSnapshot, body: string): string {
 
 export function serializeExportMarkdown(snapshot: ExportSnapshot): string {
   const frontmatter = stringify({
-    format: "scourgify-selected-export",
+    format: "ohmypaper-selected-export",
     version: 1,
     title: snapshot.title,
     revision: snapshot.revision,

@@ -1,5 +1,9 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { app, BrowserWindow, clipboard, ipcMain, shell } from "electron"
 import { collectionChannels } from "../shared/collectionIpc"
+import { documentOcrKeySchema, MISTRAL_OCR_MODEL } from "../shared/documentOcr"
 import {
   citationLookupRequestSchema,
   citationLookupResultSchema,
@@ -8,6 +12,7 @@ import {
   documentBytesResultSchema,
   documentImportPathRequestSchema,
   documentImportPathsRequestSchema,
+  documentImportUrlRequestSchema,
   documentLayoutRequestSchema,
   documentLayoutResultSchema,
   documentPageParseProgressSchema,
@@ -18,6 +23,7 @@ import {
   workspaceReadResultSchema,
   workspaceSaveRequestSchema,
 } from "../shared/ipc"
+import { downloadRemotePdf } from "../shared/remotePdf"
 import { AiModeStore } from "./aiModeStore"
 import { createApplicationBackup } from "./applicationBackup"
 import { createApplicationExport } from "./applicationExport"
@@ -34,9 +40,11 @@ import { DocumentAnalysisService } from "./documentAnalysisService"
 import { DocumentAstService } from "./documentAstService"
 import { chooseAndImport, importFromPath, importPaths } from "./documentImportIpc"
 import { DocumentLayoutService } from "./documentLayoutService"
+import { DocumentOcrCredentialService } from "./documentOcrCredentialService"
 import { createDocumentPageParser } from "./documentPageParser"
 import { readDocumentBytes } from "./documentService"
 import { InterchangeService } from "./interchangeService"
+import { MistralPageParserService } from "./mistralPageParserService"
 import { PaddlePageParserService } from "./paddlePageParserService"
 import { PageTranslationCacheService } from "./pageTranslationCacheService"
 import { ProviderService } from "./providerService"
@@ -76,6 +84,7 @@ export function registerApplicationIpc(
     ? registerCollectionAssetProtocol(collection.files.root, authorize)
     : null
   const provider = new ProviderService(serviceRoot)
+  const ocrCredentials = new DocumentOcrCredentialService(serviceRoot, process.env)
   const codexAdapter = new CodexSubscriptionAdapter({ appRoot: serviceRoot })
   const aiModes = new AiModeStore(serviceRoot)
   const ast = new DocumentAstService(store)
@@ -114,7 +123,7 @@ export function registerApplicationIpc(
   const disposeInterchangeIpc = registerInterchangeIpc(interchangeService)
   const providerIpc = registerProviderIpc(provider, codexAdapter, aiModes)
   const citations = new CitationLookupCache(store.root)
-  const { SCOURGIFY_LAYOUT_PYTHON: layoutPython } = process.env
+  const { OH_MY_PAPER_LAYOUT_PYTHON: layoutPython } = process.env
   const layout = new DocumentLayoutService({
     appPath: app.getAppPath(),
     resourcesPath: process.resourcesPath,
@@ -122,8 +131,8 @@ export function registerApplicationIpc(
     python: layoutPython,
   })
   const {
-    SCOURGIFY_PADDLE_VL_PYTHON: paddlePython,
-    SCOURGIFY_PADDLE_VL_READY: paddleReadinessMarker,
+    OH_MY_PAPER_PADDLE_VL_PYTHON: paddlePython,
+    OH_MY_PAPER_PADDLE_VL_READY: paddleReadinessMarker,
   } = process.env
   const paddlePageParser = new PaddlePageParserService({
     appPath: app.getAppPath(),
@@ -136,7 +145,10 @@ export function registerApplicationIpc(
     store,
     paddlePageParser,
   })
-  const analysis = new DocumentAnalysisService(store, pageParser)
+  const mistralPageParser = new MistralPageParserService(ocrCredentials)
+  const analysis = new DocumentAnalysisService(store, pageParser, {
+    fallbackParser: mistralPageParser,
+  })
   const disposeAnalysisIpc = registerDocumentAnalysisIpc(analysis)
   const disposeTranslationCacheIpc = registerPageTranslationCacheIpc(
     new PageTranslationCacheService(store),
@@ -159,6 +171,18 @@ export function registerApplicationIpc(
   ipcMain.handle(ipcChannels.documentImportPaths, async (event, value: unknown) => {
     const { paths } = documentImportPathsRequestSchema.parse(value)
     return importPaths(event, paths, analysis, store)
+  })
+  ipcMain.handle(ipcChannels.documentImportUrl, async (event, value: unknown) => {
+    const { url } = documentImportUrlRequestSchema.parse(value)
+    const { bytes, fileName } = await downloadRemotePdf(url)
+    const temporaryDir = await mkdtemp(join(tmpdir(), "ohmypaper-import-"))
+    const temporaryPath = join(temporaryDir, fileName)
+    await writeFile(temporaryPath, bytes, { mode: 0o600 })
+    try {
+      return await importFromPath(event, temporaryPath, analysis, store)
+    } finally {
+      await rm(temporaryDir, { recursive: true, force: true }).catch(() => undefined)
+    }
   })
   ipcMain.handle(ipcChannels.citationLookup, async (_event, value: unknown) => {
     const request = citationLookupRequestSchema.parse(value)
@@ -199,7 +223,17 @@ export function registerApplicationIpc(
       }),
     )
   })
-  ipcMain.handle(ipcChannels.documentOcrStatus, () => paddlePageParser.status())
+  ipcMain.handle(ipcChannels.documentOcrStatus, async () => ({
+    ...(await paddlePageParser.status()),
+    fallback: {
+      configured: (await ocrCredentials.apiKey()) !== null,
+      provider: "mistral",
+      model: MISTRAL_OCR_MODEL,
+    },
+  }))
+  ipcMain.handle(ipcChannels.documentOcrSaveKey, async (_event, value: unknown) => {
+    await ocrCredentials.saveKey(documentOcrKeySchema.parse(value))
+  })
   return async () => {
     disposeLocalInference()
     localInference.dispose()

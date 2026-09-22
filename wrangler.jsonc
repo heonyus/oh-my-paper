@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "scourgify-web",
+  "name": "ohmypaper-web",
   "main": "src/worker/index.ts",
   "compatibility_date": "2026-09-04",
   "compatibility_flags": ["nodejs_compat"],
@@ -25,14 +25,14 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "scourgify-web",
+      "database_name": "ohmypaper-web",
       "database_id": "deca883b-151d-4618-8131-608e5c6ea89b"
     }
   ],
   "r2_buckets": [
     {
       "binding": "DOCUMENTS",
-      "bucket_name": "scourgify-documents"
+      "bucket_name": "ohmypaper-documents"
     }
   ],
   "observability": {

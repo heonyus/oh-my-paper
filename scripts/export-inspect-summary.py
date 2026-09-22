@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Inspect AI Eval Log Header Summary Exporter for Scourgify.
+Inspect AI Eval Log Header Summary Exporter for oh-my-paper.
 
 Reads .eval or log files using inspect_ai.log.read_eval_log(..., header_only=True)
-and outputs bounded aggregate JSON suitable for Scourgify experiment import.
+and outputs bounded aggregate JSON suitable for oh-my-paper experiment import.
 Does not extract arbitrary sample/patient prompts, responses, or execution data.
 """
 

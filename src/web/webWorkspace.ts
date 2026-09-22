@@ -90,7 +90,7 @@ export class WebWorkspaceBridge {
   readonly #droppedFiles = new Map<string, File>()
 
   constructor(userId: string) {
-    this.#storageKey = `scourgify-web-workspace:${userId}`
+    this.#storageKey = `ohmypaper-web-workspace:${userId}`
   }
 
   #remember(documents: readonly WebDocument[]): void {
@@ -205,7 +205,15 @@ export class WebWorkspaceBridge {
           }
           if (document.status === "queued") return { ...base, state: "queued" }
           if (document.status === "analyzing")
-            return { ...base, state: "running", currentPage: 1, stage: "document-analyzing" }
+            return {
+              ...base,
+              state: "running",
+              currentPage: 1,
+              stage: "document-analyzing",
+              engine: "local",
+              attempt: 1,
+              maxAttempts: 2,
+            }
           return { ...base, state: "failed", message: "문서 구조 분석에 실패했습니다." }
         }),
     )

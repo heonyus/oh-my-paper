@@ -1,4 +1,4 @@
-# Scourgify account service contract
+# oh-my-paper account service contract
 
 This is the account-only HTTP contract implemented by `apps/account-worker`. It has no document,
 collection, provider-auth, AI, payment, or entitlement routes. The current Wrangler configuration is
@@ -27,7 +27,7 @@ Handled error codes are `invalid_request` (400), `invalid_identity` (401), `inva
 Public liveness check. It does not touch D1 or require signing configuration.
 
 ```json
-{ "ok": true, "service": "scourgify-account", "version": 1 }
+{ "ok": true, "service": "ohmypaper-account", "version": 1 }
 ```
 
 ### `POST /v1/auth/challenge`
@@ -162,8 +162,8 @@ Offline lease JWT:
 
 ```json
 {
-  "aud": "scourgify-desktop-offline",
-  "purpose": "scourgify-local-access",
+  "aud": "ohmypaper-desktop-offline",
+  "purpose": "ohmypaper-local-access",
   "verified_at": "iat",
   "renewal_expires_at": "fixed interactive-login renewal expiry",
   "exp": "min(iat + 604800, renewal_expires_at)"
@@ -213,8 +213,8 @@ type AccountClientConfig = {
 
 `parseAccountClientConfig(value)` accepts only a strict object. `serviceOrigin` and `issuer` must be
 exact HTTPS origins with no path, query, fragment, credentials, or trailing slash.
-`createApplicationAccount` reads only `SCOURGIFY_ACCOUNT_SERVICE_ORIGIN`,
-`SCOURGIFY_ACCOUNT_ISSUER`, and `SCOURGIFY_GOOGLE_CLIENT_ID` from the main-process environment. These
+`createApplicationAccount` reads only `OH_MY_PAPER_ACCOUNT_SERVICE_ORIGIN`,
+`OH_MY_PAPER_ACCOUNT_ISSUER`, and `OH_MY_PAPER_GOOGLE_CLIENT_ID` from the main-process environment. These
 values are non-secret explicit deployment bindings; they are never read from renderer input and
 there is no separate test-auth or bypass flag. This repository does not yet contain authorized
 production values. If any value is missing or malformed, the helper returns
@@ -285,9 +285,9 @@ Provider keys, OCR credentials, Codex app-owned state, and AI mode use only the 
 `resolveAccountServiceRootForAccount(userDataRoot, accountId)`. By default this is
 `userDataRoot/account/services/<accountId>`. Signed-out, credentials-needed, and unavailable startup
 uses `resolveUnboundServiceRoot(userDataRoot)`, which returns
-`userDataRoot/account/services/unbound`; it must never fall back to `userDataRoot/scourgify`.
+`userDataRoot/account/services/unbound`; it must never fall back to `userDataRoot/ohmypaper`.
 
-Legacy `userDataRoot/scourgify` service credentials are used only after an explicit user-approved
+Legacy `userDataRoot/ohmypaper` service credentials are used only after an explicit user-approved
 call to `bindLegacyAccountServiceRoot(userDataRoot, accountId)`. That app-private owner marker is
 write-once: rebinding it to another account fails, and merely finding the legacy directory never
 claims or copies it. No consent UI or automatic legacy binding is implemented here.
@@ -475,7 +475,7 @@ uncommitted `apps/account-worker/.dev.vars` containing a synthetic ES256 private
 `APP_JWT_SIGNING_JWK`, and use the same persistence directory for both commands:
 
 ```sh
-ACCOUNT_WORKER_STATE="$(mktemp -d /tmp/scourgify-account.XXXXXX)"
+ACCOUNT_WORKER_STATE="$(mktemp -d /tmp/ohmypaper-account.XXXXXX)"
 npm --prefix apps/account-worker run db:migrate:local -- --persist-to "$ACCOUNT_WORKER_STATE"
 npm --prefix apps/account-worker run dev:local -- --persist-to "$ACCOUNT_WORKER_STATE" --port 8789
 curl --fail http://127.0.0.1:8789/health

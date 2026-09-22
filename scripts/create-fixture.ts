@@ -12,12 +12,12 @@ export type { FixtureDocumentId } from "./fixture-types"
 export const DEFAULT_FIXTURE_PATH = path.resolve(process.cwd(), "tests/fixtures/sample-paper.pdf")
 
 export const DEFAULT_FIXTURE_METADATA: FixtureMetadata = {
-  title: "Scourgify: Spatial Reading and Exploration of Scientific Papers",
-  author: "Scourgify Research and Engineering",
+  title: "oh-my-paper: Spatial Reading and Exploration of Scientific Papers",
+  author: "oh-my-paper Research and Engineering",
   subject: "Deterministic Benchmark Fixture for Spatial Document Interaction",
-  keywords: ["scourgify", "spatial-reading", "pdf-fixture", "deterministic", "benchmarks"],
+  keywords: ["ohmypaper", "spatial-reading", "pdf-fixture", "deterministic", "benchmarks"],
   producer: "pdf-lib (https://github.com/Hopding/pdf-lib)",
-  creator: "Scourgify Fixture Generator",
+  creator: "oh-my-paper Fixture Generator",
   creationDate: new Date("2026-08-26T00:00:00.000Z"),
   modificationDate: new Date("2026-08-26T00:00:00.000Z"),
 }

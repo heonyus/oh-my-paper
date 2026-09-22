@@ -31,7 +31,7 @@ export async function seedSixScreenWorkspace(page: Page): Promise<SeededSixScree
   const documents = await page.evaluate(async (paths) => {
     const imported = []
     for (const path of paths) {
-      const result = await window.scourgify.importDocumentPath(path)
+      const result = await window.ohmypaper.importDocumentPath(path)
       if (!result) throw new Error(`Synthetic PDF import was cancelled: ${path}`)
       imported.push(result.document)
     }
@@ -44,10 +44,10 @@ export async function seedSixScreenWorkspace(page: Page): Promise<SeededSixScree
   await expect(page.getByText("2개 문서", { exact: true })).toBeVisible()
 
   await page.getByRole("button", { name: `${firstDocument.title} 열기`, exact: true }).click()
-  const firstAnchor = await measureSourceAnchor(page, "Scourgify")
+  const firstAnchor = await measureSourceAnchor(page, "oh-my-paper")
   const concept = await page.evaluate(
     async ({ documentId, hash, anchor, title }) =>
-      window.scourgify.knowledge.linkEvidence({
+      window.ohmypaper.knowledge.linkEvidence({
         documentId,
         hash,
         anchor,
@@ -66,7 +66,7 @@ export async function seedSixScreenWorkspace(page: Page): Promise<SeededSixScree
   const secondAnchor = await measureSourceAnchor(page, "Synthetic")
   await page.evaluate(
     async ({ documentId, hash, anchor, nodeId }) =>
-      window.scourgify.knowledge.linkEvidence({
+      window.ohmypaper.knowledge.linkEvidence({
         documentId,
         hash,
         anchor,
@@ -89,13 +89,13 @@ export async function seedSixScreenWorkspace(page: Page): Promise<SeededSixScree
   await page.getByRole("button", { name: "저장", exact: true }).click()
   await expect(page.getByText("저장됨 · 자동 저장 안 함", { exact: true })).toBeVisible()
   const note = await page.evaluate(async (title) => {
-    const nodes = await window.scourgify.knowledge.findNodes({ search: title })
+    const nodes = await window.ohmypaper.knowledge.findNodes({ search: title })
     return nodes.find((node) => node.kind === "note" && node.title === title) ?? null
   }, sixScreenNoteTitle)
   if (!note) throw new Error("Saved synthetic note was not found")
   await page.evaluate(
     async ({ sourceId, targetId }) =>
-      window.scourgify.knowledge.createRelation({
+      window.ohmypaper.knowledge.createRelation({
         sourceId,
         targetId,
         predicate: "interprets",
@@ -105,7 +105,7 @@ export async function seedSixScreenWorkspace(page: Page): Promise<SeededSixScree
     { sourceId: note.id, targetId: concept.id },
   )
   const paperIds = await page.evaluate(async () => {
-    const nodes = await window.scourgify.knowledge.findNodes()
+    const nodes = await window.ohmypaper.knowledge.findNodes()
     return nodes
       .filter((node) => node.kind === "paper")
       .slice(0, 2)
@@ -113,13 +113,13 @@ export async function seedSixScreenWorkspace(page: Page): Promise<SeededSixScree
   })
   if (paperIds.length !== 2) throw new Error("Two imported paper nodes are required")
   const board = await page.evaluate(() =>
-    window.scourgify.knowledge.createBoard("공유 개념 프로젝트"),
+    window.ohmypaper.knowledge.createBoard("공유 개념 프로젝트"),
   )
   const placements = await page.evaluate(
     async ({ boardId, nodeIds }) =>
       Promise.all(
         nodeIds.map((nodeId, index) =>
-          window.scourgify.knowledge.createPlacement({
+          window.ohmypaper.knowledge.createPlacement({
             boardId,
             nodeId,
             x: 80 + index * 320,

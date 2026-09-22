@@ -1,4 +1,5 @@
 import type { AiAction, AiRequest } from "../shared/ipc"
+import { isHyMtModel } from "../shared/providerModels"
 
 const baseInstruction = [
   "You are oh-my-paper, a source-grounded academic paper assistant.",
@@ -27,11 +28,11 @@ const actionInstruction: Readonly<Record<AiAction, string>> = {
   paper_summary:
     "Write a compact Korean research summary in at most 5 Markdown bullets and 500 Korean characters total. Cover problem, method, evaluation, main result, and one limitation, in that order when evidence is available. Start directly with the source-supported substance; never answer with title or publication metadata and never add a reader recommendation.",
   translation:
-    'Translate only the supplied text using its LOCAL BEFORE/AFTER context. Use exactly one matching mode. ONE ENGLISH WORD: return JSON only as {"meanings":["...","...","..."]}, with exactly three distinct Korean dictionary-form meanings ordered by contextual fit and the primary meaning first; do not echo the selected word, add labels, examples, commentary, or Markdown. SHORT PHRASE OF ABOUT 2-5 WORDS: return only one natural Korean translation line. SENTENCE, PARAGRAPH, OR PAGE: return only the faithful Korean translation, preserving paragraph breaks and any existing Markdown headings, lists, emphasis, display-math blocks, citations, and section order. Never summarize, explain, mention context, or invent a heading. These translation formats override the general Markdown rule. Preserve equations, citations, abbreviations, and technical terms.',
+    'Translate only the supplied text using its LOCAL BEFORE/AFTER context. Use exactly one matching mode. SHORT ENGLISH SELECTION OF 1-5 WORDS: return JSON only as {"meanings":["...","...","..."]}, with one to three distinct Korean meanings ordered by fit to the LOCAL BEFORE/AFTER context and the best contextual meaning first; use dictionary forms for a single word and natural phrase translations for a multi-word selection; do not echo the selected text, add labels, examples, commentary, or Markdown. SENTENCE, PARAGRAPH, OR PAGE: return only the faithful Korean translation, preserving paragraph breaks and any existing Markdown headings, lists, emphasis, display-math blocks, citations, and section order. Never summarize, explain, mention context, or invent a heading. These translation formats override the general Markdown rule. Preserve equations, citations, abbreviations, and technical terms.',
   page_structure:
     "Use the supplied page image as primary evidence and the JSON list of PP-DocLayout-informed local blocks as source provenance. Return JSON only, matching the required schema. Group fragments that belong to one semantic title, metadata line, paragraph, caption, table, equation, or footnote. Preserve every supplied source block ID exactly once, never invent an ID, and assign a unique zero-based reading order. For each resolved block, write a complete faithful Korean Markdown translation in `markdown`, reading broken ligatures, hyphenation, superscripts, and column order from the page image rather than copying corrupted PDF text. Preserve equations, names, citations, URLs, and meaningful metadata.",
   page_translation:
-    "Translate every supplied JSON block faithfully into Korean and return JSON only, matching the required schema. Emit exactly one translation for every input ID in the same order. Never summarize, merge, split, reorder, or omit headings, captions, affiliations, citations, or short fragments. Preserve Markdown, LaTeX math expressions ($...$, $$...$$), equations, symbols, abbreviations, names, and technical terms without altering math notation. Citation Markdown labels and HTTPS destinations must be copied exactly without translation, removal, or conversion back to numeric markers.",
+    "Translate every supplied JSON block faithfully into Korean and return JSON only, matching the required schema. Emit exactly one translation for every input ID in the same order. Never summarize, merge, split, reorder, or omit headings, captions, affiliations, citations, or short fragments. Write academic and technical terms as `English term(한국어 번역)`, keeping the original English term and appending the Korean translation in parentheses. Preserve Markdown, LaTeX math expressions ($...$, $$...$$), equations, symbols, abbreviations, names, and technical terms without altering math notation. Citation Markdown labels and HTTPS destinations must be copied exactly without translation, removal, or conversion back to numeric markers.",
   explanation:
     "Start with `#` and a concise card title. Act as a research collaborator teaching this passage to a reader of the paper. Write a substantive Korean explanation with Markdown sections: `한눈에` (identify what this passage is and its main claim), `무엇을 말하는가` (unpack terminology, entities, method, data, or mechanism), `근거와 논리` (trace the claim to exact supplied evidence), `논문 전체에서의 역할` (connect it to the paper question and neighboring section), and `연구자가 확인할 점` (assumptions, limitations, or a concrete follow-up question). Prefer 350-700 Korean characters, but use more when equations or methods require it. Never pad with generic praise or discuss extraction quality.",
   infographic:
@@ -63,8 +64,18 @@ const actionInstruction: Readonly<Record<AiAction, string>> = {
     'Select up to 6 key passages from SOURCE EVIDENCE. SOURCE EVIDENCE contains candidate objects with an `id`, page, and verbatim quote. Return JSON only as {"selections":[{"candidateId":"an-existing-id","reason":"..."}]}. Select only IDs copied exactly from the candidates; never return a new quote, paraphrase, coordinate, or page. Each reason is one Korean sentence under 60 characters naming why the selected passage matters. Order selections by importance and return fewer than 6 when the candidates do not support more.',
 }
 
+const hyMtPageTranslationInstruction =
+  "Translate every supplied JSON block faithfully into Korean. Return one or more lines per block using exactly `@@BLOCK_ID@@ translation`, where BLOCK_ID is the supplied block ID. Emit every input ID exactly once and in the same order. Do not return JSON, code fences, labels, explanations, or commentary. Write academic and technical terms as `English term(한국어 번역)`, keeping the original English term and appending the Korean translation in parentheses. Preserve Markdown, LaTeX math expressions ($...$, $$...$$), equations, symbols, abbreviations, names, technical terms, citation Markdown labels, and HTTPS destinations exactly. A block may continue on later lines until the next `@@BLOCK_ID@@` marker."
+
 export function systemPromptFor(action: AiAction): string {
   return `${baseInstruction} ${actionInstruction[action]}`
+}
+
+export function systemPromptForRequest(action: AiAction, model?: string): string {
+  if (action === "page_translation" && model !== undefined && isHyMtModel(model)) {
+    return `${baseInstruction} ${hyMtPageTranslationInstruction}`
+  }
+  return systemPromptFor(action)
 }
 
 export function userInputFor(request: AiRequest): string {
@@ -83,4 +94,44 @@ export function userInputFor(request: AiRequest): string {
   ]
     .filter(Boolean)
     .join("\n\n")
+}
+
+type HyTranslationInput = { readonly blocks?: unknown }
+type HyTranslationBlock = { readonly id?: unknown; readonly source?: unknown }
+
+function isHyTranslationInput(value: unknown): value is HyTranslationInput {
+  return typeof value === "object" && value !== null
+}
+
+function isHyTranslationBlock(value: unknown): value is HyTranslationBlock {
+  return typeof value === "object" && value !== null
+}
+
+function hyMtTranslationInput(request: AiRequest): string | null {
+  try {
+    const parsed: unknown = JSON.parse(request.quote)
+    if (!isHyTranslationInput(parsed) || !Array.isArray(parsed.blocks)) return null
+    const blocks: string[] = []
+    for (const block of parsed.blocks) {
+      if (
+        !isHyTranslationBlock(block) ||
+        typeof block.id !== "string" ||
+        typeof block.source !== "string"
+      ) {
+        return null
+      }
+      blocks.push(`@@${block.id}@@\n${block.source}`)
+    }
+    return blocks.length > 0 ? blocks.join("\n\n") : null
+  } catch {
+    return null
+  }
+}
+
+export function userInputForRequest(request: AiRequest, model?: string): string {
+  if (request.action === "page_translation" && model !== undefined && isHyMtModel(model)) {
+    const quote = hyMtTranslationInput(request)
+    if (quote) return userInputFor({ ...request, quote })
+  }
+  return userInputFor(request)
 }

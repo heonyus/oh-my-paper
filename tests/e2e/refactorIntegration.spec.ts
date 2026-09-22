@@ -5,11 +5,11 @@ import { expect, test } from "@playwright/test"
 import { launchSimulatedAuthenticatedApplication } from "../support/electron/launchSimulatedAuthenticatedApplication"
 
 test("fresh profile exposes the knowledge destinations and separate AI modes", async () => {
-  const temporaryRoot = await mkdtemp(join(tmpdir(), "scourgify-refactor-integration-"))
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "ohmypaper-refactor-integration-"))
   const qa = await launchSimulatedAuthenticatedApplication({
     userDataRoot: join(temporaryRoot, "user-data"),
     environment: {
-      SCOURGIFY_PADDLE_VL_READY: join(temporaryRoot, "missing-paddle-runtime"),
+      OH_MY_PAPER_PADDLE_VL_READY: join(temporaryRoot, "missing-paddle-runtime"),
     },
   })
   try {
@@ -35,7 +35,7 @@ test("fresh profile exposes the knowledge destinations and separate AI modes", a
     await expect(page.locator("#provider-key")).not.toBeVisible()
     await page.getByRole("button", { name: "암호화하여 저장" }).click()
     await expect
-      .poll(async () => page.evaluate(() => window.scourgify.providerStatus()))
+      .poll(async () => page.evaluate(() => window.ohmypaper.providerStatus()))
       .toMatchObject({ mode: "api", provider: "opencodex" })
   } finally {
     await qa.close()

@@ -6,9 +6,9 @@ import { expect, test } from "@playwright/test"
 import { launchSimulatedAuthenticatedApplication } from "../support/electron/launchSimulatedAuthenticatedApplication"
 
 test("saving a translation annotation leaves only its source highlight and sidebar entry", async () => {
-  const root = await mkdtemp(join(tmpdir(), "scourgify-translation-annotation-"))
+  const root = await mkdtemp(join(tmpdir(), "ohmypaper-translation-annotation-"))
   const userData = join(root, "user-data")
-  const store = join(userData, "scourgify")
+  const store = join(userData, "ohmypaper")
   const documents = join(store, "documents")
   const fixture = join(process.cwd(), "tests", "fixtures", "sample-paper.pdf")
   const bytes = await readFile(fixture)
@@ -150,7 +150,7 @@ test("saving a translation annotation leaves only its source highlight and sideb
     expect(rowGaps.every((gap) => gap >= 11)).toBe(true)
     await expect
       .poll(async () =>
-        (await page.evaluate(() => window.scourgify.readWorkspace())).cards.map(
+        (await page.evaluate(() => window.ohmypaper.readWorkspace())).cards.map(
           (storedCard) => storedCard.kind,
         ),
       )

@@ -98,7 +98,7 @@ export async function migrateLegacyCollection(
   const stagingRoot = `${preview.destinationRoot}.staging-${randomUUID()}`
   await mkdir(join(userDataRoot, "collections", preview.collectionId), { recursive: true })
   await initializeCollection(stagingRoot, preview.collectionId)
-  const backupRoot = join(stagingRoot, ".scourgify", "migration-backup")
+  const backupRoot = join(stagingRoot, ".ohmypaper", "migration-backup")
   await mkdir(backupRoot, { recursive: true })
   const backupCopies: MigrationCopy[] = []
   const sourceDatabase = join(legacyRoot, "knowledge.sqlite")

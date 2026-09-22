@@ -15,7 +15,7 @@ afterEach(async () => {
 
 describe("application local inference mount", () => {
   it("starts without a setup file and disposes the optional engine safely", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-local-inference-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-local-inference-"))
     roots.push(root)
     const mount = createApplicationLocalInference(root)
 

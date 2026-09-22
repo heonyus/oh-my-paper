@@ -54,11 +54,11 @@ export class NoteHistory {
   }
 
   private historyDirectory(noteId: NoteId): string {
-    return join(this.root, ".scourgify", "history", noteId)
+    return join(this.root, ".ohmypaper", "history", noteId)
   }
 
   private conflictDirectory(conflictId: string): string {
-    return join(this.root, ".scourgify", "conflicts", conflictId)
+    return join(this.root, ".ohmypaper", "conflicts", conflictId)
   }
 
   async recordSnapshot(input: RecordSnapshotInput): Promise<NoteHistorySnapshot | null> {
@@ -73,7 +73,7 @@ export class NoteHistory {
     }
     const snapshotId = randomUUID()
     const directory = this.historyDirectory(noteId)
-    const bytesRelativePath = `.scourgify/history/${noteId}/${snapshotId}.md`
+    const bytesRelativePath = `.ohmypaper/history/${noteId}/${snapshotId}.md`
     const snapshot = noteHistorySnapshotSchema.parse({
       snapshotId,
       noteId,
@@ -127,9 +127,9 @@ export class NoteHistory {
     const conflictId = randomUUID()
     const directory = this.conflictDirectory(conflictId)
     const currentBytesRelativePath = input.currentBytes
-      ? `.scourgify/conflicts/${conflictId}/current.md`
+      ? `.ohmypaper/conflicts/${conflictId}/current.md`
       : null
-    const incomingBytesRelativePath = `.scourgify/conflicts/${conflictId}/incoming.md`
+    const incomingBytesRelativePath = `.ohmypaper/conflicts/${conflictId}/incoming.md`
     const metadata = noteConflictMetadataSchema.parse({
       conflictId,
       status: "unresolved",
@@ -166,7 +166,7 @@ export class NoteHistory {
   }
 
   async listConflicts(): Promise<readonly NoteConflictMetadata[]> {
-    const root = join(this.root, ".scourgify", "conflicts")
+    const root = join(this.root, ".ohmypaper", "conflicts")
     let names: readonly string[]
     try {
       names = await readdir(root)
@@ -191,7 +191,7 @@ export class NoteHistory {
 
   async prune(): Promise<number> {
     const protectedRevisions = await this.unresolvedConflictRevisions()
-    const historyRoot = join(this.root, ".scourgify", "history")
+    const historyRoot = join(this.root, ".ohmypaper", "history")
     let noteDirectories: readonly string[]
     try {
       noteDirectories = await readdir(historyRoot)
@@ -217,7 +217,7 @@ export class NoteHistory {
   }
 
   private async unresolvedConflictRevisions(): Promise<ReadonlySet<CollectionRevision>> {
-    const conflictRoot = join(this.root, ".scourgify", "conflicts")
+    const conflictRoot = join(this.root, ".ohmypaper", "conflicts")
     const revisions = new Set<CollectionRevision>()
     let names: readonly string[]
     try {
@@ -237,13 +237,13 @@ export class NoteHistory {
 
   async writeRecoveryDraft(uncheckedNoteId: string, bytes: Uint8Array): Promise<void> {
     const noteId = noteIdSchema.parse(uncheckedNoteId)
-    await replaceDurably(join(this.root, ".scourgify", "recovery", `${noteId}.md`), bytes)
+    await replaceDurably(join(this.root, ".ohmypaper", "recovery", `${noteId}.md`), bytes)
   }
 
   async readRecoveryDraft(uncheckedNoteId: string): Promise<Uint8Array | null> {
     const noteId = noteIdSchema.parse(uncheckedNoteId)
     try {
-      return await readFile(join(this.root, ".scourgify", "recovery", `${noteId}.md`))
+      return await readFile(join(this.root, ".ohmypaper", "recovery", `${noteId}.md`))
     } catch (error) {
       if (error instanceof Error && "code" in error && error.code === "ENOENT") return null
       throw error

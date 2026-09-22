@@ -26,7 +26,7 @@ async function main() {
   const unsupportedIndex = process.argv.indexOf("--unsupported")
   if (unsupportedIndex >= 0) {
     const target = process.argv[unsupportedIndex + 1] ?? "requested platform"
-    line("UNSUPPORTED", target, "Scourgify release commands support Apple Silicon macOS only")
+    line("UNSUPPORTED", target, "oh-my-paper release commands support Apple Silicon macOS only")
     process.exitCode = 1
     return
   }

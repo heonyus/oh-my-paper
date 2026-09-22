@@ -21,7 +21,7 @@ afterEach(async () => {
 
 describe("document import", () => {
   it("accepts a PDF whose author metadata is an empty string", async () => {
-    const directory = await mkdtemp(join(tmpdir(), "scourgify-document-import-"))
+    const directory = await mkdtemp(join(tmpdir(), "ohmypaper-document-import-"))
     temporaryDirectories.push(directory)
     const source = join(directory, "empty-author.pdf")
     const pdf = await PDFDocument.create()
@@ -42,7 +42,7 @@ describe("document import", () => {
   })
 
   it("persists the inspected bytes and repairs a missing duplicate original", async () => {
-    const directory = await mkdtemp(join(tmpdir(), "scourgify-document-import-"))
+    const directory = await mkdtemp(join(tmpdir(), "ohmypaper-document-import-"))
     temporaryDirectories.push(directory)
     const source = join(directory, "paper.pdf")
     const pdf = await PDFDocument.create()
@@ -64,7 +64,7 @@ describe("document import", () => {
   })
 
   it("rejects a mismatched content-addressed original before metadata registration", async () => {
-    const directory = await mkdtemp(join(tmpdir(), "scourgify-document-import-"))
+    const directory = await mkdtemp(join(tmpdir(), "ohmypaper-document-import-"))
     temporaryDirectories.push(directory)
     const source = join(directory, "paper.pdf")
     const pdf = await PDFDocument.create()

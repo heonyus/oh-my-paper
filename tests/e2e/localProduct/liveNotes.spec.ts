@@ -43,7 +43,7 @@ test("live Markdown note preserves source through rendering, undo, save, and reo
     await expect(page.locator(".note-rich-table-wrap")).toBeVisible()
     await expect(page.locator('.note-rich-image img[src^="http"]')).toHaveCount(0)
     await page.getByText("삽입 도구", { exact: true }).click()
-    const { SCOURGIFY_LIVE_NOTES_SCREENSHOT: screenshotPath } = process.env
+    const { OH_MY_PAPER_LIVE_NOTES_SCREENSHOT: screenshotPath } = process.env
     if (screenshotPath) await page.screenshot({ path: screenshotPath })
     const editor = await page.locator(".cm-editor").elementHandle()
     if (!editor) throw new Error("CodeMirror editor did not mount")

@@ -29,20 +29,20 @@ export function DataExchangeDialog({
   const [preview, setPreview] = useState<ImportPreview | null>(null)
   const [message, setMessage] = useState("")
   const [busy, setBusy] = useState(false)
-  const api = window.scourgify.interchange
+  const api = window.ohmypaper.interchange
   useEffect(() => {
-    void window.scourgify.knowledge
+    void window.ohmypaper.knowledge
       .getOrCreateDefaultBoard()
       .then(async (board) => {
         setBoardId(board.id)
-        setBoards(await window.scourgify.knowledge.listBoards())
+        setBoards(await window.ohmypaper.knowledge.listBoards())
       })
       .catch((error: unknown) => setMessage(String(error)))
   }, [])
   useEffect(() => {
     let current = true
     const timer = setTimeout(() => {
-      void window.scourgify.knowledge
+      void window.ohmypaper.knowledge
         .findNodes({ search, limit: 100 })
         .then((values) => {
           if (current) setNodes(values)
@@ -97,7 +97,7 @@ export function DataExchangeDialog({
         return
       }
       const sidecar = await api.saveFile({
-        defaultName: `${board.id}.scourgify.json`,
+        defaultName: `${board.id}.ohmypaper.json`,
         content: JSON.stringify(result.sidecar, null, 2),
       })
       setMessage(
@@ -128,18 +128,18 @@ export function DataExchangeDialog({
             </button>
           </header>
           <div className="settings-content-body knowledge-pane">
-            {window.scourgify.account ? (
+            {window.ohmypaper.account ? (
               <RecoveryPanel
-                api={window.scourgify.account}
-                collection={window.scourgify.collection}
-                createNote={window.scourgify.knowledge.createNode}
+                api={window.ohmypaper.account}
+                collection={window.ohmypaper.collection}
+                createNote={window.ohmypaper.knowledge.createNode}
                 onOpen={onNodeOpen}
               />
             ) : null}
-            {window.scourgify.export ? (
-              <ExportPanel api={window.scourgify.export} nodes={nodes} />
+            {window.ohmypaper.export ? (
+              <ExportPanel api={window.ohmypaper.export} nodes={nodes} />
             ) : null}
-            {window.scourgify.backup ? <BackupPanel api={window.scourgify.backup} /> : null}
+            {window.ohmypaper.backup ? <BackupPanel api={window.ohmypaper.backup} /> : null}
             <label className="knowledge-row">
               형식
               <select

@@ -7,6 +7,7 @@ import {
   storeCachedPageTranslation,
 } from "./pageTranslationCacheRuntime"
 import { withPageTranslationCitationLinks } from "./pageTranslationCitations"
+import { runPageTranslationBatches } from "./pageTranslationRunner"
 import { type PageTranslationBlock, pageTranslationBatches } from "./pageTranslationSource"
 import {
   type ParsedPageTranslationBlock,
@@ -112,14 +113,14 @@ export async function translateDocumentPages(input: DocumentTranslationRunnerInp
   let completedBlocks = 0
   let totalBlocks = 0
 
-  for (let page = 1; page <= input.document.pageCount; page += 1) {
-    if (input.signal.aborted) return
+  // 다음 페이지의 파싱과 캐시 읽기를 현재 페이지 번역과 겹쳐서 진행한다
+  const preparePage = async (page: number) => {
     const parsedPage = await runStage(page, "parse", () =>
       loadParsedDocumentPage(input.document.id, page, {
         signal: input.signal,
       }),
     )
-    if (input.signal.aborted) return
+    if (input.signal.aborted) return null
     if (!parsedPage)
       throw new DocumentTranslationError(page, "parse", "parser unavailable or cancelled")
     const parserCached = await runStage(page, "cache-read", () =>
@@ -131,6 +132,18 @@ export async function translateDocumentPages(input: DocumentTranslationRunnerInp
         parsedPage.configVersion,
       ),
     )
+    return { parsedPage, parserCached }
+  }
+
+  let prepared: ReturnType<typeof preparePage> | null = preparePage(1)
+  prepared.catch(() => undefined)
+  for (let page = 1; page <= input.document.pageCount; page += 1) {
+    if (input.signal.aborted) return
+    const current = await prepared
+    prepared = page < input.document.pageCount ? preparePage(page + 1) : null
+    prepared?.catch(() => undefined)
+    if (!current) return
+    const { parsedPage, parserCached } = current
     if (parserCached) {
       completedPages += 1
       completedBlocks += parserCached.length
@@ -165,31 +178,36 @@ export async function translateDocumentPages(input: DocumentTranslationRunnerInp
       totalBlocks,
     })
 
-    for (const batch of batches) {
-      if (input.signal.aborted) return
-      const translated = await runStage(page, "translation", () =>
-        translatePageBatch({
-          batch,
-          page,
-          onAiRequest: input.onAiRequest,
-          signal: input.signal,
-          onPartial: (partial) => {
-            for (const [id, value] of partial) completed.set(id, value)
-            notifyPageBlocks(input, page, completeBlocks(plan.initial, completed))
-          },
-        }),
-      )
-      for (const [id, value] of translated) completed.set(id, value)
-      const current = completeBlocks(plan.initial, completed)
-      pageCompletedBlocks = current.filter((block) => block.translation.trim()).length
-      notifyPageBlocks(input, page, current)
-      notifyProgress(input, page, {
-        pageCount: input.document.pageCount,
-        completedPages,
-        completedBlocks: completedBlocks + pageCompletedBlocks,
-        totalBlocks,
-      })
-    }
+    await runStage(page, "translation", () =>
+      runPageTranslationBatches(
+        batches,
+        async (batch) => {
+          const translated = await translatePageBatch({
+            batch,
+            page,
+            onAiRequest: input.onAiRequest,
+            signal: input.signal,
+            onPartial: (partial) => {
+              for (const [id, value] of partial) completed.set(id, value)
+              notifyPageBlocks(input, page, completeBlocks(plan.initial, completed))
+            },
+          })
+          for (const [id, value] of translated) completed.set(id, value)
+          const current = completeBlocks(plan.initial, completed)
+          pageCompletedBlocks = current.filter((block) => block.translation.trim()).length
+          notifyPageBlocks(input, page, current)
+          notifyProgress(input, page, {
+            pageCount: input.document.pageCount,
+            completedPages,
+            completedBlocks: completedBlocks + pageCompletedBlocks,
+            totalBlocks,
+          })
+          return translated
+        },
+        input.signal,
+      ),
+    )
+    if (input.signal.aborted) return
 
     const finished = completeBlocks(plan.initial, completed)
     if (finished.some((block) => !block.translation.trim()))

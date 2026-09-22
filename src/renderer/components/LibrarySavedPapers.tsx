@@ -106,7 +106,7 @@ export function LibrarySavedPapers({
     const requestToken = reloadToken
     const load = async (): Promise<SavedPaperLoad> => {
       try {
-        const discovery = window.scourgify?.discovery
+        const discovery = window.ohmypaper?.discovery
         if (!discovery) {
           if (clientOps) return loadPaperPages(clientOps)
           return { nodes: [], truncated: false }

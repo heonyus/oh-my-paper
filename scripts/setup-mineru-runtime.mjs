@@ -4,7 +4,7 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 
 const runtimeRoot =
-  process.env.SCOURGIFY_MINERU_RUNTIME ?? join(homedir(), ".scourgify", "mineru-runtime")
+  process.env.OH_MY_PAPER_MINERU_RUNTIME ?? join(homedir(), ".ohmypaper", "mineru-runtime")
 const scriptsDirectory = process.platform === "win32" ? "Scripts" : "bin"
 const python = join(
   runtimeRoot,
@@ -26,4 +26,4 @@ function run(command, args) {
 if (!existsSync(python)) run("uv", ["venv", "--python", "3.12", runtimeRoot])
 run("uv", ["pip", "install", "--python", python, "mineru[all]==3.4.0", "pdftext==0.6.3"])
 run(modelsDownload, ["--source", "huggingface", "--model_type", "all"])
-process.stdout.write(`Scourgify MinerU runtime: ${runtimeRoot}\n`)
+process.stdout.write(`oh-my-paper MinerU runtime: ${runtimeRoot}\n`)

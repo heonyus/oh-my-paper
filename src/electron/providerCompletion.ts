@@ -8,6 +8,7 @@ type CompletionParameters = {
   readonly max_tokens?: number
   readonly max_completion_tokens?: number
   readonly reasoning_effort?: "minimal" | "low"
+  readonly reasoning?: { readonly effort?: "none" | "minimal" | "low"; readonly exclude?: boolean }
   readonly temperature?: 0
   readonly response_format?: ResponseFormatJSONSchema
 }
@@ -54,6 +55,7 @@ function requestParameters(input: CompletionInput): {
   readonly max_tokens?: number
   readonly max_completion_tokens?: number
   readonly reasoning_effort?: "minimal" | "low"
+  readonly reasoning?: { readonly effort?: "none" | "minimal" | "low"; readonly exclude?: boolean }
   readonly temperature?: 0
   readonly response_format?: ResponseFormatJSONSchema
   readonly signal?: AbortSignal

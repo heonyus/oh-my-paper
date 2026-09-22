@@ -7,9 +7,9 @@ import { documentIdSchema } from "../../src/shared/schemas"
 import { launchSimulatedAuthenticatedApplication } from "../support/electron/launchSimulatedAuthenticatedApplication"
 
 test("figure and table actions stay outside PDF content", async () => {
-  const temporaryRoot = await mkdtemp(join(tmpdir(), "scourgify-e2e-"))
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "ohmypaper-e2e-"))
   const userData = join(temporaryRoot, "user-data")
-  const storeRoot = join(userData, "scourgify")
+  const storeRoot = join(userData, "ohmypaper")
   const documents = join(storeRoot, "documents")
   const fixture = join(process.cwd(), "tests", "fixtures", "sample-paper.pdf")
   const bytes = await readFile(fixture)
@@ -29,7 +29,7 @@ test("figure and table actions stay outside PDF content", async () => {
           bytes: bytes.length,
           importedAt: new Date().toISOString(),
           pageCount: 3,
-          title: "Scourgify deterministic fixture",
+          title: "oh-my-paper deterministic fixture",
           authors: [],
           year: null,
           doi: null,
@@ -45,14 +45,14 @@ test("figure and table actions stay outside PDF content", async () => {
   const qa = await launchSimulatedAuthenticatedApplication({
     userDataRoot: userData,
     environment: {
-      SCOURGIFY_LAYOUT_PYTHON: join(homedir(), ".scourgify", "layout-runtime", "bin", "python"),
+      OH_MY_PAPER_LAYOUT_PYTHON: join(homedir(), ".ohmypaper", "layout-runtime", "bin", "python"),
     },
   })
   try {
     const page = await qa.application.firstWindow()
-    await page.getByRole("button", { name: "Scourgify deterministic fixture 열기" }).click()
+    await page.getByRole("button", { name: "oh-my-paper deterministic fixture 열기" }).click()
     const layout = await page.evaluate(
-      async (value) => window.scourgify.readDocumentLayout(value),
+      async (value) => window.ohmypaper.readDocumentLayout(value),
       documentId,
     )
     expect(layout.status).toBe("ready")

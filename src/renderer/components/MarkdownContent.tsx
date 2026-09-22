@@ -12,7 +12,7 @@ const components: Components = {
         href={href}
         onClick={(event) => {
           event.preventDefault()
-          void window.scourgify.openExternal({ url: href })
+          void window.ohmypaper.openExternal({ url: href })
         }}
       >
         {children}

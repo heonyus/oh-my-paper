@@ -1,4 +1,4 @@
-# Scourgify memory system
+# oh-my-paper memory system
 
 This task adds a local, inspectable semantic-memory store and bounded mounting adapters. It does
 not call an AI provider, access Wiki/llm-wiki, or fetch external content. The host still owns
@@ -129,7 +129,7 @@ the latest 100 navigation facts and is not semantic memory, is not returned by `
 does not age-purge semantic records. The approved 30-day note-history policy therefore does not
 apply to these semantic records.
 
-Source keys are validated as local Scourgify identifiers. HTTP(S) URLs and `wiki:` sources are
+Source keys are validated as local oh-my-paper identifiers. HTTP(S) URLs and `wiki:` sources are
 rejected at the schema boundary. Stored PDF/Markdown/imported text remains untrusted data and
 cannot expand tools, providers, scope, or permissions.
 

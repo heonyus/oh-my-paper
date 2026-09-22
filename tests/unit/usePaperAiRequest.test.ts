@@ -77,7 +77,7 @@ describe("paper-grounded request", () => {
       }
     })
 
-    Object.defineProperty(window, "scourgify", {
+    Object.defineProperty(window, "ohmypaper", {
       value: {
         cancelAiJob,
         startAiJob,

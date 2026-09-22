@@ -17,9 +17,9 @@ afterEach(async () => {
 
 describe("application account bootstrap", () => {
   it("returns a fail-closed unavailable session when explicit config is incomplete", async () => {
-    vi.stubEnv("SCOURGIFY_ACCOUNT_SERVICE_ORIGIN", "")
-    vi.stubEnv("SCOURGIFY_ACCOUNT_ISSUER", "")
-    vi.stubEnv("SCOURGIFY_GOOGLE_CLIENT_ID", "")
+    vi.stubEnv("OH_MY_PAPER_ACCOUNT_SERVICE_ORIGIN", "")
+    vi.stubEnv("OH_MY_PAPER_ACCOUNT_ISSUER", "")
+    vi.stubEnv("OH_MY_PAPER_GOOGLE_CLIENT_ID", "")
     const onStatusChanged = vi.fn()
 
     const account = await createApplicationAccount({
@@ -42,9 +42,9 @@ describe("application account bootstrap", () => {
   })
 
   it("does not accept malformed HTTP configuration as a local bypass", async () => {
-    vi.stubEnv("SCOURGIFY_ACCOUNT_SERVICE_ORIGIN", "http://127.0.0.1:8789")
-    vi.stubEnv("SCOURGIFY_ACCOUNT_ISSUER", "http://127.0.0.1:8789")
-    vi.stubEnv("SCOURGIFY_GOOGLE_CLIENT_ID", "test-client")
+    vi.stubEnv("OH_MY_PAPER_ACCOUNT_SERVICE_ORIGIN", "http://127.0.0.1:8789")
+    vi.stubEnv("OH_MY_PAPER_ACCOUNT_ISSUER", "http://127.0.0.1:8789")
+    vi.stubEnv("OH_MY_PAPER_GOOGLE_CLIENT_ID", "test-client")
 
     const account = await createApplicationAccount({
       userDataRoot: "/unused",
@@ -57,7 +57,7 @@ describe("application account bootstrap", () => {
   })
 
   it("selects the explicit local profile before remote configuration and preserves ownership metadata", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-local-account-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-local-account-"))
     roots.push(root)
     await writeFile(
       join(root, "local-access.json"),
@@ -68,9 +68,9 @@ describe("application account bootstrap", () => {
     await mkdir(join(root, "account"), { recursive: true })
     await writeFile(ownersPath, owners)
 
-    vi.stubEnv("SCOURGIFY_ACCOUNT_SERVICE_ORIGIN", "https://account.example.test")
-    vi.stubEnv("SCOURGIFY_ACCOUNT_ISSUER", "https://account.example.test")
-    vi.stubEnv("SCOURGIFY_GOOGLE_CLIENT_ID", "test-client")
+    vi.stubEnv("OH_MY_PAPER_ACCOUNT_SERVICE_ORIGIN", "https://account.example.test")
+    vi.stubEnv("OH_MY_PAPER_ACCOUNT_ISSUER", "https://account.example.test")
+    vi.stubEnv("OH_MY_PAPER_GOOGLE_CLIENT_ID", "test-client")
     const getStore = vi.fn(() => unavailableStore())
     const switchStore = vi.fn(async () => undefined)
 

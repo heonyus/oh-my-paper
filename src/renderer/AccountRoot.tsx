@@ -12,7 +12,7 @@ const App = lazy(() => import("./App").then((module) => ({ default: module.App }
 const fallbackLocalAccountId = accountIdSchema.parse("00000000-0000-0000-0000-000000000000")
 
 export function AccountRoot(): JSX.Element {
-  const api = window.scourgify.account
+  const api = window.ohmypaper.account
   const [status, setStatus] = useState<AccountStatus | null>(null)
   const [busy, setBusy] = useState<"idle" | "login" | "refresh">("idle")
   const [error, setError] = useState<string | null>(null)
@@ -62,7 +62,7 @@ export function AccountRoot(): JSX.Element {
 
   useEffect(
     () =>
-      window.scourgify.onBeforeWorkspaceClose(async () => {
+      window.ohmypaper.onBeforeWorkspaceClose(async () => {
         await savePendingNoteDrafts()
       }),
     [],

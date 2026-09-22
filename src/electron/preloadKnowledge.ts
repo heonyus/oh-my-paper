@@ -1,6 +1,6 @@
 import { ipcRenderer } from "electron"
 import { z } from "zod"
-import type { ScourgifyApi } from "../shared/ipc"
+import type { OhMyPaperApi } from "../shared/ipc"
 import { ipcChannels } from "../shared/ipcChannels"
 import {
   knowledgeActionChannels,
@@ -36,7 +36,7 @@ import {
   placementRecordSchema,
 } from "../shared/knowledgeSchemas"
 
-export function createPreloadKnowledge(): ScourgifyApi["knowledge"] {
+export function createPreloadKnowledge(): OhMyPaperApi["knowledge"] {
   return {
     linkEvidence: async (input) =>
       knowledgeNodeSchema.parse(

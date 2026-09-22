@@ -1,4 +1,6 @@
-const pageTranslationParallelism = 2
+import { aiPolicy } from "../../shared/documentAiJobs"
+
+const pageTranslationParallelism = aiPolicy.concurrentTextJobs
 
 export async function runPageTranslationBatches<Input, Output>(
   batches: readonly (readonly Input[])[],

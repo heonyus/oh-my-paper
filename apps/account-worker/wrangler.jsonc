@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "scourgify-account-local",
+  "name": "ohmypaper-account-local",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-05",
   "workers_dev": false,
@@ -16,7 +16,7 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "scourgify-account-local",
+      "database_name": "ohmypaper-account-local",
       "migrations_dir": "migrations"
     }
   ],

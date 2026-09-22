@@ -155,7 +155,7 @@ export function AutoHighlightControls({
   }
 
   async function runJev(): Promise<void> {
-    const decideAi = window.scourgify?.decideAi
+    const decideAi = window.ohmypaper?.decideAi
     const boardWorld = window.document.querySelector<HTMLElement>(".board-world")
     const candidates = collectAutoHighlightCandidates()
     const sourceText = doc.overview || cachedPaperOverviewContext(doc.id) || doc.title
@@ -241,10 +241,10 @@ export function AutoHighlightControls({
             type="button"
             className="auto-highlight-run auto-highlight-jev"
             onClick={() => void runJev()}
-            disabled={!window.scourgify?.decideAi}
+            disabled={!window.ohmypaper?.decideAi}
             aria-label="Jev로 후보 선택"
             title={
-              window.scourgify?.decideAi
+              window.ohmypaper?.decideAi
                 ? `Jev 후보 선택 · ${JEV_DECISION_MODEL}`
                 : "Jev 설정이 없습니다."
             }

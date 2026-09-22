@@ -39,7 +39,7 @@ function isMissingFile(error: unknown): boolean {
 }
 
 function runtimeRoot(home: string): string {
-  return join(home, ".scourgify", "paddle-vl-mlx-runtime")
+  return join(home, ".ohmypaper", "paddle-vl-mlx-runtime")
 }
 
 export function paddleVlmRuntimePython(home: string): string {

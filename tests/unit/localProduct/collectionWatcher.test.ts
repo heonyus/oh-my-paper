@@ -28,7 +28,7 @@ function nextChange(service: CollectionService): Promise<CollectionChangeEvent> 
 
 describe("CollectionWatcher", () => {
   it("emits changed note IDs after watcher reconciliation", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-watch-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-watch-"))
     roots.push(root)
     await initializeCollection(root, randomUUID())
     const service = await CollectionService.open(root, join(root, "index.sqlite"))
@@ -39,7 +39,7 @@ describe("CollectionWatcher", () => {
     const changed = nextChange(service)
     const watcher = CollectionWatcher.start(service, () => undefined, 20)
     const externalTemporary = join(root, "notes", ".external-save.tmp")
-    await writeFile(externalTemporary, `---\nscourgify.id: ${note.id}\n---\nafter external save\n`)
+    await writeFile(externalTemporary, `---\nohmypaper.id: ${note.id}\n---\nafter external save\n`)
     await rename(externalTemporary, join(root, indexed.relativePath))
     await watcher.manualRescan()
 

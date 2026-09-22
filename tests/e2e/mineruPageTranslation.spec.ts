@@ -3,37 +3,39 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { _electron as electron, expect, test } from "@playwright/test"
 
-const { SCOURGIFY_MINERU_COMMAND: mineruCommand, SCOURGIFY_E2E_EXECUTABLE: packagedExecutable } =
-  process.env
+const {
+  OH_MY_PAPER_MINERU_COMMAND: mineruCommand,
+  OH_MY_PAPER_E2E_EXECUTABLE: packagedExecutable,
+} = process.env
 
 test("MinerU paragraphs map to translated cards without visual blocks", async () => {
   test.skip(!mineruCommand, "requires the managed MinerU runtime")
   if (!mineruCommand) return
   test.setTimeout(120_000)
-  const temporaryRoot = await mkdtemp(join(tmpdir(), "scourgify-mineru-translation-e2e-"))
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "ohmypaper-mineru-translation-e2e-"))
   const evidenceDirectory = join(process.cwd(), ".omo", "evidence", "mineru-page-translation")
   await mkdir(evidenceDirectory, { recursive: true })
   const application = await electron.launch({
     ...(packagedExecutable ? { executablePath: packagedExecutable } : { args: ["."] }),
     env: {
       ...process.env,
-      SCOURGIFY_USER_DATA_DIR: join(temporaryRoot, "user-data"),
-      SCOURGIFY_MINERU_COMMAND: mineruCommand,
-      SCOURGIFY_AI_PROVIDER: "opencodex",
-      SCOURGIFY_AI_MODEL: "gpt-5.6-terra",
+      OH_MY_PAPER_USER_DATA_DIR: join(temporaryRoot, "user-data"),
+      OH_MY_PAPER_MINERU_COMMAND: mineruCommand,
+      OH_MY_PAPER_AI_PROVIDER: "opencodex",
+      OH_MY_PAPER_AI_MODEL: "gpt-5.6-terra",
     },
   })
   try {
     const page = await application.firstWindow()
     await page.evaluate(() =>
-      window.scourgify.saveProviderConfig({ provider: "opencodex", model: "gpt-5.6-terra" }),
+      window.ohmypaper.saveProviderConfig({ provider: "opencodex", model: "gpt-5.6-terra" }),
     )
     const fixture = join(process.cwd(), "tests", "fixtures", "sample-paper.pdf")
     const imported = await page.evaluate(async (path) => {
-      const imported = await window.scourgify.importDocumentPath(path)
+      const imported = await window.ohmypaper.importDocumentPath(path)
       if (!imported) return null
-      const workspace = await window.scourgify.readWorkspace()
-      await window.scourgify.saveWorkspace({
+      const workspace = await window.ohmypaper.readWorkspace()
+      await window.ohmypaper.saveWorkspace({
         ...workspace,
         activeDocumentId: imported.document.id,
       })
@@ -41,7 +43,7 @@ test("MinerU paragraphs map to translated cards without visual blocks", async ()
     }, fixture)
     expect(imported).not.toBeNull()
     if (!imported) return
-    const layout = await page.evaluate((id) => window.scourgify.readDocumentLayout(id), imported.id)
+    const layout = await page.evaluate((id) => window.ohmypaper.readDocumentLayout(id), imported.id)
     expect(layout).toMatchObject({
       status: "ready",
       layout: { version: 3, model: "MinerU2.5-Pro-2605-1.2B" },

@@ -33,7 +33,7 @@ async function legacyFixture(): Promise<{
   readonly versionId: string
   readonly pdf: Uint8Array
 }> {
-  const root = await mkdtemp(join(tmpdir(), "scourgify-migration-"))
+  const root = await mkdtemp(join(tmpdir(), "ohmypaper-migration-"))
   roots.push(root)
   const legacyRoot = join(root, "legacy")
   const userDataRoot = join(root, "user-data")
@@ -120,7 +120,7 @@ describe("collection migration", () => {
     ).toEqual({ source_file: "legacy-workspace.json" })
     await service.close()
     const backup = new DatabaseSync(
-      join(result.destinationRoot, ".scourgify", "migration-backup", "knowledge.sqlite"),
+      join(result.destinationRoot, ".ohmypaper", "migration-backup", "knowledge.sqlite"),
       { readOnly: true },
     )
     expect(
@@ -146,11 +146,11 @@ describe("collection migration", () => {
   })
 
   it("creates an empty non-destructive collection for a fresh disposable profile", async () => {
-    const root = await mkdtemp(join(tmpdir(), "scourgify-fresh-profile-"))
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-fresh-profile-"))
     roots.push(root)
     const userDataRoot = join(root, "user-data")
     const result = await migrateLegacyCollection(
-      join(userDataRoot, "scourgify"),
+      join(userDataRoot, "ohmypaper"),
       userDataRoot,
       randomUUID(),
     )

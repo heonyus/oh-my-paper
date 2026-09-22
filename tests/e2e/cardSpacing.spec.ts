@@ -6,9 +6,9 @@ import { expect, test } from "@playwright/test"
 import { launchSimulatedAuthenticatedApplication } from "../support/electron/launchSimulatedAuthenticatedApplication"
 
 test("research cards keep prose and chat clear of every card edge", async () => {
-  const root = await mkdtemp(join(tmpdir(), "scourgify-card-spacing-"))
+  const root = await mkdtemp(join(tmpdir(), "ohmypaper-card-spacing-"))
   const userData = join(root, "user-data")
-  const store = join(userData, "scourgify")
+  const store = join(userData, "ohmypaper")
   const documents = join(store, "documents")
   const fixture = join(process.cwd(), "tests", "fixtures", "sample-paper.pdf")
   const bytes = await readFile(fixture)

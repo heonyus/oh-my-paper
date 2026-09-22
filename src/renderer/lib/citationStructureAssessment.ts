@@ -46,7 +46,7 @@ export async function assessCitationStructure(
   input: CitationStructureAssessmentInput,
 ): Promise<CitationStructureResult> {
   const entry = entryFor(input.structure)
-  const lookup = await window.scourgify.lookupCitation(
+  const lookup = await window.ohmypaper.lookupCitation(
     citationLookupRequest(entry, input.currentPaperTitle),
   )
   if (lookup.status !== "found") return { status: "not_found" }

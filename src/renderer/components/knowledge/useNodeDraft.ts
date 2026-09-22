@@ -57,7 +57,7 @@ export function useNodeDraft(
     setAliases(nextAliases)
   }, [dirty, node, nodeSnapshot, saving])
   useEffect(() => {
-    const account = window.scourgify?.account
+    const account = window.ohmypaper?.account
     if (!editingId || !account) return
     if (body === baseBody && title === baseTitle && aliases === baseAliases) return
     let persisted = false

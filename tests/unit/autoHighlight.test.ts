@@ -11,7 +11,7 @@ describe("auto highlight response parsing", () => {
     const text = JSON.stringify({
       passages: [
         {
-          quote: "Scourgify treats document pages as spatially addressable artifacts.",
+          quote: "oh-my-paper treats document pages as spatially addressable artifacts.",
           reason: "核心方法",
         },
         { quote: "PDF Ingestion 142 pg/sec VERIFIED.", reason: "决定性结果" },

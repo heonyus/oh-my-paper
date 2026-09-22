@@ -9,6 +9,7 @@ type LibraryTask = {
   readonly detail: string
   readonly progress: number
   readonly state: "active" | "complete" | "failed"
+  readonly retryDocumentId?: DocumentAnalysisJob["id"] | undefined
 }
 
 const stageLabels: Readonly<
@@ -40,10 +41,12 @@ function analysisTask(job: DocumentAnalysisJob): LibraryTask {
     }
   }
   if (job.state === "running") {
+    const engine = job.engine === "local" ? "로컬 PaddleOCR" : "Mistral OCR 4.1"
+    const retry = job.maxAttempts > 1 ? ` · ${job.attempt}/${job.maxAttempts}차 시도` : ""
     return {
       id: `analysis:${job.id}`,
       title: job.title,
-      detail: `${job.currentPage} / ${job.pageCount}페이지 · ${stageLabels[job.stage]}`,
+      detail: `${job.currentPage} / ${job.pageCount}페이지 · ${engine}${retry} · ${stageLabels[job.stage]}`,
       progress: (job.completedPages + stageProgress[job.stage]) / job.pageCount,
       state: "active",
     }
@@ -63,6 +66,7 @@ function analysisTask(job: DocumentAnalysisJob): LibraryTask {
     detail: `${job.completedPages} / ${job.pageCount}페이지 · ${job.message}`,
     progress: job.completedPages / job.pageCount,
     state: "failed",
+    retryDocumentId: job.id,
   }
 }
 
@@ -79,9 +83,11 @@ function importTask(item: ImportProgress): LibraryTask {
 export function LibraryTaskQueue({
   imports,
   analyses,
+  onRetryAnalysis,
 }: {
   readonly imports: readonly ImportProgress[]
   readonly analyses: readonly DocumentAnalysisJob[]
+  readonly onRetryAnalysis?: ((id: DocumentAnalysisJob["id"]) => void) | undefined
 }): JSX.Element | null {
   const [showCompleted, setShowCompleted] = useState(false)
   const tasks = [...imports.map(importTask), ...analyses.map(analysisTask)]
@@ -147,6 +153,18 @@ export function LibraryTaskQueue({
                   />
                   {task.state === "active" ? <i className="library-task-flow" /> : null}
                 </div>
+                {task.retryDocumentId && onRetryAnalysis ? (
+                  <button
+                    type="button"
+                    className="library-task-retry"
+                    aria-label={`${task.title} 다시 시도`}
+                    onClick={() => {
+                      if (task.retryDocumentId) onRetryAnalysis(task.retryDocumentId)
+                    }}
+                  >
+                    다시 시도
+                  </button>
+                ) : null}
               </div>
             </li>
           ))}

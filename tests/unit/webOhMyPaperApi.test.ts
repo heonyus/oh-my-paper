@@ -13,9 +13,9 @@ vi.mock("../../src/web/webWorkspace", () => ({
 }))
 
 async function installedApi() {
-  const { installWebScourgifyApi } = await import("../../src/web/webScourgifyApi")
-  installWebScourgifyApi("polling-test-user")
-  return window.scourgify
+  const { installWebOhMyPaperApi } = await import("../../src/web/webOhMyPaperApi")
+  installWebOhMyPaperApi("polling-test-user")
+  return window.ohmypaper
 }
 
 describe("web analysis refresh", () => {

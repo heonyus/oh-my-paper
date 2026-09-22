@@ -1,73 +1,57 @@
-import { randomUUID } from "node:crypto"
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises"
-import { join } from "node:path"
-import { z } from "zod"
 import {
   type DocumentAnalysisJob,
   type DocumentAnalysisSnapshot,
   documentAnalysisSnapshotSchema,
 } from "../shared/documentAnalysis"
-import type {
-  DocumentPageParseProgress,
-  DocumentPageParseResult,
-} from "../shared/documentPageModel"
+import type { DocumentPageParseResult } from "../shared/documentPageModel"
 import type { DocumentId, DocumentRecord } from "../shared/schemas"
-import { documentIdSchema } from "../shared/schemas"
+import {
+  analysisFailureMessage,
+  completeAnalysisJob,
+  failedAnalysisJob,
+  queuedAnalysisJob,
+  runningAnalysisJob,
+} from "./documentAnalysisJobs"
+import {
+  type DocumentAnalysisEngine,
+  type DocumentAnalysisPageParser,
+  parseAnalysisPage,
+} from "./documentAnalysisPageRunner"
+import { DocumentAnalysisStateStore } from "./documentAnalysisStateStore"
 import type { WorkspaceStore } from "./workspaceStore"
-
-const pendingAnalysisSchema = z.object({
-  version: z.literal(1),
-  documentIds: z.array(documentIdSchema).max(64),
-})
-
-type PageParser = {
-  readonly parse: (input: {
-    readonly documentId: DocumentId
-    readonly pageNumber: number
-    readonly store: WorkspaceStore
-    readonly signal: AbortSignal
-    readonly onProgress?: (progress: DocumentPageParseProgress) => void
-  }) => Promise<DocumentPageParseResult>
-}
-
-function isMissingFile(error: unknown): boolean {
-  return error instanceof Error && "code" in error && error.code === "ENOENT"
-}
-
-function failureMessage(result: DocumentPageParseResult): string {
-  if (result.status === "ready") return ""
-  if (result.reason === "runtime_missing") return "로컬 PaddleOCR-VL 설치가 필요합니다"
-  if (result.reason === "model_unavailable") return "로컬 분석 모델을 시작하지 못했습니다"
-  return "문서 구조 분석을 완료하지 못했습니다"
-}
 
 export class DocumentAnalysisService {
   readonly #jobs = new Map<DocumentId, DocumentAnalysisJob>()
   readonly #listeners = new Set<(snapshot: DocumentAnalysisSnapshot) => void>()
   readonly #pending = new Set<DocumentId>()
+  readonly #readyDocuments = new Set<DocumentId>()
   readonly #queue: DocumentRecord[] = []
   readonly #scheduling = new Map<DocumentId, Promise<void>>()
   readonly #running = new Set<Promise<void>>()
   readonly #abort = new AbortController()
   readonly #maxConcurrency: number
-  readonly #pendingFile: string
+  readonly #fallbackParser: DocumentAnalysisPageParser | null
+  readonly #stateStore: DocumentAnalysisStateStore
   readonly #ready: Promise<void>
-  #writeQueue: Promise<void> = Promise.resolve()
   #disposePromise: Promise<void> | null = null
   #disposed = false
 
   constructor(
     readonly store: WorkspaceStore,
-    readonly parser: PageParser,
-    options: { readonly maxConcurrency?: number } = {},
+    readonly parser: DocumentAnalysisPageParser,
+    options: {
+      readonly maxConcurrency?: number
+      readonly fallbackParser?: DocumentAnalysisPageParser
+    } = {},
   ) {
     const concurrency = options.maxConcurrency
     this.#maxConcurrency =
       typeof concurrency === "number" && Number.isInteger(concurrency) && concurrency > 0
         ? concurrency
         : 2
-    this.#pendingFile = join(store.root, "document-analysis-queue.json")
-    this.#ready = this.#loadPending()
+    this.#fallbackParser = options.fallbackParser ?? null
+    this.#stateStore = new DocumentAnalysisStateStore(store.root)
+    this.#ready = this.#loadState()
   }
 
   snapshot(): DocumentAnalysisSnapshot {
@@ -82,8 +66,10 @@ export class DocumentAnalysisService {
   async resumePending(): Promise<void> {
     const [loaded] = await Promise.allSettled([this.#ready])
     if (loaded?.status !== "fulfilled") return
-    for (const documentId of [...this.#pending]) {
-      await Promise.allSettled([this.schedule(documentId)])
+    const workspace = await this.store.read()
+    for (const document of workspace.documents) {
+      if (this.#readyDocuments.has(document.id)) continue
+      await Promise.allSettled([this.schedule(document.id)])
     }
   }
 
@@ -106,13 +92,7 @@ export class DocumentAnalysisService {
     this.#pending.add(documentId)
     await this.#persistPending()
     if (this.#disposed) return
-    this.#jobs.set(documentId, {
-      id: document.id,
-      title: document.title,
-      pageCount: document.pageCount,
-      completedPages: 0,
-      state: "queued",
-    })
+    this.#jobs.set(documentId, queuedAnalysisJob(document))
     this.#emit()
     this.#queue.push(document)
     this.#drainQueue()
@@ -158,75 +138,72 @@ export class DocumentAnalysisService {
 
   async #run(document: DocumentRecord): Promise<void> {
     let completedPages = 0
+    let usingFallback = false
     try {
       for (let pageNumber = 1; pageNumber <= document.pageCount; pageNumber += 1) {
         if (this.#disposed) return
-        this.#setRunning(document, completedPages, pageNumber, "engine-starting")
-        const result = await this.parser.parse({
-          documentId: document.id,
-          pageNumber,
-          store: this.store,
-          signal: this.#abort.signal,
-          onProgress: ({ stage }) => this.#setRunning(document, completedPages, pageNumber, stage),
-        })
+        const engine: DocumentAnalysisEngine = usingFallback ? "mistral" : "local"
+        let result = await this.#parsePage(document, completedPages, pageNumber, engine)
+        if (result.status !== "ready" && !usingFallback && this.#fallbackParser) {
+          usingFallback = true
+          result = await this.#parsePage(document, completedPages, pageNumber, "mistral")
+        }
         if (this.#disposed) return
         if (result.status !== "ready") {
-          await this.#fail(document, completedPages, failureMessage(result))
+          await this.#fail(document, completedPages, analysisFailureMessage(result))
           return
         }
         completedPages = pageNumber
       }
       this.#pending.delete(document.id)
+      this.#readyDocuments.add(document.id)
       await this.#persistPending()
-      this.#jobs.set(document.id, {
-        id: document.id,
-        title: document.title,
-        pageCount: document.pageCount,
-        completedPages,
-        state: "complete",
-      })
+      this.#jobs.set(document.id, completeAnalysisJob(document))
       this.#emit()
-      setTimeout(() => {
-        if (this.#jobs.get(document.id)?.state !== "complete") return
-        this.#jobs.delete(document.id)
-        this.#emit()
-      }, 4_000)
     } catch {
       await this.#fail(document, completedPages, "문서 구조 분석 중 로컬 오류가 발생했습니다")
     }
   }
 
-  async #fail(document: DocumentRecord, completedPages: number, message: string): Promise<void> {
-    if (this.#disposed) return
-    this.#pending.delete(document.id)
-    await this.#persistPending()
-    this.#jobs.set(document.id, {
-      id: document.id,
-      title: document.title,
-      pageCount: document.pageCount,
-      completedPages,
-      state: "failed",
-      message,
-    })
-    this.#emit()
-  }
-
-  #setRunning(
+  async #parsePage(
     document: DocumentRecord,
     completedPages: number,
-    currentPage: number,
-    stage: DocumentPageParseProgress["stage"],
-  ): void {
-    if (this.#disposed) return
-    this.#jobs.set(document.id, {
-      id: document.id,
-      title: document.title,
-      pageCount: document.pageCount,
-      completedPages,
-      currentPage,
-      stage,
-      state: "running",
+    pageNumber: number,
+    engine: DocumentAnalysisEngine,
+  ): Promise<DocumentPageParseResult> {
+    const parser = engine === "mistral" ? this.#fallbackParser : this.parser
+    if (!parser) return { status: "unavailable", reason: "provider_unconfigured" }
+    const maxAttempts = engine === "local" ? 2 : 1
+    return parseAnalysisPage({
+      parser,
+      document,
+      pageNumber,
+      store: this.store,
+      signal: this.#abort.signal,
+      maxAttempts,
+      onProgress: (stage, attempt) => {
+        if (this.#disposed) return
+        this.#jobs.set(
+          document.id,
+          runningAnalysisJob({
+            document,
+            completedPages,
+            currentPage: pageNumber,
+            stage,
+            engine,
+            attempt,
+            maxAttempts,
+          }),
+        )
+        this.#emit()
+      },
     })
+  }
+
+  async #fail(document: DocumentRecord, completedPages: number, message: string): Promise<void> {
+    if (this.#disposed) return
+    await this.#persistPending()
+    this.#jobs.set(document.id, failedAnalysisJob(document, completedPages, message))
     this.#emit()
   }
 
@@ -236,32 +213,22 @@ export class DocumentAnalysisService {
     for (const listener of this.#listeners) listener(snapshot)
   }
 
-  async #loadPending(): Promise<void> {
-    try {
-      const parsed = pendingAnalysisSchema.parse(
-        JSON.parse(await readFile(this.#pendingFile, "utf8")),
-      )
-      for (const id of parsed.documentIds) this.#pending.add(id)
-    } catch (error) {
-      if (!(isMissingFile(error) || error instanceof SyntaxError || error instanceof z.ZodError))
-        throw error
+  async #loadState(): Promise<void> {
+    const state = await this.#stateStore.load()
+    for (const id of state.pendingIds) this.#pending.add(id)
+    const workspace = await this.store.read()
+    for (const id of state.readyIds) {
+      const document = workspace.documents.find((candidate) => candidate.id === id)
+      if (!document) continue
+      this.#readyDocuments.add(id)
+      this.#jobs.set(id, completeAnalysisJob(document))
     }
   }
 
   async #persistPending(): Promise<void> {
-    const documentIds = [...this.#pending]
-    const operation = this.#writeQueue
-      .catch(() => undefined)
-      .then(async () => {
-        await mkdir(this.store.root, { recursive: true })
-        const temporaryFile = `${this.#pendingFile}.${randomUUID()}.tmp`
-        await writeFile(temporaryFile, JSON.stringify({ version: 1, documentIds }), {
-          encoding: "utf8",
-          mode: 0o600,
-        })
-        await rename(temporaryFile, this.#pendingFile)
-      })
-    this.#writeQueue = operation
-    await operation
+    await this.#stateStore.save({
+      pendingIds: [...this.#pending],
+      readyIds: [...this.#readyDocuments],
+    })
   }
 }

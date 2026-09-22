@@ -73,7 +73,7 @@ describe("backup archive", () => {
           isSymbolicLink: false,
         },
         {
-          relativePath: ".scourgify/history/private.md",
+          relativePath: ".ohmypaper/history/private.md",
           bytes: Buffer.from("must not ship"),
           isSymbolicLink: false,
         },
@@ -87,7 +87,7 @@ describe("backup archive", () => {
 
     expect(result.sourceCollectionId).toBe(sourceId)
     expect(result.targetCollectionId).toBe(targetId)
-    expect(restored.has(".scourgify/history/private.md")).toBe(false)
+    expect(restored.has(".ohmypaper/history/private.md")).toBe(false)
     expect(restored.get("notes/note.md")).toEqual(Buffer.from("---\n---\nhello\n"))
     expect(
       JSON.parse(Buffer.from(restored.get("collection.json") ?? []).toString()).collectionId,

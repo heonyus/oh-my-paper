@@ -1,7 +1,7 @@
-import type { ScourgifyApi } from "../../shared/ipc"
+import type { OhMyPaperApi } from "../../shared/ipc"
 import type { BoardId, KnowledgeNodeId } from "../../shared/knowledgeSchemas"
 
-type Api = ScourgifyApi["interchange"]
+type Api = OhMyPaperApi["interchange"]
 export type ImportFormat = "markdown" | "canvas" | "experiment" | "zotero"
 export type ImportPreview =
   | { readonly kind: "markdown"; readonly value: Awaited<ReturnType<Api["previewMarkdownImport"]>> }

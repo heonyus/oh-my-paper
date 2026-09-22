@@ -49,7 +49,7 @@ export function createLocalResearchReader(
       }
     }
     signal.throwIfAborted()
-    const url = `scourgify://node/${id}`
+    const url = `ohmypaper://node/${id}`
     const common = {
       id,
       title: node.title.slice(0, 2_000),

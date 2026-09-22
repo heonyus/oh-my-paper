@@ -4,7 +4,7 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 
 const runtimeRoot =
-  process.env.SCOURGIFY_PADDLE_VL_RUNTIME ?? join(homedir(), ".scourgify", "paddle-vl-runtime")
+  process.env.OH_MY_PAPER_PADDLE_VL_RUNTIME ?? join(homedir(), ".ohmypaper", "paddle-vl-runtime")
 const scriptsDirectory = process.platform === "win32" ? "Scripts" : "bin"
 const python = join(
   runtimeRoot,
@@ -15,8 +15,8 @@ const readinessMarker = join(runtimeRoot, ".ready-v1.6-layout-v2")
 const layoutModel = "PP-DocLayoutV3"
 const appleAcceleration = process.platform === "darwin" && process.arch === "arm64"
 const mlxRuntimeRoot =
-  process.env.SCOURGIFY_PADDLE_VL_MLX_RUNTIME ??
-  join(homedir(), ".scourgify", "paddle-vl-mlx-runtime")
+  process.env.OH_MY_PAPER_PADDLE_VL_MLX_RUNTIME ??
+  join(homedir(), ".ohmypaper", "paddle-vl-mlx-runtime")
 const mlxPython = join(mlxRuntimeRoot, "bin", "python")
 const mlxModelRepository = "PaddlePaddle/PaddleOCR-VL-1.6"
 const mlxModelDirectory = join(mlxRuntimeRoot, "models", "PaddleOCR-VL-1.6")
@@ -52,9 +52,9 @@ run(
   python,
   [
     "-c",
-    "import os; from paddlex import create_model; create_model(os.environ['SCOURGIFY_LAYOUT_MODEL'])",
+    "import os; from paddlex import create_model; create_model(os.environ['OH_MY_PAPER_LAYOUT_MODEL'])",
   ],
-  { ...process.env, SCOURGIFY_LAYOUT_MODEL: layoutModel },
+  { ...process.env, OH_MY_PAPER_LAYOUT_MODEL: layoutModel },
 )
 if (appleAcceleration) {
   if (!existsSync(mlxPython)) run("uv", ["venv", "--python", "3.12", mlxRuntimeRoot])
@@ -63,12 +63,12 @@ if (appleAcceleration) {
     mlxPython,
     [
       "-c",
-      "import os; from huggingface_hub import snapshot_download; snapshot_download(repo_id=os.environ['SCOURGIFY_MLX_MODEL_REPOSITORY'], local_dir=os.environ['SCOURGIFY_MLX_MODEL_DIR'])",
+      "import os; from huggingface_hub import snapshot_download; snapshot_download(repo_id=os.environ['OH_MY_PAPER_MLX_MODEL_REPOSITORY'], local_dir=os.environ['OH_MY_PAPER_MLX_MODEL_DIR'])",
     ],
     {
       ...process.env,
-      SCOURGIFY_MLX_MODEL_DIR: mlxModelDirectory,
-      SCOURGIFY_MLX_MODEL_REPOSITORY: mlxModelRepository,
+      OH_MY_PAPER_MLX_MODEL_DIR: mlxModelDirectory,
+      OH_MY_PAPER_MLX_MODEL_REPOSITORY: mlxModelRepository,
     },
   )
   writeFileSync(mlxReadinessMarker, "PaddleOCR-VL-1.6 MLX-VLM\n", { mode: 0o600 })
@@ -76,9 +76,9 @@ if (appleAcceleration) {
     python,
     [
       "-c",
-      "import os; from paddleocr import PaddleOCRVL; PaddleOCRVL(pipeline_version='v1.6', vl_rec_backend='mlx-vlm-server', vl_rec_server_url='http://127.0.0.1:9/', vl_rec_api_model_name=os.environ['SCOURGIFY_MLX_MODEL_DIR'], use_doc_orientation_classify=False, use_doc_unwarping=False, use_chart_recognition=False, use_seal_recognition=False, use_ocr_for_image_block=False)",
+      "import os; from paddleocr import PaddleOCRVL; PaddleOCRVL(pipeline_version='v1.6', vl_rec_backend='mlx-vlm-server', vl_rec_server_url='http://127.0.0.1:9/', vl_rec_api_model_name=os.environ['OH_MY_PAPER_MLX_MODEL_DIR'], use_doc_orientation_classify=False, use_doc_unwarping=False, use_chart_recognition=False, use_seal_recognition=False, use_ocr_for_image_block=False)",
     ],
-    { ...process.env, SCOURGIFY_MLX_MODEL_DIR: mlxModelDirectory },
+    { ...process.env, OH_MY_PAPER_MLX_MODEL_DIR: mlxModelDirectory },
   )
 } else {
   run(python, [
@@ -87,6 +87,6 @@ if (appleAcceleration) {
   ])
 }
 writeFileSync(readinessMarker, "PaddleOCR-VL-1.6 + PP-DocLayoutV3\n", { mode: 0o600 })
-process.stdout.write(`Scourgify PaddleOCR-VL runtime: ${runtimeRoot}\n`)
+process.stdout.write(`oh-my-paper PaddleOCR-VL runtime: ${runtimeRoot}\n`)
 if (appleAcceleration)
-  process.stdout.write(`Scourgify PaddleOCR-VL MLX runtime: ${mlxRuntimeRoot}\n`)
+  process.stdout.write(`oh-my-paper PaddleOCR-VL MLX runtime: ${mlxRuntimeRoot}\n`)
