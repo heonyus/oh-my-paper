@@ -54,7 +54,7 @@ function readerProps(document: DocumentRecord): Parameters<typeof ReaderWorkspac
     tool: "select",
     setTool: vi.fn(),
     runAi: vi.fn(async () => ""),
-    provider: { configured: false, provider: "opencodex", model: "test-model" },
+    provider: { configured: false, provider: "openai", model: "test-model" },
     documentReady: true,
     citations: [],
     insights: [],

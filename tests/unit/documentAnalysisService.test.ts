@@ -89,9 +89,7 @@ describe("DocumentAnalysisService", () => {
 
     try {
       await service.schedule(document.id)
-      await vi.waitFor(() =>
-        expect(service.snapshot().find((job) => job.id === document.id)?.state).toBe("complete"),
-      )
+      await vi.waitFor(() => expect(service.isReady(document.id)).toBe(true))
       expect(parser.parse).toHaveBeenCalledTimes(3)
     } finally {
       await service.dispose()
@@ -99,7 +97,7 @@ describe("DocumentAnalysisService", () => {
     }
   })
 
-  it("uses the Mistral fallback after both local attempts fail", async () => {
+  it("marks the document failed after both local attempts fail", async () => {
     const root = await mkdtemp(join(tmpdir(), "document-analysis-fallback-"))
     const store = new WorkspaceStore(root)
     const document = record("7", "Fallback paper")
@@ -110,14 +108,9 @@ describe("DocumentAnalysisService", () => {
         reason: "execution_failed" as const,
       })),
     }
-    const fallbackParser = {
-      parse: vi.fn(async (input: { readonly pageNumber: number }) =>
-        readyPage(document.hash, input.pageNumber),
-      ),
-    }
     const service = new DocumentAnalysisService(store, localParser, {
       maxConcurrency: 1,
-      fallbackParser,
+      pageConcurrency: 1,
     })
     const snapshots: unknown[] = []
     service.subscribe((snapshot) => snapshots.push(...snapshot))
@@ -125,14 +118,12 @@ describe("DocumentAnalysisService", () => {
     try {
       await service.schedule(document.id)
       await vi.waitFor(() =>
-        expect(service.snapshot().find((job) => job.id === document.id)?.state).toBe("complete"),
+        expect(service.snapshot().find((job) => job.id === document.id)?.state).toBe("failed"),
       )
       expect(localParser.parse).toHaveBeenCalledTimes(2)
-      expect(fallbackParser.parse).toHaveBeenCalledTimes(document.pageCount)
       expect(snapshots).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ state: "running", engine: "local", attempt: 2 }),
-          expect.objectContaining({ state: "running", engine: "mistral", attempt: 1 }),
         ]),
       )
     } finally {
@@ -154,16 +145,15 @@ describe("DocumentAnalysisService", () => {
     const first = new DocumentAnalysisService(store, parser)
 
     await first.schedule(document.id)
-    await vi.waitFor(() =>
-      expect(first.snapshot().find((job) => job.id === document.id)?.state).toBe("complete"),
-    )
+    await vi.waitFor(() => expect(first.isReady(document.id)).toBe(true))
     await first.dispose()
     const callsAfterFirstRun = parser.parse.mock.calls.length
 
     const reopened = new DocumentAnalysisService(store, parser)
     try {
       await reopened.resumePending()
-      expect(reopened.snapshot().find((job) => job.id === document.id)?.state).toBe("complete")
+      expect(reopened.isReady(document.id)).toBe(true)
+      expect(reopened.snapshot().find((job) => job.id === document.id)).toBeUndefined()
       expect(parser.parse).toHaveBeenCalledTimes(callsAfterFirstRun)
     } finally {
       await reopened.dispose()
@@ -186,7 +176,10 @@ describe("DocumentAnalysisService", () => {
         return pendingParse.promise
       }),
     }
-    const service = new DocumentAnalysisService(store, parser, { maxConcurrency: 1 })
+    const service = new DocumentAnalysisService(store, parser, {
+      maxConcurrency: 1,
+      pageConcurrency: 1,
+    })
 
     await Promise.all([service.schedule(first.id), service.schedule(second.id)])
     await vi.waitFor(() => expect(parser.parse).toHaveBeenCalledOnce())
@@ -212,6 +205,32 @@ describe("DocumentAnalysisService", () => {
     await rm(root, { recursive: true, force: true })
   })
 
+  it("parses pages of one document in parallel up to the page bound", async () => {
+    const root = await mkdtemp(join(tmpdir(), "document-analysis-parallel-"))
+    const store = new WorkspaceStore(root)
+    const document = record("3", "Parallel paper")
+    await store.save({ ...defaultWorkspace(), documents: [document] })
+    const gates: Deferred<DocumentPageParseResult>[] = []
+    const parser = {
+      parse: vi.fn((_input: { readonly pageNumber: number }) => {
+        const gate = new Deferred<DocumentPageParseResult>()
+        gates.push(gate)
+        return gate.promise
+      }),
+    }
+    const service = new DocumentAnalysisService(store, parser)
+
+    try {
+      await service.schedule(document.id)
+      await vi.waitFor(() => expect(parser.parse).toHaveBeenCalledTimes(2))
+      for (const gate of gates) gate.resolve(readyPage(document.hash, gates.indexOf(gate) + 1))
+      await vi.waitFor(() => expect(service.isReady(document.id)).toBe(true))
+    } finally {
+      await service.dispose()
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
   it("drains a parser rejection during disposal without an unhandled rejection", async () => {
     const root = await mkdtemp(join(tmpdir(), "document-analysis-reject-"))
     const store = new WorkspaceStore(root)
@@ -221,7 +240,7 @@ describe("DocumentAnalysisService", () => {
     const parser = {
       parse: vi.fn(() => pendingParse.promise),
     }
-    const service = new DocumentAnalysisService(store, parser)
+    const service = new DocumentAnalysisService(store, parser, { pageConcurrency: 1 })
 
     await service.schedule(document.id)
     await vi.waitFor(() => expect(parser.parse).toHaveBeenCalledOnce())
@@ -268,9 +287,10 @@ describe("DocumentAnalysisService", () => {
         if (!resolve) throw new Error("second page resolver is missing")
         resolve(readyPage(document.hash, 2))
       }
-      await vi.waitFor(() =>
-        expect(service.snapshot().every((job) => job.state === "complete")).toBe(true),
-      )
+      await vi.waitFor(() => {
+        expect(service.isReady(first.id)).toBe(true)
+        expect(service.isReady(second.id)).toBe(true)
+      })
       expect(
         JSON.parse(await readFile(join(root, "document-analysis-queue.json"), "utf8")),
       ).toEqual({
@@ -302,22 +322,30 @@ describe("DocumentAnalysisService", () => {
       }),
     }
 
-    const service = new DocumentAnalysisService(store, parser, { maxConcurrency: 1 })
+    const service = new DocumentAnalysisService(store, parser, {
+      maxConcurrency: 1,
+      pageConcurrency: 1,
+    })
 
     try {
       await Promise.all([service.schedule(first.id), service.schedule(second.id)])
 
       await vi.waitFor(() => {
-        const snap = service.snapshot()
-        const firstJob = snap.find((j) => j.id === first.id)
-        const secondJob = snap.find((j) => j.id === second.id)
+        const firstJob = service.snapshot().find((j) => j.id === first.id)
         expect(firstJob?.state).toBe("failed")
-        expect(secondJob?.state).toBe("complete")
+        expect(service.isReady(second.id)).toBe(true)
       })
 
+      const firstRanId = executionOrder[0]?.split(":")[0]
       expect(executionOrder).toEqual([
+        ...executionOrder.filter((entry) => entry.startsWith(`${firstRanId}:`)),
+        ...executionOrder.filter((entry) => !entry.startsWith(`${firstRanId}:`)),
+      ])
+      expect(executionOrder.filter((entry) => entry.startsWith(first.id))).toEqual([
         `${first.id}:1`,
         `${first.id}:1`,
+      ])
+      expect(executionOrder.filter((entry) => entry.startsWith(second.id))).toEqual([
         `${second.id}:1`,
         `${second.id}:2`,
       ])
@@ -340,12 +368,12 @@ describe("DocumentAnalysisService", () => {
 
     let parseAttempts = 0
     const parser = {
-      parse: vi.fn(async () => {
+      parse: vi.fn(async (input: { readonly pageNumber: number }) => {
         parseAttempts += 1
-        if (parseAttempts <= 2) {
+        if (parseAttempts <= 4) {
           return { status: "unavailable" as const, reason: "runtime_missing" as const }
         }
-        return readyPage(failDoc.hash, 1)
+        return readyPage(failDoc.hash, input.pageNumber)
       }),
     }
 
@@ -363,9 +391,9 @@ describe("DocumentAnalysisService", () => {
     const service2 = new DocumentAnalysisService(store, parser)
     await service2.resumePending()
     await vi.waitFor(() => {
-      expect(service2.snapshot().find((job) => job.id === failDoc.id)?.state).toBe("complete")
+      expect(service2.isReady(failDoc.id)).toBe(true)
     })
-    expect(parseAttempts).toBe(4)
+    expect(parseAttempts).toBe(6)
     await service2.dispose()
     await rm(root, { recursive: true, force: true })
   })

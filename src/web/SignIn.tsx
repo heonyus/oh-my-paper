@@ -33,7 +33,6 @@ export function SignIn({ checking = false }: { readonly checking?: boolean }): J
                 <img src={leafMarkUrl} alt="oh-my-paper" width="1024" height="1024" />
               </span>
               <div>
-                <p className="onboarding-category">학술 PDF 리더</p>
                 <h1 id="onboarding-title">oh-my-paper</h1>
               </div>
             </div>

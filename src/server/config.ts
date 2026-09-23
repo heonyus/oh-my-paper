@@ -2,6 +2,7 @@ import { homedir } from "node:os"
 import { join, resolve } from "node:path"
 import { config as loadDotenv } from "dotenv"
 import { z } from "zod"
+import { DEFAULT_OPENROUTER_MODEL } from "../shared/providerModels"
 
 const providerSchema = z.enum(["openai", "openrouter", "gemini", "groq"])
 
@@ -16,7 +17,6 @@ const environmentSchema = z.object({
   OPENROUTER_API_KEY: z.string().trim().min(20).optional(),
   GEMINI_API_KEY: z.string().trim().min(20).optional(),
   GROQ_API_KEY: z.string().trim().min(20).optional(),
-  MISTRAL_API_KEY: z.string().trim().min(20).optional(),
 })
 
 export type WebServerConfig = {
@@ -27,7 +27,6 @@ export type WebServerConfig = {
   readonly provider: z.infer<typeof providerSchema> | null
   readonly model: string | null
   readonly apiKeys: Readonly<Record<z.infer<typeof providerSchema>, string | null>>
-  readonly mistralApiKey?: string | null
 }
 
 function configuredProvider(
@@ -44,7 +43,7 @@ function configuredProvider(
 function defaultModel(provider: z.infer<typeof providerSchema> | null): string | null {
   if (provider === "gemini") return "gemini-3.5-flash-lite"
   if (provider === "groq") return "openai/gpt-oss-20b"
-  if (provider === "openrouter") return "google/gemini-2.5-flash-lite"
+  if (provider === "openrouter") return DEFAULT_OPENROUTER_MODEL
   if (provider === "openai") return "gpt-4.1-mini"
   return null
 }
@@ -66,6 +65,5 @@ export function readWebServerConfig(environment: NodeJS.ProcessEnv = process.env
       gemini: parsed.GEMINI_API_KEY ?? null,
       groq: parsed.GROQ_API_KEY ?? null,
     },
-    mistralApiKey: parsed.MISTRAL_API_KEY ?? null,
   }
 }

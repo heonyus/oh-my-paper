@@ -1,5 +1,14 @@
 import { z } from "zod"
 import type { AccountApi } from "./accountIpc"
+import {
+  agentAskRequestSchema,
+  agentAskResultSchema,
+  agentContextDocSchema,
+  agentMessageSchema,
+  agentPaperSchema,
+  type agentStepSchema,
+  agentThreadSchema,
+} from "./agentChat"
 import type { JevDecisionRequest, JevDecisionResult } from "./aiDecision"
 import {
   AI_CONTEXT_MAX_CHARACTERS,
@@ -166,7 +175,6 @@ export const providerConfigSchema = z.discriminatedUnion("provider", [
     apiKey: apiKeySchema,
     model: z.string().trim().min(1).max(160),
   }),
-  z.object({ provider: z.literal("opencodex"), model: z.string().trim().min(1).max(160) }),
 ])
 export const codexReasoningEffortSchema = z.enum([
   "none",
@@ -302,7 +310,6 @@ export type OhMyPaperApi = {
   ) => () => void
   readonly retryDocumentAnalysis: (id: DocumentId) => Promise<void>
   readonly documentOcrStatus: () => Promise<DocumentOcrProviderStatus>
-  readonly saveDocumentOcrKey: (key: string) => Promise<void>
   readonly readPageTranslationCache: (
     request: PageTranslationCacheReadRequest,
   ) => Promise<PageTranslationCacheResult>
@@ -322,6 +329,13 @@ export type OhMyPaperApi = {
     request: JevDecisionRequest,
     signal?: AbortSignal,
   ) => Promise<JevDecisionResult>
+  readonly agentAsk: (
+    request: z.infer<typeof agentAskRequestSchema>,
+  ) => Promise<z.infer<typeof agentAskResultSchema>>
+  readonly agentAskStream: (
+    request: z.infer<typeof agentAskRequestSchema>,
+    onStep: (step: z.infer<typeof agentStepSchema>) => void,
+  ) => Promise<z.infer<typeof agentAskResultSchema>>
   readonly runAi: (
     request: z.infer<typeof aiRequestSchema>,
   ) => Promise<z.infer<typeof aiResultSchema>>
@@ -447,6 +461,12 @@ export type {
 } from "./aiIpc"
 export {
   AI_CONTEXT_MAX_CHARACTERS,
+  agentAskRequestSchema,
+  agentAskResultSchema,
+  agentContextDocSchema,
+  agentMessageSchema,
+  agentPaperSchema,
+  agentThreadSchema,
   aiActionSchema,
   aiHistoryMessageSchema,
   aiJobCancelRequestSchema,

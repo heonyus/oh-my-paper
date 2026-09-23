@@ -40,13 +40,13 @@ describe("SettingsModal", () => {
     )
     await userEvent.click(screen.getByRole("button", { name: "암호화하여 저장" }))
 
-    expect(screen.getByLabelText("모델 ID")).toHaveValue("google/gemini-2.5-flash-lite")
+    expect(screen.getByLabelText("모델 ID")).toHaveValue("z-ai/glm-5.3-flash")
     expect(screen.queryByText(/ChatGPT Plus/)).not.toBeInTheDocument()
     expect(screen.getByLabelText("페이지 번역 모델")).toHaveValue("tencent/hy-mt2-30b-a3b")
     expect(onSave).toHaveBeenCalledWith({
       provider: "openrouter",
       apiKey: "sk-or-example-key-at-least-twenty-characters",
-      model: "google/gemini-2.5-flash-lite",
+      model: "z-ai/glm-5.3-flash",
       pageTranslationModel: "tencent/hy-mt2-30b-a3b",
     })
   })
@@ -63,7 +63,7 @@ describe("SettingsModal", () => {
     )
 
     const model = screen.getByLabelText("모델 ID")
-    expect(model).toHaveValue("google/gemini-2.5-flash-lite")
+    expect(model).toHaveValue("z-ai/glm-5.3-flash")
     await userEvent.selectOptions(model, "deepseek/deepseek-v4.1-flash")
     expect(model).toHaveValue("deepseek/deepseek-v4.1-flash")
   })
@@ -128,8 +128,7 @@ describe("SettingsModal", () => {
     })
   })
 
-  it("shows local Paddle readiness and saves the optional Mistral fallback key", async () => {
-    const onOcrKeySave = vi.fn(async () => {})
+  it("shows local Paddle readiness without any remote OCR fallback", () => {
     render(
       <SettingsModal
         status={{ configured: true, provider: "gemini", model: "gemini-3.5-flash-lite" }}
@@ -137,23 +136,17 @@ describe("SettingsModal", () => {
         fontScale={1}
         onClose={vi.fn()}
         onSave={vi.fn(async () => {})}
-        onOcrKeySave={onOcrKeySave}
         onFontScaleChange={vi.fn()}
       />,
     )
 
     expect(screen.getByText("PaddleOCR-VL-1.6")).toBeVisible()
     expect(screen.getByText("로컬 런타임 설치 필요")).toBeVisible()
-    expect(screen.getByLabelText("Mistral OCR API 키")).toBeVisible()
-    await userEvent.type(
-      screen.getByLabelText("Mistral OCR API 키"),
-      "mistral-user-owned-key-at-least-twenty-characters",
-    )
-    await userEvent.click(screen.getByRole("button", { name: "폴백 키 저장" }))
-    expect(onOcrKeySave).toHaveBeenCalledWith("mistral-user-owned-key-at-least-twenty-characters")
+    expect(screen.queryByText(/Mistral/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/OCR API 키/)).not.toBeInTheDocument()
   })
 
-  it("locks first run to OpenRouter setup only", async () => {
+  it("locks first run to AI provider setup without a close button", async () => {
     const onSave = vi.fn(async () => {})
     const onModeSave = vi.fn(async () => {})
     render(
@@ -170,12 +163,14 @@ describe("SettingsModal", () => {
       />,
     )
 
-    expect(screen.getByText("OpenRouter API 키 설정 필요")).toBeVisible()
+    expect(screen.getByText("AI 연결 설정 필요")).toBeVisible()
     expect(screen.getByLabelText("OpenRouter API 키")).toBeVisible()
     expect(screen.queryByLabelText(/OCR API 키/)).not.toBeInTheDocument()
-    expect(screen.queryByLabelText("Provider")).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "설정 닫기" })).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "OpenRouter 설정 저장" })).toBeDisabled()
+
+    const providerSelect = screen.getByLabelText("Provider")
+    expect(providerSelect.querySelectorAll("option")).toHaveLength(1)
 
     await userEvent.type(
       screen.getByLabelText("OpenRouter API 키"),
@@ -185,6 +180,28 @@ describe("SettingsModal", () => {
     expect(await screen.findByText("저장됨")).toBeVisible()
     expect(onSave).toHaveBeenCalledOnce()
     expect(onModeSave).not.toHaveBeenCalled()
+  })
+
+  it("keeps the browser API fallback on OpenRouter only", () => {
+    render(
+      <SettingsModal
+        status={{ configured: false, provider: "openrouter", model: "qwen/qwen3.7-flash" }}
+        ocrStatus={{ configured: false, provider: "paddle", model: "PaddleOCR-VL-1.6" }}
+        fontScale={1}
+        locked
+        openRouterRequired
+        onClose={vi.fn()}
+        onSave={vi.fn(async () => {})}
+        onModeSave={vi.fn()}
+        onFontScaleChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByLabelText("OpenRouter API 키")).toBeVisible()
+    expect(
+      screen.queryByRole("option", { name: "로컬 OpenAI 호환 프록시" }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByLabelText("Provider").querySelectorAll("option")).toHaveLength(1)
   })
 
   it("changes the persisted UI font scale", async () => {
@@ -206,7 +223,7 @@ describe("SettingsModal", () => {
     expect(screen.queryByRole("button", { name: "100%로 초기화" })).not.toBeInTheDocument()
   })
 
-  it("connects to local OpenCodex without requesting an API key", async () => {
+  it("connects an API provider with its key", async () => {
     const onSave = vi.fn(async () => {})
     const onThemeChange = vi.fn()
     render(
@@ -222,15 +239,20 @@ describe("SettingsModal", () => {
     )
 
     await userEvent.click(screen.getByRole("button", { name: "AI 모델" }))
-    await userEvent.selectOptions(screen.getByLabelText("Provider"), "opencodex")
-    expect(screen.queryByLabelText("API 키")).not.toBeInTheDocument()
+    await userEvent.selectOptions(screen.getByLabelText("AI 접근 방식"), "api")
+    await userEvent.selectOptions(screen.getByLabelText("Provider"), "gemini")
+    await userEvent.type(screen.getByLabelText("API 키"), "gemini-user-key-at-least-20-characters")
     await userEvent.click(screen.getByRole("button", { name: "일반" }))
     await userEvent.selectOptions(screen.getByLabelText("화면 모드"), "dark")
     await userEvent.click(screen.getByRole("button", { name: "AI 모델" }))
     await userEvent.click(screen.getByRole("button", { name: "암호화하여 저장" }))
 
     expect(onThemeChange).toHaveBeenCalledWith("dark")
-    expect(onSave).toHaveBeenCalledWith({ provider: "opencodex", model: "gpt-5.6-sol" })
+    expect(onSave).toHaveBeenCalledWith({
+      provider: "gemini",
+      model: "gemini-3.5-flash-lite",
+      apiKey: "gemini-user-key-at-least-20-characters",
+    })
   })
 
   it("separates reading preferences in a source-list section", async () => {

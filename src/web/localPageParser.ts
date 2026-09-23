@@ -10,6 +10,7 @@ import {
   type PageParseStreamEvent,
   pageParseStreamEventSchema,
 } from "../shared/pageParseStream"
+import { readSseData, splitSseFrames } from "./sseFrames"
 
 const streamEndpoint = "/api/rpc/parseDocumentPageStream"
 const requestTimeoutMs = 180_000
@@ -50,37 +51,6 @@ export type LocalPageParser = {
 
 function assertNever(value: never): never {
   throw new LocalPageParserError("invalid_stream", null, JSON.stringify(value))
-}
-
-function readData(frame: string): string | null {
-  const data = frame
-    .split("\n")
-    .filter((line) => line.startsWith("data:"))
-    .map((line) => line.slice(5).trimStart())
-    .join("\n")
-  return data.length > 0 ? data : null
-}
-
-function splitFrames(buffer: string): {
-  readonly frames: readonly string[]
-  readonly rest: string
-} {
-  const frames: string[] = []
-  let remainder = buffer
-  for (;;) {
-    const lineBreak = remainder.indexOf("\n\n")
-    const carriageBreak = remainder.indexOf("\r\n\r\n")
-    const index =
-      lineBreak < 0
-        ? carriageBreak
-        : carriageBreak < 0
-          ? lineBreak
-          : Math.min(lineBreak, carriageBreak)
-    if (index < 0) return { frames, rest: remainder }
-    const separatorLength = index === carriageBreak ? 4 : 2
-    frames.push(remainder.slice(0, index))
-    remainder = remainder.slice(index + separatorLength)
-  }
 }
 
 async function readErrorBody(response: Response): Promise<string> {
@@ -155,7 +125,7 @@ export function createLocalPageParser(options: LocalPageParserOptions = {}): Loc
       }
     }
     const consume = (frame: string): void => {
-      const data = readData(frame)
+      const data = readSseData(frame)
       if (data === null) return
       receive(pageParseStreamEventSchema.parse(JSON.parse(data)))
     }
@@ -166,7 +136,7 @@ export function createLocalPageParser(options: LocalPageParserOptions = {}): Loc
         if (buffer.length > PAGE_PARSE_STREAM_MAX_BUFFER_CHARS) {
           throw new LocalPageParserError("buffer_exceeded")
         }
-        const split = splitFrames(buffer)
+        const split = splitSseFrames(buffer)
         buffer = split.rest
         for (const frame of split.frames) consume(frame)
         if (done) break

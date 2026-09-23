@@ -37,6 +37,29 @@ Provider-reported limits may be unavailable and are not replaced with invented v
 
 ## Web implications
 
+### Local browser integration (2026-09-22)
+
+The loopback server now owns the official runtime installed through `@openai/codex`.
+It reuses the existing App Server adapter instead of copying OpenCodex's token
+exchange or private-endpoint adapter. No `@bitkyc08/opencodex` package, proxy process,
+or existing proxy credential is required for the OpenAI subscription path.
+
+Browser settings call validated local routes for account status, login, cancellation,
+logout, and persisted AI mode/model selection. Login-completed notifications travel
+over a local event stream. The browser receives the provider's login URL and account
+status, never access or refresh tokens. The app-owned profile and OS keyring preserve
+the connection on restart. No login or inference is started during package installation.
+
+The same selected mode routes reader requests and research planning/answers. API
+configuration remains separate, with no silent fallback if subscription auth fails.
+OpenAI is the only subscription provider integrated in this change. Old proxy
+configuration files are preserved, but the browser now directs users to its own
+ChatGPT login instead of exposing the external proxy option.
+
+Successful local route tests and opening an authorization page are not evidence of
+an authenticated completion. Live account approval, inference, and authenticated
+reopen must be verified with the user's own OpenAI login.
+
 OAuth itself does not require Electron. OCX's HTTP implementation shows why the earlier claim that a server-side Codex subprocess is universally necessary was too strong. However, current oh-my-paper relies on local IPC, SQLite/files and the managed App Server transport. Ordinary Workers cannot run that subprocess.
 
 A hosted UI plus personal local companion can retain credentials and documents on-device. A fully hosted multi-user service instead needs a supported provider authorization arrangement, strict per-user credential isolation, refresh/revocation, storage and abuse controls. A community client's working private endpoint is not a public third-party SaaS API contract. No Cloudflare/GCP resources were recreated, and no free-hosting or unlimited-subscription claim is made.

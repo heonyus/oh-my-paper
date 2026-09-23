@@ -25,7 +25,6 @@ type SettingsModalProps = {
   readonly onSave: (config: ProviderConfig) => Promise<void>
   readonly onModeSave?: (mode: AiMode) => Promise<void>
   readonly ocrStatus?: DocumentOcrProviderStatus | undefined
-  readonly onOcrKeySave?: ((key: string) => Promise<void>) | undefined
   readonly onFontScaleChange: (scale: number) => void
   readonly onMinimapVisibleChange?: ((visible: boolean) => void) | undefined
   readonly theme?: AppearanceTheme | undefined
@@ -56,7 +55,6 @@ export function SettingsModal({
   appearanceOnly = false,
   hostedCredentials,
   ocrStatus,
-  onOcrKeySave,
   openRouterRequired = false,
   locked = false,
 }: SettingsModalProps): JSX.Element {
@@ -66,7 +64,8 @@ export function SettingsModal({
     : appearanceOnly
       ? sections.filter((candidate) => candidate.id !== "ai")
       : sections
-  const aiProviderForm = useAiProviderForm(status, openRouterRequired)
+  const hideChatgptMode = locked && status.mode === undefined
+  const aiProviderForm = useAiProviderForm(status, openRouterRequired, hideChatgptMode)
   const credentialsReady = status.configured
   const dialog = useRef<HTMLDialogElement>(null)
   useLayoutEffect(() => {
@@ -109,7 +108,7 @@ export function SettingsModal({
               <h3>{visibleSections.find((item) => item.id === section)?.label}</h3>
               {section === "ai" ? (
                 <span className="settings-connection" data-ready={credentialsReady}>
-                  <i /> {credentialsReady ? "연결 준비됨" : "OpenRouter API 키 설정 필요"}
+                  <i /> {credentialsReady ? "연결 준비됨" : "AI 연결 설정 필요"}
                 </span>
               ) : null}
             </div>
@@ -188,8 +187,9 @@ export function SettingsModal({
                       onSave={onSave}
                       onModeSave={onModeSave ?? (async () => {})}
                       openRouterOnly={openRouterRequired}
+                      hideChatgptMode={hideChatgptMode}
                     />
-                    {!openRouterRequired && aiProviderForm.mode === "chatgpt" ? (
+                    {!hideChatgptMode && aiProviderForm.mode === "chatgpt" ? (
                       <CodexSettings
                         onConnectionChange={async () => {
                           await onModeSave?.("chatgpt")
@@ -198,12 +198,7 @@ export function SettingsModal({
                     ) : null}
                   </>
                 )}
-                {ocrStatus && !locked ? (
-                  <DocumentOcrSettings
-                    status={ocrStatus}
-                    onSave={onOcrKeySave ?? (async () => {})}
-                  />
-                ) : null}
+                {ocrStatus && !locked ? <DocumentOcrSettings status={ocrStatus} /> : null}
                 {!openRouterRequired && window.ohmypaper?.localInference ? (
                   <LocalAiPanel
                     api={window.ohmypaper.localInference}

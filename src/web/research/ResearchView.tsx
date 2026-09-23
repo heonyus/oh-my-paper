@@ -1,0 +1,141 @@
+import { type JSX, useState } from "react"
+import {
+  type AgentPaper,
+  type AgentStep,
+  type AgentThread,
+  agentHistoryFromMessages,
+  threadTitleFromQuestion,
+} from "../../shared/agentChat"
+import type { DocumentId, Workspace } from "../../shared/schemas"
+import { appendMessage, createThread, upsertThread } from "./agentThreadModel"
+import { ResearchRail } from "./ResearchRail"
+import { type PaperOpenState, ResearchThread } from "./ResearchThread"
+
+export function ResearchView({
+  workspace,
+  onWorkspaceChange,
+  onOpenImportedDocument,
+}: {
+  readonly workspace: Workspace
+  readonly onWorkspaceChange: (workspace: Workspace) => void
+  readonly onOpenImportedDocument: (id: DocumentId) => void
+}): JSX.Element {
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [attachedIds, setAttachedIds] = useState<readonly DocumentId[]>([])
+  const [sending, setSending] = useState(false)
+  const [liveSteps, setLiveSteps] = useState<readonly AgentStep[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [paperOpenStates, setPaperOpenStates] = useState<Readonly<Record<string, PaperOpenState>>>(
+    {},
+  )
+
+  const threads = workspace.agentThreads
+  const active = threads.find((thread) => thread.id === activeId) ?? null
+
+  const persistThread = (thread: AgentThread): void => {
+    onWorkspaceChange({ ...workspace, agentThreads: upsertThread(threads, thread) })
+  }
+
+  const selectThread = (id: string | null): void => {
+    setActiveId(id)
+    setError(null)
+    const thread = id ? threads.find((existing) => existing.id === id) : null
+    setAttachedIds(thread?.contextDocIds ?? [])
+  }
+
+  const attach = (id: DocumentId): void => {
+    if (attachedIds.includes(id)) return
+    const next = [...attachedIds, id]
+    setAttachedIds(next)
+    if (active) persistThread({ ...active, contextDocIds: next })
+  }
+
+  const detach = (id: DocumentId): void => {
+    const next = attachedIds.filter((existing) => existing !== id)
+    setAttachedIds(next)
+    if (active) persistThread({ ...active, contextDocIds: next })
+  }
+
+  const send = async (question: string): Promise<void> => {
+    if (sending) return
+    const base =
+      active ?? createThread(crypto.randomUUID(), threadTitleFromQuestion(question), attachedIds)
+    const history = agentHistoryFromMessages(base.messages)
+    const withUser = appendMessage(base, { role: "user", content: question })
+    if (!active) {
+      setActiveId(withUser.id)
+      setAttachedIds(withUser.contextDocIds)
+    }
+    persistThread(withUser)
+    setSending(true)
+    setLiveSteps([])
+    setError(null)
+    const steps: AgentStep[] = []
+    try {
+      const result = await window.ohmypaper.agentAskStream(
+        {
+          question,
+          contextDocIds: withUser.contextDocIds,
+          history,
+        },
+        (step) => {
+          const index = steps.findIndex((existing) => existing.id === step.id)
+          if (index === -1) steps.push(step)
+          else steps[index] = step
+          setLiveSteps([...steps])
+        },
+      )
+      const done = appendMessage(withUser, {
+        role: "assistant",
+        content: result.answer,
+        papers: result.papers,
+        steps: [...steps],
+      })
+      persistThread(done)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "답변을 만들지 못했습니다")
+    } finally {
+      setSending(false)
+      setLiveSteps([])
+    }
+  }
+
+  const openInReader = async (paper: AgentPaper): Promise<void> => {
+    if (!paper.fullTextUrl) return
+    const key = `${paper.provider}:${paper.title}`
+    setPaperOpenStates((states) => ({ ...states, [key]: "importing" }))
+    try {
+      const result = await window.ohmypaper.importDocumentUrl(paper.fullTextUrl)
+      setPaperOpenStates((states) => ({ ...states, [key]: "idle" }))
+      if (result) onOpenImportedDocument(result.document.id)
+    } catch {
+      setPaperOpenStates((states) => ({ ...states, [key]: "failed" }))
+    }
+  }
+
+  return (
+    <div className="research-view">
+      <ResearchRail
+        threads={threads}
+        activeId={active?.id ?? null}
+        onNew={() => selectThread(null)}
+        onSelect={selectThread}
+      />
+      <section className="research-main" aria-label="리서치 에이전트">
+        <ResearchThread
+          thread={active}
+          documents={workspace.documents}
+          attachedIds={attachedIds}
+          sending={sending}
+          liveSteps={liveSteps}
+          error={error}
+          paperOpenStates={paperOpenStates}
+          onAttach={attach}
+          onDetach={detach}
+          onSend={(question) => void send(question)}
+          onOpenInReader={(paper) => void openInReader(paper)}
+        />
+      </section>
+    </div>
+  )
+}

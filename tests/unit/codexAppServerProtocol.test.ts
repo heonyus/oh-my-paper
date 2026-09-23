@@ -277,7 +277,11 @@ describe("CodexAppServerClient Protocol Fake", () => {
     const threadId = await threadPromise
     expect(threadId).toBe("thread-abc")
 
-    const turnPromise = session.startTurn({ threadId, prompt: "Translate this passage" })
+    const turnPromise = session.startTurn({
+      threadId,
+      prompt: "Translate this passage",
+      reasoningEffort: "high",
+    })
     await vi.waitFor(() => expect(hasRequest(fake, "turn/start")).toBe(true))
 
     const turnMsg = findRequest(fake, "turn/start")
@@ -292,6 +296,7 @@ describe("CodexAppServerClient Protocol Fake", () => {
         networkAccess: false,
       },
       input: [{ type: "text", text: "Translate this passage" }],
+      effort: "high",
     })
     fake.emitLine({ id: turnMsg.id, result: { turn: { id: "turn-xyz" } } })
     const turnId = await turnPromise

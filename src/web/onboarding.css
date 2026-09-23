@@ -118,14 +118,6 @@
     drop-shadow(0 4px 14px color-mix(in srgb, var(--ink) 22%, transparent));
 }
 
-.onboarding-category {
-  margin: 0 0 5px;
-  color: var(--action-subtle);
-  font-size: var(--type-compact-size);
-  font-weight: 650;
-  letter-spacing: 0.08em;
-}
-
 .onboarding-brand h1 {
   margin: 0;
   color: var(--surface);

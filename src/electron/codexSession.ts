@@ -63,9 +63,7 @@ export class CodexSession {
         ],
         ...((options.cwd ?? this.readableRoot) ? { cwd: options.cwd ?? this.readableRoot } : {}),
         ...(options.model !== undefined ? { model: options.model } : {}),
-        ...(options.reasoningEffort !== undefined
-          ? { reasoningEffort: options.reasoningEffort }
-          : {}),
+        ...(options.reasoningEffort !== undefined ? { effort: options.reasoningEffort } : {}),
       },
       codexTurnStartResultSchema,
       15_000,

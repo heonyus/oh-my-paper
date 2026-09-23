@@ -12,7 +12,7 @@ export function pageTranslationCacheIdentity(
   parser?: CachedPageTranslationBlock["sourceParser"],
   parserConfigVersion?: string,
 ): string {
-  return `v9:${documentId}:${page}:ko:${provider.provider}:${provider.model}:${parser ?? "unknown"}:${parserConfigVersion ?? "unknown"}`
+  return `v10:${documentId}:${page}:ko:${provider.provider}:${provider.model}:${parser ?? "unknown"}:${parserConfigVersion ?? "unknown"}`
 }
 
 function pageTranslationCachePrefix(
@@ -20,7 +20,7 @@ function pageTranslationCachePrefix(
   page: number,
   provider: ProviderStatus,
 ): string {
-  return `v9:${documentId}:${page}:ko:${provider.provider}:${provider.model}:`
+  return `v10:${documentId}:${page}:ko:${provider.provider}:${provider.model}:`
 }
 
 function request(

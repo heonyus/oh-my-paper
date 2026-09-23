@@ -63,6 +63,7 @@ export type PaddlePageParserServiceOptions = {
   readonly python?: string | undefined
   readonly readinessMarker?: string | undefined
   readonly vlmServer?: PaddleVlmServer | undefined
+  readonly maxConcurrency?: number | undefined
 }
 
 type PaddlePageParseInput = {
@@ -76,12 +77,19 @@ export class PaddlePageParserService {
   readonly #active = new Map<string, Promise<DocumentPageParseResult>>()
   readonly #vlmServer: PaddleVlmServer
   readonly #usesManagedVlm: boolean
-  #tail: Promise<void> = Promise.resolve()
+  readonly #maxConcurrency: number
+  readonly #waiters: Array<() => void> = []
+  #inFlight = 0
 
   constructor(readonly options: PaddlePageParserServiceOptions) {
     this.#usesManagedVlm = options.vlmServer === undefined
     this.#vlmServer =
       options.vlmServer ?? new ApplePaddleVlmServer(options.home ? { home: options.home } : {})
+    const concurrency = options.maxConcurrency
+    this.#maxConcurrency =
+      typeof concurrency === "number" && Number.isInteger(concurrency) && concurrency > 0
+        ? concurrency
+        : 3
   }
 
   async status(): Promise<DocumentOcrProviderStatus> {
@@ -122,15 +130,29 @@ export class PaddlePageParserService {
     const key = `${input.documentId}:${input.pageNumber}`
     const active = this.#active.get(key)
     if (active) return active
-    const operation = this.#tail
+    const operation = this.#acquire()
       .then(() => this.#parse(input))
-      .finally(() => this.#active.delete(key))
-    this.#tail = operation.then(
-      () => undefined,
-      () => undefined,
-    )
+      .finally(() => {
+        this.#release()
+        this.#active.delete(key)
+      })
     this.#active.set(key, operation)
     return operation
+  }
+
+  async #acquire(): Promise<void> {
+    if (this.#inFlight >= this.#maxConcurrency) {
+      await new Promise<void>((resolve) => {
+        this.#waiters.push(resolve)
+      })
+    }
+    this.#inFlight += 1
+  }
+
+  #release(): void {
+    this.#inFlight -= 1
+    const next = this.#waiters.shift()
+    if (next) next()
   }
 
   dispose(): void {

@@ -5,8 +5,6 @@ import type {
 import type { DocumentId, DocumentRecord } from "../shared/schemas"
 import type { WorkspaceStore } from "./workspaceStore"
 
-export type DocumentAnalysisEngine = "local" | "mistral"
-
 export type DocumentAnalysisPageParser = {
   readonly parse: (input: {
     readonly documentId: DocumentId

@@ -116,7 +116,6 @@ export function installWebOhMyPaperApi(userId: string): void {
       provider: "paddle",
       model: "PaddleOCR-VL-1.6",
     }),
-    saveDocumentOcrKey: unavailableWebFeature("documentOcr.saveKey"),
     readPageTranslationCache: async ({ id, pageNumber }) => {
       activeDocumentId = id
       const key = `${id}:${pageNumber}`
@@ -173,6 +172,8 @@ export function installWebOhMyPaperApi(userId: string): void {
         model: selected.model,
       }
     },
+    agentAsk: unavailableWebFeature("agent.ask"),
+    agentAskStream: unavailableWebFeature("agent.askStream"),
     runAi: async (request) => {
       activeDocumentId = request.documentId
       return bridge.ai(request.documentId, request)

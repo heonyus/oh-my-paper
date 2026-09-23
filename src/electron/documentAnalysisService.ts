@@ -7,16 +7,11 @@ import type { DocumentPageParseResult } from "../shared/documentPageModel"
 import type { DocumentId, DocumentRecord } from "../shared/schemas"
 import {
   analysisFailureMessage,
-  completeAnalysisJob,
   failedAnalysisJob,
   queuedAnalysisJob,
   runningAnalysisJob,
 } from "./documentAnalysisJobs"
-import {
-  type DocumentAnalysisEngine,
-  type DocumentAnalysisPageParser,
-  parseAnalysisPage,
-} from "./documentAnalysisPageRunner"
+import { type DocumentAnalysisPageParser, parseAnalysisPage } from "./documentAnalysisPageRunner"
 import { DocumentAnalysisStateStore } from "./documentAnalysisStateStore"
 import type { WorkspaceStore } from "./workspaceStore"
 
@@ -30,7 +25,7 @@ export class DocumentAnalysisService {
   readonly #running = new Set<Promise<void>>()
   readonly #abort = new AbortController()
   readonly #maxConcurrency: number
-  readonly #fallbackParser: DocumentAnalysisPageParser | null
+  readonly #pageConcurrency: number
   readonly #stateStore: DocumentAnalysisStateStore
   readonly #ready: Promise<void>
   #disposePromise: Promise<void> | null = null
@@ -41,15 +36,13 @@ export class DocumentAnalysisService {
     readonly parser: DocumentAnalysisPageParser,
     options: {
       readonly maxConcurrency?: number
-      readonly fallbackParser?: DocumentAnalysisPageParser
+      readonly pageConcurrency?: number
     } = {},
   ) {
-    const concurrency = options.maxConcurrency
-    this.#maxConcurrency =
-      typeof concurrency === "number" && Number.isInteger(concurrency) && concurrency > 0
-        ? concurrency
-        : 2
-    this.#fallbackParser = options.fallbackParser ?? null
+    const positiveInt = (value: number | undefined, fallback: number): number =>
+      typeof value === "number" && Number.isInteger(value) && value > 0 ? value : fallback
+    this.#maxConcurrency = positiveInt(options.maxConcurrency, 2)
+    this.#pageConcurrency = positiveInt(options.pageConcurrency, 4)
     this.#stateStore = new DocumentAnalysisStateStore(store.root)
     this.#ready = this.#loadState()
   }
@@ -61,6 +54,10 @@ export class DocumentAnalysisService {
   subscribe(listener: (snapshot: DocumentAnalysisSnapshot) => void): () => void {
     this.#listeners.add(listener)
     return () => this.#listeners.delete(listener)
+  }
+
+  isReady(documentId: DocumentId): boolean {
+    return this.#readyDocuments.has(documentId)
   }
 
   async resumePending(): Promise<void> {
@@ -89,6 +86,7 @@ export class DocumentAnalysisService {
     if (this.#disposed) return
     const document = workspace.documents.find((candidate) => candidate.id === documentId)
     if (!document) return
+    if (this.#readyDocuments.has(documentId)) return
     this.#pending.add(documentId)
     await this.#persistPending()
     if (this.#disposed) return
@@ -104,6 +102,8 @@ export class DocumentAnalysisService {
     const current = this.#jobs.get(documentId)
     if (current && current.state !== "failed" && current.state !== "complete") return
     if (current) this.#jobs.delete(documentId)
+    this.#readyDocuments.delete(documentId)
+    await this.#persistPending()
     await this.schedule(documentId)
   }
 
@@ -138,27 +138,41 @@ export class DocumentAnalysisService {
 
   async #run(document: DocumentRecord): Promise<void> {
     let completedPages = 0
-    let usingFallback = false
+    let failureMessage: string | null = null
+    let nextPage = 1
+    const takePage = (): number | null => {
+      if (failureMessage !== null || nextPage > document.pageCount) return null
+      const pageNumber = nextPage
+      nextPage += 1
+      return pageNumber
+    }
     try {
-      for (let pageNumber = 1; pageNumber <= document.pageCount; pageNumber += 1) {
-        if (this.#disposed) return
-        const engine: DocumentAnalysisEngine = usingFallback ? "mistral" : "local"
-        let result = await this.#parsePage(document, completedPages, pageNumber, engine)
-        if (result.status !== "ready" && !usingFallback && this.#fallbackParser) {
-          usingFallback = true
-          result = await this.#parsePage(document, completedPages, pageNumber, "mistral")
-        }
-        if (this.#disposed) return
-        if (result.status !== "ready") {
-          await this.#fail(document, completedPages, analysisFailureMessage(result))
-          return
-        }
-        completedPages = pageNumber
+      const workers = Array.from(
+        { length: Math.min(this.#pageConcurrency, document.pageCount) },
+        async () => {
+          for (;;) {
+            const pageNumber = takePage()
+            if (pageNumber === null || this.#disposed) return
+            const result = await this.#parsePage(document, () => completedPages, pageNumber)
+            if (this.#disposed) return
+            if (result.status !== "ready") {
+              failureMessage ??= analysisFailureMessage(result)
+              return
+            }
+            completedPages += 1
+          }
+        },
+      )
+      await Promise.all(workers)
+      if (this.#disposed) return
+      if (failureMessage !== null) {
+        await this.#fail(document, completedPages, failureMessage)
+        return
       }
       this.#pending.delete(document.id)
       this.#readyDocuments.add(document.id)
       await this.#persistPending()
-      this.#jobs.set(document.id, completeAnalysisJob(document))
+      this.#jobs.delete(document.id)
       this.#emit()
     } catch {
       await this.#fail(document, completedPages, "문서 구조 분석 중 로컬 오류가 발생했습니다")
@@ -167,15 +181,12 @@ export class DocumentAnalysisService {
 
   async #parsePage(
     document: DocumentRecord,
-    completedPages: number,
+    completedPages: () => number,
     pageNumber: number,
-    engine: DocumentAnalysisEngine,
   ): Promise<DocumentPageParseResult> {
-    const parser = engine === "mistral" ? this.#fallbackParser : this.parser
-    if (!parser) return { status: "unavailable", reason: "provider_unconfigured" }
-    const maxAttempts = engine === "local" ? 2 : 1
+    const maxAttempts = 2
     return parseAnalysisPage({
-      parser,
+      parser: this.parser,
       document,
       pageNumber,
       store: this.store,
@@ -187,10 +198,9 @@ export class DocumentAnalysisService {
           document.id,
           runningAnalysisJob({
             document,
-            completedPages,
+            completedPages: completedPages(),
             currentPage: pageNumber,
             stage,
-            engine,
             attempt,
             maxAttempts,
           }),
@@ -221,7 +231,6 @@ export class DocumentAnalysisService {
       const document = workspace.documents.find((candidate) => candidate.id === id)
       if (!document) continue
       this.#readyDocuments.add(id)
-      this.#jobs.set(id, completeAnalysisJob(document))
     }
   }
 

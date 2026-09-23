@@ -9,10 +9,9 @@ export function providerClient(config: ProviderConfig): OpenAI {
     openrouter: "https://openrouter.ai/api/v1",
     gemini: "https://generativelanguage.googleapis.com/v1beta/openai/",
     groq: "https://api.groq.com/openai/v1",
-    opencodex: "http://127.0.0.1:10100/v1",
   }
   return new OpenAI({
-    apiKey: "apiKey" in config ? config.apiKey : "local-opencodex",
+    apiKey: config.apiKey,
     baseURL: bases[config.provider],
     maxRetries: 0,
     timeout: 120_000,

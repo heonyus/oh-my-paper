@@ -60,8 +60,6 @@ const actionInstruction: Readonly<Record<AiAction, string>> = {
   chat: "Act as a document-grounded research agent. Use conversation history to resolve the user's intent, never as factual evidence. Earlier assistant answers can be wrong: correct them whenever the current source evidence contradicts them. Answer from the current PAPER CONTEXT and LOCAL CONTEXT. Address every independently answerable part of a multi-part question in separate numbered sub-answers. Before saying an item is unavailable, check all supplied passages and table captions. Include exact numbers, table or figure identifiers, and page evidence when supplied. A section heading AFTER a passage does not belong to that passage; omit uncertain section numbers rather than guessing. Explicitly distinguish paper evidence from inference.",
   card_title:
     "Return only one concise Korean noun phrase that names this card. Prefer 8-24 characters, never exceed 42 characters, and omit generic words such as 해설, 분석, 카드, 페이지, 먼저 알려드릴 점.",
-  auto_highlight:
-    'Select up to 6 key passages from SOURCE EVIDENCE. SOURCE EVIDENCE contains candidate objects with an `id`, page, and verbatim quote. Return JSON only as {"selections":[{"candidateId":"an-existing-id","reason":"..."}]}. Select only IDs copied exactly from the candidates; never return a new quote, paraphrase, coordinate, or page. Each reason is one Korean sentence under 60 characters naming why the selected passage matters. Order selections by importance and return fewer than 6 when the candidates do not support more.',
 }
 
 const hyMtPageTranslationInstruction =

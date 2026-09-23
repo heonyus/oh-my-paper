@@ -20,15 +20,17 @@ Preview, Library, Scholar Deep Search, Auto Highlight and Markup. Each needs rea
 behavior and persistence where applicable. Empty, loading, saving, error, cancelled
 and unavailable states must be explicit and actionable. No generated demo data.
 
-The local browser runtime has a blocking first-run AI credential gate. Library and
-reader content stay hidden until the user has saved a personal OpenRouter API key and
-selected its model. Every imported PDF completes page parsing and validation before its
-reader action becomes available. PDF.js supplies digital text and geometry, while local
-PaddleOCR-VL supplies figures, tables and equations. The library shows page-level
-progress, the active engine and bounded retries. After two local failures, an optional
-user-supplied Mistral key permits one final OCR 4.1 fallback; without that key the job
-stays failed with a retry action. Parsed pages, translations and paper insights reuse
-their persistent caches; source distributions contain no user keys.
+The local browser runtime has a guided first-run onboarding screen (welcome, connect
+choice, done) that replaces any bare settings gate. Library and reader content stay
+hidden until the user connects ChatGPT subscription login or saves a personal API key
+(OpenRouter, OpenAI, Gemini or Groq) with its model; both paths are a handful of
+clicks and never expose credentials. Every imported PDF completes page parsing and
+validation before its reader action becomes available. PDF.js supplies digital text
+and geometry, while local PaddleOCR-VL supplies figures, tables and equations. The
+library shows page-level progress, the active engine and bounded retries; a page that
+cannot be parsed stays visibly failed with a retry action. Parsed pages, translations
+and paper insights reuse their persistent caches; source distributions contain no
+user keys.
 
 Primary persona: Korean researcher reading English papers and checking their source.
 Keyboard-only and enlarged-text users must reach import, search, reading, source
@@ -266,9 +268,10 @@ An explicit AI proposal action displays its scope before sending selected eviden
 - JSON Canvas carries layout and visual edges; a sidecar carries oh-my-paper semantics. Explain the pair, missing-node constraints and partial-save failures. A Canvas-only import is not claimed to preserve PDF anchors.
 - Native bibliography management preserves imported legacy IDs and reviewed identifier matches; no Zotero application connector or automatic synchronization. Metadata-only records remain labelled until their full text is actually read.
 - Experiment JSONL accepts bounded aggregate records with code/data/evaluation versions. Optional Inspect conversion uses the official log reader header mode, not execution of imported code or raw patient traces.
-- API and ChatGPT subscription modes are visibly distinct. Local OpenCodex remains an API-compatible local proxy option. Credentials stay main-process-only. Display actual connection state, cancellation, expiry/error and unknown usage honestly.
+- API and ChatGPT subscription modes are visibly distinct. In the browser, OpenAI ChatGPT subscription is the first mode shown when the backend reports it; OpenRouter is the browser's API choice. The legacy local OpenCodex proxy remains available only in desktop advanced settings. Do not render desktop-only API providers as if the browser supported them. Credentials stay app-owned and main-process/server-bound.
 - Settings separates app account, AI connections and reading/general preferences. Google app login is required with the approved seven-day bounded offline policy; it is not provider authorization. Modal body scrolls; close and navigation remain accessible. No shared API key, automatic sync or document upload to the account service.
-- Subscription connection offers browser login and device-code login, a cancellable pending state, account plan and available usage windows. Pending authorization never displays as connected. Failures remain visible until retried. Login/logout refresh the application's provider state; no background inference or API fallback.
+- Subscription connection offers browser login and device-code login through the app's npm-installed internal Codex runtime; users never start a CLI manually. It keeps an explicit clickable authorization link when a browser popup is blocked, a cancellable pending state, account plan and available usage windows. Pending authorization never displays as connected. Failures remain visible until retried. Login/logout refresh the application's provider state; no background inference or API fallback. Mode-save failures stay visible and do not claim that the mode changed.
+- Automatic highlight generation is not mounted in the research sidebar. Manual highlights and existing highlight annotations remain available through the normal highlight index and source-linked reader actions.
 - `데이터 가져오기·내보내기` is a rail action opening the existing bounded settings-style dialog. Format, destination and selected record precede file selection. Previews show counts, titles and conflicts; invalid previews cannot commit. A successful commit consumes its preview. Canvas export explicitly saves two companion files and reports a cancelled second save.
 - `AI 연결 제안` opens a bounded dialog with a searchable node checklist (2–12 records), visible source-scope notice, explicit generate/cancel controls and individual accept/reject decisions with source-return buttons. Proposed is never styled as accepted. Use existing settings and knowledge primitives, no new palette.
 - Note images use collection-owned raster assets only. Picker, paste and drop keep Markdown paths portable; unsupported or oversized input shows an inline error without losing the buffer. A note's `변경 이력` opens a scrollable, opaque text preview with date, current revision, explicit restore and conflict review. Restore preserves a recovery copy and must fail visibly if the current file changed. Existing modal chrome and focus rules apply.
@@ -286,3 +289,13 @@ Verify the actual current Electron build with synthetic PDFs: library/import, co
 ## 9. Document Preparation and Enrichment
 
 Keep `SourceDocumentAst` (immutable source), `SemanticDocumentAst` (derived interpretation) and `RenderedDocumentGeometry` (current viewport coordinates) separate. Native text is the default; scanned or unparseable content shows an actionable warning. `AI 구조 보강` is an explicit optional action, never triggered by key configuration. Show queued/running/complete/failed/cancelled and `budget-paused` distinctly; resume only on a deliberate action. Existing movable board cards retain source anchors while derived structure is regenerated. Unknown coordinates remain missing, not fabricated 1×1 boxes.
+
+## 10. Browser research agent (`리서치`)
+
+The browser product's third top-level view is a chat-first research agent. A left rail holds `새 채팅` and thread history bucketed by recency (지난 7일 / 지난 30일 / 이전). The empty state is a hero (`무엇을 배우고 싶으세요?`) with a composer and suggestion cards; suggestions never run queries automatically.
+
+- Every user turn is an explicit multi-step pipeline: an LLM planner expands the question into 1–3 English search queries, Semantic Scholar is searched per query in parallel, and a per-query Crossref·arXiv·OpenAlex fallback runs only when the primary search yields nothing. A single completion with a research system prompt then answers, citing numbered search results `[n]` and attached library papers `[Ln]`; the model is told to admit insufficient evidence rather than fabricate.
+- Each turn streams its steps live as an ordered trace: `질문 분석·검색 쿼리 생성` (expands to show the generated query chips), per-query `Semantic Scholar 검색` and `보조 검색` rows with running/done/failed states and hit counts, `라이브러리 첨부 논문` load, and `답변 작성`. Steps persist on the assistant message as a collapsed `검색 과정` disclosure so completed turns keep an inspectable trace. Running shows a spinner glyph, done a success check, failed an alert — all on existing ink/action/success/error tokens, with a short rotate-only spinner motion.
+- `@` opens a library picker; attached documents contribute title/authors/year/overview excerpts only — never raw PDFs or full text dumps. Chips show what is attached and are removable; attachment state persists per thread.
+- Result papers render as cards with provider, citation count, and two honest actions: `리더에서 열기` (enabled only when an open full-text URL exists; shows importing/failed states) and `원문 사이트` (external link). Opening imports the PDF server-side and navigates to the reader — no fake local copies.
+- Threads persist in the workspace (`agentThreads`), bounded in size. Answers render through the existing MarkdownContent component; reuse surface/ink/action tokens — no new palette.

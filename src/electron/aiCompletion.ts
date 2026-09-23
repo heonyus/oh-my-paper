@@ -6,6 +6,7 @@ import {
 } from "../shared/pageTranslationProtocol"
 import {
   isHyMtModel,
+  isOpenRouterPageTranslationModel,
   OPENROUTER_PAGE_TRANSLATION_MODEL,
   PAGE_TRANSLATION_MAIN_MODEL,
 } from "../shared/providerModels"
@@ -22,9 +23,8 @@ const readingTokenLimits: Readonly<Partial<Record<AiRequest["action"], number>>>
   table: 1_280,
   equation: 1_024,
   citation: 1_024,
-  auto_highlight: 1_024,
   page_structure: 8_192,
-  page_translation: 4_096,
+  page_translation: 8_192,
 }
 
 export function completionTokenLimit(request: AiRequest): number | undefined {
@@ -49,7 +49,10 @@ export function completionLimitParameters(
   readonly max_tokens?: number
   readonly max_completion_tokens?: number
   readonly reasoning_effort?: "minimal" | "low"
-  readonly reasoning?: { readonly effort?: "none" | "minimal" | "low"; readonly exclude?: boolean }
+  readonly reasoning?: {
+    readonly effort?: "none" | "minimal" | "low"
+    readonly exclude?: boolean
+  }
   readonly temperature?: 0
   readonly response_format?:
     | typeof pageStructureResponseFormat
@@ -74,7 +77,7 @@ export function completionLimitParameters(
     return {
       max_tokens: limit,
       ...(!isHyMtTranslation && model === "deepseek/deepseek-v4.1-flash"
-        ? { reasoning: { effort: "none" as const, exclude: true } }
+        ? { reasoning: { effort: "low" as const, exclude: true } }
         : {}),
       ...(!isHyMtTranslation && usesReasoningEffort(model)
         ? { reasoning_effort: "low" as const }
@@ -83,7 +86,12 @@ export function completionLimitParameters(
       ...(isHyMtTranslation ? {} : structured),
     }
   if (provider === "groq")
-    return { max_completion_tokens: limit, reasoning_effort: "low", temperature: 0, ...structured }
+    return {
+      max_completion_tokens: limit,
+      reasoning_effort: "low",
+      temperature: 0,
+      ...structured,
+    }
   if (provider === "gemini")
     if (request.action === "page_translation")
       return {
@@ -110,7 +118,9 @@ export function routedModelForRequest(
   pageTranslationModel?: string,
 ): string {
   if (provider === "openrouter" && request.action === "page_translation") {
-    const choice = pageTranslationModel ?? OPENROUTER_PAGE_TRANSLATION_MODEL
+    const configured = pageTranslationModel ?? OPENROUTER_PAGE_TRANSLATION_MODEL
+    const requested = request.pageTranslationModel
+    const choice = requested && isOpenRouterPageTranslationModel(requested) ? requested : configured
     if (choice !== PAGE_TRANSLATION_MAIN_MODEL) return choice
   }
   if (provider !== "openrouter" || model !== nitroBaseModel) return model

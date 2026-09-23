@@ -1,136 +1,33 @@
 import { AlertCircle, CheckCircle2, Info, Loader2 } from "lucide-react"
-import { type JSX, useCallback, useEffect, useRef, useState } from "react"
-import {
-  CODEX_MODEL_OPTIONS,
-  CODEX_REASONING_EFFORT_OPTIONS,
-  type CodexAccountStatus,
-  type CodexLoginType,
-} from "../../shared/codexTypes"
-import type { CodexReasoningEffort } from "../../shared/ipc"
+import type { JSX } from "react"
+import { CODEX_MODEL_OPTIONS, CODEX_REASONING_EFFORT_OPTIONS } from "../../shared/codexTypes"
 import { SubscriptionUsage } from "./SubscriptionUsage"
+import { isCodexReasoningEffort, useCodexSettings } from "./useCodexSettings"
 
 export function CodexSettings({
   onConnectionChange,
 }: {
   readonly onConnectionChange?: (() => Promise<void>) | undefined
 }): JSX.Element {
-  const [status, setStatus] = useState<CodexAccountStatus | null>(null)
-  const [loginId, setLoginId] = useState<string | null>(null)
-  const [message, setMessage] = useState("")
-  const [busy, setBusy] = useState(false)
-  const [selectedModel, setSelectedModel] = useState("gpt-5.6-sol")
-  const [selectedEffort, setSelectedEffort] = useState<CodexReasoningEffort>("medium")
-  const changed = useRef(onConnectionChange)
-  useEffect(() => {
-    changed.current = onConnectionChange
-  }, [onConnectionChange])
-
-  const refresh = useCallback(async (): Promise<void> => {
-    try {
-      setStatus(await window.ohmypaper.codex.getStatus())
-      const pStatus = await window.ohmypaper.providerStatus()
-      if (pStatus.codexModel) setSelectedModel(pStatus.codexModel)
-      if (pStatus.codexReasoningEffort) setSelectedEffort(pStatus.codexReasoningEffort)
-    } catch (error) {
-      setMessage(errorMessage(error))
-    }
-  }, [])
-
-  useEffect(() => {
-    void refresh()
-    return window.ohmypaper.codex.onLoginCompleted((event) => {
-      setLoginId(null)
-      setMessage(event.success ? "로그인 완료" : (event.error ?? "로그인 실패"))
-      void refresh()
-      void changed.current?.().catch((error: unknown) => setMessage(errorMessage(error)))
-    })
-  }, [refresh])
-
-  async function startLogin(type: CodexLoginType): Promise<void> {
-    setBusy(true)
-    setMessage("")
-    try {
-      const result = await window.ohmypaper.codex.startLogin(type)
-      await window.ohmypaper.saveAiMode("chatgpt")
-      if (result.type === "chatgpt") {
-        setLoginId(result.loginId)
-        await window.ohmypaper.openExternal({ url: result.authUrl })
-      } else if (result.type === "chatgptDeviceCode") {
-        setLoginId(result.loginId)
-        await window.ohmypaper.openExternal({ url: result.verificationUrl })
-        setMessage(`코드: ${result.userCode}`)
-      } else {
-        setMessage("ChatGPT 로그인 응답을 이해할 수 없습니다")
-      }
-    } catch (error) {
-      setMessage(errorMessage(error))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function cancelLogin(): Promise<void> {
-    if (!loginId) return
-    setBusy(true)
-    try {
-      await window.ohmypaper.codex.cancelLogin(loginId)
-      setLoginId(null)
-      setMessage("로그인 취소됨")
-    } catch (error) {
-      setMessage(errorMessage(error))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function logout(): Promise<void> {
-    setBusy(true)
-    try {
-      await window.ohmypaper.codex.logout()
-      await refresh()
-      await changed.current?.()
-      setMessage("이 앱의 ChatGPT 연결을 해제했습니다")
-    } catch (error) {
-      setMessage(errorMessage(error))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function updateModel(nextModel: string): Promise<void> {
-    setSelectedModel(nextModel)
-    try {
-      await window.ohmypaper.saveAiMode({
-        mode: "chatgpt",
-        codexModel: nextModel,
-        codexReasoningEffort: selectedEffort,
-      })
-      await changed.current?.()
-    } catch (error) {
-      setMessage(errorMessage(error))
-    }
-  }
-
-  async function updateEffort(nextEffort: CodexReasoningEffort): Promise<void> {
-    setSelectedEffort(nextEffort)
-    try {
-      await window.ohmypaper.saveAiMode({
-        mode: "chatgpt",
-        codexModel: selectedModel,
-        codexReasoningEffort: nextEffort,
-      })
-      await changed.current?.()
-    } catch (error) {
-      setMessage(errorMessage(error))
-    }
-  }
-
+  const {
+    status,
+    pendingLogin,
+    message,
+    busy,
+    selectedModel,
+    selectedEffort,
+    isConnected,
+    isError,
+    badgeStatus,
+    messageIsError,
+    refresh,
+    startLogin,
+    cancelLogin,
+    logout,
+    updateModel,
+    updateEffort,
+  } = useCodexSettings({ onConnectionChange })
   const account = status?.account?.type === "chatgpt" ? status.account : null
-  const isConnected = Boolean(status?.authenticated)
-  const isError = Boolean(status?.error)
-  const badgeStatus =
-    status === null ? "pending" : isConnected ? "connected" : isError ? "error" : "needed"
-  const isErrorMsg = /실패|error|Error/i.test(message)
   return (
     <section className="settings-group codex-settings-card" aria-label="ChatGPT 구독">
       <div className="codex-card-header">
@@ -140,19 +37,28 @@ export function CodexSettings({
         </div>
         <span className="settings-badge" data-status={badgeStatus} role="status">
           <i />
-          {status === null
-            ? "확인 중…"
-            : isConnected
-              ? `연결됨${account?.email ? ` · ${account.email}` : ""}`
-              : isError
-                ? `사용 불가: ${status.error}`
-                : "로그인 필요"}
+          {pendingLogin
+            ? "로그인 진행 중…"
+            : status === null
+              ? "확인 중…"
+              : isConnected
+                ? `연결됨${account?.email ? ` · ${account.email}` : ""}`
+                : isError
+                  ? `사용 불가: ${status.error}`
+                  : "로그인 필요"}
         </span>
       </div>
-      {loginId ? (
+      {pendingLogin ? (
         <div className="settings-alert-banner" data-variant="info" role="status">
           <Info size={15} />
-          <span>브라우저에서 승인을 완료한 뒤 돌아오세요.</span>
+          <span>
+            {pendingLogin.userCode
+              ? `브라우저에서 승인을 완료한 뒤 기기 코드 ${pendingLogin.userCode}를 입력하세요.`
+              : "브라우저에서 승인을 완료한 뒤 돌아오세요."}{" "}
+            <a href={pendingLogin.authUrl} target="_blank" rel="noreferrer">
+              로그인 페이지 다시 열기
+            </a>
+          </span>
         </div>
       ) : null}
       <div className="settings-row">
@@ -180,7 +86,10 @@ export function CodexSettings({
         <select
           aria-label="추론 수준"
           value={selectedEffort}
-          onChange={(event) => void updateEffort(event.currentTarget.value as CodexReasoningEffort)}
+          onChange={(event) => {
+            const next = event.currentTarget.value
+            if (isCodexReasoningEffort(next)) void updateEffort(next)
+          }}
         >
           {CODEX_REASONING_EFFORT_OPTIONS.map((opt) => (
             <option key={opt.id} value={opt.id}>
@@ -189,20 +98,23 @@ export function CodexSettings({
           ))}
         </select>
       </div>
-      {status?.authenticated ? <SubscriptionUsage status={status} /> : null}
+      {status && isConnected ? <SubscriptionUsage status={status} /> : null}
       {status?.available === false ? (
         <div className="settings-alert-banner" data-variant="warning">
           <AlertCircle size={15} />
-          <span>Codex CLI 설치 후 다시 확인하세요. 다른 앱의 로그인 정보는 가져오지 않습니다.</span>
+          <span>
+            앱 내부에 설치된 OpenAI 로그인 런타임을 사용할 수 없습니다. CLI를 따로 실행할 필요는
+            없으며, 앱을 업데이트한 뒤 다시 확인하세요.
+          </span>
         </div>
       ) : null}
       {message ? (
         <div
           className="settings-alert-banner"
-          data-variant={isErrorMsg ? "error" : "info"}
+          data-variant={messageIsError ? "error" : "info"}
           role="status"
         >
-          {isErrorMsg ? <AlertCircle size={15} /> : <CheckCircle2 size={15} />}
+          {messageIsError ? <AlertCircle size={15} /> : <CheckCircle2 size={15} />}
           <span>{message}</span>
         </div>
       ) : null}
@@ -215,7 +127,7 @@ export function CodexSettings({
         >
           상태 새로고침
         </button>
-        {loginId ? (
+        {pendingLogin ? (
           <button
             type="button"
             className="settings-btn-secondary"
@@ -224,7 +136,7 @@ export function CodexSettings({
           >
             로그인 취소
           </button>
-        ) : status?.authenticated ? (
+        ) : isConnected ? (
           <button
             type="button"
             className="settings-btn-secondary"
@@ -257,8 +169,4 @@ export function CodexSettings({
       </div>
     </section>
   )
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "요청 실패"
 }

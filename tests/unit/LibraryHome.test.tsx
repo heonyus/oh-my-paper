@@ -197,7 +197,7 @@ describe("LibraryHome", () => {
     expect(screen.getByText("0 / 12페이지 · 분석 대기 중")).toBeVisible()
   })
 
-  it("blocks reader entry until preparation completes and exposes failed-job retry", () => {
+  it("keeps reader entry available while preparation runs and exposes failed-job retry", () => {
     const onSelect = vi.fn()
     const onRetryAnalysis = vi.fn()
     render(
@@ -221,8 +221,10 @@ describe("LibraryHome", () => {
       />,
     )
 
-    expect(screen.getByRole("button", { name: `${report.title} 열기` })).toBeDisabled()
-    expect(onSelect).not.toHaveBeenCalled()
+    const openButton = screen.getByRole("button", { name: `${report.title} 열기` })
+    expect(openButton).not.toBeDisabled()
+    fireEvent.click(openButton)
+    expect(onSelect).toHaveBeenCalledWith(report.id)
     fireEvent.click(screen.getByRole("button", { name: `${report.title} 다시 시도` }))
     expect(onRetryAnalysis).toHaveBeenCalledWith(report.id)
   })

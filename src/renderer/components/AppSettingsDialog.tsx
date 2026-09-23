@@ -69,10 +69,6 @@ export function AppSettingsDialog({
         await window.ohmypaper.saveAiMode(mode)
         onProviderChange(await window.ohmypaper.providerStatus())
       }}
-      onOcrKeySave={async (key) => {
-        await window.ohmypaper.saveDocumentOcrKey(key)
-        onOcrStatusChange(await window.ohmypaper.documentOcrStatus())
-      }}
     />
   )
 }

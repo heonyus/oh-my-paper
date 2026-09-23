@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises"
+import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { ZodError } from "zod"
 import { type CodexReasoningEffort, codexReasoningEffortSchema } from "../shared/ipc"
@@ -16,6 +16,16 @@ export class AiModeStore {
 
   constructor(root: string) {
     this.filePath = join(root, "ai-mode.json")
+  }
+
+  async hasSavedSettings(): Promise<boolean> {
+    try {
+      await access(this.filePath)
+      return true
+    } catch (error) {
+      if (isMissingFile(error)) return false
+      throw error
+    }
   }
 
   async loadSettings(): Promise<AiModeSettings> {

@@ -23,7 +23,7 @@ describe("AI completion budget", () => {
   })
 
   it("bounds mapped page-translation batches for low-latency streaming", () => {
-    expect(completionTokenLimit({ ...request, action: "page_translation" })).toBe(4_096)
+    expect(completionTokenLimit({ ...request, action: "page_translation" })).toBe(8_192)
     expect(
       completionLimitParameters("openrouter", "z-ai/glm-5.3-flash", {
         ...request,
@@ -53,7 +53,10 @@ describe("AI completion budget", () => {
 
   it("bounds citation assessment for interactive reading", () => {
     // Given / When / Then
-    const assessment = { ...request, action: "citation_assessment" } satisfies AiRequest
+    const assessment = {
+      ...request,
+      action: "citation_assessment",
+    } satisfies AiRequest
     expect(completionTokenLimit(assessment)).toBe(768)
     expect(completionLimitParameters("openrouter", "z-ai/glm-5.3-flash", assessment)).toEqual({
       max_tokens: 768,
@@ -118,7 +121,7 @@ describe("AI completion budget", () => {
     expect(JSON.stringify(pageParameters.response_format)).not.toMatch(
       /pattern|minLength|maxLength|minItems|maxItems/u,
     )
-    expect(pageParameters.max_completion_tokens).toBe(4_096)
+    expect(pageParameters.max_completion_tokens).toBe(8_192)
     expect(pageParameters.reasoning_effort).toBeUndefined()
     expect(pageParameters.temperature).toBeUndefined()
   })
@@ -149,7 +152,7 @@ describe("AI completion budget", () => {
     })
   })
 
-  it("disables DeepSeek V4.1 hidden reasoning for short reader responses", () => {
+  it("uses minimal DeepSeek V4.1 reasoning for short reader responses", () => {
     expect(
       completionLimitParameters("openrouter", "deepseek/deepseek-v4.1-flash", {
         ...request,
@@ -157,7 +160,7 @@ describe("AI completion budget", () => {
       }),
     ).toMatchObject({
       max_tokens: 224,
-      reasoning: { effort: "none", exclude: true },
+      reasoning: { effort: "low", exclude: true },
       temperature: 0,
     })
   })
@@ -186,16 +189,31 @@ describe("AI completion budget", () => {
       ),
     ).toBe("deepseek/deepseek-v4.1-flash")
     expect(
+      routedModelForRequest("openrouter", "deepseek/deepseek-v4.1-flash", {
+        ...request,
+        action: "page_translation",
+        pageTranslationModel: "main",
+      }),
+    ).toBe("deepseek/deepseek-v4.1-flash")
+    expect(
+      routedModelForRequest("openrouter", "deepseek/deepseek-v4.1-flash", {
+        ...request,
+        action: "page_translation",
+        pageTranslationModel: "made-up/model-id",
+      }),
+    ).toBe("tencent/hy-mt2-30b-a3b")
+    expect(
       completionLimitParameters("openrouter", "tencent/hy-mt2-30b-a3b", {
         ...request,
         action: "page_translation",
       }),
-    ).toEqual({ max_tokens: 4_096, temperature: 0 })
+    ).toEqual({ max_tokens: 8_192, temperature: 0 })
     const translated = completionLimitParameters("openrouter", "qwen/qwen3-30b-a3b-instruct-2507", {
       ...request,
       action: "page_translation",
     })
     expect(translated.response_format).toBeDefined()
+    expect(translated.temperature).toBe(0)
   })
 
   it("routes bounded OpenRouter reading actions through the Nitro variant", () => {

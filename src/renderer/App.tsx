@@ -1,5 +1,4 @@
 import { type JSX, lazy, Suspense, useState } from "react"
-import { documentReaderBlocked } from "../shared/documentAnalysis"
 import { LibraryTopbar, Topbar, type WebAccount } from "./components/AppChrome"
 import { AppStatusOverlays } from "./components/AppStatusOverlays"
 import type { HostedCredentialSettingsProps } from "./components/HostedCredentialSettings"
@@ -83,17 +82,14 @@ export function App({
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [dataExchangeOpen, setDataExchangeOpen] = useState(false)
   const [proposalOpen, setProposalOpen] = useState(false)
-  const readerBlocked = activeDocument
-    ? documentReaderBlocked(documentAnalysisJobs, activeDocument.id)
-    : false
-  const libraryVisible = libraryView || readerBlocked
+  const libraryVisible = libraryView
 
   if (!workspace) return <main className="loading-screen">oh-my-paper를 여는 중…</main>
 
   if (!app.credentialsChecked)
     return <main className="loading-screen">API 연결을 확인하는 중…</main>
 
-  const credentialsReady = provider.configured && provider.provider === "openrouter"
+  const credentialsReady = provider.configured
 
   if (!credentialsReady)
     return (
@@ -119,7 +115,6 @@ export function App({
     )
 
   const openDocument = (id: DocumentId): void => {
-    if (documentReaderBlocked(documentAnalysisJobs, id)) return
     const selected = workspace.documents.find((document) => document.id === id)
     if (!selected) return
     evidence.dismiss()

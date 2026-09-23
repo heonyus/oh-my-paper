@@ -14,7 +14,6 @@ import {
 export function LibraryDocumentDetail({
   document,
   onOpenReader,
-  readerBlocked = false,
   onOpenKnowledge,
   collections = [],
   membershipBusyKey = null,
@@ -22,7 +21,6 @@ export function LibraryDocumentDetail({
 }: {
   readonly document: DocumentRecord | null
   readonly onOpenReader: (id: DocumentRecord["id"]) => void
-  readonly readerBlocked?: boolean | undefined
   readonly onOpenKnowledge?: ((id: DocumentRecord["id"]) => void) | undefined
   readonly collections?: readonly LibraryCollection[] | undefined
   readonly membershipBusyKey?: string | null | undefined
@@ -51,17 +49,10 @@ export function LibraryDocumentDetail({
       <button
         type="button"
         className="library-reader-action"
-        disabled={readerBlocked}
         onClick={() => onOpenReader(document.id)}
       >
         <BookOpen size={16} aria-hidden="true" />
-        <span>
-          {readerBlocked
-            ? "문서 준비 중"
-            : readingPage
-              ? `${readingPage}페이지부터 읽기`
-              : "PDF 읽기"}
-        </span>
+        <span>{readingPage ? `${readingPage}페이지부터 읽기` : "PDF 읽기"}</span>
       </button>
       {onOpenKnowledge ? (
         <button

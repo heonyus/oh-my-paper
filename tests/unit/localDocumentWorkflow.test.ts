@@ -72,6 +72,7 @@ describe("local document workflow", () => {
       const analysis = new DocumentAnalysisService(
         store,
         createDocumentPageParser({ store, paddlePageParser: { parse: paddleParse } }),
+        { pageConcurrency: 1 },
       )
 
       const imported = await importPaths({ sender: { send: vi.fn() } }, [pdfPath], analysis, store)
@@ -109,7 +110,11 @@ describe("local document workflow", () => {
         paddlePageParser: { parse: paddleParse },
       })
 
-      const result = await parser.parse({ documentId: document.id, pageNumber: 1 })
+      const result = await parser.parse({
+        documentId: document.id,
+        pageNumber: 1,
+        requireStructuredOcr: true,
+      })
 
       expect(result.status).toBe("ready")
       if (result.status === "ready") {
@@ -164,7 +169,11 @@ describe("local document workflow", () => {
         store,
         paddlePageParser: { parse: paddleParse },
       })
-      const initial = await firstParser.parse({ documentId: document.id, pageNumber: 1 })
+      const initial = await firstParser.parse({
+        documentId: document.id,
+        pageNumber: 1,
+        requireStructuredOcr: true,
+      })
       expect(initial.status).toBe("ready")
 
       const reopenedParser = createDocumentPageParser({

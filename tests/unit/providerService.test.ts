@@ -38,7 +38,7 @@ describe("ProviderService saved configuration", () => {
     expect(await service.status()).toMatchObject({
       configured: false,
       provider: "openrouter",
-      model: "google/gemini-2.5-flash-lite",
+      model: "z-ai/glm-5.3-flash",
     })
     await expect(access(join(root, "provider-config.bin"))).rejects.toMatchObject({
       code: "ENOENT",

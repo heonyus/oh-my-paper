@@ -41,12 +41,11 @@ function analysisTask(job: DocumentAnalysisJob): LibraryTask {
     }
   }
   if (job.state === "running") {
-    const engine = job.engine === "local" ? "로컬 PaddleOCR" : "Mistral OCR 4.1"
     const retry = job.maxAttempts > 1 ? ` · ${job.attempt}/${job.maxAttempts}차 시도` : ""
     return {
       id: `analysis:${job.id}`,
       title: job.title,
-      detail: `${job.currentPage} / ${job.pageCount}페이지 · ${engine}${retry} · ${stageLabels[job.stage]}`,
+      detail: `${job.currentPage} / ${job.pageCount}페이지 · 로컬 PaddleOCR${retry} · ${stageLabels[job.stage]}`,
       progress: (job.completedPages + stageProgress[job.stage]) / job.pageCount,
       state: "active",
     }

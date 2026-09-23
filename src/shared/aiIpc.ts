@@ -26,7 +26,6 @@ export const aiActionSchema = z.enum([
   "citation_chat",
   "chat",
   "card_title",
-  "auto_highlight",
 ])
 export const aiHistoryMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -47,9 +46,13 @@ export const aiRequestSchema = z.object({
     .enum(["heading", "subheading", "figure", "table", "equation", "citation"])
     .optional(),
   imageDataUrl: z.string().startsWith("data:image/").max(8_000_000).optional(),
+  pageTranslationModel: z.string().trim().min(1).max(160).optional(),
   history: z.array(aiHistoryMessageSchema).max(24).optional(),
 })
-export const aiResultSchema = z.object({ text: z.string().min(1), model: z.string().min(1) })
+export const aiResultSchema = z.object({
+  text: z.string().min(1),
+  model: z.string().min(1),
+})
 export const aiStreamRequestSchema = z.object({
   id: z.string().uuid(),
   request: aiRequestSchema,

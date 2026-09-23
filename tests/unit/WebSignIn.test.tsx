@@ -17,7 +17,6 @@ describe("web onboarding", () => {
 
     expect(main).not.toHaveAttribute("data-revealed")
     expect(screen.getByAltText("oh-my-paper")).toBeInTheDocument()
-    expect(screen.getByText("학술 PDF 리더")).toBeVisible()
     expect(screen.getByText("번역·메모·인용을 원문 위치와 함께 정리합니다.")).toBeVisible()
     expect(screen.getByRole("link", { name: "기능 살펴보기" })).toHaveAttribute(
       "href",
