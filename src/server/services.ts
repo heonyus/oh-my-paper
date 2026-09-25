@@ -4,7 +4,6 @@ import { DocumentAnalysisService } from "../electron/documentAnalysisService"
 import { DocumentAstService } from "../electron/documentAstService"
 import { createDocumentPageParser } from "../electron/documentPageParser"
 import { importDocument, readDocumentBytes } from "../electron/documentService"
-import { MistralPageParserService } from "../electron/mistralPageParserService"
 import { PaddlePageParserService } from "../electron/paddlePageParserService"
 import { PageTranslationCacheService } from "../electron/pageTranslationCacheService"
 import { listScholarlyMetadata, saveScholarlyMetadata } from "../electron/scholarlyMetadata"
@@ -18,7 +17,6 @@ import {
   discoverySaveResultSchema,
 } from "../shared/discoveryIpc"
 import type { DocumentOcrProviderStatus } from "../shared/documentOcr"
-import { MISTRAL_OCR_MODEL } from "../shared/documentOcr"
 import { type ProviderConfig, providerConfigSchema } from "../shared/ipc"
 import { isOpenRouterModel } from "../shared/providerModels"
 import type { DocumentId, Workspace } from "../shared/schemas"
@@ -74,13 +72,7 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
     paddlePageParser: paddle,
     astService: ast,
   })
-  const mistral = new MistralPageParserService({
-    apiKey: async () => credentials.mistralApiKey(),
-  })
-  const analysis = new DocumentAnalysisService(store, pages, {
-    maxConcurrency: 1,
-    fallbackParser: mistral,
-  })
+  const analysis = new DocumentAnalysisService(store, pages, { maxConcurrency: 4 })
   await analysis.resumePending()
   const initialProvider = credentials.openRouterConfig()
   const ai = new WebAiService(initialProvider)
@@ -105,14 +97,7 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
     pages,
     analysis,
     translationCache: new PageTranslationCacheService(store),
-    ocrStatus: async () => ({
-      ...(await paddle.status()),
-      fallback: {
-        configured: credentials.mistralApiKey() !== null,
-        provider: "mistral",
-        model: MISTRAL_OCR_MODEL,
-      },
-    }),
+    ocrStatus: () => paddle.status(),
     ai,
     decisionService: () => decisions,
     saveProviderConfig: async (value) => {

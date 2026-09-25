@@ -16,7 +16,7 @@ export const initialOcrProviderStatus: DocumentOcrProviderStatus = {
   configured: false,
   provider: "paddle",
   model: "PaddleOCR-VL-1.6",
-  fallback: { configured: false, provider: "mistral", model: "mistral-ocr-4-1" },
+  acceleration: null,
 }
 
 export function useAppBootstrap({

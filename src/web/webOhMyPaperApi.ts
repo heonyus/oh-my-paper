@@ -115,6 +115,7 @@ export function installWebOhMyPaperApi(userId: string): void {
       configured: false,
       provider: "paddle",
       model: "PaddleOCR-VL-1.6",
+      acceleration: null,
     }),
     saveDocumentOcrKey: unavailableWebFeature("documentOcr.saveKey"),
     readPageTranslationCache: async ({ id, pageNumber }) => {

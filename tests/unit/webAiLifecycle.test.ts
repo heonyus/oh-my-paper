@@ -99,10 +99,6 @@ describe("real web AI HTTP lifecycle", () => {
       model: "qwen/qwen3.8-flash",
     })
     const ocr = await post("documentOcrStatus", {})
-    const fallbackKey = await post(
-      "saveDocumentOcrKey",
-      "mistral-user-owned-key-at-least-twenty-characters",
-    )
 
     expect(await provider.json()).toMatchObject({
       configured: true,
@@ -110,10 +106,6 @@ describe("real web AI HTTP lifecycle", () => {
       model: "qwen/qwen3.8-flash",
     })
     expect(await ocr.json()).toMatchObject({ provider: "paddle", model: "PaddleOCR-VL-1.6" })
-    expect(fallbackKey.status).toBe(200)
-    expect(await fallbackKey.json()).toMatchObject({
-      fallback: { configured: true, provider: "mistral", model: "mistral-ocr-4-1" },
-    })
   })
 
   it("aborts the provider when the browser disconnects", async () => {

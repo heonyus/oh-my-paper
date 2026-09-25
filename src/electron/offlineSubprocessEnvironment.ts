@@ -26,6 +26,8 @@ type OfflineSubprocessOverride =
   | "HF_HOME"
   | "NO_PROXY"
   | "MLX_VLM_SERVER_API_KEY"
+  | "OH_MY_PAPER_VLM_API_KEY"
+  | "FLAGS_allocator_strategy"
 
 export type OfflineSubprocessOverrides = Readonly<
   Partial<Record<OfflineSubprocessOverride, string>>

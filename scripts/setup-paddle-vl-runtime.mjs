@@ -1,7 +1,8 @@
 import { spawnSync } from "node:child_process"
 import { existsSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 
 const runtimeRoot =
   process.env.OH_MY_PAPER_PADDLE_VL_RUNTIME ?? join(homedir(), ".ohmypaper", "paddle-vl-runtime")
@@ -90,3 +91,8 @@ writeFileSync(readinessMarker, "PaddleOCR-VL-1.6 + PP-DocLayoutV3\n", { mode: 0o
 process.stdout.write(`oh-my-paper PaddleOCR-VL runtime: ${runtimeRoot}\n`)
 if (appleAcceleration)
   process.stdout.write(`oh-my-paper PaddleOCR-VL MLX runtime: ${mlxRuntimeRoot}\n`)
+if (process.platform === "win32" && nvidiaGpu)
+  run(process.execPath, [
+    join(dirname(fileURLToPath(import.meta.url)), "setup-paddle-vllm-wsl.mjs"),
+    "--optional",
+  ])
