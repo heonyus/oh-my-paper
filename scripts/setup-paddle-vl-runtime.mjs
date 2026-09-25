@@ -28,16 +28,16 @@ function run(command, args, env = process.env) {
   if (result.status !== 0) process.exit(result.status ?? 1)
 }
 
+const nvidiaGpu = (() => {
+  if (appleAcceleration) return false
+  const probe = spawnSync("nvidia-smi", [], { stdio: "ignore" })
+  return !probe.error && probe.status === 0
+})()
+const paddleIndex = `https://www.paddlepaddle.org.cn/packages/stable/${nvidiaGpu ? "cu129" : "cpu"}/`
+const paddlePackage = nvidiaGpu ? "paddlepaddle-gpu==3.2.1" : "paddlepaddle==3.2.1"
+
 if (!existsSync(python)) run("uv", ["venv", "--python", "3.12", runtimeRoot])
-run("uv", [
-  "pip",
-  "install",
-  "--python",
-  python,
-  "--index",
-  "https://www.paddlepaddle.org.cn/packages/stable/cpu/",
-  "paddlepaddle==3.2.1",
-])
+run("uv", ["pip", "install", "--python", python, "--index", paddleIndex, paddlePackage])
 run("uv", [
   "pip",
   "install",
