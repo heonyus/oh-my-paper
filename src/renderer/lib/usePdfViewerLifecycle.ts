@@ -145,6 +145,7 @@ export function usePdfViewerLifecycle({
         retrievalSession = s
       },
       isDisposed: () => disposed,
+      subscribeDocumentAnalysis: (listener) => window.ohmypaper.onDocumentAnalysis(listener),
     })
 
     const releaseExternalLinks = Pdf.bindPdfExternalLinks(container, window.ohmypaper.openExternal)

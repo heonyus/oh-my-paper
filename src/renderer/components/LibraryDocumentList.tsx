@@ -18,7 +18,6 @@ export function LibraryDocumentList({
   onViewChange,
   onPreview,
   onOpenReader,
-  readerBlocked,
 }: {
   readonly documents: readonly DocumentRecord[]
   readonly selectedId: DocumentId | null
@@ -26,7 +25,6 @@ export function LibraryDocumentList({
   readonly onViewChange: (view: LibraryView) => void
   readonly onPreview: (id: DocumentId) => void
   readonly onOpenReader: (id: DocumentId) => void
-  readonly readerBlocked: (id: DocumentId) => boolean
 }): JSX.Element {
   const itemRefs = useRef<Readonly<Record<string, HTMLButtonElement | null>>>({})
   const focusDocument = (index: number): void => {
@@ -104,11 +102,10 @@ export function LibraryDocumentList({
                 type="button"
                 className="library-document-open"
                 aria-label={`${document.title} 열기`}
-                disabled={readerBlocked(document.id)}
                 onClick={() => onOpenReader(document.id)}
               >
                 <BookOpen size={15} aria-hidden="true" />
-                <span>{readerBlocked(document.id) ? "준비 중" : "열기"}</span>
+                <span>열기</span>
               </button>
               <span className="library-document-date">{formatImportedAt(document.importedAt)}</span>
             </li>
