@@ -1,6 +1,7 @@
 import { type Dispatch, type SetStateAction, useCallback, useEffect } from "react"
 import type { DocumentOcrProviderStatus } from "../../shared/documentOcr"
 import { type PreparationUpdate, type ProviderStatus, preparationSteps } from "../../shared/ipc"
+import { DEFAULT_OPENROUTER_MODEL } from "../../shared/providerModels"
 import type { Workspace } from "../../shared/schemas"
 import { normalizeWorkspaceTranslations } from "./cardPresentation"
 
@@ -8,14 +9,14 @@ export const initialProviderStatus: ProviderStatus = {
   mode: "chatgpt",
   configured: false,
   provider: "openrouter",
-  model: "google/gemini-2.5-flash-lite",
+  model: DEFAULT_OPENROUTER_MODEL,
 }
 
 export const initialOcrProviderStatus: DocumentOcrProviderStatus = {
   configured: false,
   provider: "paddle",
   model: "PaddleOCR-VL-1.6",
-  fallback: { configured: false, provider: "mistral", model: "mistral-ocr-4-1" },
+  acceleration: null,
 }
 
 export function useAppBootstrap({

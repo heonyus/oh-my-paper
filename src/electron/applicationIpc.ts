@@ -3,7 +3,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { app, BrowserWindow, clipboard, ipcMain, shell } from "electron"
 import { collectionChannels } from "../shared/collectionIpc"
-import { documentOcrKeySchema, MISTRAL_OCR_MODEL } from "../shared/documentOcr"
+import { documentOcrKeySchema } from "../shared/documentOcr"
 import {
   citationLookupRequestSchema,
   citationLookupResultSchema,
@@ -44,7 +44,6 @@ import { DocumentOcrCredentialService } from "./documentOcrCredentialService"
 import { createDocumentPageParser } from "./documentPageParser"
 import { readDocumentBytes } from "./documentService"
 import { InterchangeService } from "./interchangeService"
-import { MistralPageParserService } from "./mistralPageParserService"
 import { PaddlePageParserService } from "./paddlePageParserService"
 import { PageTranslationCacheService } from "./pageTranslationCacheService"
 import { ProviderService } from "./providerService"
@@ -145,10 +144,7 @@ export function registerApplicationIpc(
     store,
     paddlePageParser,
   })
-  const mistralPageParser = new MistralPageParserService(ocrCredentials)
-  const analysis = new DocumentAnalysisService(store, pageParser, {
-    fallbackParser: mistralPageParser,
-  })
+  const analysis = new DocumentAnalysisService(store, pageParser, { maxConcurrency: 4 })
   const disposeAnalysisIpc = registerDocumentAnalysisIpc(analysis)
   const disposeTranslationCacheIpc = registerPageTranslationCacheIpc(
     new PageTranslationCacheService(store),
@@ -223,14 +219,7 @@ export function registerApplicationIpc(
       }),
     )
   })
-  ipcMain.handle(ipcChannels.documentOcrStatus, async () => ({
-    ...(await paddlePageParser.status()),
-    fallback: {
-      configured: (await ocrCredentials.apiKey()) !== null,
-      provider: "mistral",
-      model: MISTRAL_OCR_MODEL,
-    },
-  }))
+  ipcMain.handle(ipcChannels.documentOcrStatus, () => paddlePageParser.status())
   ipcMain.handle(ipcChannels.documentOcrSaveKey, async (_event, value: unknown) => {
     await ocrCredentials.saveKey(documentOcrKeySchema.parse(value))
   })

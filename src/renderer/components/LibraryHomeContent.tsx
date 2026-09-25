@@ -39,7 +39,6 @@ export type LibraryHomeContentProps = {
   readonly onViewChange: (view: LibraryView) => void
   readonly onPreview: (id: DocumentId) => void
   readonly onOpenReader: (id: DocumentId) => void
-  readonly readerBlocked: (id: DocumentId) => boolean
   readonly onOpenKnowledge: ((id: DocumentId) => void) | undefined
   readonly onOpenNode: ((id: KnowledgeNodeId) => void) | undefined
   readonly onOpenGraph: (() => void) | undefined
@@ -80,7 +79,6 @@ export function LibraryHomeContent({
   onViewChange,
   onPreview,
   onOpenReader,
-  readerBlocked,
   onOpenKnowledge,
   onOpenNode,
   onOpenGraph,
@@ -136,11 +134,7 @@ export function LibraryHomeContent({
         </header>
         {recentDocument && recentPageToShow ? (
           <section className="library-recent" aria-label="계속 읽기">
-            <button
-              type="button"
-              disabled={readerBlocked(recentDocument.id)}
-              onClick={() => onOpenReader(recentDocument.id)}
-            >
+            <button type="button" onClick={() => onOpenReader(recentDocument.id)}>
               <DocumentThumbnail document={recentDocument} />
               <span>이어서 읽기</span>
               <strong>{recentDocument.title}</strong>
@@ -189,12 +183,10 @@ export function LibraryHomeContent({
               onViewChange={onViewChange}
               onPreview={onPreview}
               onOpenReader={onOpenReader}
-              readerBlocked={readerBlocked}
             />
             <LibraryDocumentDetail
               document={selectedDocument}
               onOpenReader={onOpenReader}
-              readerBlocked={selectedDocument ? readerBlocked(selectedDocument.id) : false}
               onOpenKnowledge={onOpenKnowledge}
               collections={collections}
               membershipBusyKey={membershipBusyKey}

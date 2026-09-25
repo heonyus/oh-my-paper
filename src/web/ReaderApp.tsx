@@ -6,7 +6,6 @@ import { AppStatusOverlays } from "../renderer/components/AppStatusOverlays"
 import { LibraryHome } from "../renderer/components/LibraryHome"
 import { appShellStyle } from "../renderer/lib/uiFontScale"
 import { useAppWorkspace } from "../renderer/lib/useAppWorkspace"
-import { documentReaderBlocked } from "../shared/documentAnalysis"
 import { type DocumentId, documentIdSchema } from "../shared/schemas"
 
 const ReaderWorkspace = lazy(() =>
@@ -34,10 +33,6 @@ export function ReaderApp(): JSX.Element {
   const openDocumentHandled = useRef(false)
   const workspace = app.workspace
   const credentialsReady = app.provider.configured && app.provider.provider === "openrouter"
-  const readerBlocked = app.activeDocument
-    ? documentReaderBlocked(app.documentAnalysisJobs, app.activeDocument.id)
-    : false
-  const libraryVisible = app.libraryView || readerBlocked
 
   useEffect(() => {
     if (!openImportUrl || !workspace || !credentialsReady || openImportState !== "idle") return
@@ -140,7 +135,6 @@ export function ReaderApp(): JSX.Element {
 
   function openDocument(id: DocumentId): void {
     if (!workspace) return
-    if (documentReaderBlocked(app.documentAnalysisJobs, id)) return
     const selected = workspace.documents.find((document) => document.id === id)
     if (!selected) return
     app.evidence.dismiss()
@@ -171,7 +165,7 @@ export function ReaderApp(): JSX.Element {
         <nav aria-label="주 메뉴">
           <button
             type="button"
-            aria-current={libraryVisible ? "page" : undefined}
+            aria-current={app.libraryView ? "page" : undefined}
             onClick={() => app.setLibraryOpen(true)}
           >
             <Library size={16} aria-hidden="true" />
@@ -179,7 +173,7 @@ export function ReaderApp(): JSX.Element {
           </button>
           <button
             type="button"
-            aria-current={!libraryVisible ? "page" : undefined}
+            aria-current={!app.libraryView ? "page" : undefined}
             onClick={() => app.setLibraryOpen(false)}
           >
             <BookOpen size={16} aria-hidden="true" />
@@ -196,9 +190,9 @@ export function ReaderApp(): JSX.Element {
         </button>
       </header>
       <div className="web-reader-main-area">
-        {libraryVisible ? (
+        {app.libraryView ? (
           <LibraryHome
-            active={libraryVisible}
+            active={app.libraryView}
             documents={workspace.documents}
             activeId={workspace.activeDocumentId}
             onSelect={openDocument}

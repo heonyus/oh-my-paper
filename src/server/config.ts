@@ -2,6 +2,7 @@ import { homedir } from "node:os"
 import { join, resolve } from "node:path"
 import { config as loadDotenv } from "dotenv"
 import { z } from "zod"
+import { DEFAULT_OPENROUTER_MODEL } from "../shared/providerModels"
 
 const providerSchema = z.enum(["openai", "openrouter", "gemini", "groq"])
 
@@ -44,7 +45,7 @@ function configuredProvider(
 function defaultModel(provider: z.infer<typeof providerSchema> | null): string | null {
   if (provider === "gemini") return "gemini-3.5-flash-lite"
   if (provider === "groq") return "openai/gpt-oss-20b"
-  if (provider === "openrouter") return "google/gemini-2.5-flash-lite"
+  if (provider === "openrouter") return DEFAULT_OPENROUTER_MODEL
   if (provider === "openai") return "gpt-4.1-mini"
   return null
 }

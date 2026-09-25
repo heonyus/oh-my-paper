@@ -26,10 +26,10 @@ export const GEMINI_MODEL_OPTIONS = [
 ] as const
 
 export const OPENROUTER_MODEL_OPTIONS = [
+  "deepseek/deepseek-v4.1-flash",
   "google/gemini-2.5-flash-lite",
   "qwen/qwen3.7-flash",
   "qwen/qwen3.8-flash",
-  "deepseek/deepseek-v4.1-flash",
   "google/gemini-3.1-flash-lite",
 ] as const
 

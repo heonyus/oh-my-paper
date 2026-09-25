@@ -1,6 +1,5 @@
 import { type JSX, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { DocumentAnalysisJob } from "../../shared/documentAnalysis"
-import { documentReaderBlocked } from "../../shared/documentAnalysis"
 import type { ImportProgress } from "../../shared/ipc"
 import type { KnowledgeNodeId } from "../../shared/knowledgeSchemas"
 import type { KnowledgeClientOps } from "../lib/knowledgeTypes"
@@ -83,10 +82,6 @@ export function LibraryHome({
     activeId ?? documents[0]?.id ?? null,
   )
   const openReader = onOpenReader ?? onSelect
-  const openPreparedReader = (id: DocumentId): void => {
-    if (documentReaderBlocked(analysisJobs, id)) return
-    openReader(id)
-  }
 
   const refreshCollections = useCallback(async (): Promise<boolean> => {
     const generation = refreshGeneration.current + 1
@@ -277,8 +272,7 @@ export function LibraryHome({
         onCreateCollection={createCollection}
         onViewChange={setView}
         onPreview={setSelectedId}
-        onOpenReader={openPreparedReader}
-        readerBlocked={(id) => documentReaderBlocked(analysisJobs, id)}
+        onOpenReader={openReader}
         onOpenKnowledge={onOpenKnowledge}
         onOpenNode={onOpenNode}
         onOpenGraph={onOpenGraph}

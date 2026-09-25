@@ -2,14 +2,19 @@ import { spawn } from "node:child_process"
 import net from "node:net"
 
 const children = []
-const vite = spawn("vite", [], { stdio: "inherit", env: process.env })
+const vite = spawn(process.execPath, ["node_modules/vite/bin/vite.js"], {
+  stdio: "inherit",
+  env: process.env,
+})
 children.push(vite)
 
 await waitForPort("127.0.0.1", 5173)
 
-const electron = spawn("electron", ["."], {
+const electronEnv = { ...process.env, VITE_DEV_SERVER_URL: "http://localhost:5173" }
+delete electronEnv.ELECTRON_RUN_AS_NODE
+const electron = spawn(process.execPath, ["node_modules/electron/cli.js", "."], {
   stdio: "inherit",
-  env: { ...process.env, VITE_DEV_SERVER_URL: "http://localhost:5173" },
+  env: electronEnv,
 })
 children.push(electron)
 

@@ -1,5 +1,4 @@
 import { type JSX, lazy, Suspense, useState } from "react"
-import { documentReaderBlocked } from "../shared/documentAnalysis"
 import { LibraryTopbar, Topbar, type WebAccount } from "./components/AppChrome"
 import { AppStatusOverlays } from "./components/AppStatusOverlays"
 import type { HostedCredentialSettingsProps } from "./components/HostedCredentialSettings"
@@ -83,10 +82,6 @@ export function App({
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [dataExchangeOpen, setDataExchangeOpen] = useState(false)
   const [proposalOpen, setProposalOpen] = useState(false)
-  const readerBlocked = activeDocument
-    ? documentReaderBlocked(documentAnalysisJobs, activeDocument.id)
-    : false
-  const libraryVisible = libraryView || readerBlocked
 
   if (!workspace) return <main className="loading-screen">oh-my-paper를 여는 중…</main>
 
@@ -119,7 +114,6 @@ export function App({
     )
 
   const openDocument = (id: DocumentId): void => {
-    if (documentReaderBlocked(documentAnalysisJobs, id)) return
     const selected = workspace.documents.find((document) => document.id === id)
     if (!selected) return
     evidence.dismiss()
@@ -140,7 +134,7 @@ export function App({
     >
       <LibraryTopbar account={account} />
       <ResearchNavigation
-        active={libraryVisible ? "library" : "documents"}
+        active={libraryView ? "library" : "documents"}
         viewMode={viewMode}
         onViewModeChange={(next) => {
           app.setViewMode(next)
@@ -155,7 +149,7 @@ export function App({
         onDataExchange={() => setDataExchangeOpen(true)}
         onPropose={() => setProposalOpen(true)}
       />
-      <div style={{ display: libraryVisible ? "contents" : "none" }}>
+      <div style={{ display: libraryView ? "contents" : "none" }}>
         <LibraryWorkspace
           clientOps={knowledgeClientOps}
           active={libraryView}
@@ -192,7 +186,7 @@ export function App({
         document={activeDocument}
         cards={activeCards}
       />
-      {readerMode && !libraryVisible ? (
+      {readerMode && !libraryView ? (
         <section className="reader-workspace" data-outline-open={outlineOpen} aria-label="리더">
           <Topbar
             documents={workspace.documents}

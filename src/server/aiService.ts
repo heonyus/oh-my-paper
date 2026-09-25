@@ -14,6 +14,7 @@ import {
   type ProviderStatus,
   providerStatusSchema,
 } from "../shared/ipc"
+import { DEFAULT_OPENROUTER_MODEL } from "../shared/providerModels"
 
 type AiRequest = z.infer<typeof aiRequestSchema>
 type AiResult = z.infer<typeof aiResultSchema>
@@ -45,7 +46,7 @@ export class WebAiService {
     return providerStatusSchema.parse({
       configured: false,
       provider: "openrouter",
-      model: "google/gemini-2.5-flash-lite",
+      model: DEFAULT_OPENROUTER_MODEL,
     })
   }
 

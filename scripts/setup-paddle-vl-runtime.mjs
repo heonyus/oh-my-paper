@@ -1,7 +1,8 @@
 import { spawnSync } from "node:child_process"
 import { existsSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 
 const runtimeRoot =
   process.env.OH_MY_PAPER_PADDLE_VL_RUNTIME ?? join(homedir(), ".ohmypaper", "paddle-vl-runtime")
@@ -28,16 +29,16 @@ function run(command, args, env = process.env) {
   if (result.status !== 0) process.exit(result.status ?? 1)
 }
 
+const nvidiaGpu = (() => {
+  if (appleAcceleration) return false
+  const probe = spawnSync("nvidia-smi", [], { stdio: "ignore" })
+  return !probe.error && probe.status === 0
+})()
+const paddleIndex = `https://www.paddlepaddle.org.cn/packages/stable/${nvidiaGpu ? "cu129" : "cpu"}/`
+const paddlePackage = nvidiaGpu ? "paddlepaddle-gpu==3.2.1" : "paddlepaddle==3.2.1"
+
 if (!existsSync(python)) run("uv", ["venv", "--python", "3.12", runtimeRoot])
-run("uv", [
-  "pip",
-  "install",
-  "--python",
-  python,
-  "--index",
-  "https://www.paddlepaddle.org.cn/packages/stable/cpu/",
-  "paddlepaddle==3.2.1",
-])
+run("uv", ["pip", "install", "--python", python, "--index", paddleIndex, paddlePackage])
 run("uv", [
   "pip",
   "install",
@@ -90,3 +91,8 @@ writeFileSync(readinessMarker, "PaddleOCR-VL-1.6 + PP-DocLayoutV3\n", { mode: 0o
 process.stdout.write(`oh-my-paper PaddleOCR-VL runtime: ${runtimeRoot}\n`)
 if (appleAcceleration)
   process.stdout.write(`oh-my-paper PaddleOCR-VL MLX runtime: ${mlxRuntimeRoot}\n`)
+if (process.platform === "win32" && nvidiaGpu)
+  run(process.execPath, [
+    join(dirname(fileURLToPath(import.meta.url)), "setup-paddle-vllm-wsl.mjs"),
+    "--optional",
+  ])
