@@ -40,13 +40,13 @@ describe("SettingsModal", () => {
     )
     await userEvent.click(screen.getByRole("button", { name: "암호화하여 저장" }))
 
-    expect(screen.getByLabelText("모델 ID")).toHaveValue("google/gemini-2.5-flash-lite")
+    expect(screen.getByLabelText("모델 ID")).toHaveValue("deepseek/deepseek-v4.1-flash")
     expect(screen.queryByText(/ChatGPT Plus/)).not.toBeInTheDocument()
     expect(screen.getByLabelText("페이지 번역 모델")).toHaveValue("tencent/hy-mt2-30b-a3b")
     expect(onSave).toHaveBeenCalledWith({
       provider: "openrouter",
       apiKey: "sk-or-example-key-at-least-twenty-characters",
-      model: "google/gemini-2.5-flash-lite",
+      model: "deepseek/deepseek-v4.1-flash",
       pageTranslationModel: "tencent/hy-mt2-30b-a3b",
     })
   })
@@ -63,9 +63,9 @@ describe("SettingsModal", () => {
     )
 
     const model = screen.getByLabelText("모델 ID")
-    expect(model).toHaveValue("google/gemini-2.5-flash-lite")
-    await userEvent.selectOptions(model, "deepseek/deepseek-v4.1-flash")
     expect(model).toHaveValue("deepseek/deepseek-v4.1-flash")
+    await userEvent.selectOptions(model, "google/gemini-2.5-flash-lite")
+    expect(model).toHaveValue("google/gemini-2.5-flash-lite")
   })
 
   it("saves the selected page-translation model", async () => {
