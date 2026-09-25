@@ -190,6 +190,7 @@ describe("Paddle page parser service", () => {
       })
       expect(vlmServer.stop).toHaveBeenCalled()
       expect((await log("starts.log")).at(-1)).toBe("-")
+      await expect(service.status()).resolves.toMatchObject({ acceleration: null })
     } finally {
       service.dispose()
       await cleanup()
@@ -220,6 +221,38 @@ describe("Paddle page parser service", () => {
         status: "ready",
       })
       expect(await log("starts.log")).toHaveLength(2)
+    } finally {
+      service.dispose()
+      await cleanup()
+    }
+  })
+
+  it("fails every waiting page after one unsuccessful engine start", async () => {
+    const { root, layout, marker, documentId, store, log, cleanup } = await fixture(20)
+    vi.spyOn(console, "warn").mockImplementation(() => undefined)
+    await writeFile(
+      join(layout, "paddle_vl_worker.py"),
+      'require("node:fs").appendFileSync(require("node:path").join(__dirname, "starts.log"), "start\\n"); process.exit(3)',
+      "utf8",
+    )
+    const service = new PaddlePageParserService({
+      appPath: root,
+      resourcesPath: root,
+      packaged: true,
+      python: process.execPath,
+      readinessMarker: marker,
+      vlmServer: fakeVlmServer(),
+    })
+
+    try {
+      const unavailable = { status: "unavailable", reason: "model_unavailable" }
+      await expect(
+        Promise.all([
+          service.parse({ documentId, pageNumber: 1, store }),
+          service.parse({ documentId, pageNumber: 12, store }),
+        ]),
+      ).resolves.toEqual([unavailable, unavailable])
+      expect(await log("starts.log")).toEqual(["start"])
     } finally {
       service.dispose()
       await cleanup()

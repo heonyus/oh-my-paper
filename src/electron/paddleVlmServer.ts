@@ -47,6 +47,12 @@ class PaddleVlmLaunchError extends Error {
   }
 }
 
+/** Keeps the last 40 non-empty lines of a child's stderr for failure reports. */
+export function appendLogTail(log: string[], chunk: string): void {
+  log.push(...chunk.split("\n").filter((line) => line.trim()))
+  log.splice(0, Math.max(0, log.length - 40))
+}
+
 function isMissingFile(error: unknown): boolean {
   return error instanceof Error && "code" in error && error.code === "ENOENT"
 }
@@ -307,6 +313,7 @@ export class WslPaddleVlmServer implements PaddleVlmServer {
   #process: ChildProcess | null = null
   #current: PaddleVlmLaunch | null = null
   #launching: Promise<PaddleVlmLaunch | null> | null = null
+  #previousExit: Promise<void> = Promise.resolve()
 
   constructor(options: WslPaddleVlmServerOptions = {}) {
     this.#options = options
@@ -333,6 +340,11 @@ export class WslPaddleVlmServer implements PaddleVlmServer {
     this.#launching = null
     this.#process = null
     if (!server) return
+    // vLLM refuses to start while another server still holds its GPU memory.
+    this.#previousExit = new Promise((resolve) => {
+      if (processGone(server)) resolve()
+      else server.once("exit", () => resolve())
+    })
     // Closing stdin makes serve.sh stop vLLM and release the GPU; the kill is a backstop.
     server.stdin?.end()
     setTimeout(() => {
@@ -343,6 +355,7 @@ export class WslPaddleVlmServer implements PaddleVlmServer {
   async #launch(): Promise<PaddleVlmLaunch | null> {
     const runtime = await readWslVllmRuntime(this.#options.home ?? homedir())
     if (!runtime) return null
+    await this.#previousExit
     const port = await reserveLoopbackPort()
     const apiKey = randomUUID()
     const server = (this.#options.spawnProcess ?? spawn)(
@@ -358,10 +371,7 @@ export class WslPaddleVlmServer implements PaddleVlmServer {
     server.once("error", (error) => console.warn("[paddle-vllm] could not run wsl.exe", error))
     const log: string[] = []
     server.stderr?.setEncoding("utf8")
-    server.stderr?.on("data", (chunk: string) => {
-      log.push(...chunk.split("\n").filter((line) => line.trim()))
-      log.splice(0, Math.max(0, log.length - 40))
-    })
+    server.stderr?.on("data", (chunk: string) => appendLogTail(log, chunk))
     server.once("exit", () => {
       if (this.#process === server) {
         this.#process = null
@@ -376,9 +386,11 @@ export class WslPaddleVlmServer implements PaddleVlmServer {
       apiKey,
       this.#options.readyTimeoutMs ?? 300_000,
     ).catch((error: unknown) => {
-      console.warn(`[paddle-vllm] server in WSL did not start:\n${log.join("\n")}`)
-      if (this.#process === server) this.stop()
-      else server.kill()
+      // A server stopped on purpose while starting is not a failure worth reporting.
+      if (this.#process === server) {
+        console.warn(`[paddle-vllm] server in WSL did not start:\n${log.join("\n")}`)
+        this.stop()
+      }
       throw error
     })
     // Callers await `ready`; this only keeps an early failure from being reported as unhandled.

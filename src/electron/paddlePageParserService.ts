@@ -111,6 +111,16 @@ async function readCachedPage(
   return null
 }
 
+async function cachedPageExists(directory: string, pageNumber: number): Promise<boolean> {
+  try {
+    await access(join(directory, `page-${pageNumber}.json`))
+    return true
+  } catch (error) {
+    if (isMissingFile(error)) return false
+    throw error
+  }
+}
+
 /**
  * Parses pages with PaddleOCR-VL through one long-lived worker. A request for any page
  * queues the whole document, so later pages are usually cached before anyone asks.
@@ -126,6 +136,8 @@ export class PaddlePageParserService {
   #turn = 0
   #idleTimer: NodeJS.Timeout | null = null
   #disposed = false
+  /** The GPU server is installed but failed to start, so recognition runs in-process. */
+  #accelerationFailed = false
 
   constructor(readonly options: PaddlePageParserServiceOptions) {
     this.#vlmServer =
@@ -141,7 +153,7 @@ export class PaddlePageParserService {
       configured,
       provider: "paddle",
       model: "PaddleOCR-VL-1.6",
-      acceleration,
+      acceleration: this.#accelerationFailed ? null : acceleration,
     })
   }
 
@@ -220,7 +232,7 @@ export class PaddlePageParserService {
         await this.#run(next.batch, next.pages)
     } catch (error) {
       console.warn("[paddle-vl] page queue stopped", error)
-      this.#failQueued()
+      this.#failQueued("execution_failed")
     } finally {
       this.#pumping = false
     }
@@ -238,6 +250,12 @@ export class PaddlePageParserService {
       while (pages.length < PAGES_PER_REQUEST) {
         const pageNumber = batch.queued.shift()
         if (pageNumber === undefined) break
+        if (!(await cachedPageExists(batch.directory, pageNumber))) {
+          pages.push(pageNumber)
+          continue
+        }
+        // Only a page someone is waiting for needs its cache read back.
+        if (!batch.requests.has(pageNumber)) continue
         const cached = await readCachedPage(batch.directory, batch.document, pageNumber)
         if (cached) this.#settle(batch, pageNumber, { status: "ready", page: cached })
         else pages.push(pageNumber)
@@ -250,12 +268,19 @@ export class PaddlePageParserService {
 
   async #run(batch: DocumentBatch, pages: number[]): Promise<void> {
     for (const pageNumber of pages) batch.running.add(pageNumber)
+    let worker: PaddleVlWorker
+    try {
+      worker = await this.#ensureEngine()
+    } catch (error) {
+      console.warn("[paddle-vl] PaddleOCR-VL could not start", error)
+      for (const pageNumber of pages) batch.running.delete(pageNumber)
+      // Starting again for every queued request would repeat the same long wait.
+      this.#failQueued("model_unavailable")
+      return
+    }
     const pending = new Set(pages)
     const collecting: Promise<void>[] = []
-    let reason: "model_unavailable" | "execution_failed" = "model_unavailable"
     try {
-      const worker = await this.#ensureEngine()
-      reason = "execution_failed"
       for (const pageNumber of pages) this.#report(batch, pageNumber, "document-analyzing")
       const pdfPath = await resolveDocumentPath(batch.document.id, batch.store)
       await mkdir(batch.directory, { recursive: true })
@@ -277,7 +302,7 @@ export class PaddlePageParserService {
     } finally {
       await Promise.all(collecting)
       for (const pageNumber of pending)
-        this.#settle(batch, pageNumber, { status: "unavailable", reason })
+        this.#settle(batch, pageNumber, { status: "unavailable", reason: "execution_failed" })
       for (const pageNumber of pages) batch.running.delete(pageNumber)
     }
   }
@@ -313,10 +338,10 @@ export class PaddlePageParserService {
     for (const settle of request.settle) settle(parsed)
   }
 
-  #failQueued(): void {
+  #failQueued(reason: "model_unavailable" | "execution_failed"): void {
     for (const batch of this.#batches.values()) {
       for (const pageNumber of [...batch.requests.keys()])
-        this.#settle(batch, pageNumber, { status: "unavailable", reason: "execution_failed" })
+        this.#settle(batch, pageNumber, { status: "unavailable", reason })
     }
     this.#batches.clear()
   }
@@ -345,12 +370,14 @@ export class PaddlePageParserService {
       if (started.status === "fulfilled") started.value.stop()
       console.warn("[paddle-vl] GPU server did not start; recognizing in-process", ready.reason)
       this.#vlmServer.stop()
+      this.#accelerationFailed = true
       worker = await PaddleVlWorker.start(this.#workerLaunch(null))
     } else if (started.status === "rejected") {
       this.#vlmServer.stop()
       throw started.reason
     } else {
       worker = started.value
+      if (launch) this.#accelerationFailed = false
     }
     if (this.#disposed) {
       worker.stop()

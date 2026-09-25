@@ -1,7 +1,7 @@
 import { type ChildProcess, spawn } from "node:child_process"
 import { randomUUID } from "node:crypto"
 import { z } from "zod"
-import type { PaddleVlmConnection } from "./paddleVlmServer"
+import { appendLogTail, type PaddleVlmConnection } from "./paddleVlmServer"
 
 const workerMessageSchema = z.discriminatedUnion("event", [
   z.object({ event: z.literal("ready") }),
@@ -85,10 +85,7 @@ export class PaddleVlWorker {
     this.#process.stdout?.setEncoding("utf8")
     this.#process.stdout?.on("data", (chunk: string) => this.#receive(chunk))
     this.#process.stderr?.setEncoding("utf8")
-    this.#process.stderr?.on("data", (chunk: string) => {
-      this.#log.push(...chunk.split("\n").filter((line) => line.trim()))
-      this.#log.splice(0, Math.max(0, this.#log.length - 40))
-    })
+    this.#process.stderr?.on("data", (chunk: string) => appendLogTail(this.#log, chunk))
     this.#process.once("error", (error) => this.#exit(error))
     this.#process.once("exit", () => this.#exit(null))
   }

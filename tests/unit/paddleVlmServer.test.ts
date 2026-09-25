@@ -142,6 +142,46 @@ describe("Paddle vLLM server in WSL", () => {
     expect(stdin.writableEnded).toBe(true)
   })
 
+  it("waits for a stopped server to exit before starting the next one", async () => {
+    await installRuntime({ version: 1, distro: "Ubuntu", root: "/home/me/.ohmypaper/paddle-vllm" })
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("{}", { status: 200 })),
+    )
+    const children: (EventEmitter & { exitCode: number | null })[] = []
+    const spawnProcess = vi.fn(() => {
+      const child = Object.assign(new EventEmitter(), {
+        stdin: new PassThrough(),
+        stderr: new PassThrough(),
+        pid: 4242,
+        exitCode: null as number | null,
+        kill: vi.fn(),
+      })
+      children.push(child)
+      return child as unknown as ChildProcess
+    })
+    const server = new WslPaddleVlmServer({
+      home,
+      platform: "win32",
+      spawnProcess: spawnProcess as unknown as typeof spawn,
+    })
+    await (await server.launch())?.ready
+
+    server.stop()
+    const relaunch = server.launch()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(spawnProcess).toHaveBeenCalledOnce()
+    const previous = children[0]
+    if (previous) {
+      previous.exitCode = 0
+      previous.emit("exit", 0)
+    }
+    await (await relaunch)?.ready
+
+    expect(spawnProcess).toHaveBeenCalledTimes(2)
+    server.stop()
+  })
+
   it("gives up at once when wsl.exe cannot be started", async () => {
     await installRuntime({ version: 1, distro: "Ubuntu", root: "/home/me/.ohmypaper/paddle-vllm" })
     vi.spyOn(console, "warn").mockImplementation(() => undefined)
