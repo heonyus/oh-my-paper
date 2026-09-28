@@ -4,4 +4,6 @@ export {
   pageTranslationBlocksFromParsedPage,
   parsedPageBodyText,
   planParsedPageTranslations,
+  sentenceBreaks,
+  sentencesOf,
 } from "../../shared/parsedPageTranslation"

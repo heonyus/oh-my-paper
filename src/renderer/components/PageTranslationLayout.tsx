@@ -207,14 +207,26 @@ function roomBelow(rect: PageFraction, obstacles: readonly PageFraction[]): numb
   )
 }
 
-/** A heading stays on one line from where the source heading starts, shrinking if it must. */
-function fitHeading(element: HTMLElement, region: LayoutRegion, max: number): void {
+/**
+ * A heading stays on one line from where the source heading starts, no taller than the
+ * source heading, shrinking if it must.
+ */
+function fitHeading(
+  element: HTMLElement,
+  region: LayoutRegion,
+  max: number,
+  pageHeight: number,
+): void {
   element.style.height = "auto"
   element.style.width = "max-content"
   element.style.maxWidth = `${Math.max(region.rect.width, 0.96 - region.rect.x) * 100}%`
+  const tallest = region.rect.height * pageHeight * 1.15
   const fits = (size: number): boolean => {
     element.style.setProperty("--fit-font-size", String(size))
-    return element.scrollWidth <= element.clientWidth + 1
+    return (
+      element.scrollWidth <= element.clientWidth + 1 &&
+      (pageHeight <= 0 || element.scrollHeight <= tallest + 1)
+    )
   }
   const result = fitFontSize(fits, max, max * shrinkMost)
   element.style.setProperty("--fit-font-size", String(result.size))
@@ -328,7 +340,7 @@ function useFittedRegions(
         const max =
           region.size ?? sourceFontSize(pageNumber, region) ?? fallbackFontSize[region.kind]
         if (!element) continue
-        if (region.kind === "heading") fitHeading(element, region, max)
+        if (region.kind === "heading") fitHeading(element, region, max, container.clientHeight)
         else fitInBox(element, region, max, obstacles)
       }
       const pageHeight = container.clientHeight
@@ -447,6 +459,7 @@ export function PageTranslationLayout({
           data-block-ids={region.blockIds.join(" ")}
           data-bullet={region.typography?.bullet || undefined}
           data-serif={region.serif || undefined}
+          data-bold={region.bold || undefined}
           style={regionStyle(region)}
           onMouseEnter={() => setActive(region, true)}
           onMouseLeave={() => setActive(region, false)}

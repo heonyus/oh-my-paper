@@ -231,9 +231,12 @@
   padding-left: calc(var(--region-hang, 0) * 1cqw);
 }
 
+.page-translation-layout-region[data-bold="true"] {
+  font-weight: 700;
+}
 .page-translation-layout-region[data-kind="heading"] {
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.1;
   text-align: left;
 }
 .page-translation-pane[data-mode="layout"]
@@ -245,6 +248,8 @@
   line-height: inherit;
 }
 .page-translation-layout-region a {
+  /* A long URL breaks where the line ends instead of stretching the line before it. */
+  word-break: break-all;
   color: inherit;
   text-decoration: underline dotted color-mix(in srgb, currentColor 45%, transparent);
 }

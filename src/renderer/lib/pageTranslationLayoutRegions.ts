@@ -28,6 +28,8 @@ export type LayoutRegion = {
   readonly typography?: RegionTypography
   /** The source is set in a serif face; unknown until the PDF's fonts are read. */
   readonly serif?: boolean
+  /** The whole source paragraph is set in bold, as an abstract may be. */
+  readonly bold?: boolean
   /** The source's type size in percent of the page width, once the PDF's fonts are read. */
   readonly size?: number
   /** What to paint over on the page copy when it reaches past `rect`: the source's glyphs. */

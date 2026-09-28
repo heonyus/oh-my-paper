@@ -5,6 +5,7 @@ import type {
 } from "../../shared/documentPageModel"
 import { type LayoutRegion, layoutRegions } from "./pageTranslationLayoutRegions"
 import type { PageTranslationBlock } from "./pageTranslationSource"
+import { sentenceBreaks, sentencesOf } from "./parsedPageTranslation"
 import type { PageTextRun } from "./pdfPageTextRuns"
 
 const paragraphLabels = new Set<ParsedPageLayoutBlock["label"]>([
@@ -351,10 +352,14 @@ function paragraphGeometry(
   const pitch = median(gaps) ?? lineHeight * 1.2
   const first = inside[0]
   const firstOnTop = first !== undefined && first.bounds.y <= box.y + pitch * 0.7
-  const continuation = median(
-    inside.filter((line) => line !== first || !firstOnTop).map((line) => line.bounds.x),
-  )
-  const hanging = continuation !== null && continuation - left > lineHeight * 1.2
+  const continuing = inside.filter((line) => line !== first || !firstOnTop)
+  const continuation = median(continuing.map((line) => line.bounds.x))
+  // A list item hangs on every line; a drop cap indents only the lines beside it.
+  const hangingLines = continuing.filter((line) => line.bounds.x - left > lineHeight * 1.2)
+  const hanging =
+    continuation !== null &&
+    continuation - left > lineHeight * 1.2 &&
+    hangingLines.length >= continuing.length * 0.75
   // A list item starts with a marker; a hanging paragraph whose first line sits at the hanging
   // edge is the rest of an item from the previous column, and gets no marker of its own.
   const continued = hanging && firstOnTop && first.bounds.x - left > lineHeight * 1.2
@@ -385,16 +390,6 @@ function paragraphGeometry(
   }
 }
 
-/** The source sentence is (mostly) the bold text the paragraph's first line opens with. */
-function opensWith(source: string, bold: string): boolean {
-  const sentence = alphanumeric(source.replace(bulletPattern, ""))
-  return (
-    bold.length >= 3 &&
-    sentence.startsWith(bold.slice(0, 12)) &&
-    bold.length >= sentence.length * 0.6
-  )
-}
-
 /** Runs of PDF text in page coordinates of the parsed page. */
 function runsOnPage(runs: readonly PageTextRun[], page: ParsedDocumentPage) {
   return runs.map((run) => ({
@@ -419,16 +414,56 @@ function openingBold(box: Bounds, runs: readonly PlacedRun[] | null, lineHeight:
   const inside = runs
     .filter((run) => centreInside(run.bounds, box, lineHeight * 0.3))
     .filter((run) => !bulletPattern.test(run.text) || run.text.trim().length > 1)
-  const top = Math.min(...inside.map((run) => run.bounds.y))
-  const firstLine = inside
-    .filter((run) => Math.abs(run.bounds.y - top) < lineHeight * 0.5)
-    .sort((left, right) => left.bounds.x - right.bounds.x)
-  const bold: string[] = []
-  for (const run of firstLine) {
-    if (!run.bold) break
-    bold.push(run.text)
+    .sort((left, right) => left.bounds.y - right.bounds.y)
+  // Reading order: line by line, left to right. A subheading may wrap onto a second line.
+  const lines: PlacedRun[][] = []
+  for (const run of inside) {
+    const line = lines.at(-1)
+    const top = line?.[0]?.bounds.y
+    if (line && top !== undefined && Math.abs(run.bounds.y - top) < lineHeight * 0.5) line.push(run)
+    else lines.push([run])
   }
-  return alphanumeric(bold.join(""))
+  const bold: string[] = []
+  for (const line of lines) {
+    for (const run of line.sort((left, right) => left.bounds.x - right.bounds.x)) {
+      if (!run.bold) return joinWrapped(bold)
+      bold.push(run.text)
+    }
+  }
+  return joinWrapped(bold)
+}
+
+/** Text runs rejoined, with words the line end hyphenated ("cir- culatory") made whole. */
+function joinWrapped(runs: readonly string[]): string {
+  return runs
+    .join(" ")
+    .replace(/(\p{Ll})-\s+(\p{Ll})/gu, "$1$2")
+    .replace(/\s+/gu, " ")
+    .trim()
+}
+
+/**
+ * How many sentences a bold opening covers. Bold type can run past the lead into the next
+ * sentence's first word — the panel letter in "Fig. 2 | Model performance. a, …".
+ */
+function boldSentenceCount(source: string, bold: string): number {
+  const breaks = sentenceBreaks(bold)
+  const covered = alphanumeric(bold.slice(0, breaks.at(-1) ?? 0))
+  if (covered.length < 3) return 0
+  return alphanumeric(source.replace(bulletPattern, "")).startsWith(covered) ? breaks.length : 0
+}
+
+/** Whether nearly all of the text inside a box is set in bold, as an abstract may be. */
+function mostlyBold(box: Bounds, runs: readonly PlacedRun[] | null): boolean {
+  if (!runs) return false
+  let bold = 0
+  let total = 0
+  for (const run of runs) {
+    if (!centreInside(run.bounds, box)) continue
+    total += run.text.length
+    if (run.bold) bold += run.text.length
+  }
+  return total > 0 && bold >= total * 0.85
 }
 
 /** Whether most of the text inside a box is set in a serif face. */
@@ -472,33 +507,29 @@ function paragraphMarkdown(
   // when the PDF sets it bold; a caption translates as one piece, so split off its first
   // sentence on both sides.
   const [sourceOpening = "", ...sourceRest] = sentencesOf(first.piece.source)
-  const [opening = "", ...openingRest] = sentencesOf(first.text)
-  const followed = sourceRest.length > 0 || parts.length > 1
-  const bold =
-    followed &&
-    (leadingBold === null
-      ? geometry.indent === 0 && isRunInHeading(sourceOpening, true)
-      : opensWith(sourceOpening, leadingBold))
-  const lead = bold ? `**${opening.replaceAll("**", "").trim()}**` : opening
-  return [lead, ...openingRest, ...rest.map((part) => part.text)].join(" ")
-}
-
-/** "Fig. 5 | …" is one sentence, not "Fig." and "5 | …". */
-const abbreviation =
-  /(?:\b(?:figs?|eqs?|tabs?|refs?|nos?|vol|vs|cf|approx|suppl|al|e\.g|i\.e)|(?:^|\s)\p{Lu})\.$/iu
-
-function sentencesOf(text: string): readonly string[] {
-  const segmenter = new Intl.Segmenter(undefined, { granularity: "sentence" })
-  const sentences: string[] = []
-  for (const { segment } of segmenter.segment(text)) {
-    const sentence = segment.trim()
-    if (!sentence) continue
-    const previous = sentences.at(-1)
-    if (previous !== undefined && abbreviation.test(previous))
-      sentences[sentences.length - 1] = `${previous} ${sentence}`
-    else sentences.push(sentence)
-  }
-  return sentences
+  const boldCount =
+    leadingBold === null
+      ? geometry.indent === 0 &&
+        (sourceRest.length > 0 || parts.length > 1) &&
+        isRunInHeading(sourceOpening, true)
+        ? 1
+        : 0
+      : boldSentenceCount(first.piece.source, leadingBold)
+  // Bold as many sentences of the translation as the source sets in bold — all of the piece
+  // when the source's bold covers it, even if the translation dropped its full stop.
+  const whole = boldCount > 0 && boldCount >= (sentenceBreaks(first.piece.source).length || 1)
+  const end = whole
+    ? first.text.length
+    : boldCount > 0
+      ? sentenceBreaks(first.text)[boldCount - 1]
+      : undefined
+  const boldText = end === undefined ? "" : first.text.slice(0, end).replaceAll("**", "").trim()
+  const lead =
+    boldText && /\.$/u.test(sourceOpening) && !/[.:!?]$/u.test(boldText) ? `${boldText}.` : boldText
+  const after = end === undefined ? first.text : first.text.slice(end).trim()
+  return [...(lead ? [`**${lead}**`] : []), after, ...rest.map((part) => part.text)]
+    .filter(Boolean)
+    .join(" ")
 }
 
 /** Drops `key` (alphanumerics only) from the start of `text`, or returns null if it is not there. */
@@ -555,6 +586,46 @@ function referenceOrders(layout: readonly ParsedPageLayoutBlock[]): ReadonlySet<
 }
 
 /**
+ * "머신러닝을 이용한 … 조기 예측(Early prediction of … machine learning)": a heading whose
+ * gloss repeats the whole source keeps only the translation. A gloss of one term stays.
+ */
+function withoutRepeatedSource(translation: string, source: string): string {
+  const match = /^(.*\S)\s*[(（]([^()（）]+)[)）]\s*$/su.exec(translation.trim())
+  if (!match?.[1] || !match[2]) return translation
+  const gloss = alphanumeric(match[2])
+  const original = alphanumeric(source.replace(/^#{1,6}\s+/u, ""))
+  return gloss.length > 0 && gloss === original ? match[1] : translation
+}
+
+/**
+ * Translations made before sentences kept their abbreviations were cut after "Fig." or an
+ * initial ("S.L.H., M."). Joins such a fragment, too short to place, to the sentence after
+ * it in the same block.
+ */
+function joinFragments(blocks: readonly PageTranslationBlock[]): readonly PageTranslationBlock[] {
+  const joined: PageTranslationBlock[] = []
+  let pending: PageTranslationBlock | null = null
+  for (const next of blocks) {
+    const sameBlock =
+      pending !== null && (pending.parsedBlockId ?? pending.id) === (next.parsedBlockId ?? next.id)
+    const block: PageTranslationBlock =
+      pending && sameBlock
+        ? {
+            ...next,
+            source: `${pending.source} ${next.source}`,
+            translation: `${pending.translation.trim()} ${next.translation.trim()}`,
+          }
+        : next
+    if (pending && !sameBlock) joined.push(pending)
+    pending = null
+    if (block.kind === "body" && alphanumeric(block.source).length < 10) pending = block
+    else joined.push(block)
+  }
+  if (pending) joined.push(pending)
+  return joined
+}
+
+/**
  * Regions that follow the source paragraph by paragraph: one per layout paragraph, with its
  * indent, list marker, line pitch and run-in subheading. Bold and serif come from the PDF's
  * fonts when `runs` are known. Pages parsed without a layout get one region per parsed block.
@@ -585,7 +656,7 @@ export function paragraphRegions(
     )
     .map((line) => alphanumeric(line.content))
     .filter((key) => key.length >= 6)
-  const body = blocks.flatMap((block) => {
+  const body = joinFragments(blocks).flatMap((block) => {
     if (
       block.kind !== "body" ||
       (block.structureKind && preservedStructures.has(block.structureKind))
@@ -616,6 +687,7 @@ export function paragraphRegions(
       ) ?? geometry.lineHeight
     const fontSize = sourceSize * koreanScale
     const serif = mostlySerif(paragraph.bounds, placedRuns)
+    const allBold = mostlyBold(paragraph.bounds, placedRuns)
     const glyphs = [
       geometry.rect,
       ...lines
@@ -637,11 +709,14 @@ export function paragraphRegions(
           width: geometry.rect.width / page.width,
           height: geometry.rect.height / page.height,
         },
-        translation: paragraphMarkdown(
-          pieces,
-          geometry,
-          openingBold(paragraph.bounds, placedRuns, geometry.lineHeight),
-        ),
+        translation: allBold
+          ? paragraphMarkdown(pieces, geometry, "")
+          : paragraphMarkdown(
+              pieces,
+              geometry,
+              openingBold(paragraph.bounds, placedRuns, geometry.lineHeight),
+            ),
+        ...(allBold ? { bold: true } : {}),
         typography: {
           fontSize: (fontSize / page.width) * 100,
           lineHeight: Math.min(2, Math.max(1.1, geometry.pitch / fontSize)),
@@ -675,8 +750,10 @@ export function paragraphRegions(
           .filter((run) => run.text.trim().length > 1 && centreInside(run.bounds, box))
           .map((run) => run.bounds.height),
       )
+      const source = blocks.find((block) => block.id === region.blockIds[0])?.source ?? ""
       return {
         ...region,
+        translation: withoutRepeatedSource(region.translation, source),
         ...(serif === undefined ? {} : { serif }),
         ...(size === null ? {} : { size: ((size * koreanScale) / page.width) * 100 }),
       }
