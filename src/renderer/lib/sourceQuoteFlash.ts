@@ -35,6 +35,35 @@ export function spansCoveringQuote(
 }
 
 /**
+ * Text-layer spans covering a whole passage. Parsed text can drift from the text layer near its
+ * end, so when the full passage is not found it is located by its opening and closing words.
+ */
+export function spansCoveringPassage(
+  spans: readonly HTMLElement[],
+  passage: string,
+): readonly HTMLElement[] {
+  const target = normalizedQuoteText(passage)
+  if (target.length < 8) return []
+  let text = ""
+  const ranges = spans.map((span) => {
+    const start = text.length
+    text += normalizedQuoteText(span.textContent ?? "")
+    return { span, start, end: text.length }
+  })
+  let start = text.indexOf(target)
+  let end = start + target.length
+  if (start === -1) {
+    const head = target.slice(0, MATCH_CHARACTERS)
+    start = text.indexOf(head)
+    if (start === -1) return []
+    const tail = target.slice(-40)
+    const tailAt = text.indexOf(tail, start)
+    end = tailAt === -1 ? start + head.length : tailAt + tail.length
+  }
+  return ranges.filter((range) => range.end > start && range.start < end).map((range) => range.span)
+}
+
+/**
  * Briefly highlights a quoted passage once the reader has rendered the page's text layer.
  * Returns without effect when the quote cannot be found; the page jump still happened.
  */

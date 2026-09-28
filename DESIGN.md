@@ -27,15 +27,34 @@ opens a note column between the PDF and the research sidebar.
 - From the PDF: selecting a passage and choosing `노트에` (`C`) opens the note if needed and
   appends the passage as a quote with its chip, then an empty paragraph with the caret, where
   the reader writes what it means.
-- Margin (`여백 AI`): off by default and remembered per browser. While on, each settled
-  sentence (sentence end, or a pause) is sent with up to 32 prepared paragraphs from the page in
-  view and its neighbours to Jev on OpenRouter, twice: which paragraph the sentence rests on,
-  and which contradicts it. Jev only chooses among supplied paragraphs, so every card is real
-  source text; low-confidence and `none` answers show nothing. Cards sit beside their block,
-  never take focus, and offer `근거로 붙이기` (support) or the page link (both). Results are keyed
-  by the block's text, so edited text never shows suggestions for words it no longer contains.
-  The UI carries no explanatory copy; the switch alone shows `켜짐`, `꺼짐`, `키 없음` or `오류`.
-  Without an OpenRouter key the switch is unavailable. Narrow note columns hide the margin.
+- Live companion: the note header has one control, `조용히 · 보통 · 적극적` (default `보통`,
+  remembered per browser), and a short status (`준비 중`, `오류`) only when something is wrong or
+  loading. The UI carries no explanatory copy.
+  - Source match (local): once a sentence settles (sentence end, or a pause), it is matched by
+    meaning against the parsed paragraphs of the page in view and its neighbours using a local
+    multilingual embedding model (EmbeddingGemma-300M, downloaded once into the data folder and
+    run by the local server; nothing leaves the machine). A passage shows only when it scores at
+    least 0.40 and leads the next by 0.05, so most sentences show nothing. Only the sentence
+    being written shows it: the passage's text-layer spans get a quiet underline, a thin line
+    runs from it to the sentence, and the margin shows a `원문` card with the passage's Korean
+    translation when this session has translated that page, the English source and
+    `근거로 붙이기`. Moving to another sentence removes the underline and line.
+  - Tutor (connected model): when a paragraph settles (leaving the block, or a pause after a
+    finished sentence) the tutor streams 2–5 declarative Korean sentences beside it: what the
+    reader got right, the reason, mechanism or number the paper gives, a stated condition or
+    limitation, and a link to a related passage or to the reader's own earlier note on another
+    paper. It never asks questions, never rewrites or completes the reader's text, and uses only
+    the supplied passages and notes. Sentences ending in a question mark and sentences whose
+    `[[p.N | quote]]` is not on that page are removed before they show; while streaming, only
+    finished sentences that pass appear. One tutor reply per paragraph; `보통` waits 20 s between
+    replies, `적극적` 5 s and also answers settled sentences. The newest reply is open, older
+    ones fold. Tutor text never enters the note; there is no copy or insert action for it.
+  - Privacy: embeddings stay local. While the control is `보통` or `적극적`, the tutor sends the
+    settled paragraph, a few earlier lines, the related passages and matching earlier notes to
+    the connected AI provider without a click. The owner chose this on 2026-09-28; `조용히`
+    sends nothing.
+  - Where the local server does not offer meaning search (the Electron shell today), only
+    `조용히` is available.
 
 **Existing features, repositioned.**
 - Summary: never generated before the reader writes three lines (문제/방법/결과) or skips.
@@ -56,9 +75,8 @@ opens a note column between the PDF and the research sidebar.
 queues or guilt copy. Failures are shown where they happen (the margin switch, the three-line
 check) and never block writing or reading.
 
-**Later, not yet built.** Connections to notes written about other papers (local multilingual
-embeddings), a map of the reader's own sentences, and margin questions from a generative model
-used sparingly.
+**Later, not yet built.** Lines for confirmed evidence chips on hover, a map of the reader's own
+sentences across papers, and a way to attach a chosen PDF passage to an existing sentence.
 
 ## 2026-09-15 Browser-first paper reading (shell current; feature parity superseded 2026-09-28)
 

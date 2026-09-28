@@ -1,10 +1,11 @@
-import { type ComponentProps, type JSX, useCallback, useState } from "react"
+import { type ComponentProps, type JSX, useCallback, useMemo, useState } from "react"
 import type { ProviderStatus } from "../../shared/ipc"
 import type { EvidenceNavigationTarget } from "../../shared/knowledgeTypes"
 import type { ReaderNote } from "../../shared/readerNote"
 import type { DocumentInsight } from "../../shared/schemas"
 import { researchSidebarLayout } from "../../shared/uiLayout"
 import type { SourceCitation } from "../lib/chatCitations"
+import { earlierNoteParagraphs } from "../lib/noteTutor"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
 import type { PreparedSummary } from "../lib/pdfDocumentFeatures"
 import type { PdfOutlineEntry } from "../lib/pdfOutline"
@@ -85,6 +86,17 @@ export function ReaderWorkspace(props: {
     [openNote],
   )
   const clearPendingQuote = useCallback(() => setPendingQuote(null), [])
+  const earlierNotes = useMemo(
+    () =>
+      documentId
+        ? earlierNoteParagraphs(
+            workspace.readerNotes,
+            new Map(workspace.documents.map((item) => [item.id, item.title])),
+            documentId,
+          )
+        : [],
+    [workspace.readerNotes, workspace.documents, documentId],
+  )
   const onPageActive = useCallback(
     (page: number): void => {
       if (!documentId) return
@@ -151,6 +163,8 @@ export function ReaderWorkspace(props: {
           document={document}
           note={props.readerNote}
           currentPage={props.currentPage}
+          earlierNotes={earlierNotes}
+          onAiRequest={props.runAi}
           onChange={props.updateReaderNote}
           onClose={props.closeNote}
           onNavigateToSource={navigateToSource}

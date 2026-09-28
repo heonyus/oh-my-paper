@@ -17,6 +17,7 @@ const readingTokenLimits: Readonly<Partial<Record<AiRequest["action"], number>>>
   paper_summary: 384,
   citation_assessment: 768,
   own_summary_check: 768,
+  note_tutor: 700,
   explanation: 1_024,
   infographic: 896,
   section: 1_536,

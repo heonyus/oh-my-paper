@@ -44,38 +44,6 @@
   align-items: center;
   gap: 6px;
 }
-.note-pane-actions button {
-  display: inline-flex;
-  align-items: center;
-  min-height: 30px;
-  padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--ink-muted);
-  font: inherit;
-  font-size: var(--type-compact-size);
-  cursor: pointer;
-}
-.note-pane-actions button[aria-label] {
-  width: 30px;
-  padding: 0;
-  justify-content: center;
-  border-color: transparent;
-}
-.note-pane-actions .note-margin-toggle[aria-pressed="true"] {
-  border-color: color-mix(in srgb, var(--action) 40%, var(--line));
-  background: var(--action-subtle);
-  color: var(--action);
-}
-.note-pane-actions .note-margin-toggle[data-state="error"] {
-  border-color: color-mix(in srgb, var(--error) 40%, var(--line));
-  color: var(--error);
-}
-.note-pane-actions button:disabled {
-  cursor: default;
-  opacity: 0.5;
-}
 .note-scroll {
   min-height: 0;
   overflow-y: auto;
@@ -325,4 +293,137 @@
   width: auto;
   min-height: 34px;
   padding: 0 10px;
+}
+.note-pane-status {
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+}
+.note-density {
+  display: inline-flex;
+  min-width: 0;
+  margin: 0;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+.note-density button {
+  min-height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: var(--type-compact-size);
+  cursor: pointer;
+}
+.note-density button[aria-pressed="true"] {
+  background: var(--action-subtle);
+  color: var(--action);
+  font-weight: 600;
+}
+.note-density button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+.note-pane-close {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.note-pane-close:hover {
+  background: var(--surface-muted);
+}
+.note-margin-translation {
+  color: var(--ink);
+}
+.note-margin-card .note-margin-original {
+  color: var(--ink-muted);
+  -webkit-line-clamp: 3;
+}
+.note-margin-card[data-kind="tutor"] {
+  border-color: color-mix(in srgb, var(--action) 28%, var(--line));
+  background: var(--surface);
+  animation: note-tutor-in 180ms ease-out;
+}
+.note-margin-card[data-kind="tutor"] .markdown-content {
+  color: var(--ink);
+  font-size: var(--type-compact-size);
+  line-height: 1.6;
+  word-break: keep-all;
+}
+.note-margin-card[data-kind="tutor"] .markdown-content p {
+  display: block;
+  margin: 0;
+  overflow: visible;
+}
+.note-tutor-typing {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--action);
+  animation: note-tutor-pulse 1s ease-in-out infinite;
+}
+.note-tutor-folded {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+@keyframes note-tutor-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes note-tutor-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .note-margin-card[data-kind="tutor"],
+  .note-tutor-typing {
+    animation: none;
+  }
+}
+/* The passage the sentence in progress rests on, and the line from it to that sentence. */
+.textLayer span.note-source-link {
+  border-radius: 2px;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--action) 45%, transparent) 0 2px,
+    color-mix(in srgb, var(--action) 10%, transparent) 2px
+  );
+}
+.note-link-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  width: 100vw;
+  height: 100vh;
+  overflow: visible;
+  pointer-events: none;
+}
+.note-link-overlay path {
+  fill: none;
+  stroke: color-mix(in srgb, var(--action) 60%, transparent);
+  stroke-width: 1.5;
 }

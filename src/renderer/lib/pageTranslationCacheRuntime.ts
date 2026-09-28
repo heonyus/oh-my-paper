@@ -61,6 +61,23 @@ function runtimeBlocks(
   }))
 }
 
+/** The Korean translation of one parsed block, when this session already holds its page. */
+export function cachedTranslationForParsedBlock(
+  documentId: DocumentId,
+  page: number,
+  parsedBlockId: string,
+): string | null {
+  const prefix = `v10:${documentId}:${page}:ko:`
+  for (const [identity, blocks] of sessionCache) {
+    if (!identity.startsWith(prefix)) continue
+    const parts = blocks
+      .filter((block) => block.parsedBlockId === parsedBlockId)
+      .map((block) => block.translation)
+    if (parts.length > 0) return parts.join(" ")
+  }
+  return null
+}
+
 export async function readCachedPageTranslation(
   documentId: DocumentId,
   page: number,

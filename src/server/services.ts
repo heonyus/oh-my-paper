@@ -38,6 +38,7 @@ import { createAiModeServices } from "./aiModeServices"
 import type { WebServerConfig } from "./config"
 import { JevDecisionService } from "./decisionService"
 import { deleteLibraryDocument } from "./documentDeletion"
+import { MeaningSearchService } from "./meaningSearchService"
 import { createWebAiRuntime } from "./webAiRuntime"
 
 export type WebServices = {
@@ -56,6 +57,7 @@ export type WebServices = {
     signal?: AbortSignal,
   ) => Promise<AgentAskResult>
   readonly decisionService: () => JevDecisionService | null
+  readonly meaningSearch: MeaningSearchService
   readonly saveProviderConfig: (config: ProviderConfig) => Promise<void>
   readonly deleteDocument: (id: DocumentId) => Promise<boolean>
   readonly saveAiMode: (input: z.infer<typeof aiModeRequestSchema>) => Promise<void>
@@ -89,15 +91,11 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
   })
   const analysis = new DocumentAnalysisService(store, pages, { maxConcurrency: 4 })
   await analysis.resumePending()
-  // Jev only chooses among supplied candidates, so any OpenRouter key can serve it, whichever
-  // model answers chat.
-  const jevFor = (apiKey: string | null | undefined): JevDecisionService | null =>
-    apiKey ? new JevDecisionService(apiKey) : null
-  let decisions = jevFor(
+  let decisions =
     initialProvider?.provider === "openrouter"
-      ? initialProvider.apiKey
-      : credentials.openRouterConfig()?.apiKey,
-  )
+      ? new JevDecisionService(initialProvider.apiKey)
+      : null
+  const meaningSearch = new MeaningSearchService(config.dataDir)
   const jobs = createAiJobStreams(ai)
   const paperSources = createPaperDiscoverySources()
   let metadataSaveQueue: Promise<void> = Promise.resolve()
@@ -148,6 +146,7 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
         signal,
       ),
     decisionService: () => decisions,
+    meaningSearch,
     deleteDocument: (id) => deleteLibraryDocument({ store, analysis, paddle }, id),
     saveProviderConfig: async (value) => {
       const parsed = providerConfigSchema.parse(value)
@@ -156,9 +155,7 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
       const nextMode = { ...ai.modeSettings(), mode: "api" as const }
       await aiModes.save(nextMode)
       ai.configureMode(nextMode)
-      decisions = jevFor(
-        parsed.provider === "openrouter" ? parsed.apiKey : credentials.openRouterConfig()?.apiKey,
-      )
+      decisions = parsed.provider === "openrouter" ? new JevDecisionService(parsed.apiKey) : null
     },
     saveAiMode: aiModeServices.saveAiMode,
     providerStatus: aiModeServices.providerStatus,

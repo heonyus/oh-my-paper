@@ -3,49 +3,52 @@ import { X } from "lucide-react"
 import { type JSX, useCallback, useEffect, useState } from "react"
 import type { ReaderNote } from "../../../shared/readerNote"
 import type { SourceCitation } from "../../lib/chatCitations"
-import type { MarginSuggestion } from "../../lib/marginSuggestions"
-import { useMarginSuggestions } from "../../lib/useMarginSuggestions"
-import type { DocumentRecord } from "../../types"
+import type { ScoredSource } from "../../lib/noteSources"
+import type { EarlierNote } from "../../lib/noteTutor"
+import { useMeaningSearchReady } from "../../lib/useMeaningSearchReady"
+import { type CompanionDensity, useNoteCompanion } from "../../lib/useNoteCompanion"
+import type { AiRequestRunner, DocumentRecord } from "../../types"
 import { evidenceQuote } from "./evidenceNode"
 import { MarginColumn } from "./MarginColumn"
 import { noteQuoteContent, type PendingNoteQuote } from "./noteQuote"
 import { ReaderNoteEditor } from "./ReaderNoteEditor"
+import { SourceLinkOverlay } from "./SourceLinkOverlay"
 
-const MARGIN_SETTING_KEY = "ohmypaper:margin-ai"
+const DENSITY_KEY = "ohmypaper:note-companion"
+const densities: readonly { readonly id: CompanionDensity; readonly label: string }[] = [
+  { id: "quiet", label: "조용히" },
+  { id: "normal", label: "보통" },
+  { id: "active", label: "적극적" },
+]
 
-type MarginState = "on" | "off" | "unavailable" | "error"
-const marginLabels: Readonly<Record<MarginState, string>> = {
-  on: "켜짐",
-  off: "꺼짐",
-  unavailable: "키 없음",
-  error: "오류",
-}
-
-function storedMarginSetting(): boolean {
+function storedDensity(): CompanionDensity {
   try {
-    return window.localStorage.getItem(MARGIN_SETTING_KEY) === "on"
+    const value = window.localStorage.getItem(DENSITY_KEY)
+    return value === "quiet" || value === "active" ? value : "normal"
   } catch {
-    return false
+    return "normal"
   }
 }
 
-function storeMarginSetting(on: boolean): void {
+function storeDensity(density: CompanionDensity): void {
   try {
-    window.localStorage.setItem(MARGIN_SETTING_KEY, on ? "on" : "off")
+    window.localStorage.setItem(DENSITY_KEY, density)
   } catch {
     // Without storage the choice lasts for this session only.
   }
 }
 
 /**
- * The reader's note beside the paper, with a margin where Jev points at the source paragraphs
- * each sentence rests on. The margin sends text out only while the reader has switched it on;
- * without an OpenRouter key it stays off and says so on its switch.
+ * The reader's note beside the paper. While the reader writes, the sentence in progress is
+ * matched to its source passage on this machine, and the tutor builds on each paragraph with the
+ * connected model. `조용히` turns both off; nothing is ever written into the note for the reader.
  */
 export function ReaderNotePane({
   document,
   note,
   currentPage,
+  earlierNotes,
+  onAiRequest,
   onChange,
   onClose,
   onNavigateToSource,
@@ -55,6 +58,8 @@ export function ReaderNotePane({
   readonly document: DocumentRecord
   readonly note: ReaderNote | undefined
   readonly currentPage: number
+  readonly earlierNotes: readonly EarlierNote[]
+  readonly onAiRequest: AiRequestRunner
   readonly onChange: (markdown: string) => void
   readonly onClose: () => void
   readonly onNavigateToSource: (citation: SourceCitation) => void
@@ -62,14 +67,17 @@ export function ReaderNotePane({
   readonly onPendingQuoteHandled: () => void
 }): JSX.Element {
   const [editor, setEditor] = useState<Editor | null>(null)
-  const [marginOn, setMarginOn] = useState(storedMarginSetting)
-  const decide = window.ohmypaper.decideAi
-  const margin = useMarginSuggestions(editor, {
-    enabled: marginOn,
+  const [density, setDensity] = useState(storedDensity)
+  const rank = window.ohmypaper.rankByMeaning
+  const searchState = useMeaningSearchReady(density !== "quiet")
+  const companion = useNoteCompanion(editor, {
+    density: searchState === "unavailable" ? "quiet" : density,
     documentId: document.id,
     pageCount: document.pageCount,
     currentPage,
-    decide,
+    earlierNotes,
+    rank,
+    onAiRequest,
   })
 
   useEffect(() => {
@@ -86,29 +94,16 @@ export function ReaderNotePane({
     onPendingQuoteHandled()
   }, [editor, pendingQuote, onPendingQuoteHandled])
 
-  const marginState: MarginState =
-    !decide || margin.failure === "unavailable"
-      ? "unavailable"
-      : !marginOn
-        ? "off"
-        : margin.failure === "error"
-          ? "error"
-          : "on"
-
   const attach = useCallback(
-    (pos: number, suggestion: MarginSuggestion): void => {
+    (pos: number, source: ScoredSource): void => {
       const node = editor?.state.doc.nodeAt(pos)
       if (!editor || !node) return
-      const end = pos + node.nodeSize - 1
       editor
         .chain()
         .focus()
-        .insertContentAt(end, [
+        .insertContentAt(pos + node.nodeSize - 1, [
           ...(/\s$/u.test(node.textContent) ? [] : [{ type: "text", text: " " }]),
-          {
-            type: "evidence",
-            attrs: { page: suggestion.page, quote: evidenceQuote(suggestion.text) },
-          },
+          { type: "evidence", attrs: { page: source.page, quote: evidenceQuote(source.text) } },
         ])
         .run()
     },
@@ -118,26 +113,47 @@ export function ReaderNotePane({
     (page: number, text: string): void => onNavigateToSource({ page, quote: text.slice(0, 200) }),
     [onNavigateToSource],
   )
+  const status =
+    density === "quiet"
+      ? null
+      : searchState === "loading"
+        ? "준비 중"
+        : searchState === "failed" || companion.failed
+          ? "오류"
+          : null
 
   return (
     <section className="note-pane" aria-label="내 노트">
       <header className="note-pane-head">
         <h2>내 노트</h2>
         <div className="note-pane-actions">
+          {status ? (
+            <span className="note-pane-status" role="status">
+              {status}
+            </span>
+          ) : null}
+          <fieldset className="note-density" aria-label="여백 반응">
+            {densities.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                aria-pressed={density === item.id}
+                disabled={!rank && item.id !== "quiet"}
+                onClick={() => {
+                  storeDensity(item.id)
+                  setDensity(item.id)
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </fieldset>
           <button
             type="button"
-            className="note-margin-toggle"
-            aria-pressed={marginOn && Boolean(decide)}
-            data-state={marginState}
-            disabled={!decide}
-            onClick={() => {
-              storeMarginSetting(!marginOn)
-              setMarginOn(!marginOn)
-            }}
+            className="note-pane-close"
+            aria-label="노트 닫기"
+            onClick={onClose}
           >
-            여백 AI {marginLabels[marginState]}
-          </button>
-          <button type="button" aria-label="노트 닫기" onClick={onClose}>
             <X size={16} />
           </button>
         </div>
@@ -152,13 +168,16 @@ export function ReaderNotePane({
             onOpenEvidence={(page, quote) => onNavigateToSource({ page, quote })}
           />
           <MarginColumn
-            editor={marginOn ? editor : null}
-            entries={margin.entries}
+            editor={editor}
+            match={companion.match}
+            tutors={companion.tutors}
             onAttach={attach}
             onOpen={open}
+            onCitation={onNavigateToSource}
           />
         </div>
       </div>
+      <SourceLinkOverlay editor={editor} match={companion.match} />
     </section>
   )
 }
