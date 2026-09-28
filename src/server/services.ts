@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url"
 import type { z } from "zod"
-import { type AgentStepListener, askAgent, planAgentQueries } from "../electron/agentService"
+import { type AgentStepListener, askAgent } from "../electron/agentService"
 import { lookupCitation } from "../electron/citationService"
 import { DocumentAnalysisService } from "../electron/documentAnalysisService"
 import { DocumentAstService } from "../electron/documentAstService"
@@ -8,13 +8,12 @@ import { createDocumentPageParser } from "../electron/documentPageParser"
 import { importDocument, readDocumentBytes } from "../electron/documentService"
 import { PaddlePageParserService } from "../electron/paddlePageParserService"
 import { PageTranslationCacheService } from "../electron/pageTranslationCacheService"
+import { createPaperDiscoverySources } from "../electron/paperDiscoverySources"
 import { listScholarlyMetadata, saveScholarlyMetadata } from "../electron/scholarlyMetadata"
 import { searchScholarly } from "../electron/scholarlySearch"
-import { searchSemanticScholar } from "../electron/semanticScholarSearch"
 import { WorkspaceStore } from "../electron/workspaceStore"
 import {
   AGENT_CONTEXT_EXCERPT_CHARACTERS,
-  AGENT_SEARCH_RESULT_LIMIT,
   type AgentAskRequest,
   type AgentAskResult,
   type AgentContextDoc,
@@ -34,7 +33,6 @@ import {
   providerConfigSchema,
 } from "../shared/ipc"
 import type { DocumentId, Workspace } from "../shared/schemas"
-import { scholarlyProviders } from "../shared/scholarlySearchSchemas"
 import { createAiJobStreams } from "./aiJobStreams"
 import { createAiModeServices } from "./aiModeServices"
 import type { WebServerConfig } from "./config"
@@ -52,7 +50,11 @@ export type WebServices = {
   readonly ai: Awaited<ReturnType<typeof createWebAiRuntime>>["ai"]
   readonly subscription: Awaited<ReturnType<typeof createWebAiRuntime>>["subscription"]
   readonly claude: Awaited<ReturnType<typeof createWebAiRuntime>>["claude"]
-  readonly agentAsk: (input: AgentAskRequest, onStep?: AgentStepListener) => Promise<AgentAskResult>
+  readonly agentAsk: (
+    input: AgentAskRequest,
+    onStep?: AgentStepListener,
+    signal?: AbortSignal,
+  ) => Promise<AgentAskResult>
   readonly decisionService: () => JevDecisionService | null
   readonly saveProviderConfig: (config: ProviderConfig) => Promise<void>
   readonly deleteDocument: (id: DocumentId) => Promise<boolean>
@@ -92,6 +94,7 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
       ? new JevDecisionService(initialProvider.apiKey)
       : null
   const jobs = createAiJobStreams(ai)
+  const paperSources = createPaperDiscoverySources()
   let metadataSaveQueue: Promise<void> = Promise.resolve()
   const saveMetadata = async (input: DiscoverySaveInput): Promise<DiscoverySaveResult> => {
     const parsed = discoverySaveInputSchema.parse(input)
@@ -115,20 +118,12 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
     ai,
     subscription,
     claude,
-    agentAsk: async (input: AgentAskRequest, onStep?: AgentStepListener): Promise<AgentAskResult> =>
+    agentAsk: async (input, onStep, signal): Promise<AgentAskResult> =>
       askAgent(
         input,
         {
-          plan: (question) => planAgentQueries(question, (messages) => ai.chat(messages)),
-          paperSearch: (query) => searchSemanticScholar(query),
-          search: ({ query }) =>
-            searchScholarly({
-              query,
-              providers: scholarlyProviders,
-              pageSize: AGENT_SEARCH_RESULT_LIMIT + 4,
-              page: 1,
-            }),
-          complete: (messages) => ai.chat(messages),
+          sources: paperSources,
+          complete: (messages, options) => ai.chat(messages, options),
           contextDocs: async (ids): Promise<readonly AgentContextDoc[]> => {
             if (ids.length === 0) return []
             const wanted = new Set<string>(ids)
@@ -145,6 +140,7 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
           },
         },
         onStep,
+        signal,
       ),
     decisionService: () => decisions,
     deleteDocument: (id) => deleteLibraryDocument({ store, analysis, paddle }, id),

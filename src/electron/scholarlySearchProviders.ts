@@ -15,6 +15,7 @@ import {
   parseJson,
   parseOpenAlexPapers,
 } from "./citationProviderParsers"
+import { scholarlyApiKeys } from "./scholarlyApiKeys"
 import { type ScholarlyTransport, ScholarlyTransportError } from "./scholarlySearchTransport"
 import { buildScholarlyProviderUrl } from "./scholarlySearchUrls"
 
@@ -154,7 +155,9 @@ export async function searchProvider(input: {
 }): Promise<ProviderSearchOutcome> {
   try {
     const response = await input.transport(
-      buildScholarlyProviderUrl(input.provider, input.request),
+      buildScholarlyProviderUrl(input.provider, input.request, {
+        openAlexApiKey: scholarlyApiKeys().openAlex,
+      }),
       input.signal,
     )
     if (response.statusCode < 200 || response.statusCode >= 300) {

@@ -1,127 +1,24 @@
-import {
-  AlertCircle,
-  BookOpen,
-  Check,
-  ExternalLink,
-  Flame,
-  LibraryBig,
-  Loader2,
-} from "lucide-react"
+import { Flame, LibraryBig, Telescope } from "lucide-react"
 import type { JSX } from "react"
 import { MarkdownContent } from "../../renderer/components/MarkdownContent"
-import type { AgentPaper, AgentStep, AgentThread } from "../../shared/agentChat"
+import type { AgentMode, AgentPaper, AgentStep, AgentThread } from "../../shared/agentChat"
 import type { DocumentId, DocumentRecord } from "../../shared/schemas"
 import { ResearchComposer } from "./ResearchComposer"
+import { type PaperOpenState, paperKey, ResearchPaperCard } from "./ResearchPaperCard"
+import { AgentStepList } from "./ResearchSteps"
 
-export type PaperOpenState = "idle" | "importing" | "failed"
+export type { PaperOpenState } from "./ResearchPaperCard"
 
-function stepLabel(step: AgentStep): string {
-  const query = step.query ? `"${step.query}"` : ""
-  switch (step.kind) {
-    case "context":
-      return `라이브러리 첨부 논문 ${step.found ?? 0}편 불러옴`
-    case "plan":
-      if (step.status === "running") return "질문 분석 · 검색 쿼리 생성 중…"
-      return step.queries && step.queries.length > 0
-        ? `검색 쿼리 ${step.queries.length}개 생성`
-        : "검색 쿼리 준비 완료"
-    case "search":
-      if (step.status === "running") return `${query} — Semantic Scholar 검색 중…`
-      if (step.status === "failed") return `${query} — Semantic Scholar 검색 실패`
-      return `${query} — ${step.found ?? 0}편 발견`
-    case "fallback":
-      if (step.status === "running") return `${query} — Crossref·arXiv·OpenAlex 검색 중…`
-      if (step.status === "failed") return `${query} — 보조 검색 실패`
-      return `${query} — 보조 검색 ${step.found ?? 0}편`
-    case "compose":
-      if (step.status === "running") return "검색 결과를 근거로 답변 작성 중…"
-      if (step.status === "failed") return "답변 작성 실패"
-      return step.detail ? `답변 완성 · ${step.detail}` : "답변 완성"
-  }
-}
-
-function StepIcon({ status }: { readonly status: AgentStep["status"] }): JSX.Element {
-  if (status === "running")
-    return <Loader2 size={13} className="research-step-spin" aria-hidden="true" />
-  if (status === "failed") return <AlertCircle size={13} aria-hidden="true" />
-  return <Check size={13} aria-hidden="true" />
-}
-
-function AgentStepList({ steps }: { readonly steps: readonly AgentStep[] }): JSX.Element {
-  return (
-    <ol className="research-steps">
-      {steps.map((step) => (
-        <li key={step.id} className={`research-step research-step-${step.status}`}>
-          <StepIcon status={step.status} />
-          <span>
-            {stepLabel(step)}
-            {step.kind === "plan" && step.queries && step.queries.length > 0 ? (
-              <span className="research-step-queries">
-                {step.queries.map((query) => (
-                  <code key={query}>{query}</code>
-                ))}
-              </span>
-            ) : null}
-          </span>
-        </li>
-      ))}
-    </ol>
-  )
-}
-
-function PaperCard({
-  paper,
-  openState,
-  onOpenInReader,
-}: {
-  readonly paper: AgentPaper
-  readonly openState: PaperOpenState
-  readonly onOpenInReader: (paper: AgentPaper) => void
-}): JSX.Element {
-  const meta = [paper.authors.slice(0, 3).join(", "), paper.year ?? "n.d.", paper.venue]
-    .filter((part) => part !== "")
-    .join(" · ")
-  return (
-    <article className="research-paper">
-      <header>
-        <span className="research-paper-provider">{paper.provider}</span>
-        {paper.citationCount !== null ? (
-          <span className="research-paper-cites">인용 {paper.citationCount}</span>
-        ) : null}
-      </header>
-      <h4 title={paper.title}>{paper.title}</h4>
-      <p>{meta}</p>
-      <footer>
-        <button
-          type="button"
-          className="research-paper-open"
-          disabled={!paper.fullTextUrl || openState === "importing"}
-          onClick={() => onOpenInReader(paper)}
-        >
-          <BookOpen size={13} aria-hidden="true" />
-          {openState === "importing" ? "가져오는 중…" : "리더에서 열기"}
-        </button>
-        {paper.landingUrl ? (
-          <a
-            href={paper.landingUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="research-paper-site"
-          >
-            <ExternalLink size={12} aria-hidden="true" />
-            원문 사이트
-          </a>
-        ) : null}
-      </footer>
-    </article>
-  )
-}
+const deepExample = "LLM이 긴 문서를 RAG 없이 기억하게 하는 연구들 정리해줘"
 
 export function ResearchThread({
   thread,
   documents,
   attachedIds,
   sending,
+  mode,
+  onModeChange,
+  onCancel,
   liveSteps,
   error,
   paperOpenStates,
@@ -134,12 +31,15 @@ export function ResearchThread({
   readonly documents: readonly DocumentRecord[]
   readonly attachedIds: readonly DocumentId[]
   readonly sending: boolean
+  readonly mode: AgentMode
+  readonly onModeChange: (mode: AgentMode) => void
+  readonly onCancel: () => void
   readonly liveSteps: readonly AgentStep[]
   readonly error: string | null
   readonly paperOpenStates: Readonly<Record<string, PaperOpenState>>
   readonly onAttach: (id: DocumentId) => void
   readonly onDetach: (id: DocumentId) => void
-  readonly onSend: (question: string) => void
+  readonly onSend: (question: string, mode?: AgentMode) => void
   readonly onOpenInReader: (paper: AgentPaper) => void
 }): JSX.Element {
   const related = documents[0]?.title
@@ -148,9 +48,12 @@ export function ResearchThread({
       documents={documents}
       attachedIds={attachedIds}
       sending={sending}
+      mode={mode}
+      onModeChange={onModeChange}
       onAttach={onAttach}
       onDetach={onDetach}
-      onSend={onSend}
+      onSend={(question) => onSend(question)}
+      onCancel={onCancel}
     />
   )
 
@@ -168,6 +71,15 @@ export function ResearchThread({
             <Flame size={14} aria-hidden="true" />
             <strong>Trending</strong>
             <span>"최신 LLM 메모리 시스템 연구 동향을 정리해줘"</span>
+          </button>
+          <button
+            type="button"
+            className="research-suggestion"
+            onClick={() => onSend(deepExample, "deep")}
+          >
+            <Telescope size={14} aria-hidden="true" />
+            <strong>딥리서치</strong>
+            <span>"{deepExample}"</span>
           </button>
           <button
             type="button"
@@ -200,6 +112,11 @@ export function ResearchThread({
               <p>{message.content}</p>
             ) : (
               <>
+                {message.mode === "deep" ? (
+                  <p className="research-mode-badge">
+                    <Telescope size={12} aria-hidden="true" /> 딥리서치 보고서
+                  </p>
+                ) : null}
                 {message.steps && message.steps.length > 0 ? (
                   <details className="research-trace">
                     <summary>검색 과정 {message.steps.length}단계</summary>
@@ -209,12 +126,13 @@ export function ResearchThread({
                 <MarkdownContent source={message.content} className="research-answer" />
                 {message.papers && message.papers.length > 0 ? (
                   <div className="research-papers">
-                    {message.papers.map((paper) => {
-                      const key = `${paper.provider}:${paper.title}`
+                    {message.papers.map((paper: AgentPaper, index) => {
+                      const key = paperKey(paper)
                       return (
-                        <PaperCard
+                        <ResearchPaperCard
                           key={key}
                           paper={paper}
+                          index={index + 1}
                           openState={paperOpenStates[key] ?? "idle"}
                           onOpenInReader={onOpenInReader}
                         />
@@ -231,7 +149,9 @@ export function ResearchThread({
             {liveSteps.length > 0 ? (
               <AgentStepList steps={liveSteps} />
             ) : (
-              <p className="research-thinking">질문을 분석하는 중…</p>
+              <p className="research-thinking">
+                {mode === "deep" ? "딥리서치를 시작하는 중…" : "질문을 분석하는 중…"}
+              </p>
             )}
           </li>
         ) : null}

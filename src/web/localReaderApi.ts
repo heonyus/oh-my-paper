@@ -181,7 +181,7 @@ export function installLocalReaderApi(): void {
       const parsed = agentAskRequestSchema.parse(request)
       return localRpc("agentAsk", parsed, agentAskResultSchema)
     },
-    agentAskStream: async (request, onStep) => agentAskStream(request, onStep),
+    agentAskStream: async (request, onStep, signal) => agentAskStream(request, onStep, signal),
     runAi: async (request) => {
       _activeDocumentId = request.documentId
       return localRpc("runAi", request, z.object({ text: z.string(), model: z.string() }))

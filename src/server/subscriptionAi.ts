@@ -13,6 +13,11 @@ type AiRequest = z.infer<typeof aiRequestSchema>
 type AiResult = z.infer<typeof aiResultSchema>
 type Message = { readonly role: string; readonly content: string }
 type ChatResult = { readonly text: string; readonly model: string }
+/** Per-call options for plain chat; the JSON schema is enforced only where the runtime can. */
+export type ChatOptions = {
+  readonly signal?: AbortSignal | undefined
+  readonly jsonSchema?: Readonly<Record<string, unknown>> | undefined
+}
 type StreamOptions = {
   readonly onDelta?: ((delta: string) => void) | undefined
   readonly signal?: AbortSignal | undefined
@@ -46,6 +51,7 @@ export async function chatWithCodex(
   adapter: CodexSubscriptionAdapter | null,
   settings: AiModeSettings,
   messages: readonly Message[],
+  options: ChatOptions = {},
 ): Promise<ChatResult> {
   if (!adapter) throw new ProviderConfigurationError("auth")
   const model = codexModelOf(settings)
@@ -53,6 +59,7 @@ export async function chatWithCodex(
     prompt: flatten(messages),
     model,
     reasoningEffort: settings.codexReasoningEffort,
+    ...(options.signal ? { signal: options.signal } : {}),
   })
   return { text, model }
 }
@@ -105,6 +112,7 @@ export async function chatWithClaude(
   adapter: ClaudeSubscriptionAdapter | null,
   settings: AiModeSettings,
   messages: readonly Message[],
+  options: ChatOptions = {},
 ): Promise<ChatResult> {
   if (!adapter) throw new ProviderConfigurationError("auth")
   const model = claudeModelOf(settings)
@@ -112,6 +120,8 @@ export async function chatWithClaude(
     ...claudeTurn(messages),
     model,
     effort: settings.claudeEffort ?? DEFAULT_CLAUDE_EFFORT,
+    jsonSchema: options.jsonSchema,
+    ...(options.signal ? { signal: options.signal } : {}),
   })
   return { text, model }
 }

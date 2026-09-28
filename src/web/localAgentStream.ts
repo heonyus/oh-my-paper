@@ -8,7 +8,8 @@ import {
 import { readSseData, splitSseFrames } from "./sseFrames"
 
 const streamEndpoint = "/api/rpc/agentAskStream"
-const requestTimeoutMs = 300_000
+/** Deep research may search for four minutes and then write a long report. */
+const requestTimeoutMs = 600_000
 const maxBufferChars = 256_000
 
 export class LocalAgentStreamError extends Error {

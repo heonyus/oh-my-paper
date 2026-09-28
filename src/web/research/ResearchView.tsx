@@ -1,5 +1,6 @@
-import { type JSX, useState } from "react"
+import { type JSX, useEffect, useRef, useState } from "react"
 import {
+  type AgentMode,
   type AgentPaper,
   type AgentStep,
   type AgentThread,
@@ -8,8 +9,9 @@ import {
 } from "../../shared/agentChat"
 import type { DocumentId, Workspace } from "../../shared/schemas"
 import { appendMessage, createThread, upsertThread } from "./agentThreadModel"
+import { type PaperOpenState, paperKey } from "./ResearchPaperCard"
 import { ResearchRail } from "./ResearchRail"
-import { type PaperOpenState, ResearchThread } from "./ResearchThread"
+import { ResearchThread } from "./ResearchThread"
 
 export function ResearchView({
   workspace,
@@ -17,7 +19,7 @@ export function ResearchView({
   onOpenImportedDocument,
 }: {
   readonly workspace: Workspace
-  readonly onWorkspaceChange: (workspace: Workspace) => void
+  readonly onWorkspaceChange: (update: (current: Workspace) => Workspace) => void
   readonly onOpenImportedDocument: (id: DocumentId) => void
 }): JSX.Element {
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -25,15 +27,24 @@ export function ResearchView({
   const [sending, setSending] = useState(false)
   const [liveSteps, setLiveSteps] = useState<readonly AgentStep[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [mode, setMode] = useState<AgentMode>("quick")
+  const controllerRef = useRef<AbortController | null>(null)
   const [paperOpenStates, setPaperOpenStates] = useState<Readonly<Record<string, PaperOpenState>>>(
     {},
   )
 
+  useEffect(() => () => controllerRef.current?.abort(), [])
+
   const threads = workspace.agentThreads
   const active = threads.find((thread) => thread.id === activeId) ?? null
 
+  // Runs can outlive this render (deep research takes minutes), so always merge into the
+  // latest workspace instead of the one captured when the question was sent.
   const persistThread = (thread: AgentThread): void => {
-    onWorkspaceChange({ ...workspace, agentThreads: upsertThread(threads, thread) })
+    onWorkspaceChange((current) => ({
+      ...current,
+      agentThreads: upsertThread(current.agentThreads, thread),
+    }))
   }
 
   const selectThread = (id: string | null): void => {
@@ -56,8 +67,10 @@ export function ResearchView({
     if (active) persistThread({ ...active, contextDocIds: next })
   }
 
-  const send = async (question: string): Promise<void> => {
+  const send = async (question: string, requestedMode: AgentMode = mode): Promise<void> => {
     if (sending) return
+    const controller = new AbortController()
+    controllerRef.current = controller
     const base =
       active ?? createThread(crypto.randomUUID(), threadTitleFromQuestion(question), attachedIds)
     const history = agentHistoryFromMessages(base.messages)
@@ -77,6 +90,7 @@ export function ResearchView({
           question,
           contextDocIds: withUser.contextDocIds,
           history,
+          mode: requestedMode,
         },
         (step) => {
           const index = steps.findIndex((existing) => existing.id === step.id)
@@ -84,17 +98,21 @@ export function ResearchView({
           else steps[index] = step
           setLiveSteps([...steps])
         },
+        controller.signal,
       )
       const done = appendMessage(withUser, {
         role: "assistant",
         content: result.answer,
         papers: result.papers,
-        steps: [...steps],
+        steps: steps.slice(-64),
+        mode: requestedMode,
       })
       persistThread(done)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "답변을 만들지 못했습니다")
+      if (controller.signal.aborted) setError("검색을 취소했습니다.")
+      else setError(cause instanceof Error ? cause.message : "답변을 만들지 못했습니다")
     } finally {
+      if (controllerRef.current === controller) controllerRef.current = null
       setSending(false)
       setLiveSteps([])
     }
@@ -102,7 +120,7 @@ export function ResearchView({
 
   const openInReader = async (paper: AgentPaper): Promise<void> => {
     if (!paper.fullTextUrl) return
-    const key = `${paper.provider}:${paper.title}`
+    const key = paperKey(paper)
     setPaperOpenStates((states) => ({ ...states, [key]: "importing" }))
     try {
       const result = await window.ohmypaper.importDocumentUrl(paper.fullTextUrl)
@@ -127,12 +145,15 @@ export function ResearchView({
           documents={workspace.documents}
           attachedIds={attachedIds}
           sending={sending}
+          mode={mode}
+          onModeChange={setMode}
+          onCancel={() => controllerRef.current?.abort()}
           liveSteps={liveSteps}
           error={error}
           paperOpenStates={paperOpenStates}
           onAttach={attach}
           onDetach={detach}
-          onSend={(question) => void send(question)}
+          onSend={(question, requestedMode) => void send(question, requestedMode)}
           onOpenInReader={(paper) => void openInReader(paper)}
         />
       </section>

@@ -345,14 +345,23 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
               if (!res.destroyed)
                 res.write(`data: ${JSON.stringify(agentStreamEventSchema.parse(event))}\n\n`)
             }
+            const controller = new AbortController()
+            const abort = (): void => controller.abort()
+            res.on("close", abort)
             try {
-              const result = await services.agentAsk(input, (step) => send({ type: "step", step }))
+              const result = await services.agentAsk(
+                input,
+                (step) => send({ type: "step", step }),
+                controller.signal,
+              )
               send({ type: "result", result })
             } catch (error) {
               send({
                 type: "error",
-                error: error instanceof Error ? error.message : "agent_ask_failed",
+                error: error instanceof Error ? error.message.slice(0, 500) : "agent_ask_failed",
               })
+            } finally {
+              res.off("close", abort)
             }
             if (!res.destroyed) res.end()
             return

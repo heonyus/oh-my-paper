@@ -37,12 +37,14 @@ transport or wire stream without weakening the production limits.
   metadata fields. Crossref documents public access without registration and deprecates
   `query.title` in favor of `query.bibliographic`.
 - arXiv uses the Atom query API with `start`, `max_results`, relevance sorting, and an optional
-  submitted-date range. oh-my-paper makes one arXiv request per explicit search action; clients
+  submitted-date range. Every meaningful query term is required (`all:a AND all:b`, quoted
+  phrases stay phrases); sending a whole sentence as one exact phrase matched almost nothing. oh-my-paper makes one arXiv request per explicit search action; clients
   should avoid rapidly repeating page requests because arXiv asks callers to pace consecutive
   requests.
-- OpenAlex uses works search with basic page/per-page pagination and selected metadata fields.
-  No API key is attached; current OpenAlex documentation permits casual basic queries without
-  one and caps `per_page` at 100.
+- OpenAlex uses `search.semantic` (embedding search over titles and abstracts, at most 50
+  results) for the first page, because keyless keyword `search` is paused under load. Later pages
+  use keyword `search`. Abstracts are rebuilt from `abstract_inverted_index`. Set
+  `OH_MY_PAPER_OPENALEX_API_KEY` (a free key) to raise the limits.
 
 Primary references:
 
@@ -72,3 +74,24 @@ transport, and malformed-response failures are now retained in `CitationLookupPr
 instead of being converted to `not_found`, so the negative cache cannot persist a provider
 outage as a confirmed absence. A later provider may still return a valid match after an earlier
 provider fails.
+
+## Research agent discovery
+
+The `리서치` agent (`src/electron/agentService.ts`) uses free sources only and never a paid search
+API:
+
+- Discovery: OpenAlex semantic search for the planner's English description, plus arXiv and
+  Semantic Scholar keyword search for each planned query (`src/electron/paperDiscoverySources.ts`).
+- Expansion (deep mode): Semantic Scholar recommendations, references and citations of the best
+  papers so far; OpenAlex `cites:` when only an OpenAlex id is known.
+- Pacing is shared per host (`src/electron/paperSourceHttp.ts`): arXiv one request at a time at
+  least 3.1 s apart, OpenAlex and Semantic Scholar 1.1 s apart. A 429/503 is retried once (twice
+  with a key) after `Retry-After` (capped at 6 s); a source that stays rate-limited is skipped for
+  the rest of that turn and the trace shows it.
+- Keyless Semantic Scholar keyword search shares a public pool that is often throttled; set
+  `OH_MY_PAPER_S2_API_KEY` (a free key) to use it reliably. Recommendations and reference lookups
+  generally work without a key.
+- Quick mode: one round, about 30 screened candidates, up to 8 papers. Deep mode: up to three
+  rounds within a four-minute search budget, up to 20 papers, then a structured report. Each turn
+  makes one planner call, one screening call per round, and one answer call to the configured AI
+  mode.

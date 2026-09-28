@@ -206,7 +206,9 @@ export function ReaderApp(): JSX.Element {
           <Suspense fallback={<p role="status">리서치를 여는 중…</p>}>
             <ResearchView
               workspace={workspace}
-              onWorkspaceChange={app.setWorkspace}
+              onWorkspaceChange={(update) =>
+                app.setWorkspace((current) => (current ? update(current) : current))
+              }
               onOpenImportedDocument={(id) => void openImportedDocument(id)}
             />
           </Suspense>

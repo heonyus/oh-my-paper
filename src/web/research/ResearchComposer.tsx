@@ -1,21 +1,28 @@
-import { ArrowUp, AtSign, FileText, X } from "lucide-react"
+import { ArrowUp, AtSign, FileText, Square, Telescope, X } from "lucide-react"
 import { type JSX, useEffect, useRef, useState } from "react"
+import type { AgentMode } from "../../shared/agentChat"
 import type { DocumentId, DocumentRecord } from "../../shared/schemas"
 
 export function ResearchComposer({
   documents,
   attachedIds,
   sending,
+  mode,
+  onModeChange,
   onAttach,
   onDetach,
   onSend,
+  onCancel,
 }: {
   readonly documents: readonly DocumentRecord[]
   readonly attachedIds: readonly DocumentId[]
   readonly sending: boolean
+  readonly mode: AgentMode
+  readonly onModeChange: (mode: AgentMode) => void
   readonly onAttach: (id: DocumentId) => void
   readonly onDetach: (id: DocumentId) => void
   readonly onSend: (question: string) => void
+  readonly onCancel: () => void
 }): JSX.Element {
   const [value, setValue] = useState("")
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -62,7 +69,11 @@ export function ResearchComposer({
       <textarea
         value={value}
         rows={2}
-        placeholder="연구에 대해 무엇이든 물어보세요… '@'로 논문을 컨텍스트에 추가"
+        placeholder={
+          mode === "deep"
+            ? "딥리서치할 주제를 편하게 적어주세요. 여러 번 찾아보고 보고서로 정리합니다"
+            : "대충 물어봐도 찾아드려요… '@'로 논문을 컨텍스트에 추가"
+        }
         aria-label="리서치 질문 입력"
         onChange={(event) => setValue(event.target.value)}
         onKeyDown={(event) => {
@@ -105,16 +116,38 @@ export function ResearchComposer({
               )}
             </ul>
           ) : null}
+          <button
+            type="button"
+            className="research-mode-toggle"
+            aria-pressed={mode === "deep"}
+            disabled={sending}
+            title="여러 라운드로 논문을 찾고 인용·추천을 따라간 뒤 보고서를 씁니다. 1~4분 걸립니다."
+            onClick={() => onModeChange(mode === "deep" ? "quick" : "deep")}
+          >
+            <Telescope size={14} aria-hidden="true" />
+            딥리서치
+          </button>
         </div>
-        <button
-          type="button"
-          className="research-send"
-          aria-label="질문 보내기"
-          disabled={sending || value.trim().length === 0}
-          onClick={send}
-        >
-          <ArrowUp size={16} aria-hidden="true" />
-        </button>
+        {sending ? (
+          <button
+            type="button"
+            className="research-send research-cancel"
+            aria-label="검색 취소"
+            onClick={onCancel}
+          >
+            <Square size={13} aria-hidden="true" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="research-send"
+            aria-label={mode === "deep" ? "딥리서치 시작" : "질문 보내기"}
+            disabled={value.trim().length === 0}
+            onClick={send}
+          >
+            <ArrowUp size={16} aria-hidden="true" />
+          </button>
+        )}
       </div>
     </div>
   )
