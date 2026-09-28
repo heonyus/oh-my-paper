@@ -65,6 +65,8 @@ export function App({
     previewCards,
     activeInsights,
     updateInsight,
+    ownSummary,
+    updateOwnSummary,
     runAi,
     importProgress,
     importPdf,
@@ -219,6 +221,8 @@ export function App({
               citations={citations}
               insights={activeInsights}
               updateInsight={updateInsight}
+              ownSummary={ownSummary}
+              updateOwnSummary={updateOwnSummary}
               provider={provider}
               documentReady={documentReady}
               jumpToCard={jumpToCard}

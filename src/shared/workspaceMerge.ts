@@ -1,3 +1,4 @@
+import { mergeOwnSummaries } from "./ownSummary"
 import type { BoardCard, DocumentInsight, DocumentRecord, Workspace } from "./schemas"
 import { equalWorkspaceValue } from "./workspaceValue"
 
@@ -186,6 +187,9 @@ export function mergeWorkspaceForSave(
     documents: [...mergeDocuments(base.documents, current.documents, incoming.documents)],
     cards: [...mergeCards(base.cards, current.cards, incoming.cards)],
     insights: [...mergeInsights(base.insights, current.insights, incoming.insights)],
+    ownSummaries: [
+      ...mergeOwnSummaries(base.ownSummaries, current.ownSummaries, incoming.ownSummaries),
+    ],
     sidebarOpen: mergeField(
       "settings.sidebarOpen",
       base.sidebarOpen,

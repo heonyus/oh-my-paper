@@ -42,8 +42,13 @@ was kept). Intent is visible in the reader toolbar and can change at any time; p
    skippable `기억나는 3줄` warm-up before the PDF.
 
 **Existing features, repositioned.**
-- Summary: never generated on mount. The reader writes three lines (문제/방법/결과) or skips;
-  then the AI summary appears beside them with differences marked by source quotes.
+- Summary: never generated before the reader writes three lines (문제/방법/결과) or skips.
+  Submitting reveals the AI overview (keywords, three lines, summary) and checks each written
+  line against the paper; a verdict whose quote is not found on its page is shown as
+  `확인 불가`. Blank lines read `떠올리지 못함`. Once revealed for a document, missing overview
+  sections load when the panel opens. Lines written after the reveal carry an
+  `AI 요약을 본 뒤 작성` tag. The reader's lines live in `own-summaries.json` beside the
+  knowledge database, never in the insight table an older build would reject.
 - Translation: the paragraph check layer in 공부; unchanged in 훑기.
 - Explanation (selection, figure, table, equation, citation): the reader's attempt slot comes
   first in 공부.

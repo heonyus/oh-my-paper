@@ -60,6 +60,14 @@ const actionInstruction: Readonly<Record<AiAction, string>> = {
   chat: "Act as a document-grounded research agent. Use conversation history to resolve the user's intent, never as factual evidence. Earlier assistant answers can be wrong: correct them whenever the current source evidence contradicts them. Answer from the current PAPER CONTEXT and LOCAL CONTEXT. Address every independently answerable part of a multi-part question in separate numbered sub-answers. Before saying an item is unavailable, check all supplied passages and table captions. Include exact numbers, table or figure identifiers, and page evidence when supplied. A section heading AFTER a passage does not belong to that passage; omit uncertain section numbers rather than guessing. Explicitly distinguish paper evidence from inference. Cite each paper-supported claim inline, right after it, as `[[p.N | verbatim phrase]]`: N is the page number from the nearest preceding `[Page N]` marker in PAPER_CONTEXT (or the page named in SOURCE_EVIDENCE), never a printed journal page number, and the phrase is 3-12 consecutive words copied exactly from that page. Never invent a quote; omit the citation when no exact phrase is available.",
   card_title:
     "Return only one concise Korean noun phrase that names this card. Prefer 8-24 characters, never exceed 42 characters, and omit generic words such as 해설, 분석, 카드, 페이지, 먼저 알려드릴 점.",
+  own_summary_check: [
+    "The reader wrote their own three-line summary of this paper from memory before seeing any AI summary. USER INPUT is JSON with the reader's lines under `problem`, `method` and `result`; a missing key means the reader left that line blank.",
+    "Check each supplied line against PAPER_CONTEXT and return one item per supplied line. Judge meaning, not wording or language; the reader may write in Korean.",
+    "Verdicts: `match` when the line states what the paper says for that part; `missing` when it is not wrong but leaves out the paper's central point for that part; `diverges` when it contradicts or misstates the paper; `unverifiable` when the supplied text cannot settle it.",
+    "`note` is one Korean sentence under 120 characters addressed to the reader. Name what is right, or the kind of thing that is left out or misstated (for example the dataset, the comparison, or the size of the effect), and point to where it is. Never write a corrected, model, or replacement version of the reader's line, and never give a sentence the reader could copy in as their answer.",
+    "`page` is the page number from the nearest preceding `[Page N]` marker, never a printed journal page. `quote` is 6-25 consecutive words copied exactly from that page that support the verdict. Use null for both only with `unverifiable`.",
+    'Return JSON only with this exact shape: {"items":[{"line":"problem","verdict":"match","note":"...","page":1,"quote":"..."}]}.',
+  ].join(" "),
 }
 
 const hyMtPageTranslationInstruction =

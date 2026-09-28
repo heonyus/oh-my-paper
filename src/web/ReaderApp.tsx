@@ -264,6 +264,8 @@ export function ReaderApp(): JSX.Element {
                 citations={app.citations}
                 insights={app.activeInsights}
                 updateInsight={app.updateInsight}
+                ownSummary={app.ownSummary}
+                updateOwnSummary={app.updateOwnSummary}
                 provider={app.provider}
                 documentReady={app.documentReady}
                 jumpToCard={app.jumpToCard}

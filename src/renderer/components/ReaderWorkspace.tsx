@@ -39,6 +39,8 @@ export function ReaderWorkspace(props: {
   readonly citations: readonly CitationIndexEntry[]
   readonly insights: readonly DocumentInsight[]
   readonly updateInsight: ComponentProps<typeof ResearchSidebar>["onInsightChange"]
+  readonly ownSummary: ComponentProps<typeof ResearchSidebar>["ownSummary"]
+  readonly updateOwnSummary: ComponentProps<typeof ResearchSidebar>["onOwnSummaryChange"]
   readonly jumpToCard: (id: CardId) => void
   readonly onPrepared: (summary: PreparedSummary) => void
   readonly outline: readonly PdfOutlineEntry[]
@@ -144,6 +146,8 @@ export function ReaderWorkspace(props: {
         onCardsChange={props.updateCards}
         onAiRequest={props.runAi}
         onInsightChange={props.updateInsight}
+        ownSummary={props.ownSummary}
+        onOwnSummaryChange={props.updateOwnSummary}
         onNavigateToSource={navigateToSource}
         tool={props.tool}
         onToolChange={props.setTool}

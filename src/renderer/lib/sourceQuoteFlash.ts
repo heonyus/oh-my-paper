@@ -5,8 +5,14 @@ const RETRIES = 20
 /** Long quotes are matched on their opening, which is enough to locate the passage. */
 const MATCH_CHARACTERS = 80
 
-function normalized(text: string): string {
+/** Letters and digits only, so line breaks, hyphenation and spacing never break a match. */
+export function normalizedQuoteText(text: string): string {
   return text.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, "")
+}
+
+/** The normalized opening of a quote that locates it in source text. */
+export function quoteMatchTarget(quote: string): string {
+  return normalizedQuoteText(quote).slice(0, MATCH_CHARACTERS)
 }
 
 /** Text-layer spans of one page whose characters cover the quote, in reading order. */
@@ -14,12 +20,12 @@ export function spansCoveringQuote(
   spans: readonly HTMLElement[],
   quote: string,
 ): readonly HTMLElement[] {
-  const target = normalized(quote).slice(0, MATCH_CHARACTERS)
+  const target = quoteMatchTarget(quote)
   if (target.length < 4) return []
   let text = ""
   const ranges = spans.map((span) => {
     const start = text.length
-    text += normalized(span.textContent ?? "")
+    text += normalizedQuoteText(span.textContent ?? "")
     return { span, start, end: text.length }
   })
   const start = text.indexOf(target)
