@@ -29,16 +29,38 @@ export function boardHighlightState(
 ): {
   readonly activeCards: readonly BoardCard[]
   readonly fragments: readonly HighlightFragment[]
+  readonly highlights: readonly BoardCard[]
 } {
   const activeCards = cards.filter((card) => card.id === activeId)
-  const persistent = cards
-    .filter((card) => card.kind === "highlight")
-    .flatMap((card) => card.anchor.fragments)
   return {
     activeCards,
     fragments: collectHighlightFragments(
       activeCards.filter((card) => card.kind !== "highlight" && card.kind !== "sticky"),
-      persistent,
+      [],
+    ),
+    highlights: cards.filter(
+      (card) => card.kind === "highlight" && card.anchor.fragments.length > 0,
     ),
   }
+}
+
+/** The id of the highlight whose drawn fragments contain a screen point, topmost first. */
+export function highlightAtPoint(
+  root: ParentNode,
+  point: { readonly x: number; readonly y: number },
+): string | null {
+  const marks = [...root.querySelectorAll<HTMLElement>("[data-highlight-id]")].reverse()
+  for (const mark of marks) {
+    const hit = [...mark.children].some((fragment) => {
+      const rect = fragment.getBoundingClientRect()
+      return (
+        point.x >= rect.left &&
+        point.x <= rect.right &&
+        point.y >= rect.top &&
+        point.y <= rect.bottom
+      )
+    })
+    if (hit) return mark.getAttribute("data-highlight-id")
+  }
+  return null
 }

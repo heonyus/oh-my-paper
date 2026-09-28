@@ -1,7 +1,16 @@
-import { type JSX, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import {
+  type JSX,
+  type PointerEvent as ReactPointerEvent,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { CARD_WIDTH, createSelectionCard } from "../lib/board"
 import { askBoardCard, regenerateBoardCardTitle } from "../lib/boardCardAi"
-import { boardHighlightState } from "../lib/boardHighlights"
+import { boardHighlightState, highlightAtPoint } from "../lib/boardHighlights"
 import { type BoardTextSelection, captureNativeBoardTextSelection } from "../lib/boardSelection"
 import { parsedCardResponse, parsedTranslationResponse } from "../lib/cardPresentation"
 import { postItFromPointer } from "../lib/postItPlacement"
@@ -32,6 +41,8 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
   const cardsRef = useRef(props.cards)
   const [selectionMenu, setSelectionMenu] = useState<BoardTextSelection | null>(null)
   const [activeCardId, setActiveCardId] = useState<CardId | null>(null)
+  const [selectedHighlightId, setSelectedHighlightId] = useState<string | null>(null)
+  const pointerDownRef = useRef<{ readonly x: number; readonly y: number } | null>(null)
   const [createdStickyId, setCreatedStickyId] = useState<CardId | null>(null)
   const cardStreams = useCardStreams(props.cards)
   const panConstraint = usePanConstraint()
@@ -135,10 +146,12 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
     return () => document.removeEventListener("selectionchange", readNativeSelection)
   }, [readNativeSelection])
 
-  const { activeCards, fragments: highlightedFragments } = boardHighlightState(
-    props.cards,
-    activeCardId,
-  )
+  const {
+    activeCards,
+    fragments: highlightedFragments,
+    highlights,
+  } = boardHighlightState(props.cards, activeCardId)
+  const selectedHighlight = highlights.find((card) => card.id === selectedHighlightId) ?? null
 
   function commitCards(cards: readonly BoardCard[]): void {
     cardsRef.current = cards
@@ -212,6 +225,52 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
 
   useSelectionShortcuts(selectionMenu, addCard)
 
+  const deleteHighlight = useCallback(
+    (id: string): void => {
+      setSelectedHighlightId(null)
+      const next = cardsRef.current.filter((card) => card.id !== id)
+      cardsRef.current = next
+      props.onCardsChange(next)
+    },
+    [props.onCardsChange],
+  )
+
+  useEffect(() => {
+    if (!selectedHighlight) return
+    const id = selectedHighlight.id
+    function onKeyDown(event: KeyboardEvent): void {
+      const target = event.target
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable || target.closest("input, textarea, select"))
+      )
+        return
+      if (event.key === "Escape") setSelectedHighlightId(null)
+      else if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault()
+        deleteHighlight(id)
+      }
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [selectedHighlight, deleteHighlight])
+
+  /** A plain click (no drag, no text selected) on a highlight selects it. */
+  function selectHighlightAt(event: ReactPointerEvent<HTMLDivElement>): void {
+    const start = pointerDownRef.current
+    pointerDownRef.current = null
+    if (!start || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 4) return
+    if (
+      event.target instanceof Element &&
+      event.target.closest("button, .board-card, .selection-menu")
+    )
+      return
+    if (!(window.getSelection()?.isCollapsed ?? true) || !worldRef.current) return
+    setSelectedHighlightId(
+      highlightAtPoint(worldRef.current, { x: event.clientX, y: event.clientY }),
+    )
+  }
+
   const handleStructureTrigger = createStructureActionHandler({
     documentId: props.document.id,
     currentPaperTitle: props.document.title,
@@ -234,6 +293,13 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
     return { left: screenRect.left, top: screenRect.top - 44 }
   }, [selectionMenu, props.viewport])
 
+  const highlightMenuPosition = useMemo(() => {
+    const firstFragment = selectedHighlight?.anchor.fragments[0]
+    if (!firstFragment) return null
+    const screenRect = worldRectToScreen(firstFragment, { x: 0, y: 0 }, props.viewport)
+    return { left: screenRect.left, top: screenRect.top - 44 }
+  }, [selectedHighlight, props.viewport])
+
   return (
     <div
       ref={viewportRef}
@@ -241,12 +307,17 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
       data-tool={props.tool}
       data-document-hash={props.document.hash}
       onPointerDown={(event) => {
+        pointerDownRef.current = { x: event.clientX, y: event.clientY }
+        setSelectedHighlightId(null)
         if (event.target instanceof Element && !event.target.closest(".board-card"))
           setActiveCardId(null)
         if (!placePostIt(event)) startPan(event)
       }}
       onPointerMove={movePan}
-      onPointerUp={endPan}
+      onPointerUp={(event) => {
+        endPan(event)
+        selectHighlightAt(event)
+      }}
       onPointerCancel={endPan}
     >
       <PdfSurface
@@ -269,6 +340,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
         <BoardOverlays.ConnectorLayer
           cards={activeCards.filter((card) => card.kind !== "sticky" && card.kind !== "highlight")}
         />
+        <BoardOverlays.HighlightMarks highlights={highlights} selectedId={selectedHighlightId} />
         <BoardOverlays.SourceHighlights fragments={highlightedFragments} />
         <BoardOverlays.SourceHighlights
           fragments={(props.evidenceFocus?.fragments ?? []).map((fragment, index) => ({
@@ -295,6 +367,12 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
       </div>
       {selectionMenu && menuPosition ? (
         <BoardOverlays.SelectionToolbar position={menuPosition} onAction={addCard} />
+      ) : null}
+      {selectedHighlight && highlightMenuPosition ? (
+        <BoardOverlays.HighlightToolbar
+          position={highlightMenuPosition}
+          onDelete={() => deleteHighlight(selectedHighlight.id)}
+        />
       ) : null}
       {props.evidenceFocus ? (
         <div className="evidence-return" role="status">
