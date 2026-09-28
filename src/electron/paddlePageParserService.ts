@@ -172,6 +172,15 @@ export class PaddlePageParserService {
     return this.#request(document, store, directory, pageNumber, input.onProgress)
   }
 
+  /** A page this service already parsed, without queueing any work. */
+  readCached(
+    document: DocumentRecord,
+    pageNumber: number,
+    store: WorkspaceStore,
+  ): Promise<ParsedDocumentPage | null> {
+    return readCachedPage(pageDirectory(store, document), document, pageNumber)
+  }
+
   /** Stops queueing pages of a deleted document; a request already in the worker still ends. */
   forget(hash: string): void {
     const batch = this.#batches.get(hash)

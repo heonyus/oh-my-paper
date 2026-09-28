@@ -176,7 +176,7 @@ describe("nativeTextPageParser", () => {
     }
   })
 
-  it("preserves two-column reading order and excludes figure/table captions from translation", () => {
+  it("preserves two-column reading order and translates figure/table captions", () => {
     const sourceHash = sha256Schema.parse("d".repeat(64))
     const ast = buildSourceDocumentAst(sourceHash, [
       {
@@ -259,7 +259,7 @@ describe("nativeTextPageParser", () => {
       expect(leftCol2).toBeLessThan(rightCol1)
       const caption = result.page.blocks.find((b) => b.content.startsWith("Figure 1:"))
       expect(caption?.label).toBe("figure_title")
-      expect(caption?.translationPolicy).toBe("exclude")
+      expect(caption?.translationPolicy).toBe("include")
     }
   })
 })

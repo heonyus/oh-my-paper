@@ -76,7 +76,8 @@ function withoutAffix(content: string, affix: string, side: "start" | "end"): st
   for (; index < characters.length && matched < wanted.length; index += 1) {
     const character = characters[index] ?? ""
     if (/\s/u.test(character)) continue
-    if (character !== wanted[matched]) return null
+    // PDF text sets small-caps headings as "a cknowledgements"; case says nothing here.
+    if (character.toLowerCase() !== wanted[matched]?.toLowerCase()) return null
     matched += 1
   }
   if (matched < wanted.length) return null
@@ -138,7 +139,17 @@ function nativeWithHeadings(
   const blocks = nativeBlocks.flatMap((block): ParsedPageBlock[] => {
     if (structures.some((structure) => containsCenter(structure, block))) return []
     const covering = headings.find((heading) => containsCenter(heading, block))
-    if (covering) return place(covering)
+    if (covering) {
+      // A PDF.js line unit can hold the heading and the line after it; keep that line.
+      const cut = cutHeading(block, covering)
+      const rest = cut.block ? [{ ...cut.block, label: "text" as const }] : []
+      if (cut.heading === "after") return [...rest, ...place(covering)]
+      if (cut.heading === "before") return [...place(covering), ...rest]
+      const longer =
+        block.content.replace(/\s+/gu, "").length >
+        headingText(covering).replace(/\s+/gu, "").length * 1.5
+      return [...place(covering), ...(longer ? [{ ...block, label: "text" as const }] : [])]
+    }
     const before: ParsedPageBlock[] = []
     const after: ParsedPageBlock[] = []
     let retained: ParsedPageBlock | null = headingLabels.has(block.label)
@@ -263,10 +274,16 @@ export function mergePdfJsAndPaddlePage(
     schemaVersion: "1.0.0",
     sourceHash: nativePage.sourceHash,
     parser: "PDF.js+PaddleOCR-VL-1.6",
-    configVersion: "hybrid-v10",
+    configVersion: "hybrid-v11",
     pageNumber: nativePage.pageNumber,
     width: paddlePage.width,
     height: paddlePage.height,
     blocks: merged,
+    layout: paddlePage.blocks.map(({ label, order, bounds, content }) => ({
+      label,
+      order,
+      bounds,
+      content,
+    })),
   })
 }

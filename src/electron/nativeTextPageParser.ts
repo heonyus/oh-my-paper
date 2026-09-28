@@ -80,8 +80,6 @@ function isExcludedFromTranslation(label: ParsedPageBlock["label"]): boolean {
     case "image":
     case "table":
     case "chart":
-    case "figure_title":
-    case "table_title":
     case "header":
     case "footer":
     case "page_number":
