@@ -231,6 +231,7 @@ export function ReaderApp(): JSX.Element {
           <section
             className="reader-workspace"
             data-outline-open={app.outlineOpen}
+            data-note-open={app.noteOpen && Boolean(app.activeDocument)}
             aria-label="리더"
           >
             <Topbar
@@ -247,6 +248,8 @@ export function ReaderApp(): JSX.Element {
               onRedo={app.redo}
               outlineOpen={app.outlineOpen}
               onToggleOutline={() => app.setOutlineOpen((open) => !open)}
+              noteOpen={app.noteOpen}
+              onToggleNote={() => app.setNoteOpen((open) => !open)}
             />
             <Suspense fallback={<p role="status">논문을 여는 중…</p>}>
               <ReaderWorkspace
@@ -265,6 +268,10 @@ export function ReaderApp(): JSX.Element {
                 insights={app.activeInsights}
                 updateInsight={app.updateInsight}
                 ownSummary={app.ownSummary}
+                noteOpen={app.noteOpen}
+                closeNote={() => app.setNoteOpen(false)}
+                readerNote={app.readerNote}
+                updateReaderNote={app.updateReaderNote}
                 updateOwnSummary={app.updateOwnSummary}
                 provider={app.provider}
                 documentReady={app.documentReady}

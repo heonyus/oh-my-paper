@@ -14,7 +14,7 @@ import { countRowSchema } from "./knowledgeRepositoryRows"
 import { mergeWorkspaceForSave, WorkspaceConflictError } from "./knowledgeWorkspaceMerge"
 import { projectRepositoryToWorkspace } from "./knowledgeWorkspaceProjection"
 import { syncWorkspaceToRepository } from "./knowledgeWorkspaceSync"
-import { forgetOwnSummary, readOwnSummaries, saveOwnSummaries } from "./ownSummariesFile"
+import { forgetLearningFiles, readLearningFiles, saveLearningFiles } from "./learningFiles"
 import { removeDocumentFromRepository } from "./workspaceDocumentDeletion"
 import { acknowledgedWorkspace } from "./workspaceSnapshot"
 
@@ -27,6 +27,7 @@ export function defaultWorkspace(): Workspace {
     agentThreads: [],
     insights: [],
     ownSummaries: [],
+    readerNotes: [],
     sidebarOpen: true,
     outlineWidth: 240,
     researchSidebarWidth: researchSidebarLayout.contentDefault,
@@ -102,21 +103,21 @@ export class WorkspaceStore {
     await this.ensureMigrated()
     await this.collectionService?.rescan()
     const agentThreads = await readAgentThreads(this.root)
-    const ownSummaries = await readOwnSummaries(this.root)
+    const learning = await readLearningFiles(this.root)
     const rawSettings = this.db.prepare("SELECT COUNT(*) as count FROM workspace_settings").get()
     const rawNodes = this.db.prepare("SELECT COUNT(*) as count FROM knowledge_nodes").get()
     const settingsCount = countRowSchema.parse(rawSettings).count
     const nodeCount = countRowSchema.parse(rawNodes).count
 
     if (settingsCount === 0 && nodeCount === 0) {
-      const def = acknowledgedWorkspace({ ...defaultWorkspace(), agentThreads, ownSummaries })
+      const def = acknowledgedWorkspace({ ...defaultWorkspace(), agentThreads, ...learning })
       this.rememberSnapshot(def)
       return def
     }
     const ws = acknowledgedWorkspace({
       ...projectRepositoryToWorkspace(this.repository, this.db),
       agentThreads,
-      ownSummaries,
+      ...learning,
     })
     this.rememberSnapshot(ws)
     return ws
@@ -173,7 +174,7 @@ export class WorkspaceStore {
         hasRendererBaseline ? base?.cards : undefined,
       )
       await writeAgentThreads(this.root, parsed.agentThreads)
-      await saveOwnSummaries(this.root, base?.ownSummaries, parsed.ownSummaries)
+      await saveLearningFiles(this.root, base, parsed)
       const savedWs = await this.acknowledgeRepository()
       return { ...savedWs, agentThreads: parsed.agentThreads }
     })
@@ -229,7 +230,7 @@ export class WorkspaceStore {
         removeDocumentFromRepository(this.repository, this.db, current, id),
       )
       if (removed) {
-        await forgetOwnSummary(this.root, id)
+        await forgetLearningFiles(this.root, id)
         await this.acknowledgeRepository()
       }
       return removed
@@ -250,7 +251,7 @@ export class WorkspaceStore {
   private async acknowledgeRepository(): Promise<Workspace> {
     const savedWs = acknowledgedWorkspace({
       ...projectRepositoryToWorkspace(this.repository, this.db),
-      ownSummaries: await readOwnSummaries(this.root),
+      ...(await readLearningFiles(this.root)),
     })
     this.rememberSnapshot(savedWs)
     if (!this.collectionService) await this.writeProjection(savedWs)

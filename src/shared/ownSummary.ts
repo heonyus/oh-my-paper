@@ -1,5 +1,6 @@
 import { z } from "zod"
-import { type DocumentId, documentIdSchema } from "./ids"
+import { documentIdSchema } from "./ids"
+import { mergeKeyedRecords } from "./keyedMerge"
 
 /** The reader's three lines follow the AI three-line summary's 문제/방법/결과 order. */
 export const ownSummaryLineSchema = z.enum(["problem", "method", "result"])
@@ -52,30 +53,11 @@ export function ownSummaryRevealed(summary: OwnSummary | undefined): boolean {
   return summary.status !== "draft" || summary.afterReveal
 }
 
-function sameOwnSummary(left: OwnSummary | undefined, right: OwnSummary | undefined): boolean {
-  return JSON.stringify(left) === JSON.stringify(right)
-}
-
-/**
- * Three-way merge keyed by document: a record the incoming side changed since the base wins;
- * otherwise the current side is kept, so a stale writer cannot undo newer lines.
- */
+/** Three-way merge keyed by document; see mergeKeyedRecords. */
 export function mergeOwnSummaries(
   base: readonly OwnSummary[],
   current: readonly OwnSummary[],
   incoming: readonly OwnSummary[],
 ): readonly OwnSummary[] {
-  const baseById = new Map(base.map((summary) => [summary.documentId, summary]))
-  const incomingById = new Map(incoming.map((summary) => [summary.documentId, summary]))
-  const result = new Map<DocumentId, OwnSummary>(
-    current.map((summary) => [summary.documentId, summary]),
-  )
-  for (const [documentId, summary] of incomingById) {
-    if (!sameOwnSummary(baseById.get(documentId), summary)) result.set(documentId, summary)
-  }
-  for (const [documentId, summary] of baseById) {
-    if (incomingById.has(documentId)) continue
-    if (sameOwnSummary(result.get(documentId), summary)) result.delete(documentId)
-  }
-  return [...result.values()]
+  return mergeKeyedRecords(base, current, incoming, (summary) => summary.documentId)
 }

@@ -89,10 +89,15 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
   })
   const analysis = new DocumentAnalysisService(store, pages, { maxConcurrency: 4 })
   await analysis.resumePending()
-  let decisions =
+  // Jev only chooses among supplied candidates, so any OpenRouter key can serve it, whichever
+  // model answers chat.
+  const jevFor = (apiKey: string | null | undefined): JevDecisionService | null =>
+    apiKey ? new JevDecisionService(apiKey) : null
+  let decisions = jevFor(
     initialProvider?.provider === "openrouter"
-      ? new JevDecisionService(initialProvider.apiKey)
-      : null
+      ? initialProvider.apiKey
+      : credentials.openRouterConfig()?.apiKey,
+  )
   const jobs = createAiJobStreams(ai)
   const paperSources = createPaperDiscoverySources()
   let metadataSaveQueue: Promise<void> = Promise.resolve()
@@ -151,7 +156,9 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
       const nextMode = { ...ai.modeSettings(), mode: "api" as const }
       await aiModes.save(nextMode)
       ai.configureMode(nextMode)
-      decisions = parsed.provider === "openrouter" ? new JevDecisionService(parsed.apiKey) : null
+      decisions = jevFor(
+        parsed.provider === "openrouter" ? parsed.apiKey : credentials.openRouterConfig()?.apiKey,
+      )
     },
     saveAiMode: aiModeServices.saveAiMode,
     providerStatus: aiModeServices.providerStatus,

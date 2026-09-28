@@ -1,6 +1,7 @@
 import { type ComponentProps, type JSX, useCallback } from "react"
 import type { ProviderStatus } from "../../shared/ipc"
 import type { EvidenceNavigationTarget } from "../../shared/knowledgeTypes"
+import type { ReaderNote } from "../../shared/readerNote"
 import type { DocumentInsight } from "../../shared/schemas"
 import { researchSidebarLayout } from "../../shared/uiLayout"
 import type { SourceCitation } from "../lib/chatCitations"
@@ -19,6 +20,7 @@ import type {
 import { BoardViewport } from "./BoardViewport"
 import { OutlinePanel } from "./OutlinePanel"
 import { ResearchSidebar } from "./ResearchSidebar"
+import { ReaderNotePane } from "./readerNote/ReaderNotePane"
 
 export function ReaderWorkspace(props: {
   readonly document: DocumentRecord | null
@@ -41,6 +43,10 @@ export function ReaderWorkspace(props: {
   readonly updateInsight: ComponentProps<typeof ResearchSidebar>["onInsightChange"]
   readonly ownSummary: ComponentProps<typeof ResearchSidebar>["ownSummary"]
   readonly updateOwnSummary: ComponentProps<typeof ResearchSidebar>["onOwnSummaryChange"]
+  readonly noteOpen: boolean
+  readonly closeNote: () => void
+  readonly readerNote: ReaderNote | undefined
+  readonly updateReaderNote: (markdown: string) => void
   readonly jumpToCard: (id: CardId) => void
   readonly onPrepared: (summary: PreparedSummary) => void
   readonly outline: readonly PdfOutlineEntry[]
@@ -127,6 +133,16 @@ export function ReaderWorkspace(props: {
           </div>
         </section>
       )}
+      {document && props.noteOpen ? (
+        <ReaderNotePane
+          document={document}
+          note={props.readerNote}
+          currentPage={props.currentPage}
+          onChange={props.updateReaderNote}
+          onClose={props.closeNote}
+          onNavigateToSource={navigateToSource}
+        />
+      ) : null}
       <ResearchSidebar
         key={document?.id ?? "no-document"}
         document={document}

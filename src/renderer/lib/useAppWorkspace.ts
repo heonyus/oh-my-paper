@@ -17,9 +17,9 @@ import { useDocumentImportFlow } from "./useDocumentImportFlow"
 import { useDocumentInsights } from "./useDocumentInsights"
 import { useEvidenceNavigation } from "./useEvidenceNavigation"
 import { useKnowledgeClientOps } from "./useKnowledgeClientOps"
-import { useOwnSummary } from "./useOwnSummary"
 import { usePaperAiRequest } from "./usePaperAiRequest"
 import { usePostItShortcut } from "./usePostItShortcut"
+import { useReaderLearning } from "./useReaderLearning"
 import { useWorkspaceHistory } from "./useWorkspaceHistory"
 import { useWorkspacePersistence } from "./useWorkspacePersistence"
 
@@ -142,10 +142,11 @@ export function useAppWorkspace() {
     activeDocument?.id,
     history.setWorkspace,
   )
-  const { summary: ownSummary, update: updateOwnSummary } = useOwnSummary(
+  const learning = useReaderLearning(
     history.workspace,
     activeDocument?.id,
     history.setWorkspace,
+    history.setWorkspaceTransient,
   )
   const runAi = usePaperAiRequest(activeDocument, activeInsights, provider)
   const activeOverviewReady =
@@ -225,8 +226,7 @@ export function useAppWorkspace() {
     previewCards,
     activeInsights,
     updateInsight,
-    ownSummary,
-    updateOwnSummary,
+    ...learning,
     runAi,
     activeOverviewReady,
     importProgress,

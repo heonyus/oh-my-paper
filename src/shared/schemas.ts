@@ -4,6 +4,7 @@ import { citationAssessmentResultSchema } from "./citationAssessment"
 import { cardIdSchema, documentIdSchema, sha256Schema } from "./ids"
 import { OWN_SUMMARIES_MAX, ownSummarySchema } from "./ownSummary"
 import { ownWordsCheckSchema } from "./ownWords"
+import { READER_NOTES_MAX, readerNoteSchema } from "./readerNote"
 import { researchSidebarLayout } from "./uiLayout"
 
 export { cardIdSchema, documentIdSchema, sha256Schema }
@@ -176,6 +177,7 @@ export const workspaceSchema = z.object({
   agentThreads: z.array(agentThreadSchema).default([]),
   insights: z.array(documentInsightSchema).default([]),
   ownSummaries: z.array(ownSummarySchema).max(OWN_SUMMARIES_MAX).default([]),
+  readerNotes: z.array(readerNoteSchema).max(READER_NOTES_MAX).default([]),
   sidebarOpen: z.boolean(),
   outlineWidth: z.number().min(200).max(420).default(240),
   researchSidebarWidth: z
