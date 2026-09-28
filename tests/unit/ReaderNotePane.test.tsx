@@ -15,6 +15,7 @@ vi.mock("../../src/renderer/lib/documentPageRuntime", async (importOriginal) => 
   loadParsedDocumentPage: vi.fn(async (_documentId: string, pageNumber: number) =>
     pageNumber === 1
       ? {
+          pageNumber: 1,
           blocks: [
             {
               id: "page:1:block:0",
@@ -105,6 +106,7 @@ beforeEach(() => {
   })
 })
 afterEach(() => {
+  vi.useRealTimers()
   vi.unstubAllGlobals()
   Object.defineProperty(window, "ohmypaper", { configurable: true, value: undefined })
 })
@@ -154,6 +156,29 @@ describe("ReaderNotePane", () => {
     ).toBeVisible()
     expect(screen.queryByText(/왜 그럴까요/u)).not.toBeInTheDocument()
     expect(onAiRequest).toHaveBeenCalledOnce()
+  })
+
+  it("answers a paragraph finished during the tutor's wait once the wait ends", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const onAiRequest = vi.fn(async (request: Omit<AiRequest, "documentId">) => {
+      return `${request.quote.slice(0, 4)} 부분을 저자도 같은 조건으로 설명해요.`
+    })
+    renderPane(onAiRequest)
+    const editor = editorOnPage()
+    const first = "사람들은 번역이 보이는 쪽을 더 좋아했다."
+    const second = "그런데 기억은 원문을 먼저 본 쪽이 더 잘했다."
+
+    editor.commands.setContent(`<p>${first}</p><p>${second}</p><p></p>`)
+    editor.commands.setTextSelection(3)
+    editor.commands.setTextSelection(first.length + 4)
+    editor.commands.setTextSelection(editor.state.doc.content.size - 1)
+
+    await waitFor(() => expect(onAiRequest).toHaveBeenCalledOnce())
+    await vi.advanceTimersByTimeAsync(20_000)
+
+    await waitFor(() => expect(onAiRequest).toHaveBeenCalledTimes(2))
+    expect(onAiRequest.mock.calls.map(([request]) => request.quote)).toEqual([first, second])
+    vi.useRealTimers()
   })
 
   it("stays silent when set to 조용히", async () => {

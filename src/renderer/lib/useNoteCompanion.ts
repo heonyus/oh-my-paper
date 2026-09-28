@@ -4,15 +4,17 @@ import type { MeaningSearchRequest, MeaningSearchResult } from "../../shared/mea
 import type { DocumentId } from "../../shared/schemas"
 import type { AiRequestRunner } from "../types"
 import { waitForDocumentAst } from "./documentAstRuntime"
+import { earlierLines, hasTextBlock } from "./noteBlocks"
 import {
   confidentSource,
   type NoteSource,
   noteSourceCandidates,
   relatedSources,
   type ScoredSource,
+  sourceSearchText,
 } from "./noteSources"
 import { cleanTutorText, type EarlierNote, noteTutorRequest, visibleTutorText } from "./noteTutor"
-import { cachedTranslationForParsedBlock } from "./pageTranslationCacheRuntime"
+import { cachedTranslationForPassage } from "./pageTranslationCacheRuntime"
 import { pageTextsWithParsedPages } from "./pdfSearch"
 
 export type CompanionDensity = "quiet" | "normal" | "active"
@@ -63,20 +65,12 @@ type Options = {
   readonly onAiRequest: AiRequestRunner
 }
 
-function earlierLines(editor: Editor, before: number): string {
-  const lines: string[] = []
-  editor.state.doc.descendants((node, pos) => {
-    if (pos >= before) return false
-    if (!node.isTextblock) return true
-    const text = node.textContent.trim()
-    if (text) lines.push(text)
-    return false
-  })
-  return lines.slice(-3).join("\n")
+function candidatesOf(sources: readonly NoteSource[]) {
+  return sources.map((source) => ({ id: source.id, text: sourceSearchText(source) }))
 }
 
-function candidatesOf(sources: readonly { readonly id: string; readonly text: string }[]) {
-  return sources.map(({ id, text }) => ({ id, text }))
+function noteCandidatesOf(notes: readonly EarlierNote[]) {
+  return notes.map(({ id, text }) => ({ id, text }))
 }
 
 /**
@@ -97,10 +91,13 @@ export function useNoteCompanion(editor: Editor | null, options: Options) {
     if (!editor || density === "quiet" || !rank) return
     let matchTimer: number | undefined
     let tutorTimer: number | undefined
+    let retryTimer: number | undefined
     let matchRun: AbortController | null = null
     let tutorRun: AbortController | null = null
     let lastTutorAt = 0
     let previous: { readonly pos: number; readonly key: string } | null = null
+    /** The latest paragraph that settled while the tutor was busy or cooling down. */
+    let waiting: { readonly key: string; readonly context: string } | null = null
     const tutored = new Set<string>()
     const putTutor = (key: string, entry: TutorEntry | null): void =>
       setTutors((current) =>
@@ -129,7 +126,7 @@ export function useNoteCompanion(editor: Editor | null, options: Options) {
             ? {
                 key,
                 source,
-                translation: cachedTranslationForParsedBlock(documentId, source.page, source.id),
+                translation: cachedTranslationForPassage(documentId, source.page, source.text),
               }
             : null,
         )
@@ -139,9 +136,26 @@ export function useNoteCompanion(editor: Editor | null, options: Options) {
       }
     }
 
+    /** Gives the waiting paragraph its turn once the cooldown ends, if it is still in the note. */
+    const retryWhenCool = (): void => {
+      window.clearTimeout(retryTimer)
+      retryTimer = window.setTimeout(
+        () => {
+          const next = waiting
+          waiting = null
+          if (next && hasTextBlock(editor, next.key)) void runTutor(next.key, next.context)
+        },
+        Math.max(0, lastTutorAt + tutorCooldownMs[density] - Date.now()),
+      )
+    }
+
     const runTutor = async (key: string, context: string): Promise<void> => {
-      if (tutored.has(key) || tutorRun) return
-      if (Date.now() - lastTutorAt < tutorCooldownMs[density]) return
+      if (tutored.has(key)) return
+      if (tutorRun || Date.now() - lastTutorAt < tutorCooldownMs[density]) {
+        waiting = { key, context }
+        if (!tutorRun) retryWhenCool()
+        return
+      }
       tutored.add(key)
       lastTutorAt = Date.now()
       const controller = new AbortController()
@@ -155,7 +169,7 @@ export function useNoteCompanion(editor: Editor | null, options: Options) {
         const notes = live.current.earlierNotes
         const earlier = notes.length
           ? await rank(
-              { query: key, candidates: candidatesOf(notes.slice(-200)), limit: 2 },
+              { query: key, candidates: noteCandidatesOf(notes.slice(-200)), limit: 2 },
               controller.signal,
             )
           : { results: [] }
@@ -191,6 +205,7 @@ export function useNoteCompanion(editor: Editor | null, options: Options) {
         putTutor(key, null)
       } finally {
         if (tutorRun === controller) tutorRun = null
+        if (waiting && !controller.signal.aborted) retryWhenCool()
       }
     }
 
@@ -226,6 +241,7 @@ export function useNoteCompanion(editor: Editor | null, options: Options) {
       editor.off("selectionUpdate", onChange)
       window.clearTimeout(matchTimer)
       window.clearTimeout(tutorTimer)
+      window.clearTimeout(retryTimer)
       matchRun?.abort()
       tutorRun?.abort()
     }

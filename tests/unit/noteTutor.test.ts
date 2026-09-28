@@ -42,7 +42,8 @@ describe("note tutor", () => {
       action: "note_tutor",
       page: 2,
       quote: "편한 게 꼭 남는 건 아니다.",
-      sectionContext: "사람들은 번역이 보이는 쪽을 더 좋아했다",
+      sectionContext:
+        "Lines the reader wrote earlier in this note, already answered; for reference only:\n사람들은 번역이 보이는 쪽을 더 좋아했다",
     })
     expect(request.sourceEvidence).toContain("[Page 2]")
     expect(request.sourceEvidence).toContain("〈Retrieval Practice〉 떠올려야 남는다")

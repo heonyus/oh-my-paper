@@ -1,10 +1,30 @@
 import { describe, expect, it } from "vitest"
-import { confidentSource, notePageWindow, relatedSources } from "../../src/renderer/lib/noteSources"
+import {
+  confidentSource,
+  notePageWindow,
+  relatedSources,
+  sourceSearchText,
+} from "../../src/renderer/lib/noteSources"
 
 const sources = [
-  { id: "page:3:block:1", page: 3, text: "Gist-first reading raised accuracy from 41% to 59%." },
-  { id: "page:3:block:2", page: 3, text: "Participants preferred the always-visible translation." },
-  { id: "page:4:block:0", page: 4, text: "The study was approved by the review board." },
+  {
+    id: "page:3:block:1",
+    page: 3,
+    text: "Gist-first reading raised accuracy from 41% to 59%.",
+    heading: "3 Results",
+  },
+  {
+    id: "page:3:block:2",
+    page: 3,
+    text: "Participants preferred the always-visible translation.",
+    heading: "3 Results",
+  },
+  {
+    id: "page:4:block:0",
+    page: 4,
+    text: "The study was approved by the review board.",
+    heading: "",
+  },
 ] as const
 
 describe("note sources", () => {
@@ -46,5 +66,12 @@ describe("note sources", () => {
         sources,
       ).map((source) => source.id),
     ).toEqual(["page:3:block:1", "page:3:block:2"])
+  })
+
+  it("matches by the section heading and the text together", () => {
+    expect(sourceSearchText(sources[0])).toBe(
+      "3 Results: Gist-first reading raised accuracy from 41% to 59%.",
+    )
+    expect(sourceSearchText(sources[2])).toBe("The study was approved by the review board.")
   })
 })

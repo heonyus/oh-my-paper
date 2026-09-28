@@ -35,6 +35,9 @@ export function earlierNoteParagraphs(
   return paragraphs.slice(-EARLIER_NOTES_MAX)
 }
 
+const EARLIER_LINES_LABEL =
+  "Lines the reader wrote earlier in this note, already answered; for reference only:"
+
 export function noteTutorRequest(input: {
   readonly paragraph: string
   readonly earlierLines: string
@@ -58,7 +61,10 @@ export function noteTutorRequest(input: {
     quote: input.paragraph.slice(0, 2_000),
     before: "",
     after: "",
-    ...(input.earlierLines ? { sectionContext: input.earlierLines.slice(-2_000) } : {}),
+    // Labeled, or the model answers the earlier lines instead of the new paragraph.
+    ...(input.earlierLines
+      ? { sectionContext: `${EARLIER_LINES_LABEL}\n${input.earlierLines.slice(-1_900)}` }
+      : {}),
     ...(evidence ? { sourceEvidence: evidence.slice(0, 12_000) } : {}),
   }
 }

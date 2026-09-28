@@ -2,13 +2,13 @@ import type { Node as ProseNode } from "@tiptap/pm/model"
 import type { Editor } from "@tiptap/react"
 import { type JSX, useEffect, useLayoutEffect, useRef, useState } from "react"
 import type { SourceCitation } from "../../lib/chatCitations"
+import { marginSnippet } from "../../lib/marginSnippet"
 import type { ScoredSource } from "../../lib/noteSources"
 import type { SourceMatch, TutorEntry } from "../../lib/useNoteCompanion"
 import { MarkdownContent } from "../MarkdownContent"
 import { evidenceQuote } from "./evidenceNode"
 
 const CARD_GAP = 8
-const SNIPPET_CHARACTERS = 220
 const MIN_EARLIER_KEY = 12
 
 type Placement = {
@@ -72,10 +72,6 @@ function placements(
   return result
 }
 
-function snippet(text: string): string {
-  return text.length <= SNIPPET_CHARACTERS ? text : `${text.slice(0, SNIPPET_CHARACTERS).trim()}…`
-}
-
 function SourceCard({
   source,
   translation,
@@ -97,9 +93,11 @@ function SourceCard({
           p.{source.page}
         </button>
       </header>
-      {translation ? <p className="note-margin-translation">{snippet(translation)}</p> : null}
+      {translation ? (
+        <MarkdownContent className="note-margin-translation" source={marginSnippet(translation)} />
+      ) : null}
       <p className="note-margin-original" lang="en">
-        {snippet(source.text)}
+        {marginSnippet(source.text)}
       </p>
       {attached ? (
         <span className="note-margin-attached">근거로 붙임</span>

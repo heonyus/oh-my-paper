@@ -342,6 +342,10 @@
 }
 .note-margin-translation {
   color: var(--ink);
+  word-break: keep-all;
+}
+.note-margin-card .note-margin-translation p {
+  margin: 0;
 }
 .note-margin-card .note-margin-original {
   color: var(--ink-muted);

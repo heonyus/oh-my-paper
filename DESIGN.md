@@ -34,7 +34,7 @@ opens a note column between the PDF and the research sidebar.
     meaning against the parsed paragraphs of the page in view and its neighbours using a local
     multilingual embedding model (EmbeddingGemma-300M, downloaded once into the data folder and
     run by the local server; nothing leaves the machine). A passage shows only when it scores at
-    least 0.40 and leads the next by 0.05, so most sentences show nothing. Only the sentence
+    least 0.40 and leads the next by 0.04, so most sentences show nothing. Only the sentence
     being written shows it: the passage's text-layer spans get a quiet underline, a thin line
     runs from it to the sentence, and the margin shows a `원문` card with the passage's Korean
     translation when this session has translated that page, the English source and
@@ -47,7 +47,8 @@ opens a note column between the PDF and the research sidebar.
     the supplied passages and notes. Sentences ending in a question mark and sentences whose
     `[[p.N | quote]]` is not on that page are removed before they show; while streaming, only
     finished sentences that pass appear. One tutor reply per paragraph; `보통` waits 20 s between
-    replies, `적극적` 5 s and also answers settled sentences. The newest reply is open, older
+    replies, `적극적` 5 s and also answers settled sentences. The latest paragraph that settles
+    during the wait gets its reply when the wait ends, if it is still in the note. The newest reply is open, older
     ones fold. Tutor text never enters the note; there is no copy or insert action for it.
   - Privacy: embeddings stay local. While the control is `보통` or `적극적`, the tutor sends the
     settled paragraph, a few earlier lines, the related passages and matching earlier notes to
