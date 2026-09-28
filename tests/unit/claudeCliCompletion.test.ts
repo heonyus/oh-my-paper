@@ -21,7 +21,8 @@ async function fakeCli(): Promise<{ readonly cli: string; readonly root: string 
 const PNG =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=="
 
-describe("runClaudeCompletion", () => {
+// The fake CLI is a POSIX shebang script, and Claude subscription mode targets macOS.
+describe.skipIf(process.platform === "win32")("runClaudeCompletion", () => {
   it("streams top-level text deltas and ignores subagent output", async () => {
     const { cli, root } = await fakeCli()
     const deltas: string[] = []

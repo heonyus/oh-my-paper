@@ -28,8 +28,11 @@ async function adapterFor(
   return adapter
 }
 
+// The fake CLI is a POSIX shebang script, and Claude subscription mode targets macOS.
+const onWindows = process.platform === "win32"
+
 describe("ClaudeSubscriptionAdapter", () => {
-  it("reports the CLI login and runs a completion with it", async () => {
+  it.skipIf(onWindows)("reports the CLI login and runs a completion with it", async () => {
     const adapter = await adapterFor(true)
 
     await expect(adapter.getStatus()).resolves.toMatchObject({
@@ -44,7 +47,7 @@ describe("ClaudeSubscriptionAdapter", () => {
     ).resolves.toBe("Hello")
   })
 
-  it("refuses to run when the CLI is logged out", async () => {
+  it.skipIf(onWindows)("refuses to run when the CLI is logged out", async () => {
     const adapter = await adapterFor(false)
 
     await expect(
@@ -66,31 +69,34 @@ describe("ClaudeSubscriptionAdapter", () => {
     })
   })
 
-  it("bounds concurrent CLI runs and lets a queued request be cancelled", async () => {
-    const adapter = await adapterFor(true, 1)
-    const first = new AbortController()
-    const queued = new AbortController()
-    const running = adapter.runCompletion({
-      systemPrompt: "x",
-      prompt: "hi",
-      model: "fake-hang",
-      signal: first.signal,
-    })
-    await new Promise((resolve) => setTimeout(resolve, 200))
+  it.skipIf(onWindows)(
+    "bounds concurrent CLI runs and lets a queued request be cancelled",
+    async () => {
+      const adapter = await adapterFor(true, 1)
+      const first = new AbortController()
+      const queued = new AbortController()
+      const running = adapter.runCompletion({
+        systemPrompt: "x",
+        prompt: "hi",
+        model: "fake-hang",
+        signal: first.signal,
+      })
+      await new Promise((resolve) => setTimeout(resolve, 200))
 
-    const waiting = adapter.runCompletion({
-      systemPrompt: "x",
-      prompt: "hi",
-      model: "claude-sonnet-5",
-      signal: queued.signal,
-    })
-    queued.abort()
-    await expect(waiting).rejects.toMatchObject({ kind: "cancelled" })
+      const waiting = adapter.runCompletion({
+        systemPrompt: "x",
+        prompt: "hi",
+        model: "claude-sonnet-5",
+        signal: queued.signal,
+      })
+      queued.abort()
+      await expect(waiting).rejects.toMatchObject({ kind: "cancelled" })
 
-    first.abort()
-    await expect(running).rejects.toMatchObject({ kind: "cancelled" })
-    await expect(
-      adapter.runCompletion({ systemPrompt: "x", prompt: "hi", model: "claude-sonnet-5" }),
-    ).resolves.toBe("Hello")
-  })
+      first.abort()
+      await expect(running).rejects.toMatchObject({ kind: "cancelled" })
+      await expect(
+        adapter.runCompletion({ systemPrompt: "x", prompt: "hi", model: "claude-sonnet-5" }),
+      ).resolves.toBe("Hello")
+    },
+  )
 })
