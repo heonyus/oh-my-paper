@@ -15,6 +15,7 @@ export type ClaudeCompletionOptions = {
   readonly imageDataUrl?: string | undefined
   readonly model: string
   readonly effort?: ClaudeEffort | undefined
+  readonly jsonSchema?: Readonly<Record<string, unknown>> | undefined
   readonly onDelta?: ((delta: string) => void) | undefined
   readonly signal?: AbortSignal | undefined
   readonly timeoutMs?: number | undefined
@@ -35,12 +36,15 @@ const MAX_OUTPUT_CHARS = 2 * 1024 * 1024
 const MAX_IMAGE_CHARS = 12 * 1024 * 1024
 const IMAGE_DATA_URL = /^data:(image\/(?:png|jpeg|gif|webp));base64,([A-Za-z0-9+/]+={0,2})$/
 
-const textDeltaLineSchema = z.object({
+const deltaLineSchema = z.object({
   type: z.literal("stream_event"),
   parent_tool_use_id: z.string().nullable().optional(),
   event: z.object({
     type: z.literal("content_block_delta"),
-    delta: z.object({ type: z.literal("text_delta"), text: z.string() }),
+    delta: z.discriminatedUnion("type", [
+      z.object({ type: z.literal("text_delta"), text: z.string() }),
+      z.object({ type: z.literal("input_json_delta"), partial_json: z.string() }),
+    ]),
   }),
 })
 const assistantErrorLineSchema = z.object({ type: z.literal("assistant"), error: z.string() })
@@ -48,6 +52,7 @@ const resultLineSchema = z.object({
   type: z.literal("result"),
   is_error: z.boolean(),
   result: z.string().optional(),
+  structured_output: z.unknown().optional(),
   api_error_status: z.number().nullable().optional(),
 })
 
@@ -72,6 +77,18 @@ export function claudeUserMessageLine(prompt: string, imageDataUrl?: string): st
     { type: "text", text: prompt },
   ]
   return `${JSON.stringify({ type: "user", message: { role: "user", content } })}\n`
+}
+
+/**
+ * Plain turns stream text; schema-bound turns stream the StructuredOutput tool's JSON,
+ * which lets callers show partial results exactly as with provider JSON streaming.
+ */
+function deltaText(
+  delta: z.infer<typeof deltaLineSchema>["event"]["delta"],
+  structured: boolean,
+): string | null {
+  if (delta.type === "text_delta") return structured ? null : delta.text
+  return structured ? delta.partial_json : null
 }
 
 function parseLine(line: string): unknown {
@@ -113,6 +130,7 @@ export async function runClaudeCompletion(
     let stderr = ""
     let apiError: string | null = null
     let result: z.infer<typeof resultLineSchema> | null = null
+    const structured = options.jsonSchema !== undefined
     const timeoutMs = options.timeoutMs ?? 180_000
 
     const finish = (outcome: { readonly value?: string; readonly error?: Error }): void => {
@@ -133,15 +151,17 @@ export async function runClaudeCompletion(
 
     createInterface({ input: child.stdout }).on("line", (line) => {
       const value = parseLine(line)
-      const delta = textDeltaLineSchema.safeParse(value)
+      const delta = deltaLineSchema.safeParse(value)
       if (delta.success) {
         if (delta.data.parent_tool_use_id) return
-        if (output.length + delta.data.event.delta.text.length > MAX_OUTPUT_CHARS) {
+        const piece = deltaText(delta.data.event.delta, structured)
+        if (piece === null) return
+        if (output.length + piece.length > MAX_OUTPUT_CHARS) {
           finish({ error: new ClaudeCompletionError("output_limit", "응답이 너무 깁니다") })
           return
         }
-        output += delta.data.event.delta.text
-        options.onDelta?.(delta.data.event.delta.text)
+        output += piece
+        options.onDelta?.(piece)
         return
       }
       const assistantError = assistantErrorLineSchema.safeParse(value)
@@ -165,6 +185,8 @@ export async function runClaudeCompletion(
         finish({
           error: resultFailure(result.api_error_status ?? null, result.result ?? stderr, apiError),
         })
+      } else if (structured && result.structured_output !== undefined) {
+        finish({ value: JSON.stringify(result.structured_output) })
       } else {
         finish({ value: output || result.result || "" })
       }

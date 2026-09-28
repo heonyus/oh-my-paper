@@ -63,6 +63,8 @@ export type ClaudeCompletionArgsOptions = {
   readonly model: string
   readonly effort?: ClaudeEffort | undefined
   readonly systemPrompt: string
+  /** Enforced output schema; the CLI answers through its StructuredOutput tool. */
+  readonly jsonSchema?: Readonly<Record<string, unknown>> | undefined
 }
 
 export function buildClaudeCompletionArgs(options: ClaudeCompletionArgsOptions): string[] {
@@ -87,6 +89,7 @@ export function buildClaudeCompletionArgs(options: ClaudeCompletionArgsOptions):
     "--disable-slash-commands",
     "--system-prompt",
     options.systemPrompt,
+    ...(options.jsonSchema ? ["--json-schema", JSON.stringify(options.jsonSchema)] : []),
   ]
 }
 

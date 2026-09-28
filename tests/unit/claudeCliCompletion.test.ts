@@ -58,6 +58,22 @@ describe.skipIf(process.platform === "win32")("runClaudeCompletion", () => {
     expect(echo.args[echo.args.indexOf("--effort") + 1]).toBe("medium")
   })
 
+  it("streams schema-bound output as JSON and returns the structured result", async () => {
+    const { cli, root } = await fakeCli()
+    const deltas: string[] = []
+
+    const text = await runClaudeCompletion(cli, root, {
+      systemPrompt: "Translate.",
+      prompt: "{}",
+      model: "claude-sonnet-5",
+      jsonSchema: { type: "object", required: ["translations"] },
+      onDelta: (delta) => deltas.push(delta),
+    })
+
+    expect(JSON.parse(text)).toEqual({ translations: [{ id: "b0", markdown: "번역" }] })
+    expect(deltas.join("")).toBe(text)
+  })
+
   it("rejects malformed image data before starting the CLI", async () => {
     const { cli, root } = await fakeCli()
 

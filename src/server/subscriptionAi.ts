@@ -6,6 +6,8 @@ import type { CodexSubscriptionAdapter } from "../electron/codexSubscriptionAdap
 import { ProviderConfigurationError } from "../electron/providerConfigStore"
 import { DEFAULT_CLAUDE_EFFORT, DEFAULT_CLAUDE_MODEL } from "../shared/claudeTypes"
 import { type aiRequestSchema, aiResultSchema } from "../shared/ipc"
+import { pageStructureResponseFormat } from "../shared/pageStructure"
+import { pageTranslationResponseFormat } from "../shared/pageTranslationProtocol"
 
 type AiRequest = z.infer<typeof aiRequestSchema>
 type AiResult = z.infer<typeof aiResultSchema>
@@ -74,6 +76,15 @@ export async function runWithCodex(
   return aiResultSchema.parse({ text, model })
 }
 
+/** The JSON schemas API mode enforces through `response_format`, enforced by the CLI instead. */
+function claudeOutputSchema(
+  action: AiRequest["action"],
+): Readonly<Record<string, unknown>> | undefined {
+  if (action === "page_translation") return pageTranslationResponseFormat.json_schema.schema
+  if (action === "page_structure") return pageStructureResponseFormat.json_schema.schema
+  return undefined
+}
+
 /** System messages become the CLI system prompt; the rest is sent as one user turn. */
 function claudeTurn(messages: readonly Message[]): {
   readonly systemPrompt: string
@@ -118,6 +129,7 @@ export async function runWithClaude(
     imageDataUrl: request.imageDataUrl,
     model,
     effort: settings.claudeEffort ?? DEFAULT_CLAUDE_EFFORT,
+    jsonSchema: claudeOutputSchema(request.action),
     ...(options.onDelta ? { onDelta: options.onDelta } : {}),
     ...(options.signal ? { signal: options.signal } : {}),
   })
