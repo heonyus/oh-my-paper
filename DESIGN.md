@@ -1,6 +1,73 @@
 # oh-my-paper interaction and visual contract
 
-## 2026-09-15 Browser-first paper reading (current)
+## 2026-09-28 Learning core: reading that stays with the reader (current)
+
+This section supersedes the 2026-09-15 reference-family parity and its "context-aware AI
+beside the source" framing. The browser shell, Library and Reader navigation, local
+preparation, tokens, accessibility and responsive rules below stay in force. The typography
+specimen already states the goal: `읽은 것은 남고, 필요한 것은 다시 찾을 수 있어야 합니다.`
+Evidence and code survey: `docs/learning-core-research.md`.
+
+Primary persona: a Korean researcher reading English papers who wants to understand and keep
+them, not only finish them. English is read first; Korean is a check.
+
+**Own-words sentence (`내 문장`, working name).** A short Korean or English statement the
+reader writes, anchored to a source passage. Kinds: 예측, 요지, 주장, 방법, 결과, 한계, 그림,
+용어 (English term ↔ Korean concept) and 질문. States: 초안, 대조됨, 남김 (kept for review).
+A question is an entry point; review needs a statement. User writing and AI text are told
+apart by label and surface (own words on the existing opaque note surface, AI text with a
+neutral inline label), never by a colored rail.
+
+**Reading intent.** Each document is read as `공부` (study; the loop below applies) or `훑기`
+(triage; AI tools open immediately, nothing enters review, and the Library shows that nothing
+was kept). Intent is visible in the reader toolbar and can change at any time; promoting a
+훑기 document to 공부 keeps its cards.
+
+**The loop in 공부.**
+1. `예측`: before reading, one line from the title, abstract and figures. The AI may pose two
+   or three pre-questions aimed at the paper's central claims; it does not answer them.
+2. `읽기`: a paragraph's translation opens after the reader writes its gist or chooses
+   `모르겠음` with a confidence choice. The reader's line stays beside the revealed
+   translation. Existing translation modes, jobs and caches are reused; revealing a cached
+   block never starts another request.
+3. `내 말로`: leaving a section offers a one-line prompt for it. Figure, table and equation
+   explanations offer the reader's reading first. The selection action `내 말로` creates an
+   anchored card with an editable body.
+4. `대조`: an explicit check compares the sentence with its anchored source and returns
+   `맞음`, `빠짐`, `어긋남` or `확인 불가`, each with its quoted source `[[p.N | quote]]`. The
+   result never contains a replacement sentence; the reader edits their own text.
+5. `되살리기`: kept sentences return on a spaced schedule as "what did this paper say about
+   …?". The reader recalls first, then sees their past sentence and the source.
+   `다시 이해하기` opens the anchor as an open-book fallback. Reopening a studied paper offers a
+   skippable `기억나는 3줄` warm-up before the PDF.
+
+**Existing features, repositioned.**
+- Summary: never generated on mount. The reader writes three lines (문제/방법/결과) or skips;
+  then the AI summary appears beside them with differences marked by source quotes.
+- Translation: the paragraph check layer in 공부; unchanged in 훑기.
+- Explanation (selection, figure, table, equation, citation): the reader's attempt slot comes
+  first in 공부.
+- Chat: the default reply is a hint ladder: where to look, then a hint, then an explanation on
+  request. Escalating is always one action. After an explanation, offer an empty
+  `내 문장으로 남기기` slot, never a prefilled one.
+- Highlight: an entry to a sentence, with an optional `왜?` line. Saving an AI translation keeps
+  it labelled as AI; it never becomes a user card.
+- Auto Highlight: not a product goal. A post-reading `놓친 곳` check may follow once the loop
+  is validated.
+- Library: each document shows its intent and real counts: kept sentences and the latest recall
+  result. No reading-time or progress scores.
+
+**States and tone.** Attempt slots, reveals, checks and reviews have explicit empty, writing,
+skipped, checking, checked, unverifiable, failed and cancelled states. Skipped and unknown are
+neutral, never styled as errors. Checks use the existing AI job lifecycle (streaming,
+cancellation, provider errors). No confetti, streaks, badges or guilt copy. Review load stays
+bounded to kept sentences, and overdue reviews never block reading.
+
+**Defaults pending the owner's trial** (`docs/learning-core-research.md` §7): new imports start
+in 공부; skipping is one action; at most 20 kept sentences per paper enter review; spacing
+uses a standard scheduler (FSRS-class). Record the decisions here when they are made.
+
+## 2026-09-15 Browser-first paper reading (shell current; feature parity superseded 2026-09-28)
 
 This section supersedes the expanded desktop navigation below for the browser
 product.
