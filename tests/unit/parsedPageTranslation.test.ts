@@ -7,6 +7,8 @@ import {
   pageTranslationBlocksFromParsedPage,
   parsedPageBodyText,
   planParsedPageTranslations,
+  sentenceBreaks,
+  sentencesOf,
 } from "../../src/renderer/lib/parsedPageTranslation"
 import { parsedDocumentPageSchema } from "../../src/shared/documentPageModel"
 
@@ -306,5 +308,123 @@ describe("Paddle page translation blocks", () => {
 
     expect(pageTranslationBlocksFromParsedPage(page)).toHaveLength(1)
     expect(pageTranslationBlocksFromParsedPage(page)[0]?.structureKind).toBe("figure")
+  })
+
+  it("keeps abbreviations and initials inside their sentence", () => {
+    expect(
+      sentencesOf(
+        "Fig. 2 | Model performance. S.L.H., M. Hüser and X.L. designed it, as in Smith et al. 2019. The panel ends at a.",
+      ),
+    ).toEqual([
+      "Fig. 2 | Model performance.",
+      "S.L.H., M. Hüser and X.L. designed it, as in Smith et al. 2019.",
+      "The panel ends at a.",
+    ])
+  })
+
+  it("finds sentence ends even before a lower-case panel letter", () => {
+    const caption = "Fig. 2 | Model performance. a, Receiver curves. b, Precision."
+    expect(sentenceBreaks(caption).map((end) => caption.slice(0, end))).toEqual([
+      "Fig. 2 | Model performance.",
+      "Fig. 2 | Model performance. a, Receiver curves.",
+      "Fig. 2 | Model performance. a, Receiver curves. b, Precision.",
+    ])
+  })
+
+  it("cuts translation units at the layout model's paragraphs", () => {
+    const text = (index: number, y: number, content: string, height = 14) => ({
+      id: `page:1:block:${index}`,
+      label: "text",
+      order: index,
+      bounds: { x: 80, y, width: 400, height },
+      content,
+      contentFormat: "markdown",
+      translationPolicy: "include",
+    })
+    const page = parsedDocumentPageSchema.parse({
+      schemaVersion: "1.0.0",
+      sourceHash: "a".repeat(64),
+      parser: "PDF.js+PaddleOCR-VL-1.6",
+      configVersion: "hybrid-v11",
+      pageNumber: 1,
+      width: 1_000,
+      height: 1_400,
+      blocks: [
+        // An author line has no full stop, so it would run into the abstract's first sentence.
+        text(0, 100, "Stephanie L. Hyland 1,2, Martin Faltys 5 and Tobias M. Merz 9"),
+        text(1, 140, "Clinicians see many measurements. Alarms tire them."),
+        // PDF.js ran the end of one list item and the next item into one unit.
+        text(2, 200, "that ends here. • Record duplication. Records repeat.", 32),
+      ],
+      layout: [
+        { label: "text", order: 0, bounds: { x: 75, y: 95, width: 420, height: 24 }, content: "" },
+        { label: "text", order: 1, bounds: { x: 75, y: 135, width: 420, height: 24 }, content: "" },
+        { label: "list", order: 2, bounds: { x: 75, y: 190, width: 420, height: 20 }, content: "" },
+        { label: "list", order: 3, bounds: { x: 75, y: 214, width: 420, height: 20 }, content: "" },
+      ],
+    })
+
+    const units = pageTranslationBlocksFromParsedPage(page)
+
+    expect(units.map((unit) => [unit.parsedBlockId, unit.source])).toEqual([
+      ["page:1:block:0", "Stephanie L. Hyland 1,2, Martin Faltys 5 and Tobias M. Merz 9"],
+      ["page:1:block:1", "Clinicians see many measurements."],
+      ["page:1:block:1", "Alarms tire them."],
+      ["page:1:block:2", "that ends here."],
+      ["page:1:block:2.1", "• Record duplication."],
+      ["page:1:block:2.1", "Records repeat."],
+    ])
+  })
+
+  it("keeps a sentence that breaks across columns in one translation unit", () => {
+    const text = (index: number, x: number, y: number, content: string) => ({
+      id: `page:1:block:${index}`,
+      label: "text",
+      order: index,
+      bounds: { x, y, width: 400, height: 14 },
+      content,
+      contentFormat: "markdown",
+      translationPolicy: "include",
+    })
+    const page = parsedDocumentPageSchema.parse({
+      schemaVersion: "1.0.0",
+      sourceHash: "a".repeat(64),
+      parser: "PDF.js+PaddleOCR-VL-1.6",
+      configVersion: "hybrid-v11",
+      pageNumber: 1,
+      width: 1_000,
+      height: 1_400,
+      blocks: [
+        text(
+          0,
+          80,
+          1_300,
+          "The system recorded many variants (for example, different dilutions of",
+        ),
+        text(1, 540, 100, "vasopressors, different probe locations). Some were rare."),
+        text(2, 540, 140, "Certain compounds were grouped."),
+      ],
+      layout: [
+        {
+          label: "text",
+          order: 0,
+          bounds: { x: 75, y: 1_295, width: 420, height: 24 },
+          content: "",
+        },
+        { label: "text", order: 1, bounds: { x: 535, y: 95, width: 420, height: 24 }, content: "" },
+        {
+          label: "text",
+          order: 2,
+          bounds: { x: 535, y: 135, width: 420, height: 24 },
+          content: "",
+        },
+      ],
+    })
+
+    expect(pageTranslationBlocksFromParsedPage(page).map((unit) => unit.source)).toEqual([
+      "The system recorded many variants (for example, different dilutions of vasopressors, different probe locations).",
+      "Some were rare.",
+      "Certain compounds were grouped.",
+    ])
   })
 })

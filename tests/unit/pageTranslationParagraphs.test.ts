@@ -430,4 +430,108 @@ describe("typesetting read from the PDF's fonts", () => {
       }).map((piece) => piece.translation),
     ).toEqual(["10 - 60 kg/m² 범위는 유지되었다."])
   })
+
+  it("joins a fragment cut after an abbreviation to the sentence it began", () => {
+    const withCaption = parsedDocumentPageSchema.parse({
+      ...page,
+      layout: [
+        ...(page.layout ?? []),
+        {
+          label: "figure_title",
+          order: 9,
+          bounds: bounds(540, 400, 420, 35),
+          content: "Fig. 2 | Model performance. Curves show the held-out split.",
+        },
+      ],
+      blocks: [...page.blocks, line(15, 545, 402, "Fig. 2 | Model performance. Curves show the")],
+    })
+    const caption = "page:1:block:15"
+    // As the segmenter cut it: after "Fig.", and not before the lower-case panel letter.
+    const cut = [
+      sentence(1, caption, "Fig.", "그림"),
+      sentence(
+        2,
+        caption,
+        "2 | Model performance. a, curves show the held-out split.",
+        "2 | 모델 성능. a, 곡선은 보류된 분할을 보여준다.",
+      ),
+    ]
+    const placed = paragraphRegions([...translations, ...cut], withCaption, [
+      ...runs,
+      run("Fig. 2 | Model performance.", 545, 402, 200, true),
+      // Bold runs on into the next sentence's panel letter.
+      run("a", 750, 402, 8, true),
+      run(", curves show the", 760, 402, 110),
+    ]).find((region) => region.id === "layout:9")
+
+    expect(placed?.translation).toBe("**그림 2 | 모델 성능.** a, 곡선은 보류된 분할을 보여준다.")
+  })
+
+  it("sets a paragraph the PDF sets wholly in bold in bold, without a bold lead", () => {
+    const abstract = paragraphRegions(translations, page, [
+      ...runs.filter(
+        (item) => !item.text.startsWith("Study") && !item.text.startsWith("The study"),
+      ),
+      run("Study design and setting. The study was", 85, 127, 380, true),
+      run("designed as a cohort study. It ran at", 85, 144, 380, true),
+      run("one site.", 85, 161, 80, true),
+    ]).find((region) => region.id === "layout:1")
+
+    expect(abstract?.bold).toBe(true)
+    expect(abstract?.translation.includes("**")).toBe(false)
+  })
+
+  it("drops a heading gloss that only repeats the source heading", () => {
+    const glossed = translations.map((block) =>
+      block.id === "page:1:block:1" ? { ...block, translation: "## 방법(Methods)" } : block,
+    )
+    const heading = paragraphRegions(glossed, page).find((region) => region.id === "page:1:block:1")
+
+    expect(heading?.translation).toBe("방법")
+  })
+
+  it("does not take the lines beside a drop cap for a hanging list item", () => {
+    const dropCap = parsedDocumentPageSchema.parse({
+      ...page,
+      blocks: page.blocks.map((block) =>
+        // The first two lines of paragraph 1 sit right of a three-line initial.
+        block.id === "page:1:block:2" || block.id === "page:1:block:3"
+          ? { ...block, bounds: { ...block.bounds, x: 125 } }
+          : block,
+      ),
+    })
+    const first = paragraphRegions(translations, dropCap).find((region) => region.id === "layout:1")
+
+    expect(first?.typography?.bullet).toBe(false)
+    expect(first?.typography?.hang).toBe(0)
+  })
+
+  it("follows a bold subheading that wraps onto a second line", () => {
+    const wrapped = translations.map((block) =>
+      block.id === `${left}:sentence:7`
+        ? {
+            ...block,
+            source: "Artifact removal of the recorded signals.",
+            translation: "기록된 신호의 아티팩트 제거.",
+          }
+        : block,
+    )
+    const region = paragraphRegions(wrapped, page, [
+      ...runs.filter((item) => !item.text.startsWith("Artifact")),
+      run("Artifact removal of the re-", 85, 227, 300, true),
+      run("corded signals.", 85, 244, 110, true),
+      run("Artifacts were corrected.", 200, 244, 180),
+    ]).find((item) => item.id === "layout:3")
+
+    expect(region?.translation.startsWith("**기록된 신호의 아티팩트 제거.**")).toBe(true)
+  })
+
+  it("bolds a run-in subheading whose translation dropped its full stop", () => {
+    const unstopped = translations.map((block) =>
+      block.id === `${left}:sentence:2` ? { ...block, translation: "연구 설계 및 환경" } : block,
+    )
+    const first = paragraphRegions(unstopped, page, runs).find((region) => region.id === "layout:1")
+
+    expect(first?.translation.startsWith("**연구 설계 및 환경.** 코호트")).toBe(true)
+  })
 })
