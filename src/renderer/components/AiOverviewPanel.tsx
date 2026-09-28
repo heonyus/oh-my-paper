@@ -1,6 +1,7 @@
 import { type JSX, useCallback, useEffect, useRef, useState } from "react"
 import type { AiAction, AiHistoryMessage, ProviderStatus } from "../../shared/ipc"
 import type { DocumentInsight, DocumentInsightKind } from "../../shared/schemas"
+import type { SourceCitation } from "../lib/chatCitations"
 import { paperOverviewContext, preparePaperContextForQuestion } from "../lib/pdfSearch"
 import type { AiDeltaHandler, AiRequestRunner, DocumentRecord } from "../types"
 import { PaperDiscussion } from "./PaperDiscussion"
@@ -22,10 +23,22 @@ const config: Readonly<Record<InsightKey, { readonly title: string; readonly act
     threeLines: { title: "3줄 요약", action: "three_line_summary" },
     summary: { title: "요약", action: "paper_summary" },
   }
+/** The request runner supplies the whole paper as PAPER_CONTEXT for these actions. */
+const paperLevelTarget = "The whole paper supplied in PAPER_CONTEXT."
+/** Bounds of aiHistoryMessageSchema; older turns and longer answers would be rejected. */
+const maxHistoryEntries = 24
+const maxHistoryCharacters = 4_000
 const leadingInsightKeys: readonly InsightKey[] = ["keywords", "threeLines"]
 const overviewInsightKeys: readonly InsightKey[] = [...leadingInsightKeys, "summary"]
 const overviewRequests = new Map<string, Promise<string>>()
 const emptyCachedInsights: readonly DocumentInsight[] = []
+
+function recentHistory(history: readonly AiHistoryMessage[]): AiHistoryMessage[] {
+  return history.slice(-maxHistoryEntries).map((message) => ({
+    role: message.role,
+    content: message.content.slice(0, maxHistoryCharacters),
+  }))
+}
 
 function mergeCachedInsights(
   current: InsightRecord,
@@ -49,6 +62,7 @@ export function AiOverviewPanel({
   onSave,
   cachedInsights = emptyCachedInsights,
   onInsightChange,
+  onNavigateToSource,
 }: {
   readonly document: DocumentRecord
   readonly currentPage: number
@@ -58,6 +72,7 @@ export function AiOverviewPanel({
   readonly cachedInsights?: readonly DocumentInsight[] | undefined
   readonly onInsightChange?: ((kind: DocumentInsightKind, value: string) => void) | undefined
   readonly activationToken?: number | undefined
+  readonly onNavigateToSource?: ((citation: SourceCitation) => void) | undefined
 }): JSX.Element {
   const running = useRef(new Set<InsightKey>())
   const [insights, setInsights] = useState(() => mergeCachedInsights(initialState, cachedInsights))
@@ -92,7 +107,7 @@ export function AiOverviewPanel({
               {
                 action: config[key].action,
                 page: 1,
-                quote: source,
+                quote: paperLevelTarget,
                 paperContext: source,
                 before: "",
                 after: "",
@@ -145,8 +160,9 @@ export function AiOverviewPanel({
     history: readonly AiHistoryMessage[],
     onDelta?: AiDeltaHandler,
     signal?: AbortSignal,
+    imageDataUrl?: string,
   ): Promise<string> {
-    const paperContext = await preparePaperContextForQuestion(
+    const evidence = await preparePaperContextForQuestion(
       document.id,
       question,
       currentPage,
@@ -157,10 +173,15 @@ export function AiOverviewPanel({
         action: "chat",
         page: currentPage,
         quote: question,
-        paperContext,
+        ...(evidence
+          ? {
+              sourceEvidence: `Passages retrieved for this question:\n${evidence}`.slice(0, 12_000),
+            }
+          : {}),
         before: "",
         after: "",
-        history: [...history],
+        history: recentHistory(history),
+        ...(imageDataUrl ? { imageDataUrl } : {}),
       },
       onDelta,
       signal,
@@ -190,7 +211,12 @@ export function AiOverviewPanel({
             onGenerate={() => void generate("summary")}
             onSave={() => onSave(config.summary.title, insights.summary.value)}
           />
-          <PaperDiscussion provider={provider} documentId={document.id} onAsk={ask} />
+          <PaperDiscussion
+            provider={provider}
+            documentId={document.id}
+            onAsk={ask}
+            onNavigateToSource={onNavigateToSource}
+          />
         </div>
       </div>
     </section>

@@ -61,6 +61,33 @@ describe("paper-grounded request", () => {
     expect(request.sectionContext).toBe("모델 성능 평가 절")
   })
 
+  it("replaces the page-1 overview and cached summary with the whole paper", () => {
+    const wholePaper = `FULL PAPER TEXT in reading order: all 28 pages.\n\n${"[Page 9]\nVariables ".repeat(2_000)}`
+    const request = groundedAiRequest(
+      documentFixture,
+      "## 캐시된 요약\n- 1페이지만 본 요약",
+      "Abstract only",
+      {
+        action: "chat",
+        page: 9,
+        quote: "변수를 어떻게 사용했나?",
+        before: "",
+        after: "",
+        paperContext: "page-1 overview",
+        sourceEvidence: "Passages retrieved for this question:\nPage 9: variables",
+      },
+      wholePaper,
+    )
+
+    expect(request.paperContext).toContain("문서 유형: 연구 논문")
+    expect(request.paperContext).toContain(wholePaper)
+    expect(request.paperContext?.length).toBeGreaterThan(8_000)
+    expect(request.paperContext).not.toContain("캐시된 논문 요약")
+    expect(request.paperContext).not.toContain("Abstract only")
+    expect(request.paperContext).not.toContain("page-1 overview")
+    expect(request.sourceEvidence).toContain("Page 9: variables")
+  })
+
   it("routes page translation through minimal context", () => {
     expect(paperContextModeForAction("page_translation")).toBe("minimal")
     expect(paperContextModeForAction("figure")).toBe("grounded")
@@ -88,7 +115,7 @@ describe("paper-grounded request", () => {
       writable: true,
     })
 
-    const { result } = renderHook(() => usePaperAiRequest(documentFixture, []))
+    const { result } = renderHook(() => usePaperAiRequest(documentFixture, [], { mode: "api" }))
     const controller = new AbortController()
 
     const promise = result.current(

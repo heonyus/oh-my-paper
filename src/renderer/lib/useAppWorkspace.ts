@@ -12,6 +12,7 @@ import { useBoardCardJump } from "./researchSidebarActions"
 import { useActiveCards } from "./useActiveCards"
 import { initialOcrProviderStatus, initialProviderStatus, useAppBootstrap } from "./useAppBootstrap"
 import { useDocumentAnalysisQueue } from "./useDocumentAnalysisQueue"
+import { useDocumentDeletion } from "./useDocumentDeletion"
 import { useDocumentImportFlow } from "./useDocumentImportFlow"
 import { useDocumentInsights } from "./useDocumentInsights"
 import { useEvidenceNavigation } from "./useEvidenceNavigation"
@@ -140,7 +141,7 @@ export function useAppWorkspace() {
     activeDocument?.id,
     history.setWorkspace,
   )
-  const runAi = usePaperAiRequest(activeDocument, activeInsights)
+  const runAi = usePaperAiRequest(activeDocument, activeInsights, provider)
   const activeOverviewReady =
     Boolean(activeDocument?.overview) ||
     new Set(activeInsights.map((insight) => insight.kind)).size === 3
@@ -163,6 +164,7 @@ export function useAppWorkspace() {
     importPdf,
     importDroppedPdfs,
   } = useDocumentImportFlow({ onStart: beginImport, onImported: registerImportedDocument })
+  const deleteDocument = useDocumentDeletion(history.resetWorkspace)
 
   const finishPreparation = useCallback(
     (summary: PreparedSummary): void => {
@@ -222,6 +224,7 @@ export function useAppWorkspace() {
     importProgress,
     importPdf,
     importDroppedPdfs,
+    deleteDocument,
     finishPreparation,
     jumpToCard,
     updateOutline,

@@ -1,0 +1,48 @@
+const FLASH_CLASS = "source-quote-flash"
+const FLASH_MS = 2_600
+const RETRY_MS = 150
+const RETRIES = 20
+/** Long quotes are matched on their opening, which is enough to locate the passage. */
+const MATCH_CHARACTERS = 80
+
+function normalized(text: string): string {
+  return text.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, "")
+}
+
+/** Text-layer spans of one page whose characters cover the quote, in reading order. */
+export function spansCoveringQuote(
+  spans: readonly HTMLElement[],
+  quote: string,
+): readonly HTMLElement[] {
+  const target = normalized(quote).slice(0, MATCH_CHARACTERS)
+  if (target.length < 4) return []
+  let text = ""
+  const ranges = spans.map((span) => {
+    const start = text.length
+    text += normalized(span.textContent ?? "")
+    return { span, start, end: text.length }
+  })
+  const start = text.indexOf(target)
+  if (start === -1) return []
+  const end = start + target.length
+  return ranges.filter((range) => range.end > start && range.start < end).map((range) => range.span)
+}
+
+/**
+ * Briefly highlights a quoted passage once the reader has rendered the page's text layer.
+ * Returns without effect when the quote cannot be found; the page jump still happened.
+ */
+export function flashQuoteOnPage(page: number, quote: string, retries = RETRIES): void {
+  const spans = [
+    ...document.querySelectorAll<HTMLElement>(`.page[data-page-number="${page}"] .textLayer span`),
+  ]
+  if (spans.length === 0) {
+    if (retries > 0) window.setTimeout(() => flashQuoteOnPage(page, quote, retries - 1), RETRY_MS)
+    return
+  }
+  const matched = spansCoveringQuote(spans, quote)
+  for (const span of matched) span.classList.add(FLASH_CLASS)
+  window.setTimeout(() => {
+    for (const span of matched) span.classList.remove(FLASH_CLASS)
+  }, FLASH_MS)
+}

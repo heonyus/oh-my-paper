@@ -348,6 +348,11 @@
   padding: 24px 24px 48px;
 }
 
+/* Leave room to scroll the last controls above the task queue docked in the corner. */
+.library-home:has(.library-task-queue) .library-home-main {
+  padding-bottom: 200px;
+}
+
 .library-home-header {
   align-items: center;
   padding-bottom: 16px;
@@ -692,7 +697,7 @@
 
 .library-grid[data-view="list"] > li {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 8px 12px;
   min-height: 88px;
@@ -823,6 +828,102 @@
   font-size: var(--type-compact-size);
   line-height: 1.45;
 }
+.library-delete-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 32px;
+  margin-top: 20px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+  font-weight: 600;
+  cursor: pointer;
+}
+.library-delete-action:hover {
+  border-color: color-mix(in srgb, var(--error) 45%, var(--line));
+  color: var(--error);
+}
+.library-delete-confirm {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--error) 45%, var(--line));
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--error) 8%, var(--surface));
+}
+.library-delete-confirm > p {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  font-size: var(--type-compact-size);
+  line-height: 1.45;
+}
+.library-delete-confirm > p span {
+  color: var(--ink-muted);
+}
+.library-delete-error {
+  color: var(--error);
+}
+.library-delete-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.library-delete-buttons button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--type-compact-size);
+  font-weight: 600;
+  cursor: pointer;
+}
+.library-delete-buttons .library-delete-danger {
+  border-color: var(--error);
+  background: var(--error);
+  color: var(--surface);
+}
+.library-delete-buttons button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.library-document-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  min-height: 32px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.library-document-delete:hover {
+  border-color: color-mix(in srgb, var(--error) 45%, var(--line));
+  color: var(--error);
+}
+.library-grid[data-view="grid"] .library-document-delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+.library-grid[data-view="list"] .library-document-delete {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+}
 .library-detail-overview {
   margin-top: 20px;
   padding-top: 16px;
@@ -837,6 +938,29 @@
   color: var(--ink-muted);
   font-size: var(--type-compact-size);
   line-height: 1.55;
+}
+.library-detail-overview p[data-clamped="true"] {
+  max-height: calc(7 * 1.55em);
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+}
+.library-overview-toggle {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 6px 0 0 auto;
+  padding: 2px 0 2px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+  cursor: pointer;
+}
+.library-overview-toggle:hover {
+  color: var(--ink);
+}
+.library-overview-toggle[aria-expanded="true"] svg {
+  transform: rotate(180deg);
 }
 .library-detail-collections {
   display: grid;

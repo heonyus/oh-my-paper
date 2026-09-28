@@ -1,5 +1,5 @@
 import { FilePlus2, Search } from "lucide-react"
-import type { JSX } from "react"
+import { type JSX, useState } from "react"
 import type { KnowledgeNodeId } from "../../shared/knowledgeSchemas"
 import type { KnowledgeClientOps } from "../lib/knowledgeTypes"
 import type { DocumentId, DocumentRecord } from "../types"
@@ -49,6 +49,7 @@ export type LibraryHomeContentProps = {
     documentId: DocumentId,
     boardId: LibraryCollection["board"]["id"],
   ) => void
+  readonly onDeleteDocument?: ((id: DocumentId) => Promise<void>) | undefined
 }
 
 export function LibraryHomeContent({
@@ -86,7 +87,9 @@ export function LibraryHomeContent({
   onOpenExternal,
   onImport,
   onToggleMembership,
+  onDeleteDocument,
 }: LibraryHomeContentProps): JSX.Element {
+  const [deleteRequestId, setDeleteRequestId] = useState<DocumentId | null>(null)
   return (
     <div className="library-home-layout" data-sidebar-collapsed={sidebarCollapsed}>
       <LibraryCollectionSidebar
@@ -183,6 +186,14 @@ export function LibraryHomeContent({
               onViewChange={onViewChange}
               onPreview={onPreview}
               onOpenReader={onOpenReader}
+              onRequestDelete={
+                onDeleteDocument
+                  ? (id) => {
+                      onPreview(id)
+                      setDeleteRequestId(id)
+                    }
+                  : undefined
+              }
             />
             <LibraryDocumentDetail
               document={selectedDocument}
@@ -191,6 +202,16 @@ export function LibraryHomeContent({
               collections={collections}
               membershipBusyKey={membershipBusyKey}
               onToggleMembership={onToggleMembership}
+              deletion={
+                onDeleteDocument && selectedDocument
+                  ? {
+                      confirming: deleteRequestId === selectedDocument.id,
+                      onConfirmingChange: (confirming) =>
+                        setDeleteRequestId(confirming ? selectedDocument.id : null),
+                      onDelete: onDeleteDocument,
+                    }
+                  : undefined
+              }
             />
           </div>
         ) : null}

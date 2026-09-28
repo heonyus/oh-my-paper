@@ -19,6 +19,7 @@
       "!.omc",
       "!.omx",
       "!.codegraph",
+      "!.claude",
       "!.omo/evidence",
       "!test-results",
       "!playwright-report",

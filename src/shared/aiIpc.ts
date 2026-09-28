@@ -32,6 +32,8 @@ export const aiHistoryMessageSchema = z.object({
   content: z.string().min(1).max(4_000),
 })
 export const AI_CONTEXT_MAX_CHARACTERS = 8_000
+/** Whole-paper context for chat and paper-level tools; the client sizes it per connection. */
+export const PAPER_CONTEXT_MAX_CHARACTERS = 640_000
 export const aiRequestSchema = z.object({
   action: aiActionSchema,
   documentId: documentIdSchema,
@@ -39,7 +41,7 @@ export const aiRequestSchema = z.object({
   quote: z.string().min(1).max(AI_CONTEXT_MAX_CHARACTERS),
   before: z.string().max(AI_CONTEXT_MAX_CHARACTERS),
   after: z.string().max(3_000),
-  paperContext: z.string().max(AI_CONTEXT_MAX_CHARACTERS).optional(),
+  paperContext: z.string().max(PAPER_CONTEXT_MAX_CHARACTERS).optional(),
   sectionContext: z.string().max(AI_CONTEXT_MAX_CHARACTERS).optional(),
   sourceEvidence: z.string().max(12_000).optional(),
   featureKind: z

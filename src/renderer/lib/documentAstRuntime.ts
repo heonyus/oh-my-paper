@@ -4,11 +4,40 @@ import { documentLayoutPage } from "./documentLayoutRuntime"
 import { type LocalPageTranslationBlock, localPageTranslationBlocks } from "./pageTranslationLayout"
 
 const astByDocument = new Map<DocumentId, SourceDocumentAst>()
+const astWaiters = new Map<DocumentId, Set<(ast: SourceDocumentAst) => void>>()
 let activeDocumentId: DocumentId | null = null
 
 export function setActiveDocumentAst(documentId: DocumentId, ast: SourceDocumentAst): void {
   astByDocument.set(documentId, ast)
   activeDocumentId = documentId
+  const waiters = astWaiters.get(documentId)
+  astWaiters.delete(documentId)
+  for (const resolve of waiters ?? []) resolve(ast)
+}
+
+/** Resolves once the reader has loaded this document's AST, or null after the timeout. */
+export function waitForDocumentAst(
+  documentId: DocumentId,
+  timeoutMs: number,
+  signal?: AbortSignal,
+): Promise<SourceDocumentAst | null> {
+  const loaded = astByDocument.get(documentId)
+  if (loaded || signal?.aborted) return Promise.resolve(loaded ?? null)
+  return new Promise((resolve) => {
+    const waiters = astWaiters.get(documentId) ?? new Set()
+    astWaiters.set(documentId, waiters)
+    const finish = (ast: SourceDocumentAst | null): void => {
+      clearTimeout(timer)
+      signal?.removeEventListener("abort", abort)
+      waiters.delete(settle)
+      resolve(ast)
+    }
+    const settle = (ast: SourceDocumentAst): void => finish(ast)
+    const abort = (): void => finish(null)
+    const timer = setTimeout(() => finish(null), timeoutMs)
+    waiters.add(settle)
+    signal?.addEventListener("abort", abort, { once: true })
+  })
 }
 
 export function activeDocumentAst(documentId?: DocumentId): SourceDocumentAst | null {

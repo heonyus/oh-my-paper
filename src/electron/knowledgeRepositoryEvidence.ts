@@ -122,4 +122,15 @@ export class KnowledgeEvidenceOperations {
       .all(documentId)
     return rawRows.map((r) => rowToDocVersion(docVersionRowSchema.parse(r)))
   }
+
+  /** Removes a deleted document's versions; their evidence anchors cascade with them. */
+  deleteDocumentVersionsForDocument(documentId: string): readonly DocumentVersionRecord[] {
+    return withKnowledgeSavepoint(this.db, () => {
+      const versions = this.findDocumentVersionsByDocId(documentId)
+      this.db
+        .prepare("DELETE FROM document_versions WHERE original_document_id = ?")
+        .run(documentId)
+      return versions
+    })
+  }
 }

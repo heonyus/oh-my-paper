@@ -17,6 +17,7 @@ import { type JSX, useState } from "react"
 import type { ProviderStatus } from "../../shared/ipc"
 import type { DocumentInsight, DocumentInsightKind } from "../../shared/schemas"
 import { researchSidebarLayout } from "../../shared/uiLayout"
+import type { SourceCitation } from "../lib/chatCitations"
 import { togglePageTranslation } from "../lib/pageTranslationToggle"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
 import { saveCitationAssessment, saveSidebarInsight } from "../lib/sidebarCards"
@@ -58,6 +59,7 @@ export function ResearchSidebar({
   onWidthChange,
   insights = [],
   onInsightChange,
+  onNavigateToSource,
   tool,
   onToolChange,
 }: {
@@ -76,6 +78,7 @@ export function ResearchSidebar({
   readonly onWidthChange?: ((width: number) => void) | undefined
   readonly insights?: readonly DocumentInsight[] | undefined
   readonly onInsightChange?: ((kind: DocumentInsightKind, value: string) => void) | undefined
+  readonly onNavigateToSource?: ((citation: SourceCitation) => void) | undefined
   readonly tool: BoardTool
   readonly onToolChange: (tool: BoardTool) => void
 }): JSX.Element {
@@ -196,6 +199,7 @@ export function ResearchSidebar({
                 onAiRequest={onAiRequest}
                 cachedInsights={insights}
                 onInsightChange={onInsightChange}
+                onNavigateToSource={onNavigateToSource}
                 onSave={(title, body) =>
                   onCardsChange(saveSidebarInsight(cards, document, title, body))
                 }

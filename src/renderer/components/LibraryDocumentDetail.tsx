@@ -2,6 +2,8 @@ import { BookOpen, CalendarDays, FileText, Hash, TriangleAlert } from "lucide-re
 import type { JSX } from "react"
 import type { DocumentRecord } from "../types"
 import { DocumentThumbnail } from "./DocumentThumbnail"
+import { LibraryDocumentDelete } from "./LibraryDocumentDelete"
+import { LibraryDocumentOverview } from "./LibraryDocumentOverview"
 import type { LibraryCollection } from "./library-collections"
 import {
   documentAuthors,
@@ -18,6 +20,7 @@ export function LibraryDocumentDetail({
   collections = [],
   membershipBusyKey = null,
   onToggleMembership,
+  deletion,
 }: {
   readonly document: DocumentRecord | null
   readonly onOpenReader: (id: DocumentRecord["id"]) => void
@@ -26,6 +29,13 @@ export function LibraryDocumentDetail({
   readonly membershipBusyKey?: string | null | undefined
   readonly onToggleMembership?:
     | ((documentId: DocumentRecord["id"], boardId: LibraryCollection["board"]["id"]) => void)
+    | undefined
+  readonly deletion?:
+    | {
+        readonly confirming: boolean
+        readonly onConfirmingChange: (confirming: boolean) => void
+        readonly onDelete: (id: DocumentRecord["id"]) => Promise<void>
+      }
     | undefined
 }): JSX.Element {
   if (!document) {
@@ -134,15 +144,13 @@ export function LibraryDocumentDetail({
         </div>
       ) : null}
       {document.overview ? (
-        <div className="library-detail-overview">
-          <h3>개요</h3>
-          <p>{document.overview}</p>
-        </div>
+        <LibraryDocumentOverview key={document.id} overview={document.overview} />
       ) : (
         <p className="library-detail-muted">
           저장된 개요가 없습니다. PDF를 열어 내용을 확인하세요.
         </p>
       )}
+      {deletion ? <LibraryDocumentDelete document={document} {...deletion} /> : null}
     </section>
   )
 }

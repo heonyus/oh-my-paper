@@ -22,6 +22,7 @@ import {
   aiResultSchema,
   aiStreamDeltaSchema,
   aiStreamRequestSchema,
+  PAPER_CONTEXT_MAX_CHARACTERS,
 } from "./aiIpc"
 import type { BackupApi } from "./backupIpc"
 import type { BibliographyApi } from "./bibliographyIpc"
@@ -298,6 +299,8 @@ export type OhMyPaperApi = {
   readonly importDocumentPath: (path: string) => Promise<ImportResult>
   readonly importDocumentPaths: (paths: readonly string[]) => Promise<readonly ImportResult[]>
   readonly importDocumentUrl: (url: string) => Promise<ImportResult>
+  /** Removes a document from the library; only the browser app's loopback server provides it. */
+  readonly deleteDocument?: (id: DocumentId) => Promise<void>
   readonly getDroppedFilePath: (file: File) => string
   readonly onImportProgress: (listener: (progress: ImportProgress) => void) => () => void
   readonly readDocument: (id: DocumentId) => Promise<string>
@@ -502,4 +505,5 @@ export {
   documentPageParseProgressSchema,
   documentPageParseRequestSchema,
   documentPageParseResultSchema,
+  PAPER_CONTEXT_MAX_CHARACTERS,
 }

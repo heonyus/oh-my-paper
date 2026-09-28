@@ -6,10 +6,16 @@ import {
   createAiJobId,
 } from "../../shared/documentAiJobs"
 import { documentKindLabels } from "../../shared/documentKind"
-import { AI_CONTEXT_MAX_CHARACTERS, type AiRequest } from "../../shared/ipc"
+import {
+  AI_CONTEXT_MAX_CHARACTERS,
+  type AiRequest,
+  PAPER_CONTEXT_MAX_CHARACTERS,
+  type ProviderStatus,
+} from "../../shared/ipc"
 import type { DocumentInsight } from "../../shared/schemas"
 import type { AiDeltaHandler, AiRequestRunner, DocumentRecord } from "../types"
 import { cachedPaperOverviewContext } from "./pdfSearch"
+import { usesWholePaper, wholePaperCharacterBudget, wholePaperText } from "./wholePaperContext"
 
 export class PaperAiJobError extends Error {
   readonly name = "PaperAiJobError"
@@ -51,7 +57,14 @@ export function groundedAiRequest(
   summary: string,
   localOverview: string,
   request: Omit<AiRequest, "documentId">,
+  wholePaper = "",
 ): AiRequest {
+  const kindLine = `문서 유형: ${documentKindLabels[document.kind]}. 이 유형에 맞는 용어와 분석 기준을 사용하세요.`
+  // The full text supersedes the page-1 overview and any summary cached from it.
+  if (wholePaper) {
+    const paperContext = `${kindLine}\n\n${wholePaper}`.slice(0, PAPER_CONTEXT_MAX_CHARACTERS)
+    return { ...request, documentId: document.id, paperContext }
+  }
   const contextLimit =
     request.action === "translation" ||
     request.action === "page_translation" ||
@@ -61,7 +74,7 @@ export function groundedAiRequest(
         ? 6_000
         : AI_CONTEXT_MAX_CHARACTERS
   const contextParts = [
-    `문서 유형: ${documentKindLabels[document.kind]}. 이 유형에 맞는 용어와 분석 기준을 사용하세요.`,
+    kindLine,
     request.paperContext,
     summary ? `캐시된 논문 요약:\n${summary}` : "",
     localOverview ? `로컬 원문 개요:\n${localOverview}` : "",
@@ -111,7 +124,9 @@ function frameEmitter(onDelta: AiDeltaHandler | undefined): {
 export function usePaperAiRequest(
   document: DocumentRecord | null,
   insights: readonly DocumentInsight[],
+  provider: Pick<ProviderStatus, "mode">,
 ): AiRequestRunner {
+  const wholePaperBudget = wholePaperCharacterBudget(provider)
   const activeJobs = useRef(new Set<AiJobId>())
   const sourceGeneration = useRef(0)
   const activeDocumentId = document?.id ?? null
@@ -135,11 +150,16 @@ export function usePaperAiRequest(
       const currentDocument = documentRef.current
       if (!currentDocument) throw new Error("active document is missing")
       if (signal?.aborted) throw new PaperAiJobError("cancelled")
+      const wholePaper = usesWholePaper(request.action)
+        ? await wholePaperText(currentDocument.id, wholePaperBudget, signal)
+        : ""
+      if (signal?.aborted) throw new PaperAiJobError("cancelled")
       const grounded = groundedAiRequest(
         currentDocument,
         summary,
         currentDocument.overview || cachedPaperOverviewContext(currentDocument.id),
         request,
+        wholePaper,
       )
       if (usesDirectPaperCompletion(grounded.action, onDelta !== undefined) && !signal)
         return (await window.ohmypaper.runAi(grounded)).text
@@ -218,6 +238,6 @@ export function usePaperAiRequest(
         activeJobs.current.delete(jobId)
       }
     },
-    [summary],
+    [summary, wholePaperBudget],
   )
 }

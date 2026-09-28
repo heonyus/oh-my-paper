@@ -223,6 +223,7 @@ export function ReaderApp(): JSX.Element {
             importProgress={app.importProgress}
             analysisJobs={app.documentAnalysisJobs}
             onRetryAnalysis={(id) => void window.ohmypaper.retryDocumentAnalysis(id)}
+            onDeleteDocument={app.deleteDocument}
           />
         ) : (
           <section

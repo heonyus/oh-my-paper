@@ -320,6 +320,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
         onVisibleChange={props.onMinimapVisibleChange}
         panning={panning}
         panConstraintRef={panConstraint.constraintRef}
+        occludedRight={props.rightOcclusion}
       />
     </div>
   )

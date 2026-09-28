@@ -48,16 +48,17 @@ describe("research prompt routing contract", () => {
     )
   })
 
-  it("keeps academic terms as English followed by a parenthesized Korean translation", () => {
+  it("adds English glosses sparingly, after the Korean term", () => {
     for (const model of [
       "tencent/hy-mt2-30b-a3b",
       "tencent/hy-mt2-7b",
       "qwen/qwen3-30b-a3b-instruct-2507",
       undefined,
     ]) {
-      expect(systemPromptForRequest("page_translation", model)).toContain(
-        "`English term(한국어 번역)`",
-      )
+      const prompt = systemPromptForRequest("page_translation", model)
+      expect(prompt).toContain("`한국어 번역(English term)`")
+      expect(prompt).toContain("at most once or twice per paragraph")
+      expect(prompt).not.toContain("`English term(한국어 번역)`")
     }
   })
 })

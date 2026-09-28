@@ -66,16 +66,29 @@ describe("board navigation", () => {
     expect(bounds).toEqual({ x: -620, y: 64, width: 2656, height: 1056 })
   })
 
-  it("clamps excessive top space and centers narrow content horizontally", () => {
+  it("clamps excessive top space and lets narrow content slide up to the view edges", () => {
+    const bounds = { x: 300, y: 64, width: 816, height: 4_000 }
+    const view = { width: 1_000, height: 700 }
+    const left = constrainViewportToBounds({ x: -5_000, y: 1_000, zoom: 0.9 }, view, bounds, 40)
+    const right = constrainViewportToBounds({ x: 5_000, y: 0, zoom: 0.9 }, view, bounds, 40)
+    const between = constrainViewportToBounds({ x: -100, y: 0, zoom: 0.9 }, view, bounds, 40)
+
+    expect(left.x + 300 * 0.9).toBeCloseTo(40)
+    expect(left.y + 64 * 0.9).toBeCloseTo(40)
+    expect(right.x + (300 + 816) * 0.9).toBeCloseTo(960)
+    expect(between.x).toBe(-100)
+  })
+
+  it("reaches past the bounds by the slack and out from under a right overlay", () => {
     const next = constrainViewportToBounds(
-      { x: -5_000, y: 1_000, zoom: 0.9 },
+      { x: -9_999, y: 0, zoom: 1 },
       { width: 1_000, height: 700 },
-      { x: 300, y: 64, width: 816, height: 4_000 },
+      { x: -420, y: 64, width: 2_256, height: 4_000 },
       40,
+      { slack: 100, occludedRight: 340 },
     )
 
-    expect(next.x + (300 + 816 / 2) * 0.9).toBeCloseTo(500)
-    expect(next.y + 64 * 0.9).toBeCloseTo(40)
+    expect(next.x + (-420 + 2_256)).toBeCloseTo(1_000 - 40 - 340 - 100)
   })
 
   it("keeps the bottom edge reachable without allowing endless blank canvas", () => {

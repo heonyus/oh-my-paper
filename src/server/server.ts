@@ -153,7 +153,7 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
 
       res.setHeader("x-frame-options", "DENY")
       res.setHeader("access-control-allow-origin", localOrigin)
-      res.setHeader("access-control-allow-methods", "GET, POST, OPTIONS")
+      res.setHeader("access-control-allow-methods", "GET, POST, DELETE, OPTIONS")
       res.setHeader("access-control-allow-headers", "content-type, authorization")
 
       if (req.method === "OPTIONS") {
@@ -220,6 +220,21 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
         const { url: remoteUrl } = await readJson(req, documentImportUrlRequestSchema)
         const result = await importPdfFromUrl(remoteUrl, services)
         sendJson(res, 200, result)
+        return
+      }
+
+      if (pathname.startsWith("/api/documents/") && req.method === "DELETE") {
+        const parts = pathname.split("/")
+        const id = documentIdSchema.safeParse(parts[3])
+        if (parts.length !== 4 || !id.success) {
+          sendError(res, 400, "invalid_document_id")
+          return
+        }
+        if (!(await services.deleteDocument(id.data))) {
+          sendError(res, 404, "document_not_found")
+          return
+        }
+        sendJson(res, 200, { ok: true })
         return
       }
 
