@@ -169,6 +169,10 @@
 .page-translation-block:hover {
   background: color-mix(in srgb, var(--action) 6%, transparent);
 }
+.page-translation-block[data-source-hover="true"] {
+  background: color-mix(in srgb, var(--action) 9%, transparent);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--action) 45%, transparent);
+}
 .page-translation-block:focus-within {
   outline: 2px solid var(--focus);
   outline-offset: 2px;

@@ -4,6 +4,7 @@ import type { ProviderStatus } from "../../shared/ipc"
 import { type PageTranslationMode, usePageTranslationMode } from "../lib/pageTranslationMode"
 import { nextTextSize, parserStageMessage, type TextSize } from "../lib/pageTranslationPaneState"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
+import { usePageSourceHover } from "../lib/usePageSourceHover"
 import { usePageTranslation } from "../lib/usePageTranslation"
 import { usePageTranslationPlacement } from "../lib/usePageTranslationPlacement"
 import type { AiRequestRunner, DocumentRecord } from "../types"
@@ -29,6 +30,8 @@ export function PageTranslationPane({
   const [mode, setMode] = usePageTranslationMode(document.id)
   const [printPages, setPrintPages] = useState<Readonly<Record<number, string>> | null>(null)
   const placement = usePageTranslationPlacement(currentPage)
+  const bodyRef = useRef<HTMLDivElement>(null)
+  usePageSourceHover(currentPage, bodyRef)
   const {
     blocks,
     status,
@@ -235,7 +238,7 @@ export function PageTranslationPane({
             </button>
           </div>
         </header>
-        <div className="page-translation-body">
+        <div ref={bodyRef} className="page-translation-body">
           {documentStatus === "running" && documentProgress ? (
             <p className="page-translation-document-progress" role="status">
               전체 문서 번역 · {documentProgress.completedPages}/{documentProgress.pageCount}페이지

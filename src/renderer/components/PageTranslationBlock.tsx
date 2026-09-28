@@ -118,6 +118,7 @@ export const PageTranslationBlock = memo(function PageTranslationBlock({
       data-structure-kind={block.structureKind ?? block.kind}
       data-block-count={blocks.length}
       data-block-id={block.id}
+      data-block-ids={blocks.map((candidate) => candidate.id).join(" ")}
       data-group-start={startsGroup}
       onMouseEnter={() => setActive(true)}
       onMouseLeave={() => setActive(false)}

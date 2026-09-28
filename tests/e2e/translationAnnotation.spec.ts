@@ -128,7 +128,7 @@ test("saving a translation annotation leaves only its source highlight and sideb
     await card.getByRole("button", { name: "번역을 주석으로 저장" }).click()
 
     await expect(card).toBeHidden()
-    await expect(page.locator(".source-highlight")).toHaveCount(3)
+    await expect(page.locator(".highlight-mark > span")).toHaveCount(3)
     await expect(page.locator(".connector-layer path")).toHaveCount(0)
     await page.getByRole("button", { name: "하이라이트 모드" }).click()
     await expect(page.locator(".board-index-list > li")).toHaveCount(3)

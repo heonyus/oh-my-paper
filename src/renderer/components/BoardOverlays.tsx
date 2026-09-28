@@ -1,4 +1,11 @@
-import { Highlighter, Languages, MessageSquareText, Palette, StickyNote } from "lucide-react"
+import {
+  Highlighter,
+  Languages,
+  MessageSquareText,
+  Palette,
+  StickyNote,
+  Trash2,
+} from "lucide-react"
 import type { CSSProperties, JSX } from "react"
 import type { HighlightFragment } from "../lib/boardHighlights"
 import type { SelectionAction } from "../lib/selectionActions"
@@ -27,6 +34,69 @@ export function SourceHighlights({
         />
       ))}
     </>
+  )
+}
+
+/**
+ * Each highlight is one translucent group, so line boxes that overlap do not stack
+ * into darker stripes.
+ */
+export function HighlightMarks({
+  highlights,
+  selectedId,
+}: {
+  readonly highlights: readonly BoardCard[]
+  readonly selectedId: string | null
+}): JSX.Element {
+  return (
+    <>
+      {highlights.map((card) => (
+        <span
+          key={card.id}
+          className="highlight-mark"
+          data-highlight-id={card.id}
+          data-selected={card.id === selectedId || undefined}
+          aria-hidden="true"
+        >
+          {card.anchor.fragments.map((fragment) => (
+            <span
+              key={`${fragment.x}-${fragment.y}-${fragment.width}-${fragment.height}`}
+              style={{
+                left: fragment.x,
+                top: fragment.y,
+                width: fragment.width,
+                height: fragment.height,
+              }}
+            />
+          ))}
+        </span>
+      ))}
+    </>
+  )
+}
+
+export function HighlightToolbar({
+  position,
+  onDelete,
+}: {
+  readonly position: CSSProperties
+  readonly onDelete: () => void
+}): JSX.Element {
+  return (
+    <div
+      className="selection-menu highlight-menu"
+      style={position}
+      role="toolbar"
+      aria-label="하이라이트 작업"
+      onPointerDown={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+      }}
+    >
+      <button type="button" aria-keyshortcuts="Delete" onClick={onDelete}>
+        <Trash2 size={14} /> 하이라이트 삭제
+      </button>
+    </div>
   )
 }
 
