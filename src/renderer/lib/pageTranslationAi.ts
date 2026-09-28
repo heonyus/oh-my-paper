@@ -320,6 +320,10 @@ export async function translatePageBatch(
       // 개별 블록 재시도 실패는 아래 unresolved 검사에서 최종 판정한다
     }
   }
+  // A fragment of a word or two that no model would translate stays as the source has it.
+  for (const block of input.batch)
+    if (!translated.get(block.id)?.trim() && block.source.trim().split(/\s+/u).length <= 2)
+      translated.set(block.id, block.source.trim())
   const unresolved = input.batch.find((block) => !translated.get(block.id)?.trim())
   if (unresolved) throw new Error(`missing page translation block ${unresolved.id}`)
   return translated

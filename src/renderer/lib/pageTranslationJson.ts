@@ -5,11 +5,17 @@ const delimitedBlockPattern = /^\s*@@([A-Za-z0-9._:-]+)@@(?:\s?(.*))?\s*$/u
 const echoedWrapperTagPattern =
   /^\s*<\/?(?:CURRENT_PAGE|PAPER_CONTEXT|CURRENT_SECTION|SOURCE_EVIDENCE|LOCAL_BEFORE|LOCAL_AFTER|USER_QUESTION_OR_TARGET)\s*>\s*$/u
 
+// A model's note that it has nothing to translate, given for a one-word fragment a page
+// break cut off ("Other"), in place of the translation.
+const refusalPattern =
+  /번역할 (?:원문|텍스트|내용)|번역을 수행할 수 없|nothing to translate|no (?:source )?text to translate/iu
+
 // Hy-MT sometimes emits the literal word "translation" as a block's content by
-// copying the `@@ID@@ translation` template. Treat that placeholder as missing
-// so the block falls through to the retry path instead of being cached.
+// copying the `@@ID@@ translation` template. Treat that placeholder, and a refusal, as
+// missing so the block falls through to the retry path instead of being cached.
 export function isPlaceholderPageTranslation(markdown: string): boolean {
-  return markdown.trim().toLowerCase() === "translation"
+  const text = markdown.trim()
+  return text.toLowerCase() === "translation" || refusalPattern.test(text)
 }
 
 function escapedControlCharacter(character: string): string {

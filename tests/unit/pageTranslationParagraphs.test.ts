@@ -244,12 +244,21 @@ describe("sentence to paragraph alignment", () => {
 })
 
 /** A text run given in page pixels of the synthetic 1000 × 1400 page. */
-function run(text: string, x: number, y: number, width: number, bold = false, serif = true) {
+function run(
+  text: string,
+  x: number,
+  y: number,
+  width: number,
+  bold = false,
+  serif = true,
+  italic = false,
+) {
   return {
     text,
     rect: { x: x / 1_000, y: y / 1_400, width: width / 1_000, height: 14 / 1_400 },
     bold,
     serif,
+    italic,
   } satisfies PageTextRun
 }
 
@@ -533,5 +542,74 @@ describe("typesetting read from the PDF's fonts", () => {
     const first = paragraphRegions(unstopped, page, runs).find((region) => region.id === "layout:1")
 
     expect(first?.translation.startsWith("**연구 설계 및 환경.** 코호트")).toBe(true)
+  })
+})
+
+describe("a title page set as the source sets it", () => {
+  const titlePage: ParsedDocumentPage = parsedDocumentPageSchema.parse({
+    schemaVersion: "1.0.0",
+    sourceHash: "a".repeat(64),
+    parser: "PDF.js+PaddleOCR-VL-1.6",
+    configVersion: "hybrid-v12",
+    pageNumber: 1,
+    width: 1_000,
+    height: 1_400,
+    blocks: [
+      line(0, 250, 100, "Ann Lee †, Bo Kim †, Cy Park", 500),
+      line(1, 350, 118, "Dee Moss ∗", 300),
+      line(2, 380, 160, "Peking University", 240),
+      line(3, 80, 300, "(1) We propose a new agent that learns", 840),
+      line(4, 105, 318, "strategies from its own experience.", 815),
+      line(5, 80, 400, "Agents plan. They act on the plan and", 840),
+      line(6, 80, 418, "learn from what happened. The loop then", 840),
+      line(7, 80, 436, "starts again.", 200),
+    ],
+    layout: [
+      { label: "text", order: 0, bounds: bounds(248, 98, 504, 36), content: "" },
+      { label: "text", order: 1, bounds: bounds(378, 158, 244, 18), content: "" },
+      { label: "text", order: 2, bounds: bounds(78, 298, 845, 36), content: "" },
+      { label: "text", order: 3, bounds: bounds(78, 398, 845, 54), content: "" },
+    ],
+  })
+  const units: readonly PageTranslationBlock[] = [
+    sentence(
+      1,
+      "page:1:block:0",
+      "Ann Lee †, Bo Kim †, Cy Park Dee Moss ∗",
+      "Ann Lee†, Bo Kim†, Cy Park Dee Moss∗",
+    ),
+    sentence(1, "page:1:block:2", "Peking University", "베이징대학교"),
+    sentence(
+      1,
+      "page:1:block:3",
+      "(1) We propose a new agent that learns strategies from its own experience.",
+      "(1) 우리는 자신의 경험에서 전략을 배우는 새 에이전트를 제안한다.",
+    ),
+    sentence(1, "page:1:block:5", "Agents plan.", "에이전트는 계획한다."),
+    sentence(
+      2,
+      "page:1:block:5",
+      "They act on the plan and learn from what happened.",
+      "계획대로 행동하고 결과에서 배운다.",
+    ),
+    sentence(3, "page:1:block:5", "The loop then starts again.", "그러면 순환이 다시 시작된다."),
+  ]
+  const regions = paragraphRegions(units, titlePage)
+  const byId = new Map(regions.map((region) => [region.id, region]))
+
+  it("leaves names that come back untranslated as the source's own pixels", () => {
+    expect(byId.has("layout:0")).toBe(false)
+  })
+
+  it("centres a line the source centres", () => {
+    expect(byId.get("layout:1")?.typography?.centered).toBe(true)
+  })
+
+  it("hangs a numbered item from its own number instead of adding a bullet", () => {
+    const item = byId.get("layout:2")?.typography
+    expect(item?.bullet).toBe(false)
+    expect(item?.hang).toBeGreaterThan(0)
+    expect(item?.indent).toBeCloseTo(-(item?.hang ?? 0))
+    expect(byId.get("layout:3")?.typography?.centered).toBeUndefined()
   })
 })

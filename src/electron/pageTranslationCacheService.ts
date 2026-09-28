@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto"
-import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises"
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import { z } from "zod"
 import { parsedPageParserSchema } from "../shared/documentPageModel"
@@ -110,15 +110,21 @@ export class PageTranslationCacheService {
     if (request.parser || request.parserConfigVersion) return [exact]
     try {
       const directories = await readdir(base, { withFileTypes: true })
-      return [
-        exact,
-        ...directories
+      const others = await Promise.all(
+        directories
           .filter((entry) => entry.isDirectory() && entry.name !== configurationHash)
-          .map((entry) => ({
-            sourceHash: document.hash,
-            file: join(base, entry.name, `page-${request.pageNumber}.json`),
-          })),
-      ]
+          .map(async (entry) => {
+            const file = join(base, entry.name, `page-${request.pageNumber}.json`)
+            const modified = await stat(file).then(
+              (info) => info.mtimeMs,
+              () => 0,
+            )
+            return { sourceHash: document.hash, file, modified }
+          }),
+      )
+      // The latest translation first: it was cut by the parser closest to the current one.
+      others.sort((left, right) => right.modified - left.modified)
+      return [exact, ...others.map(({ sourceHash, file }) => ({ sourceHash, file }))]
     } catch (error) {
       if (isMissingFile(error)) return [exact]
       throw error

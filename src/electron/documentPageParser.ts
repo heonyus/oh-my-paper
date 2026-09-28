@@ -224,7 +224,7 @@ export class DocumentPageParser {
     pageNumber: number,
     _store: WorkspaceStore,
   ): Promise<DocumentPageParseResult | null> {
-    const astResult = await this.#astService.request({ id: document.id })
+    const astResult = await this.#astService.read({ id: document.id })
     if (astResult.status !== "ready" && astResult.status !== "degraded") return null
     return buildNativeParsedPage({
       ast: astResult.ast,
@@ -238,7 +238,7 @@ export class DocumentPageParser {
     hash: Sha256,
     pageNumber: number,
   ): Promise<ParsedDocumentPage | null> {
-    for (const cacheVersion of ["pdfjs-paddleocr-vl-1.6-hybrid-v11", "mistral-ocr-4-1-blocks-v2"]) {
+    for (const cacheVersion of ["pdfjs-paddleocr-vl-1.6-hybrid-v12", "mistral-ocr-4-1-blocks-v2"]) {
       const file = join(store.root, "parsed-pages", hash, cacheVersion, `page-${pageNumber}.json`)
       try {
         const raw = JSON.parse(await readFile(file, "utf8"))
@@ -262,7 +262,7 @@ export class DocumentPageParser {
       store.root,
       "parsed-pages",
       page.sourceHash,
-      "pdfjs-paddleocr-vl-1.6-hybrid-v11",
+      "pdfjs-paddleocr-vl-1.6-hybrid-v12",
       `page-${page.pageNumber}.json`,
     )
     await mkdir(dirname(file), { recursive: true })

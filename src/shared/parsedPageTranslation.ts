@@ -169,6 +169,14 @@ const layoutParagraphLabels = new Set<ParsedPageBlock["label"]>([
   "figure_title",
   "table_title",
 ])
+
+/** A margin note set sideways, as a preprint's arXiv stamp is: left as it is on the page. */
+export function isSidewaysMargin(block: {
+  readonly label: string
+  readonly bounds: ParsedPageBlock["bounds"]
+}): boolean {
+  return block.label === "aside_text" && block.bounds.height > block.bounds.width * 3
+}
 const paragraphLineLabels = new Set<ParsedPageBlock["label"]>([
   "text",
   "list",
@@ -176,52 +184,169 @@ const paragraphLineLabels = new Set<ParsedPageBlock["label"]>([
   "table_title",
 ])
 const inlineListMarker = /\s+[•▪◦‣∙]\s+/u
+const inlineNoteMarker = /\s+(?=[∗†‡§¶]\s*\p{L})/u
 
-type LinePart = {
-  readonly block: ParsedPageBlock
-  readonly part: number
+/**
+ * The two lines of a PDF.js unit that ran two list items or two footnotes together
+ * ("… learning • Hyperparameter …", "∗ Corresponding author … † Equal contribution"), or
+ * null when nothing marks where the second line starts.
+ */
+export function twoLineSplit(content: string): readonly [string, string] | null {
+  const [upper = "", ...lower] = content.split(inlineListMarker)
+  if (lower.length > 0) return [upper, `• ${lower.join(" • ")}`]
+  const note = content.search(inlineNoteMarker)
+  return note > 0 ? [content.slice(0, note), content.slice(note).trim()] : null
+}
+
+/**
+ * Where, at or after `from`, a paragraph's opening words ("Keywords: large language", "The
+ * University of") start in a line unit's text — before the superscript number or mark
+ * that leads them — or null.
+ */
+function openingAt(content: string, paragraph: string, from: number): number | null {
+  const words = paragraph
+    .replace(/\$[^$]*\$/gu, " ")
+    .match(/[\p{L}\p{N}]+/gu)
+    ?.slice(0, 3)
+  if (!words || words.length < 2) return null
+  const found = new RegExp(words.join("[^\\p{L}\\p{N}]+"), "iu").exec(content.slice(from))
+  if (!found) return null
+  const index = from + found.index
+  const mark = /\s(?:\d{1,2}|[∗*†‡§¶])\s*$/u.exec(content.slice(0, index))
+  return mark ? mark.index + 1 : index
+}
+
+type Bounds = ParsedPageBlock["bounds"]
+
+/** A piece of a line unit, with the points to find its paragraph by, best first. */
+export type LineUnitPart = {
   readonly content: string
-  readonly bounds: ParsedPageBlock["bounds"]
+  readonly bounds: Bounds
   readonly points: readonly (readonly [number, number])[]
 }
 
-function inside(x: number, y: number, bounds: ParsedPageBlock["bounds"]): boolean {
+/**
+ * A PDF.js line unit, or its pieces when it ran several lines together: across a list or
+ * footnote marker, or across paragraphs — the last line of an abstract and "Keywords: …",
+ * or four affiliations — cut where each later paragraph's own text opens.
+ */
+export function lineUnitParts(
+  unit: { readonly bounds: Bounds; readonly content: string },
+  lineHeight: number,
+  paragraphs: readonly { readonly bounds: Bounds; readonly content: string }[],
+): readonly LineUnitPart[] {
+  const { x, y, width, height } = unit.bounds
+  const middle = x + width / 2
+  // A short line's text sits at its start: look there too.
+  const start = x + Math.min(width / 2, lineHeight * 2)
+  if (height <= lineHeight * 1.4)
+    return [{ content: unit.content, bounds: unit.bounds, points: [[middle, y + height / 2]] }]
+  const marked = twoLineSplit(unit.content)
+  if (marked) {
+    const half = height / 2
+    return [
+      {
+        content: marked[0],
+        bounds: { x, y, width, height: half },
+        points: [[middle, y + half / 2]],
+      },
+      {
+        content: marked[1],
+        bounds: { x, y: y + half, width, height: half },
+        points: [
+          [middle, y + half * 1.5],
+          [start, y + half * 1.5],
+        ],
+      },
+    ]
+  }
+  const whole: LineUnitPart = {
+    content: unit.content,
+    bounds: unit.bounds,
+    points: [
+      [middle, y + height / 2],
+      [middle, y + height * 0.25],
+      [middle, y + height * 0.75],
+    ],
+  }
+  const at = (pointX: number, pointY: number) =>
+    paragraphs.findIndex((paragraph) => inside(pointX, pointY, paragraph.bounds))
+  // Rows close enough together that no paragraph the unit crosses is stepped over.
+  const crossing = paragraphs
+    .filter(
+      (paragraph) =>
+        paragraph.bounds.y < y + height && paragraph.bounds.y + paragraph.bounds.height > y,
+    )
+    .map((paragraph) => paragraph.bounds.height)
+  const step = Math.max(2, Math.min(lineHeight, ...crossing) / 2)
+  const rows = Math.max(2, Math.ceil(height / step))
+  const crossed: number[] = []
+  for (let row = 0; row < rows; row += 1) {
+    const rowY = y + ((row + 0.5) * height) / rows
+    const index = [at(start, rowY), at(middle, rowY)].find((found) => found >= 0)
+    if (index !== undefined && !crossed.includes(index)) crossed.push(index)
+  }
+  const [first, ...later] = crossed
+  if (first === undefined || later.length === 0) return [whole]
+  const cuts = [{ from: 0, paragraph: first }]
+  for (const paragraph of later) {
+    const previous = cuts.at(-1)?.from ?? 0
+    const from = openingAt(unit.content, paragraphs[paragraph]?.content ?? "", previous + 1)
+    if (from !== null) cuts.push({ from, paragraph })
+  }
+  if (cuts.length < 2) return [whole]
+  return cuts.map((cut, index) => {
+    const box = paragraphs[cut.paragraph]?.bounds ?? unit.bounds
+    const top = Math.max(y, box.y)
+    const bottom = Math.min(y + height, box.y + box.height)
+    const bounds = bottom > top ? { x, y: top, width, height: bottom - top } : unit.bounds
+    const centre = bounds.y + bounds.height / 2
+    return {
+      content: unit.content.slice(cut.from, cuts[index + 1]?.from).trim(),
+      bounds,
+      points: [
+        [start, centre],
+        [middle, centre],
+      ],
+    }
+  })
+}
+
+/**
+ * A line unit PDF.js built from text set sideways — a preprint's arXiv stamp — whose box
+ * stands several lines tall, narrow or far emptier than any run of lines.
+ */
+export function isSidewaysUnit(
+  block: { readonly bounds: ParsedPageBlock["bounds"]; readonly content: string },
+  lineHeight: number,
+): boolean {
+  const { width, height } = block.bounds
+  const lines = height / lineHeight
+  if (lines <= 3) return false
+  return height > width * 2 || block.content.length / lines < (width / lineHeight) * 0.25
+}
+
+type LinePart = LineUnitPart & {
+  readonly block: ParsedPageBlock
+  readonly part: number
+}
+
+function inside(x: number, y: number, bounds: Bounds): boolean {
   return (
     x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height
   )
 }
 
-/**
- * A PDF.js line unit, or its two halves when it ran two lines together across a list marker,
- * with the points to find its paragraph by: its centre, then the middles of its lines.
- */
-function lineParts(block: ParsedPageBlock, lineHeight: number): readonly LinePart[] {
-  const { x, y, width, height } = block.bounds
-  const middle = x + width / 2
-  const tall = height > lineHeight * 1.4
-  const [upper = "", ...lower] = block.content.split(inlineListMarker)
-  if (tall && lower.length > 0) {
-    const half = height / 2
-    return [
-      {
-        block,
-        part: 0,
-        content: upper,
-        bounds: { x, y, width, height: half },
-        points: [[middle, y + height * 0.25]],
-      },
-      {
-        block,
-        part: 1,
-        content: `• ${lower.join(" • ")}`,
-        bounds: { x, y: y + half, width, height: half },
-        points: [[middle, y + height * 0.75]],
-      },
-    ]
-  }
-  const points: (readonly [number, number])[] = [[middle, y + height / 2]]
-  if (tall) points.push([middle, y + height * 0.25], [middle, y + height * 0.75])
-  return [{ block, part: 0, content: block.content, bounds: block.bounds, points }]
+function lineParts(
+  block: ParsedPageBlock,
+  lineHeight: number,
+  paragraphs: readonly { readonly bounds: Bounds; readonly content: string }[],
+): readonly LinePart[] {
+  return lineUnitParts(block, lineHeight, paragraphs).map((part, index) => ({
+    ...part,
+    block,
+    part: index,
+  }))
 }
 
 /**
@@ -230,7 +355,9 @@ function lineParts(block: ParsedPageBlock, lineHeight: number): readonly LinePar
  * paragraph (a running head, a footer) stay on their own. Null without a layout.
  */
 function layoutParagraphBlocks(page: ParsedDocumentPage): readonly ParsedPageBlock[] | null {
-  const paragraphs = (page.layout ?? []).filter((block) => layoutParagraphLabels.has(block.label))
+  const paragraphs = (page.layout ?? []).filter(
+    (block) => layoutParagraphLabels.has(block.label) && !isSidewaysMargin(block),
+  )
   if (paragraphs.length === 0) return null
   const heights = page.blocks
     .filter((block) => block.label === "text" || block.label === "list")
@@ -240,16 +367,18 @@ function layoutParagraphBlocks(page: ParsedDocumentPage): readonly ParsedPageBlo
   const groups = new Map<number, LinePart[]>()
   const loose: ParsedPageBlock[] = []
   for (const block of page.blocks) {
+    if (paragraphLineLabels.has(block.label) && isSidewaysUnit(block, lineHeight)) continue
     if (!paragraphLineLabels.has(block.label) || block.translationPolicy !== "include") {
       loose.push(block)
       continue
     }
-    for (const part of lineParts(block, lineHeight)) {
+    for (const part of lineParts(block, lineHeight, paragraphs)) {
       const index = part.points
         .map(([x, y]) => paragraphs.findIndex((paragraph) => inside(x, y, paragraph.bounds)))
         .find((found) => found >= 0)
       if (index === undefined) {
-        loose.push({ ...block, content: part.content, bounds: part.bounds })
+        const id = part.part === 0 ? block.id : `${block.id}.${part.part}`
+        loose.push({ ...block, id, content: part.content, bounds: part.bounds })
         continue
       }
       groups.set(index, [...(groups.get(index) ?? []), part])
@@ -266,7 +395,7 @@ function layoutParagraphBlocks(page: ParsedDocumentPage): readonly ParsedPageBlo
       {
         ...first.block,
         id: first.part === 0 ? first.block.id : `${first.block.id}.${first.part}`,
-        order: first.block.order + first.part / 2,
+        order: first.block.order + first.part / 10,
         bounds: { x: left, y: top, width: right - left, height: bottom - top },
         content: parts
           .map((part) => part.content.trim())

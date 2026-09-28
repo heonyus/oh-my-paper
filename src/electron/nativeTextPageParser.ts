@@ -16,9 +16,28 @@ export type NativePageParserInput = {
   readonly height?: number
 }
 
+const readingOrders = new WeakMap<
+  SourceDocumentAst,
+  ReturnType<typeof deriveDocumentReadingOrder>
+>()
+
+/** The document's reading order, worked out once per AST rather than once per page. */
+function readingOrderOf(ast: SourceDocumentAst): ReturnType<typeof deriveDocumentReadingOrder> {
+  const known = readingOrders.get(ast)
+  if (known) return known
+  const order = deriveDocumentReadingOrder(ast)
+  readingOrders.set(ast, order)
+  return order
+}
+
 type NativeTextUnit = {
   readonly sourceItemIds: readonly SourceRawItem["id"][]
   readonly bounds: SourceRawItem["bounds"]
+}
+
+function sideways(item: SourceRawItem): boolean {
+  const [a, b] = item.transform
+  return Math.abs(b) > Math.abs(a)
 }
 
 function streamTextUnits(ast: SourceDocumentAst, pageId: string): readonly NativeTextUnit[] {
@@ -34,7 +53,9 @@ function streamTextUnits(ast: SourceDocumentAst, pageId: string): readonly Nativ
       ? Math.abs(center - previousCenter) >
         Math.max(previous.bounds.height, item.bounds.height) * 1.5
       : false
-    if (!current || previous?.hasEOL || lineShift) groups.push([item])
+    // Text set sideways — a preprint's arXiv stamp — is never part of the line before it.
+    const turn = previous ? sideways(previous) !== sideways(item) : false
+    if (!current || previous?.hasEOL || lineShift || turn) groups.push([item])
     else current.push(item)
   }
   return groups.map((items) => {
@@ -118,7 +139,7 @@ export function buildNativeParsedPage(
   }
 
   const streamUnits = streamTextUnits(input.ast, pageId)
-  const readingOrder = deriveDocumentReadingOrder(input.ast)
+  const readingOrder = readingOrderOf(input.ast)
   const orderedPage = readingOrder.pages.find((p) => p.pageId === pageId)
   const lineMap = new Map((orderedPage?.lines ?? pageLines).map((line) => [line.id, line]))
   const orderedLines = (orderedPage?.orderedLineIds ?? []).flatMap((id) => {
