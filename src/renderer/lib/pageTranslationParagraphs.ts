@@ -134,14 +134,17 @@ type Piece = { readonly source: string; readonly translation: string }
 export function translationPieces(
   sentence: Pick<PageTranslationBlock, "source" | "translation">,
 ): readonly Piece[] {
-  let translations = sentence.translation
-    .split(/\n+/u)
-    .flatMap((line) => line.split(inlineBullet))
-    .map((part) => part.replace(leadingMarker, "").trim())
-    .filter(Boolean)
   const sources = sentence.source
     .split(inlineBullet)
     .map((part) => part.trim())
+    .filter(Boolean)
+  // Where the source runs list items together, a translation may set the nested ones off
+  // with a spaced dash ("…해당하는 경우 - 45분 창 내에…") rather than a new line.
+  const itemMarker = sources.length >= 2 ? /\s+[•▪◦‣∙]\s+|\s+[-–—]\s+/u : inlineBullet
+  let translations = sentence.translation
+    .split(/\n+/u)
+    .flatMap((line) => line.split(itemMarker))
+    .map((part) => part.replace(leadingMarker, "").trim())
     .filter(Boolean)
   const colon = sentence.translation.search(/[:：]/u)
   if (translations.length === 1 && sources.length === 2 && sources[0]?.endsWith(":") && colon > 0)
@@ -155,9 +158,14 @@ export function translationPieces(
   }))
 }
 
-/** Latin words and numbers a translation keeps from its source: MAP, 45, mmol, impute. */
+/**
+ * Latin words and numbers a translation keeps from its source — MAP, 45, mmol — cut to their
+ * stems, so the "imputation" of a gloss still finds the source's "imputed".
+ */
 function keptTokens(translation: string): readonly string[] {
-  return [...translation.matchAll(/[A-Za-z]{3,}|\d{2,}/gu)].map(([token]) => token.toLowerCase())
+  return [...translation.matchAll(/[A-Za-z]{3,}|\d{2,}/gu)].map(([token]) =>
+    token.toLowerCase().slice(0, 5),
+  )
 }
 
 /**
@@ -193,10 +201,19 @@ function spreadSentence(
       piece: { ...sentence, ...piece },
       startsItem: index > 0,
     }))
+  // A piece may itself run on into the next paragraph (a missing full stop in the PDF), so
+  // spread sentence by sentence; each piece's first sentence keeps its list-item break.
+  const units = pieces.flatMap((piece, index) =>
+    sentencesOf(piece.translation).map((translation, position) => ({
+      translation,
+      source: position === 0 ? piece.source : "",
+      startsItem: index > 0 && position === 0,
+    })),
+  )
   let current = start
-  return pieces.map((piece, index) => {
+  return units.map((unit, index) => {
     if (index > 0) {
-      const tokens = keptTokens(`${piece.translation} ${piece.source}`)
+      const tokens = keptTokens(`${unit.translation} ${unit.source}`)
       const score = (paragraph: number): number =>
         tokens.filter((token) => texts[paragraph]?.includes(token)).length
       let best = current
@@ -204,7 +221,11 @@ function spreadSentence(
         if (score(paragraph) > score(best)) best = paragraph
       current = best
     }
-    return { paragraph: current, piece: { ...sentence, ...piece }, startsItem: index > 0 }
+    return {
+      paragraph: current,
+      piece: { ...sentence, translation: unit.translation, source: unit.source },
+      startsItem: unit.startsItem,
+    }
   })
 }
 

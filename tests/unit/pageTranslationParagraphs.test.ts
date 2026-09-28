@@ -370,4 +370,64 @@ describe("typesetting read from the PDF's fonts", () => {
 
     expect(placed?.translation).toBe("**그림 1 | 검증 결과.** 곡선은 보류된 분할을 보여준다.")
   })
+
+  it("splits nested list items a translation set off with a spaced dash", () => {
+    const listPage = parsedDocumentPageSchema.parse({
+      schemaVersion: "1.0.0",
+      sourceHash: "a".repeat(64),
+      parser: "PDF.js+PaddleOCR-VL-1.6",
+      configVersion: "hybrid-v11",
+      pageNumber: 1,
+      width: 1_000,
+      height: 1_400,
+      blocks: [
+        line(0, 545, 602, "• Unknown or ambiguous: if any of these hold:"),
+        line(1, 545, 622, "• No MAP or lactate is available in the 45-min window"),
+        line(2, 565, 647, "To enable annotation at all points, we imputed lactate values."),
+      ],
+      layout: [
+        {
+          label: "text",
+          order: 0,
+          bounds: bounds(540, 600, 420, 18),
+          content: "- Unknown or ambiguous: if any of these hold:",
+        },
+        {
+          label: "text",
+          order: 1,
+          bounds: bounds(540, 620, 420, 18),
+          content: "- No MAP or lactate is available in the 45-min window",
+        },
+        {
+          label: "text",
+          order: 2,
+          bounds: bounds(540, 645, 420, 18),
+          content: "To enable annotation at all points, we imputed lactate values.",
+        },
+      ],
+    })
+    const runOn = sentence(
+      1,
+      "page:1:block:0",
+      "• Unknown or ambiguous: if any of these hold: • No MAP or lactate is available in the 45-min window To enable annotation at all points, we imputed lactate values.",
+      "- 알 수 없음/모호함: 다음 중 하나라도 해당하는 경우 - 45분 창 내에 MAP 또는 젖산 값이 없음. 모든 시점의 주석을 위해 젖산 값을 대치(imputation)했다.",
+    )
+
+    const regions = paragraphRegions([runOn], listPage)
+
+    expect(regions.map((region) => [region.id, region.translation])).toEqual([
+      ["layout:0", "- 알 수 없음/모호함: 다음 중 하나라도 해당하는 경우"],
+      ["layout:1", "- 45분 창 내에 MAP 또는 젖산 값이 없음."],
+      ["layout:2", "모든 시점의 주석을 위해 젖산 값을 대치(imputation)했다."],
+    ])
+  })
+
+  it("keeps a spaced dash inside a translation whose source has no list items", () => {
+    expect(
+      translationPieces({
+        source: "The range 10-60 kg per m2 was kept.",
+        translation: "10 - 60 kg/m² 범위는 유지되었다.",
+      }).map((piece) => piece.translation),
+    ).toEqual(["10 - 60 kg/m² 범위는 유지되었다."])
+  })
 })
