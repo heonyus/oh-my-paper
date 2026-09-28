@@ -270,7 +270,7 @@ describe("hybridPageParser", () => {
 
     const merged = mergePdfJsAndPaddlePage(native, paddle)
 
-    expect(merged.configVersion).toBe("hybrid-v11")
+    expect(merged.configVersion).toBe("hybrid-v12")
     expect(merged.blocks.map((item) => [item.label, item.content])).toEqual([
       ["text", "the end of the introduction."],
       ["paragraph_title", "## Results"],
@@ -347,6 +347,64 @@ describe("hybridPageParser", () => {
       ["text", "The authors declare none."],
       ["paragraph_title", "## Acknowledgements"],
       ["text", "Funding came from a grant."],
+    ])
+  })
+
+  it("keeps the author line a PDF.js unit shares with a title's last line", () => {
+    const block = (
+      order: number,
+      label: string,
+      bounds: { x: number; y: number; width: number; height: number },
+      content: string,
+    ) => ({
+      id: `page:1:block:${order}`,
+      label,
+      order,
+      bounds,
+      content,
+      contentFormat: "markdown",
+      translationPolicy: "include",
+    })
+    const page = (parser: string, blocks: readonly unknown[]) =>
+      parsedDocumentPageSchema.parse({
+        schemaVersion: "1.0.0",
+        sourceHash,
+        parser,
+        configVersion: "v",
+        pageNumber: 1,
+        width: 1_224,
+        height: 1_584,
+        blocks,
+      })
+    const native = page("NativeText-1.0", [
+      block(
+        0,
+        "text",
+        { x: 174, y: 205, width: 783, height: 30 },
+        "HealthFlow: A Self-Evolving AI",
+      ),
+      // The title's second line and the first author line, one unit centred in the title.
+      block(
+        1,
+        "text",
+        { x: 174, y: 240, width: 870, height: 56 },
+        "Agent for Healthcare Research Yinghao Zhu 1,2, Yifan Qi 1",
+      ),
+    ])
+    const paddle = page("PaddleOCR-VL-1.6", [
+      block(
+        0,
+        "doc_title",
+        { x: 174, y: 202, width: 783, height: 67 },
+        "# HealthFlow: A Self-Evolving AI Agent for Healthcare Research",
+      ),
+    ])
+
+    const merged = mergePdfJsAndPaddlePage(native, paddle)
+
+    expect(merged.blocks.map((item) => [item.label, item.content])).toEqual([
+      ["doc_title", "# HealthFlow: A Self-Evolving AI Agent for Healthcare Research"],
+      ["text", "Yinghao Zhu 1,2, Yifan Qi 1"],
     ])
   })
 })

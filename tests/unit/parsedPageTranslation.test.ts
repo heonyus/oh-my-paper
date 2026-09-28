@@ -427,4 +427,74 @@ describe("Paddle page translation blocks", () => {
       "Certain compounds were grouped.",
     ])
   })
+
+  it("cuts a unit PDF.js ran across paragraphs where each paragraph opens, and drops sideways text", () => {
+    const text = (index: number, bounds: object, content: string) => ({
+      id: `page:1:block:${index}`,
+      label: "text",
+      order: index,
+      bounds,
+      content,
+      contentFormat: "markdown",
+      translationPolicy: "include",
+    })
+    const layout = (order: number, y: number, height: number, content: string) => ({
+      label: "text",
+      order,
+      bounds: { x: 170, y, width: 700, height },
+      content,
+    })
+    const page = parsedDocumentPageSchema.parse({
+      schemaVersion: "1.0.0",
+      sourceHash: "a".repeat(64),
+      parser: "PDF.js+PaddleOCR-VL-1.6",
+      configVersion: "hybrid-v12",
+      pageNumber: 1,
+      width: 1_224,
+      height: 1_584,
+      blocks: [
+        // Four affiliations, each opening with a raised number, read as one unit.
+        text(
+          0,
+          { x: 178, y: 326, width: 435, height: 85 },
+          "1 Peking University 2 The University of Hong Kong 3 The Hong Kong University of Science and Technology 4 Shanghai Artificial Intelligence Laboratory",
+        ),
+        text(1, { x: 179, y: 651, width: 866, height: 20 }, "We study agents."),
+        text(2, { x: 179, y: 675, width: 866, height: 20 }, "They learn plans."),
+        text(3, { x: 179, y: 699, width: 866, height: 20 }, "Our work offers a new paradigm."),
+        // The abstract's last line and the keywords line after it.
+        text(
+          4,
+          { x: 179, y: 723, width: 762, height: 49 },
+          "It is effective. Keywords: large language model agent, self-evolving",
+        ),
+        // The arXiv stamp, set sideways, whose box PDF.js spread over the page.
+        text(
+          5,
+          { x: 24, y: 438, width: 1_019, height: 1_036 },
+          "arXiv:2508.02621v2 [cs.AI] 11 Oct 2025",
+        ),
+      ],
+      layout: [
+        layout(0, 327, 22, "$ ^{1} $ Peking University"),
+        layout(1, 350, 21, "$ ^{2} $The University of Hong Kong"),
+        layout(2, 371, 25, "$ ^{3} $The Hong Kong University of Science and Technology"),
+        layout(3, 395, 22, "$ ^{4} $Shanghai Artificial Intelligence Laboratory"),
+        layout(4, 438, 312, "Abstract: The rapid proliferation of scientific knowledge"),
+        layout(5, 754, 24, "Keywords: large language model agent, self-evolving"),
+      ],
+    })
+
+    expect(pageTranslationBlocksFromParsedPage(page).map((unit) => unit.source)).toEqual([
+      "1 Peking University",
+      "2 The University of Hong Kong",
+      "3 The Hong Kong University of Science and Technology",
+      "4 Shanghai Artificial Intelligence Laboratory",
+      "We study agents.",
+      "They learn plans.",
+      "Our work offers a new paradigm.",
+      "It is effective.",
+      "Keywords: large language model agent, self-evolving",
+    ])
+  })
 })

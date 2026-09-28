@@ -1,4 +1,7 @@
 export {
+  isSidewaysMargin,
+  isSidewaysUnit,
+  lineUnitParts,
   type ParsedPageTranslationBlock,
   type PlannedParsedPageTranslations,
   pageTranslationBlocksFromParsedPage,

@@ -5,7 +5,13 @@ import type {
 } from "../../shared/documentPageModel"
 import { type LayoutRegion, layoutRegions } from "./pageTranslationLayoutRegions"
 import type { PageTranslationBlock } from "./pageTranslationSource"
-import { sentenceBreaks, sentencesOf } from "./parsedPageTranslation"
+import {
+  isSidewaysMargin,
+  isSidewaysUnit,
+  lineUnitParts,
+  sentenceBreaks,
+  sentencesOf,
+} from "./parsedPageTranslation"
 import type { PageTextRun } from "./pdfPageTextRuns"
 
 const paragraphLabels = new Set<ParsedPageLayoutBlock["label"]>([
@@ -29,6 +35,12 @@ type Bounds = ParsedPageBlock["bounds"]
 
 function alphanumeric(value: string): string {
   return value.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "")
+}
+
+/** A translation that only repeats its source, link targets and marks aside. */
+function unchanged(translation: string, source: string): boolean {
+  const kept = alphanumeric(translation.replace(/\]\([^)]*\)/gu, "]"))
+  return kept.length > 0 && kept === alphanumeric(source)
 }
 
 /** Evenly spaced slices of a sentence to look for in paragraph text; the first is its start. */
@@ -266,8 +278,9 @@ function samplePoints(bounds: Bounds, lineHeight: number): readonly (readonly [n
 
 /**
  * Each paragraph's text as the PDF itself has it inside the paragraph's box. A line unit that
- * PDF.js ran across two lines is split at its list marker, top half and bottom half going to
- * the boxes they sit in. The layout model's own text is used only where the PDF has none.
+ * PDF.js ran across two lines is split at its list or footnote marker, or where the next
+ * paragraph opens, top half and bottom half going to the boxes they sit in. The layout
+ * model's own text is used only where the PDF has none.
  */
 function paragraphTexts(
   paragraphs: readonly ParsedPageLayoutBlock[],
@@ -284,13 +297,12 @@ function paragraphTexts(
     )
     for (const index of indices) if (index >= 0) texts[index]?.push(text)
   }
+  const hit = ([x, y]: readonly [number, number]) =>
+    paragraphs.some((paragraph) => pointInside(x, y, paragraph.bounds))
   for (const line of lines) {
-    const [top, bottom] = samplePoints(line.bounds, lineHeight)
-    const [upper = "", ...lower] = line.content.split(inlineBullet)
-    if (top && bottom && lower.length > 0) {
-      place([top], upper)
-      place([bottom], lower.join(" • "))
-    } else place(samplePoints(line.bounds, lineHeight), line.content)
+    const parts = lineUnitParts(line, lineHeight, paragraphs)
+    if (parts.length === 1) place(samplePoints(line.bounds, lineHeight), line.content)
+    else for (const part of parts) place(part.points.filter(hit).slice(0, 1), part.content)
   }
   return paragraphs.map((paragraph, index) => texts[index]?.join(" ") || paragraph.content)
 }
@@ -302,6 +314,63 @@ type ParagraphGeometry = {
   readonly indent: number
   readonly hang: number
   readonly bullet: boolean
+  readonly centered: boolean
+  /** Footnotes, each on its own line behind its marker (∗, †). */
+  readonly notes: boolean
+  /** Items that open with their own number — "(1)", "2.", "(b)" — and hang from it. */
+  readonly enumerated: boolean
+}
+
+const noteMarker = /^\s*[∗*†‡§¶]/u
+const enumerator = /^\s*(?:\(\d{1,2}\)|\d{1,2}[.)]|\([a-z]\)|[a-z][.)]|\([ivx]{1,4}\))\s/u
+
+/** Right edge of the text column just above a box: the median of its ten nearest lines. */
+function columnRightAbove(
+  box: Bounds,
+  lines: readonly ParsedPageBlock[],
+  lineHeight: number,
+): number {
+  const above = lines
+    .filter(
+      (line) =>
+        line.bounds.y + line.bounds.height <= box.y + 1 &&
+        line.bounds.x <= box.x + lineHeight &&
+        line.bounds.x + line.bounds.width > box.x + box.width * 0.5,
+    )
+    .sort((top, bottom) => bottom.bounds.y - top.bounds.y)
+    .slice(0, 10)
+  return median(above.map((line) => line.bounds.x + line.bounds.width)) ?? box.x + box.width
+}
+
+/**
+ * A paragraph set centred, as a title page's author list and affiliations are: every line's
+ * middle on the box's middle, and either ragged left edges or one line standing well clear of
+ * the text's left edge in the middle of the page.
+ */
+function isCentered(
+  box: Bounds,
+  inside: readonly ParsedPageBlock[],
+  lineHeight: number,
+  textLeft: number,
+  pageWidth: number,
+): boolean {
+  if (inside.length === 0) return false
+  const middle = box.x + box.width / 2
+  const onMiddle = inside.every(
+    (line) => Math.abs(line.bounds.x + line.bounds.width / 2 - middle) <= lineHeight * 0.6,
+  )
+  if (!onMiddle) return false
+  const lefts = inside.map((line) => line.bounds.x)
+  if (inside.length >= 2) {
+    // Beside the longest line, a centred paragraph's lines stop well short of the box; a
+    // justified one with a hanging indent only looks centred.
+    const widths = inside.map((line) => line.bounds.width).sort((a, b) => b - a)
+    return (
+      Math.max(...lefts) - Math.min(...lefts) > lineHeight &&
+      widths.slice(1).every((width) => width < box.width * 0.9)
+    )
+  }
+  return Math.abs(middle - pageWidth / 2) <= lineHeight && box.x - textLeft > lineHeight * 3
 }
 
 /**
@@ -312,6 +381,7 @@ function paragraphGeometry(
   paragraph: ParsedPageLayoutBlock,
   lines: readonly ParsedPageBlock[],
   pageLineHeight: number,
+  page: { readonly width: number; readonly textLeft: number },
 ): ParagraphGeometry {
   const box = paragraph.bounds
   // A line unit PDF.js ran into the next line is twice as tall; it says nothing of the type.
@@ -341,16 +411,46 @@ function paragraphGeometry(
   const repeated = [...counts].filter(([, count]) => count >= 2).map(([x]) => x)
   const left = repeated.length > 0 ? Math.min(...repeated) : box.x
   const rights = column.map((line) => line.bounds.x + line.bounds.width).sort((a, b) => a - b)
-  const right = Math.max(
+  const ownRight = Math.max(
     Math.min(rights[Math.floor(rights.length * 0.95)] ?? box.x + box.width, box.x + box.width),
     left + lineHeight * 4,
   )
+  // Footnotes and one-line paragraphs (an affiliation) are as wide as their text, but their
+  // translation may run to the edge of the column above them.
+  const notes =
+    paragraph.label === "footnote" &&
+    lines.filter(
+      (line) => centreInside(line.bounds, box, lineHeight * 0.2) && noteMarker.test(line.content),
+    ).length >= 2
+  const ragged = paragraph.label === "footnote" || box.height < lineHeight * 1.6
+  const right = ragged ? Math.max(ownRight, columnRightAbove(box, lines, lineHeight)) : ownRight
   const gaps = inside
     .slice(1)
     .map((line, index) => line.bounds.y - (inside[index]?.bounds.y ?? line.bounds.y))
     .filter((gap) => gap >= lineHeight * 0.9 && gap <= lineHeight * 2.2)
   const pitch = median(gaps) ?? lineHeight * 1.2
   const first = inside[0]
+  // The layout model marks a centred caption itself (`<div style="text-align: center;">`).
+  const declaredCentre = /text-align:\s*center/u.test(paragraph.content)
+  if (declaredCentre || isCentered(box, inside, lineHeight, page.textLeft, page.width)) {
+    const top = Math.min(box.y, first?.bounds.y ?? box.y)
+    const lastLine = inside.at(-1)
+    const bottom = Math.max(
+      box.y + box.height,
+      lastLine ? lastLine.bounds.y + lastLine.bounds.height : 0,
+    )
+    return {
+      rect: { x: box.x, y: top, width: box.width, height: bottom - top },
+      lineHeight,
+      pitch,
+      indent: 0,
+      hang: 0,
+      bullet: false,
+      centered: true,
+      notes: false,
+      enumerated: false,
+    }
+  }
   const firstOnTop = first !== undefined && first.bounds.y <= box.y + pitch * 0.7
   const continuing = inside.filter((line) => line !== first || !firstOnTop)
   const continuation = median(continuing.map((line) => line.bounds.x))
@@ -363,17 +463,22 @@ function paragraphGeometry(
   // A list item starts with a marker; a hanging paragraph whose first line sits at the hanging
   // edge is the rest of an item from the previous column, and gets no marker of its own.
   const continued = hanging && firstOnTop && first.bounds.x - left > lineHeight * 1.2
+  // "(1) We propose…" carries its own number: it hangs from it, with no marker added.
+  const enumerated = firstOnTop && enumerator.test(first.content)
   const bullet =
-    bulletPattern.test(paragraph.content) ||
-    paragraph.label === "list" ||
-    (firstOnTop && bulletPattern.test(first.content)) ||
-    (hanging && !continued)
-  const indent =
-    !bullet && !hanging && firstOnTop && first.bounds.x - left > lineHeight * 0.4
-      ? first.bounds.x - left
-      : 0
+    !enumerated &&
+    (bulletPattern.test(paragraph.content) ||
+      paragraph.label === "list" ||
+      (firstOnTop && bulletPattern.test(first.content)) ||
+      (hanging && !continued))
   const hang =
     bullet || hanging ? Math.max(lineHeight, (continuation ?? left + lineHeight * 1.8) - left) : 0
+  const indent =
+    enumerated && hanging
+      ? -hang
+      : !bullet && !hanging && firstOnTop && first.bounds.x - left > lineHeight * 0.4
+        ? first.bounds.x - left
+        : 0
   const top = Math.min(box.y, first?.bounds.y ?? box.y)
   const lastLine = inside.at(-1)
   const bottom = Math.max(
@@ -387,6 +492,9 @@ function paragraphGeometry(
     indent,
     hang,
     bullet,
+    centered: false,
+    notes,
+    enumerated,
   }
 }
 
@@ -411,11 +519,24 @@ type PlacedRun = ReturnType<typeof runsOnPage>[number]
  */
 function openingBold(box: Bounds, runs: readonly PlacedRun[] | null, lineHeight: number) {
   if (!runs) return null
+  const bold: string[] = []
+  for (const run of readingOrder(box, runs, lineHeight)) {
+    if (!run.bold) return joinWrapped(bold)
+    bold.push(run.text)
+  }
+  return joinWrapped(bold)
+}
+
+/** The runs inside a box in reading order: line by line, left to right. */
+function readingOrder(
+  box: Bounds,
+  runs: readonly PlacedRun[],
+  lineHeight: number,
+): readonly PlacedRun[] {
   const inside = runs
     .filter((run) => centreInside(run.bounds, box, lineHeight * 0.3))
     .filter((run) => !bulletPattern.test(run.text) || run.text.trim().length > 1)
     .sort((left, right) => left.bounds.y - right.bounds.y)
-  // Reading order: line by line, left to right. A subheading may wrap onto a second line.
   const lines: PlacedRun[][] = []
   for (const run of inside) {
     const line = lines.at(-1)
@@ -423,14 +544,69 @@ function openingBold(box: Bounds, runs: readonly PlacedRun[] | null, lineHeight:
     if (line && top !== undefined && Math.abs(run.bounds.y - top) < lineHeight * 0.5) line.push(run)
     else lines.push([run])
   }
-  const bold: string[] = []
-  for (const line of lines) {
-    for (const run of line.sort((left, right) => left.bounds.x - right.bounds.x)) {
-      if (!run.bold) return joinWrapped(bold)
-      bold.push(run.text)
+  return lines.flatMap((line) => line.sort((left, right) => left.bounds.x - right.bounds.x))
+}
+
+/**
+ * Terms the source sets in bold inside the running text, after its opening — "1) **Submitting
+ * stage**: Developers…" — as they read, without trailing punctuation.
+ */
+function inlineBold(
+  box: Bounds,
+  runs: readonly PlacedRun[] | null,
+  lineHeight: number,
+): readonly string[] {
+  if (!runs) return []
+  const phrases: string[][] = []
+  let opening = true
+  let previousBold = false
+  for (const run of readingOrder(box, runs, lineHeight)) {
+    if (!run.bold) {
+      opening = false
+      previousBold = false
+      continue
     }
+    if (opening) continue
+    if (previousBold) phrases.at(-1)?.push(run.text)
+    else phrases.push([run.text])
+    previousBold = true
   }
-  return joinWrapped(bold)
+  return phrases
+    .map((phrase) => joinWrapped(phrase).replace(/[\s:;,.]+$/u, ""))
+    .filter((phrase) => (phrase.match(/\p{L}/gu) ?? []).length >= 4)
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")
+}
+
+/**
+ * Sets in bold, in a translation, the terms the source sets in bold: the Korean term with the
+ * English kept after it ("제출 단계(Submitting stage)"), or the English term itself.
+ */
+function withInlineBold(markdown: string, phrases: readonly string[]): string {
+  let text = markdown
+  for (const phrase of phrases) {
+    const pattern = escapeRegExp(phrase).replace(/\s+/gu, "\\s+")
+    const gloss = new RegExp(`\\(\\s*${pattern}\\s*\\)`, "iu").exec(text)
+    if (gloss) {
+      const before = text.slice(0, gloss.index)
+      const words = phrase.split(/\s+/u).length
+      const term = new RegExp(
+        `(?:[^\\s()*:;,.\\d]+\\s+){0,${Math.min(3, words) - 1}}[^\\s()*:;,.\\d]+$`,
+        "u",
+      ).exec(before)
+      const start = term ? term.index : gloss.index
+      const end = gloss.index + gloss[0].length
+      if (text.slice(start, end).includes("**")) continue
+      text = `${text.slice(0, start)}**${text.slice(start, end)}**${text.slice(end)}`
+      continue
+    }
+    const bare = new RegExp(`(?<![\\p{L}*])${pattern}(?![\\p{L}*])`, "iu").exec(text)
+    if (bare)
+      text = `${text.slice(0, bare.index)}**${bare[0]}**${text.slice(bare.index + bare[0].length)}`
+  }
+  return text
 }
 
 /** Text runs rejoined, with words the line end hyphenated ("cir- culatory") made whole. */
@@ -454,16 +630,20 @@ function boldSentenceCount(source: string, bold: string): number {
 }
 
 /** Whether nearly all of the text inside a box is set in bold, as an abstract may be. */
-function mostlyBold(box: Bounds, runs: readonly PlacedRun[] | null): boolean {
+function mostlySet(
+  box: Bounds,
+  runs: readonly PlacedRun[] | null,
+  style: "bold" | "italic",
+): boolean {
   if (!runs) return false
-  let bold = 0
+  let set = 0
   let total = 0
   for (const run of runs) {
     if (!centreInside(run.bounds, box)) continue
     total += run.text.length
-    if (run.bold) bold += run.text.length
+    if (run[style]) set += run.text.length
   }
-  return total > 0 && bold >= total * 0.85
+  return total > 0 && set >= total * 0.85
 }
 
 /** Whether most of the text inside a box is set in a serif face. */
@@ -517,7 +697,12 @@ function paragraphMarkdown(
       : boldSentenceCount(first.piece.source, leadingBold)
   // Bold as many sentences of the translation as the source sets in bold — all of the piece
   // when the source's bold covers it, even if the translation dropped its full stop.
-  const whole = boldCount > 0 && boldCount >= (sentenceBreaks(first.piece.source).length || 1)
+  // "Keywords: large language…" is bold only up to its colon: text after the last break is not.
+  const sourceBreaks = sentenceBreaks(first.piece.source)
+  const whole =
+    boldCount > 0 &&
+    boldCount >= (sourceBreaks.length || 1) &&
+    !first.piece.source.slice(sourceBreaks.at(-1) ?? 0).trim()
   const end = whole
     ? first.text.length
     : boldCount > 0
@@ -527,9 +712,58 @@ function paragraphMarkdown(
   const lead =
     boldText && /\.$/u.test(sourceOpening) && !/[.:!?]$/u.test(boldText) ? `${boldText}.` : boldText
   const after = end === undefined ? first.text : first.text.slice(end).trim()
-  return [...(lead ? [`**${lead}**`] : []), after, ...rest.map((part) => part.text)]
+  // Numbered items one listed paragraph holds each start their own line.
+  const tail = rest.map((part) =>
+    geometry.enumerated && part.startsItem ? `\n\n${part.text}` : part.text,
+  )
+  const text = [...(lead ? [`**${lead}**`] : []), after, ...tail]
     .filter(Boolean)
     .join(" ")
+    .replaceAll(" \n\n", "\n\n")
+  return geometry.notes ? noteLines(text) : text
+}
+
+/** Footnotes one per line, each marker set against its note as the source sets it. */
+function noteLines(text: string): string {
+  return text
+    .split(/\s+(?=[∗*†‡§¶]\s*\S)/u)
+    .map((note) => note.replace(/^\*/u, "∗"))
+    .join("\n\n")
+}
+
+/**
+ * "Tan † , Liu † ," as PDF text spaces them → "Tan†, Liu†,", and "∗ Corresponding" →
+ * "∗Corresponding": a mark hugs its word, as the source sets it.
+ */
+function attachedMarks(text: string): string {
+  return text
+    .replace(/\s+([†‡∗§¶])\s*(?=[,;)]|$)/gmu, "$1")
+    .replace(/^\*\s+(?=\S)/gmu, "∗")
+    .replace(/^([†‡∗§¶])\s+(?=\S)/gmu, "$1")
+}
+
+const superscripts = "⁰¹²³⁴⁵⁶⁷⁸⁹"
+
+/**
+ * The number a paragraph opens with when the source raises it ("¹Peking University"), so
+ * the translation raises it too; null when the paragraph opens otherwise.
+ */
+function raisedOpening(
+  box: Bounds,
+  runs: readonly PlacedRun[] | null,
+  lineHeight: number,
+): string | null {
+  if (!runs) return null
+  const [first, ...rest] = readingOrder(box, runs, lineHeight)
+  if (!first || !/^\s*\d{1,2}\s*$/u.test(first.text)) return null
+  const body = median(rest.map((run) => run.bounds.height))
+  return body !== null && first.bounds.height < body * 0.8 ? first.text.trim() : null
+}
+
+function withRaisedOpening(translation: string, number: string | null): string {
+  if (number === null) return translation
+  const raised = [...number].map((digit) => superscripts[Number(digit)] ?? digit).join("")
+  return translation.replace(new RegExp(`^\\s*${number}\\s*`, "u"), raised)
 }
 
 /** Drops `key` (alphanumerics only) from the start of `text`, or returns null if it is not there. */
@@ -636,13 +870,31 @@ export function paragraphRegions(
   runs: readonly PageTextRun[] | null = null,
 ): readonly LayoutRegion[] {
   const paragraphs = (page?.layout ?? [])
-    .filter((block) => paragraphLabels.has(block.label))
+    .filter((block) => paragraphLabels.has(block.label) && !isSidewaysMargin(block))
     .sort((left, right) => left.order - right.order)
   if (!page || paragraphs.length === 0) return layoutRegions(blocks)
   const placedRuns = runs ? runsOnPage(runs, page) : null
-  const lines = page.blocks.filter((block) => block.label === "text" || block.label === "list")
+  const textLines = page.blocks.filter((block) => block.label === "text" || block.label === "list")
   const pageLineHeight =
-    median(lines.map((line) => line.bounds.height).filter((height) => height > 0)) ?? 12
+    median(textLines.map((line) => line.bounds.height).filter((height) => height > 0)) ?? 12
+  // The page's lines, a caption's opening line among them.
+  const lines = page.blocks.filter(
+    (block) =>
+      (block.label === "text" ||
+        block.label === "list" ||
+        block.label === "figure_title" ||
+        block.label === "table_title") &&
+      !isSidewaysUnit(block, pageLineHeight),
+  )
+  const lefts = new Map<number, number>()
+  for (const line of lines) {
+    const x = Math.round(line.bounds.x)
+    lefts.set(x, (lefts.get(x) ?? 0) + 1)
+  }
+  const textLeft = Math.min(
+    ...[...lefts].filter(([, count]) => count >= 3).map(([x]) => x),
+    page.width,
+  )
   const content = (page.layout ?? []).filter(
     (block) =>
       block.label !== "header" && block.label !== "footer" && block.label !== "page_number",
@@ -677,7 +929,10 @@ export function paragraphRegions(
     const pieces = placed.filter((placement) => placement.paragraph === index)
     const members = pieces.map((placement) => placement.piece)
     if (members.length === 0 || references.has(paragraph.order)) return []
-    const geometry = paragraphGeometry(paragraph, lines, pageLineHeight)
+    const geometry = paragraphGeometry(paragraph, lines, pageLineHeight, {
+      width: page.width,
+      textLeft,
+    })
     // The type size the PDF sets the paragraph in; PDF.js line units run a little short of it.
     const sourceSize =
       median(
@@ -687,17 +942,36 @@ export function paragraphRegions(
       ) ?? geometry.lineHeight
     const fontSize = sourceSize * koreanScale
     const serif = mostlySerif(paragraph.bounds, placedRuns)
-    const allBold = mostlyBold(paragraph.bounds, placedRuns)
-    const glyphs = [
-      geometry.rect,
-      ...lines
-        .filter((line) => centreInside(line.bounds, paragraph.bounds))
-        .map((line) => line.bounds),
-    ]
-    const maskLeft = Math.min(...glyphs.map((bounds) => bounds.x))
-    const maskTop = Math.min(...glyphs.map((bounds) => bounds.y))
-    const maskRight = Math.max(...glyphs.map((bounds) => bounds.x + bounds.width))
-    const maskBottom = Math.max(...glyphs.map((bounds) => bounds.y + bounds.height))
+    const allBold = mostlySet(paragraph.bounds, placedRuns, "bold")
+    const allItalic = mostlySet(paragraph.bounds, placedRuns, "italic")
+    // The paragraph's glyphs: across the full box, but only as high as its lines, so a rule
+    // just above a footnote survives.
+    const glyphLines = lines
+      .filter((line) => centreInside(line.bounds, paragraph.bounds))
+      .map((line) => line.bounds)
+    const across = [geometry.rect, ...glyphLines]
+    const down = glyphLines.length > 0 ? glyphLines : [geometry.rect]
+    const maskLeft = Math.min(...across.map((bounds) => bounds.x))
+    const maskTop = Math.min(...down.map((bounds) => bounds.y))
+    const maskRight = Math.max(...across.map((bounds) => bounds.x + bounds.width))
+    const maskBottom = Math.max(...down.map((bounds) => bounds.y + bounds.height))
+    const translation = withRaisedOpening(
+      attachedMarks(
+        allBold
+          ? paragraphMarkdown(pieces, geometry, "")
+          : withInlineBold(
+              paragraphMarkdown(
+                pieces,
+                geometry,
+                openingBold(paragraph.bounds, placedRuns, geometry.lineHeight),
+              ),
+              inlineBold(paragraph.bounds, placedRuns, geometry.lineHeight),
+            ),
+      ),
+      raisedOpening(paragraph.bounds, placedRuns, geometry.lineHeight),
+    )
+    // Names, links and the like come back as they are: the source's own pixels say it best.
+    if (unchanged(translation, texts[index] ?? paragraph.content)) return []
     return [
       {
         id: `layout:${paragraph.order}`,
@@ -709,20 +983,16 @@ export function paragraphRegions(
           width: geometry.rect.width / page.width,
           height: geometry.rect.height / page.height,
         },
-        translation: allBold
-          ? paragraphMarkdown(pieces, geometry, "")
-          : paragraphMarkdown(
-              pieces,
-              geometry,
-              openingBold(paragraph.bounds, placedRuns, geometry.lineHeight),
-            ),
+        translation,
         ...(allBold ? { bold: true } : {}),
+        ...(allItalic ? { italic: true } : {}),
         typography: {
           fontSize: (fontSize / page.width) * 100,
           lineHeight: Math.min(2, Math.max(1.1, geometry.pitch / fontSize)),
           indent: (geometry.indent / page.width) * 100,
           hang: (geometry.hang / page.width) * 100,
           bullet: geometry.bullet,
+          ...(geometry.centered ? { centered: true } : {}),
         },
         ...(serif === undefined ? {} : { serif }),
         mask: {

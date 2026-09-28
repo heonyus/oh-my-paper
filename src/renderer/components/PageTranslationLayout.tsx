@@ -91,6 +91,50 @@ function sampleBorder(
   return backgroundColor(pixels)
 }
 
+/** Whether a canvas row holds a horizontal rule: one dark stroke far longer than any glyph. */
+function isRuleRow(context: CanvasRenderingContext2D, left: number, row: number, width: number) {
+  const data = context.getImageData(left, row, width, 1).data
+  const needed = Math.max(24, context.canvas.width * 0.08)
+  let run = 0
+  for (let index = 0; index + 3 < data.length; index += 4) {
+    const dark = (data[index] ?? 255) + (data[index + 1] ?? 255) + (data[index + 2] ?? 255) < 420
+    run = dark ? run + 1 : 0
+    if (run >= needed) return true
+  }
+  return false
+}
+
+/**
+ * A mask's rows, pulled in off a rule that touches its top or bottom edge — the rule over
+ * a page's footnotes sits right against their first line — so the rule stays on the page.
+ */
+function clearOfRules(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  band: number,
+): { readonly top: number; readonly bottom: number } {
+  const canvas = context.canvas
+  const left = Math.max(0, Math.round(x))
+  const span = Math.min(canvas.width - left, Math.round(width))
+  let top = Math.max(0, Math.round(y))
+  let bottom = Math.min(canvas.height, Math.round(y + height))
+  if (span <= 0) return { top, bottom }
+  for (let row = Math.min(bottom - 1, top + Math.round(band)); row >= top; row -= 1)
+    if (isRuleRow(context, left, row, span)) {
+      top = row + 1
+      break
+    }
+  for (let row = Math.max(top, bottom - Math.round(band)); row < bottom; row += 1)
+    if (isRuleRow(context, left, row, span)) {
+      bottom = row
+      break
+    }
+  return { top, bottom }
+}
+
 /** Pixels of our own page render: sharp at high zoom on a retina screen, bounded in memory. */
 const renderPixelBudget = 12_000_000
 
@@ -136,7 +180,9 @@ function useMirroredPage(
         const width = (mask.width + maskPad * 2) * target.width
         const height = (mask.height + maskPad * 2) * target.height
         context.fillStyle = sampleBorder(context, x, y, width, height)
-        context.fillRect(x, y, width, height)
+        const band = maskPad * 2 * target.height
+        const { top, bottom } = clearOfRules(context, x, y, width, height, band)
+        if (bottom > top) context.fillRect(x, top, width, bottom - top)
       }
     }
 
@@ -219,7 +265,11 @@ function fitHeading(
 ): void {
   element.style.height = "auto"
   element.style.width = "max-content"
-  element.style.maxWidth = `${Math.max(region.rect.width, 0.96 - region.rect.x) * 100}%`
+  // A one-line heading may run on to the right; one the source wraps keeps to its width.
+  const pageWidth = element.parentElement?.clientWidth ?? 0
+  const lineHeight = ((region.size ?? 0) / 100) * pageWidth * 1.3
+  const wrapped = lineHeight > 0 && region.rect.height * pageHeight > lineHeight * 1.5
+  element.style.maxWidth = `${(wrapped ? region.rect.width * 1.03 : Math.max(region.rect.width, 0.96 - region.rect.x)) * 100}%`
   const tallest = region.rect.height * pageHeight * 1.15
   const fits = (size: number): boolean => {
     element.style.setProperty("--fit-font-size", String(size))
@@ -401,6 +451,14 @@ function useFittedRegions(
   }, [pageNumber, documentId, containerRef, regions, shape])
 }
 
+/**
+ * "1. 서론" is the source's own section number, not a Markdown list: kept as text, where the
+ * source sets it, instead of an indented list marker.
+ */
+function literalNumbers(translation: string): string {
+  return translation.replace(/^(\s*\d+)\.(?=\s)/gmu, "$1\\.")
+}
+
 function regionStyle(region: LayoutRegion): CSSProperties {
   const style: Record<string, string> = {
     left: `${region.rect.x * 100}%`,
@@ -458,8 +516,10 @@ export function PageTranslationLayout({
           data-kind={region.kind}
           data-block-ids={region.blockIds.join(" ")}
           data-bullet={region.typography?.bullet || undefined}
+          data-centered={region.typography?.centered || undefined}
           data-serif={region.serif || undefined}
           data-bold={region.bold || undefined}
+          data-italic={region.italic || undefined}
           style={regionStyle(region)}
           onMouseEnter={() => setActive(region, true)}
           onMouseLeave={() => setActive(region, false)}
@@ -471,7 +531,7 @@ export function PageTranslationLayout({
             if (event.key === "Enter" || event.key === " ") focusSource(region)
           }}
         >
-          <MarkdownContent source={region.translation} />
+          <MarkdownContent source={literalNumbers(region.translation)} />
         </article>
       ))}
     </div>

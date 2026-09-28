@@ -10,7 +10,12 @@ import {
   storeCachedPageTranslation,
 } from "./pageTranslationCacheRuntime"
 import { withPageTranslationCitationLinks } from "./pageTranslationCitations"
-import { mergePageTranslations, pause, type TranslationStatus } from "./pageTranslationPaneState"
+import {
+  mergePageTranslations,
+  pause,
+  reusablePageTranslations,
+  type TranslationStatus,
+} from "./pageTranslationPaneState"
 import { runPageTranslationBatches } from "./pageTranslationRunner"
 import {
   bindPageSourceBounds,
@@ -93,7 +98,13 @@ export function usePageTranslation({
           parsedPage.configVersion,
         )
         if (cancelled || abortController.signal.aborted) return
-        if (cached) {
+        const source = pageTranslationBlocksFromParsedPage(parsedPage)
+        // A page translated under an earlier parser keeps every sentence it cut the same way.
+        const earlier =
+          cached ?? (await readCachedPageTranslation(documentId, currentPage, provider))
+        if (cancelled || abortController.signal.aborted) return
+        const reusable = earlier ? reusablePageTranslations(earlier, source) : null
+        if (cached && reusable?.complete) {
           bindPageSourceBounds(currentPage, cached)
           await pause(0)
           if (cancelled || abortController.signal.aborted) return
@@ -102,7 +113,10 @@ export function usePageTranslation({
           setStatus("complete")
           return
         }
-        const source = pageTranslationBlocksFromParsedPage(parsedPage)
+        // Units cut differently since the page was cached are translated again; the rest keep
+        // their cached translation.
+        for (const [id, translation] of reusable?.translations ?? [])
+          completedTranslations.set(id, translation)
         if (source.length === 0) {
           setStatus("failed")
           return

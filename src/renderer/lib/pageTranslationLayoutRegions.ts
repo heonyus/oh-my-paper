@@ -16,6 +16,8 @@ export type RegionTypography = {
   readonly indent: number
   readonly hang: number
   readonly bullet: boolean
+  /** Every line centred, as a title page's author list is. */
+  readonly centered?: boolean
 }
 
 /** One source paragraph (or heading) whose translation is typeset in its place. */
@@ -30,6 +32,8 @@ export type LayoutRegion = {
   readonly serif?: boolean
   /** The whole source paragraph is set in bold, as an abstract may be. */
   readonly bold?: boolean
+  /** The whole source paragraph is set in italic, as an affiliation may be. */
+  readonly italic?: boolean
   /** The source's type size in percent of the page width, once the PDF's fonts are read. */
   readonly size?: number
   /** What to paint over on the page copy when it reaches past `rect`: the source's glyphs. */
@@ -117,10 +121,15 @@ export function columnRuns(
     }
     const previousSize = previous?.typography?.fontSize
     const size = region.typography?.fontSize
+    // Type of another size or face — italic affiliations over a serif abstract — is set apart.
     const sameType =
-      previousSize === undefined ||
-      size === undefined ||
-      Math.abs(previousSize - size) <= Math.max(previousSize, size) * 0.1
+      (previousSize === undefined ||
+        size === undefined ||
+        Math.abs(previousSize - size) <= Math.max(previousSize, size) * 0.1) &&
+      Boolean(previous?.italic) === Boolean(region.italic) &&
+      (previous?.serif === undefined ||
+        region.serif === undefined ||
+        previous.serif === region.serif)
     if (
       run &&
       previous &&

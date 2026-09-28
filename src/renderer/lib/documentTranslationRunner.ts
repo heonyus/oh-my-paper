@@ -7,6 +7,7 @@ import {
   storeCachedPageTranslation,
 } from "./pageTranslationCacheRuntime"
 import { withPageTranslationCitationLinks } from "./pageTranslationCitations"
+import { reusablePageTranslations } from "./pageTranslationPaneState"
 import { runPageTranslationBatches } from "./pageTranslationRunner"
 import { type PageTranslationBlock, pageTranslationBatches } from "./pageTranslationSource"
 import {
@@ -163,11 +164,18 @@ export async function translateDocumentPages(input: DocumentTranslationRunnerInp
         input.citations,
       )
       const plan = planParsedPageTranslations(source)
-      return { plan }
+      // A page translated under an earlier parser keeps every sentence it cut the same way.
+      const earlier = await readCachedPageTranslation(input.document.id, page, input.provider)
+      const reused = earlier
+        ? reusablePageTranslations(earlier, source).translations
+        : new Map<string, string>()
+      return { plan, reused }
     })
-    const { plan } = planned
-    const completed = new Map(plan.completed)
-    const batches = pageTranslationBatches(plan.translatable)
+    const { plan, reused } = planned
+    const completed = new Map([...plan.completed, ...reused])
+    const batches = pageTranslationBatches(
+      plan.translatable.filter((block) => !completed.has(block.id)),
+    )
     totalBlocks += plan.initial.length
     let pageCompletedBlocks = plan.initial.filter((block) => block.translation).length
     notifyPageBlocks(input, page, completeBlocks(plan.initial, completed))

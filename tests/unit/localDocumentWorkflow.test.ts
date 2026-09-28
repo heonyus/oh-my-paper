@@ -222,7 +222,7 @@ describe("local document workflow", () => {
         root,
         "parsed-pages",
         document.hash,
-        "pdfjs-paddleocr-vl-1.6-hybrid-v11",
+        "pdfjs-paddleocr-vl-1.6-hybrid-v12",
         "page-1.json",
       )
       const { layout: _layout, ...withoutLayout } = JSON.parse(await readFile(cacheFile, "utf8"))
@@ -236,7 +236,7 @@ describe("local document workflow", () => {
 
       expect(reopened.status).toBe("ready")
       if (reopened.status === "ready") {
-        expect(reopened.page.configVersion).toBe("hybrid-v11")
+        expect(reopened.page.configVersion).toBe("hybrid-v12")
         expect(reopened.page.layout).toEqual([
           {
             label: "table",
@@ -278,7 +278,7 @@ describe("local document workflow", () => {
       })
 
       expect(first.status === "ready" && first.page.parser).toBe("PDF.js+PaddleOCR-VL-1.6")
-      expect(prepared.status === "ready" && prepared.page.configVersion).toBe("hybrid-v11")
+      expect(prepared.status === "ready" && prepared.page.configVersion).toBe("hybrid-v12")
       expect(paddleParse).not.toHaveBeenCalled()
     } finally {
       await rm(root, { recursive: true, force: true })

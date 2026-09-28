@@ -86,6 +86,21 @@ function withoutAffix(content: string, affix: string, side: "start" | "end"): st
   return rest.join("").trim()
 }
 
+/**
+ * A line unit that holds only the end of a heading and the line after it ("…Healthcare
+ * Research Yinghao Zhu, Yifan Qi…"): that line, without the heading's last words, or null.
+ */
+function afterHeadingTail(content: string, heading: string): string | null {
+  const words = heading.split(/\s+/u).filter(Boolean)
+  for (let start = 1; start < words.length - 1; start += 1) {
+    const tail = words.slice(start).join(" ")
+    if (tail.replace(/\s+/gu, "").length < 8) break
+    const rest = withoutAffix(content, tail, "start")
+    if (rest) return rest
+  }
+  return null
+}
+
 type HeadingCut = {
   readonly block: ParsedPageBlock | null
   readonly heading: "before" | "after" | null
@@ -145,6 +160,13 @@ function nativeWithHeadings(
       const rest = cut.block ? [{ ...cut.block, label: "text" as const }] : []
       if (cut.heading === "after") return [...rest, ...place(covering)]
       if (cut.heading === "before") return [...place(covering), ...rest]
+      const next = afterHeadingTail(block.content, headingText(covering))
+      if (next) {
+        const bottom = block.bounds.y + block.bounds.height
+        const y = Math.max(block.bounds.y, covering.bounds.y + covering.bounds.height)
+        const bounds = { ...block.bounds, y, height: Math.max(1, bottom - y) }
+        return [...place(covering), { ...block, label: "text" as const, content: next, bounds }]
+      }
       const longer =
         block.content.replace(/\s+/gu, "").length >
         headingText(covering).replace(/\s+/gu, "").length * 1.5
@@ -274,7 +296,7 @@ export function mergePdfJsAndPaddlePage(
     schemaVersion: "1.0.0",
     sourceHash: nativePage.sourceHash,
     parser: "PDF.js+PaddleOCR-VL-1.6",
-    configVersion: "hybrid-v11",
+    configVersion: "hybrid-v12",
     pageNumber: nativePage.pageNumber,
     width: paddlePage.width,
     height: paddlePage.height,

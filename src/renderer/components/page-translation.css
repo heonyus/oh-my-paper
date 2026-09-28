@@ -234,10 +234,18 @@
 .page-translation-layout-region[data-bold="true"] {
   font-weight: 700;
 }
+.page-translation-layout-region[data-italic="true"] {
+  font-style: italic;
+}
+.page-translation-layout-region[data-centered="true"] {
+  text-align: center;
+}
 .page-translation-layout-region[data-kind="heading"] {
   font-weight: 700;
   line-height: 1.1;
   text-align: left;
+  /* A title that wraps breaks between words, as the source's does, not inside one. */
+  word-break: keep-all;
 }
 .page-translation-pane[data-mode="layout"]
   .page-translation-layout-region
