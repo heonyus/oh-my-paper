@@ -208,6 +208,31 @@ describe("ResearchSidebar", () => {
     expect(screen.getByRole("region", { name: "인용 논문 판독" })).toBeInTheDocument()
   })
 
+  it("keeps the highlight mode manual without mounting automatic generation", async () => {
+    render(
+      <ResearchSidebar
+        document={documentFixture}
+        currentPage={1}
+        cards={[]}
+        citations={[]}
+        expanded
+        provider={{ configured: true, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
+        onToggle={vi.fn()}
+        onJumpToCard={vi.fn()}
+        onCardsChange={vi.fn()}
+        onAiRequest={vi.fn(async () => "answer")}
+        tool="select"
+        onToolChange={vi.fn()}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole("button", { name: "하이라이트 모드" }))
+
+    expect(screen.getByRole("region", { name: "하이라이트 인덱스" })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "자동 하이라이트 실행" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Jev로 후보 선택" })).not.toBeInTheDocument()
+  })
+
   it("starts overview generation when the document is ready", async () => {
     const onAiRequest = vi.fn(async (_request: Omit<AiRequest, "documentId">) => "cached result")
     render(

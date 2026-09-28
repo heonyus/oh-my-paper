@@ -58,8 +58,9 @@ export function saveScholarlyMetadata(knowledge: KnowledgeWriter, item: Scholarl
 
 export function listScholarlyMetadata(knowledge: KnowledgeWriter) {
   return discoverySavedMetadataResultSchema.parse({
-    items: knowledge
-      .findNodes({ kind: "paper", limit: 1_000 })
-      .filter((node) => node.metadata["source"] === "scholarly_search"),
+    items: knowledge.findNodes({ kind: "paper", limit: 1_000 }).filter((node) => {
+      const { source } = node.metadata
+      return source === "scholarly_search"
+    }),
   })
 }

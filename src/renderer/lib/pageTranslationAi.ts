@@ -1,6 +1,7 @@
 import { aiPolicy } from "../../shared/documentAiJobs"
+import { PAGE_TRANSLATION_MAIN_MODEL } from "../../shared/providerModels"
 import type { AiRequestRunner } from "../types"
-import { parsePageTranslationResponse } from "./pageTranslationJson"
+import { isPlaceholderPageTranslation, parsePageTranslationResponse } from "./pageTranslationJson"
 import {
   type PageSourceBlock,
   pageTranslationRequest,
@@ -136,7 +137,11 @@ export function extractPartialTranslations(
 
     try {
       const markdown = JSON.parse(`"${rawMarkdown}"`)
-      if (typeof markdown === "string" && markdown.trim().length > 0) {
+      if (
+        typeof markdown === "string" &&
+        markdown.trim().length > 0 &&
+        !isPlaceholderPageTranslation(markdown)
+      ) {
         result.set(id, markdown)
       }
     } catch {
@@ -220,6 +225,7 @@ async function requestBlocks(
   input: TranslationBatchInput,
   blocks: readonly PageSourceBlock[],
   allowRecovery = true,
+  modelOverride?: string,
 ): Promise<ReadonlyMap<string, string>> {
   const wire = wireBlocksForRequest(blocks)
   const request = {
@@ -228,6 +234,7 @@ async function requestBlocks(
     quote: pageTranslationRequest(wire.blocks),
     before: "",
     after: "",
+    ...(modelOverride ? { pageTranslationModel: modelOverride } : {}),
   }
   let accumulated = ""
   let emittedCount = 0
@@ -252,20 +259,29 @@ async function requestBlocks(
     if (partials.size > 0) input.onPartial(partials)
     const missing = blocks.filter((block) => !partials.get(block.id)?.trim())
     if (missing.length === 0) return partials
-    const retried = await requestBlocks(input, missing, false)
+    const retried = await requestBlocks(input, missing, false, modelOverride)
     return new Map([...partials, ...retried])
   }
   const parsedResponse = parsePageTranslationResponse(result)
   if (!parsedResponse) {
     const positional = parsePositionalTranslation(result, wire.blocks)
     if (!positional) return new Map()
-    const restored = restoreStableIds(positional, wire.stableIds)
+    const restored = new Map(
+      [...restoreStableIds(positional, wire.stableIds)].filter(
+        ([, value]) => !isPlaceholderPageTranslation(value),
+      ),
+    )
+    if (restored.size === 0) return restored
     input.onPartial(restored)
     return restored
   }
   assertKnownUniqueIds(result, wire.blocks)
   const parsed = parsePageTranslationStream(result)
-  const restored = restoreStableIds(parsed, wire.stableIds)
+  const restored = new Map(
+    [...restoreStableIds(parsed, wire.stableIds)].filter(
+      ([, value]) => !isPlaceholderPageTranslation(value),
+    ),
+  )
   input.onPartial(restored)
   return restored
 }
@@ -288,7 +304,7 @@ export async function translatePageBatch(
   for (const group of retryGroups) {
     if (input.signal?.aborted) break
     try {
-      const retried = await requestBlocks(input, group)
+      const retried = await requestBlocks(input, group, true, PAGE_TRANSLATION_MAIN_MODEL)
       for (const [id, value] of retried) translated.set(id, value)
     } catch {
       // 그룹 재시도 실패는 개별 재시도로 이어진다
@@ -298,7 +314,7 @@ export async function translatePageBatch(
   for (const block of stillMissing) {
     if (input.signal?.aborted) break
     try {
-      const retried = await requestBlocks(input, [block])
+      const retried = await requestBlocks(input, [block], true, PAGE_TRANSLATION_MAIN_MODEL)
       for (const [id, value] of retried) translated.set(id, value)
     } catch {
       // 개별 블록 재시도 실패는 아래 unresolved 검사에서 최종 판정한다

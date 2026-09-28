@@ -42,9 +42,9 @@ describe("LocalCredentialStore", () => {
       provider: "openrouter",
       apiKey: "sk-or-user-owned-key-at-least-twenty-characters",
       model: "qwen/qwen3.8-flash",
-      pageTranslationModel: "tencent/hy-mt2-7b",
+      pageTranslationModel: "google/gemini-2.5-flash-lite",
     })
     const reopened = await LocalCredentialStore.open(root, { openrouter: null })
-    expect(reopened.openRouterConfig()?.pageTranslationModel).toBe("tencent/hy-mt2-7b")
+    expect(reopened.openRouterConfig()?.pageTranslationModel).toBe("google/gemini-2.5-flash-lite")
   })
 })

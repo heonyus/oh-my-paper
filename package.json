@@ -19,7 +19,7 @@
     "dev": "node scripts/dev-electron.mjs",
     "dev:web": "concurrently \"tsx src/server/main.ts\" \"vite --config vite.web.config.ts --port 5173\"",
     "build:web": "vite build --config vite.web.config.ts",
-    "start:web": "tsx src/server/main.ts",
+    "start:web": "tsx src/cli/start.ts",
     "build": "node scripts/build-electron.mjs && vite build",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.electron.json --noEmit && tsc -p tsconfig.web.json --noEmit && tsc -p tsconfig.worker.json --noEmit && tsc -p tsconfig.server.json --noEmit",
     "lint": "biome check .",
@@ -42,7 +42,9 @@
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test",
     "verify:installed-layout": "node scripts/verify-installed-layout.mjs",
     "menubar:build": "mkdir -p menubar/bin && swiftc -O -o menubar/bin/oh-my-paper-menubar menubar/main.swift",
-    "menubar": "npm run menubar:build && ./menubar/bin/oh-my-paper-menubar --repo \"$PWD\""
+    "menubar": "npm run menubar:build && ./menubar/bin/oh-my-paper-menubar --repo \"$PWD\"",
+    "setup": "tsx src/cli/setup.ts",
+    "start:web:raw": "tsx src/server/main.ts"
   },
   "build": {
     "appId": "com.honey.oh-my-paper",
@@ -147,12 +149,14 @@
     "wait-on": "^8.0.5"
   },
   "dependencies": {
+    "@clack/prompts": "^1.8.1",
     "@codemirror/commands": "^6.11.0",
     "@codemirror/lang-markdown": "^6.5.2",
     "@codemirror/language": "^6.12.4",
     "@codemirror/state": "^6.7.4",
     "@codemirror/view": "^6.43.11",
     "@lezer/highlight": "^1.2.3",
+    "@openai/codex": "^0.155.1",
     "better-auth": "1.7.4",
     "docx": "^9.7.1",
     "dotenv": "^16.6.1",

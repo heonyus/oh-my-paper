@@ -3,7 +3,6 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { app, BrowserWindow, clipboard, ipcMain, shell } from "electron"
 import { collectionChannels } from "../shared/collectionIpc"
-import { documentOcrKeySchema } from "../shared/documentOcr"
 import {
   citationLookupRequestSchema,
   citationLookupResultSchema,
@@ -40,7 +39,6 @@ import { DocumentAnalysisService } from "./documentAnalysisService"
 import { DocumentAstService } from "./documentAstService"
 import { chooseAndImport, importFromPath, importPaths } from "./documentImportIpc"
 import { DocumentLayoutService } from "./documentLayoutService"
-import { DocumentOcrCredentialService } from "./documentOcrCredentialService"
 import { createDocumentPageParser } from "./documentPageParser"
 import { readDocumentBytes } from "./documentService"
 import { InterchangeService } from "./interchangeService"
@@ -83,7 +81,6 @@ export function registerApplicationIpc(
     ? registerCollectionAssetProtocol(collection.files.root, authorize)
     : null
   const provider = new ProviderService(serviceRoot)
-  const ocrCredentials = new DocumentOcrCredentialService(serviceRoot, process.env)
   const codexAdapter = new CodexSubscriptionAdapter({ appRoot: serviceRoot })
   const aiModes = new AiModeStore(serviceRoot)
   const ast = new DocumentAstService(store)
@@ -220,9 +217,6 @@ export function registerApplicationIpc(
     )
   })
   ipcMain.handle(ipcChannels.documentOcrStatus, () => paddlePageParser.status())
-  ipcMain.handle(ipcChannels.documentOcrSaveKey, async (_event, value: unknown) => {
-    await ocrCredentials.saveKey(documentOcrKeySchema.parse(value))
-  })
   return async () => {
     disposeLocalInference()
     localInference.dispose()

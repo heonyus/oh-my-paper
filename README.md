@@ -40,62 +40,46 @@ artifacts, not evidence that the current 2.0 checkout is ready to install or dis
 Current packaging targets macOS arm64 only. The oldest supported macOS version has not been
 validated. See [Mac packaging](docs/mac-release.md) for local commands and distribution prerequisites.
 
-### Run from source
+### Run from source (local browser app)
 
-Requirements: an Apple Silicon Mac, Node.js 22+, npm, and configured account infrastructure for
-normal authenticated use.
+Requirements: Node.js 22+ and npm. An Apple Silicon Mac is needed for the optional OCR
+runtime and the desktop app.
 
 ```bash
 git clone https://github.com/heonyus/oh-my-paper.git
-cd ohmypaper
+cd oh-my-paper
 npm ci
-npm run build
-cp .env.example .env
+npm run build:web
+npm run start:web
 ```
 
-For the explicitly authorized owner-only Mac installation, main can instead read
-`local-access.json` in that installation's user-data directory: `{ "version": 1,
-"mode": "local", "accountId": "<locally generated UUID>" }`. It opens the existing
-collection as `이 Mac · 로컬` without a Google session or server privileges. This file
-is not bundled or supplied through renderer IPC; profiles without it still require
-the account bindings below. AI connections remain separate and explicit.
+The first `npm run start:web` checks the local runtime step by step — dependencies, the
+bundled ChatGPT login runtime, and the PaddleOCR-VL engine — and opens a terminal
+onboarding picker when no AI connection exists. Choose Claude 구독 (the local Claude Code
+login, default model Claude Sonnet 5), ChatGPT 구독 (browser or device-code login, no API
+key) or an API-key provider with arrow keys and Enter. When
+the OCR engine is missing, the picker offers to download it; you can also install it
+later with `npm run setup:paddle-vl`. Re-run setup anytime with `npm run setup`.
+Non-interactive shells skip the picker and start the server directly.
 
-For account-managed use, fill these three non-secret bindings in `.env` using an authorized account service:
+Open `http://127.0.0.1:8788`. If AI is not connected yet, the browser shows a short
+guided connect screen (Claude 구독, ChatGPT 로그인 or API 키) instead of the library.
+Without a saved choice, the browser app starts in Claude 구독 mode whenever the `claude`
+CLI is installed.
 
-- `OH_MY_PAPER_ACCOUNT_SERVICE_ORIGIN`: account API HTTPS origin.
-- `OH_MY_PAPER_ACCOUNT_ISSUER`: expected session issuer, matching the backend's `APP_ISSUER`.
-- `OH_MY_PAPER_GOOGLE_CLIENT_ID`: Google Desktop OAuth client ID accepted by the backend's `GOOGLE_CLIENT_IDS`.
+Reader translation, explanation, summary, chat and research answers use the connected
+subscription or API model. The official `@openai/codex` runtime is an application
+dependency; the local server starts it when needed — you do not install or start
+`@bitkyc08/opencodex` for this path. A separate app-owned profile retains the ChatGPT
+connection across restarts; **로그아웃** disconnects that profile only.
 
-Both origins must have no path, trailing slash, query, fragment, or credentials. Google setup needs
-a Desktop OAuth client and appropriate consent-screen configuration. The account backend needs
-its own database and signing key; those secrets never belong in the desktop `.env`.
-See [account-service prerequisites](docs/account-service.md#deployment-prerequisites-and-unverified-gates).
-
-Then run `npm run dev`. The build above is required because the development launcher loads the
-Electron main/preload entry from `dist-electron`; rerun it after main/preload changes. The launcher
-starts Vite and Electron; it does not provision the backend or configure Google. Electron's main
-process loads `.env` via `dotenv/config`; inherited environment values take precedence. Missing or
-invalid account bindings leave the app locked (`service_not_configured`).
-After verified online authentication, the session policy permits up to seven days of bounded offline
-local use, subject to lease expiry and known revocation. This is not a guest mode.
-
-Keep `.env` uncommitted. Packaged apps need separately supplied trusted main-process bindings;
-the development `.env` is not bundled. Synthetic test issuers belong only to dedicated test launchers,
-never a production login bypass. The local account-service HTTP fixture is not a valid production
-desktop HTTPS binding.
-
-## Local processing and optional runtimes
-
-PDF rendering, library storage, notes, highlights, search, and built-in structure detection work
-locally. For stronger page structure analysis, install the optional local parser:
+For stronger page structure analysis — scanned PDFs, figures, tables, equations —
+install the optional local parser. It requires Python 3.12 and `uv`, and model
+downloads can be large:
 
 ```bash
 npm run setup:paddle-vl
 ```
-
-This explicitly downloads PaddleOCR-VL into a local runtime. Local document processing does not
-remove the Google account requirement. There is no zero-charge guarantee: provider subscriptions,
-optional APIs/OCR, and account infrastructure have separate costs and limits.
 
 Optional local runtimes:
 
@@ -105,7 +89,56 @@ npm run setup:mineru
 npm run setup:paddle-vl
 ```
 
-They require Python 3.12 and `uv`; model downloads can be large.
+Provider subscriptions, optional APIs/OCR, and account infrastructure have separate
+costs and limits; there is no zero-charge guarantee.
+
+### Desktop app (Electron)
+
+The desktop shell additionally builds the Electron main/preload entries:
+
+```bash
+npm run build
+npm run dev
+```
+
+The build above is required because the development launcher loads the Electron
+main/preload entry from `dist-electron`; rerun it after main/preload changes. The
+launcher starts Vite and Electron; it does not provision the backend or configure
+Google. Electron's main process loads `.env` via `dotenv/config`; inherited
+environment values take precedence.
+
+For the explicitly authorized owner-only Mac installation, main can instead read
+`local-access.json` in that installation's user-data directory: `{ "version": 1,
+"mode": "local", "accountId": "<locally generated UUID>" }`. It opens the existing
+collection as `이 Mac · 로컬` without a Google session or server privileges. This file
+is not bundled or supplied through renderer IPC; profiles without it still require
+the account bindings below. AI connections remain separate and explicit.
+
+For account-managed profiles, fill the three non-secret bindings in `.env` (see
+`.env.example`) using an authorized account service:
+
+- `OH_MY_PAPER_ACCOUNT_SERVICE_ORIGIN`: account API HTTPS origin.
+- `OH_MY_PAPER_ACCOUNT_ISSUER`: expected session issuer, matching the backend's `APP_ISSUER`.
+- `OH_MY_PAPER_GOOGLE_CLIENT_ID`: Google Desktop OAuth client ID accepted by the backend's `GOOGLE_CLIENT_IDS`.
+
+Both origins must have no path, trailing slash, query, fragment, or credentials. Google setup needs
+a Desktop OAuth client and appropriate consent-screen configuration. The account backend needs
+its own database and signing key; those secrets never belong in the desktop `.env`.
+See [account-service prerequisites](docs/account-service.md#deployment-prerequisites-and-unverified-gates).
+Missing or invalid account bindings leave the desktop app locked (`service_not_configured`).
+After verified online authentication, the session policy permits up to seven days of bounded offline
+local use, subject to lease expiry and known revocation. This is not a guest mode.
+
+Keep `.env` uncommitted. Packaged apps need separately supplied trusted main-process bindings;
+the development `.env` is not bundled. Synthetic test issuers belong only to dedicated test launchers,
+never a production login bypass. The local account-service HTTP fixture is not a valid production
+desktop HTTPS binding.
+
+## Local processing
+
+PDF rendering, library storage, notes, highlights, search, and built-in structure
+detection work locally. Page structure analysis runs on-device through PDF.js and
+PaddleOCR-VL; importing or opening a PDF never sends it anywhere by itself.
 
 ### GPU acceleration for PaddleOCR-VL
 
@@ -123,14 +156,20 @@ appears as analysis reaches each page.
 
 ## Optional AI providers
 
+### Desktop and existing API connections
+
 Google app identity does not grant AI access. Configure a separate connection under **Settings → AI**:
 
 - ChatGPT subscription mode uses the official local Codex App Server runtime, separate login, and
   an app-owned profile with OS-keyring credentials. It does not copy another app's login or silently
   fall back to a paid API. A working runtime and eligible user subscription are prerequisites;
   live login, inference, cancellation, and usage reporting still need verification.
-- API mode uses your own provider keys. Gemini, Groq, OpenAI, OpenRouter and an existing local
-  OpenCodex proxy are separate choices. PDF structure analysis stays local through PDF.js and
+- Claude subscription mode (browser app only, personal use) runs the locally installed Claude
+  Code CLI headlessly with its existing login; the default model is `claude-sonnet-5`. Anthropic
+  does not allow third-party products to offer claude.ai login without approval, so this mode
+  is for the owner's own Mac and must not be shipped to other users.
+- API mode uses your own provider keys. Gemini, Groq, OpenAI and OpenRouter are separate
+  choices. PDF structure analysis stays local through PDF.js and
   PaddleOCR-VL and does not need a hosted OCR key.
 
 See [subscription authentication](docs/subscription-auth.md) for the implementation boundary.

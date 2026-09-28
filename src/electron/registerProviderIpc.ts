@@ -15,7 +15,7 @@ import {
 } from "../shared/ipc"
 import { ipcChannels } from "../shared/ipcChannels"
 import { AiJobRegistry, publicAiJobEvent } from "./aiJobRegistry"
-import type { AiModeStore } from "./aiModeStore"
+import { AiModeConfigurationError, type AiModeStore } from "./aiModeStore"
 import type { CodexSubscriptionAdapter } from "./codexSubscriptionAdapter"
 import type { ProviderService } from "./providerService"
 import { subscriptionPrompt } from "./subscriptionPrompt"
@@ -70,6 +70,9 @@ export function registerProviderIpc(
 
   ipc.handle(ipcChannels.providerSaveMode, async (_event, value: unknown) => {
     const parsed = aiModeRequestSchema.parse(value)
+    if (parsed.mode === "claude") {
+      throw new AiModeConfigurationError("Claude 구독 모드는 브라우저 앱에서만 사용할 수 있습니다")
+    }
     await aiModes.save(parsed)
   })
 

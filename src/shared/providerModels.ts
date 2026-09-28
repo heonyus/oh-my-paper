@@ -1,8 +1,15 @@
 import { z } from "zod"
 
-export const providerKindSchema = z.enum(["openai", "openrouter", "opencodex", "gemini", "groq"])
+export const providerKindSchema = z.enum([
+  "openai",
+  "openrouter",
+  "opencodex",
+  "gemini",
+  "groq",
+  "anthropic",
+])
 
-export const aiModeSchema = z.enum(["api", "chatgpt"])
+export const aiModeSchema = z.enum(["api", "chatgpt", "claude"])
 export type AiMode = z.infer<typeof aiModeSchema>
 
 export const OPENAI_MODEL_OPTIONS = [
@@ -27,6 +34,7 @@ export const GEMINI_MODEL_OPTIONS = [
 
 export const OPENROUTER_MODEL_OPTIONS = [
   "deepseek/deepseek-v4.1-flash",
+  "z-ai/glm-5.3-flash",
   "google/gemini-2.5-flash-lite",
   "qwen/qwen3.7-flash",
   "qwen/qwen3.8-flash",
@@ -50,18 +58,18 @@ export function isHyMtModel(model: string): boolean {
   return model.startsWith("tencent/hy-mt")
 }
 
+export function isOpenRouterPageTranslationModel(value: string): boolean {
+  return (
+    value === PAGE_TRANSLATION_MAIN_MODEL ||
+    OPENROUTER_PAGE_TRANSLATION_OPTIONS.some((option) => option === value)
+  )
+}
+
 export const GROQ_MODEL_OPTIONS = [
   "llama-3.3-70b-versatile",
   "llama-3.1-8b-instant",
   "openai/gpt-oss-120b",
   "openai/gpt-oss-20b",
-] as const
-
-export const OPENCODEX_MODEL_OPTIONS = [
-  "gpt-5.6-sol",
-  "gpt-5.6-terra",
-  "gpt-5.6-luna",
-  "cursor/gemini-3.8-flash",
 ] as const
 
 export type OpenRouterModel = (typeof OPENROUTER_MODEL_OPTIONS)[number]

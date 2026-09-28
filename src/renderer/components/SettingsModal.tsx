@@ -6,6 +6,7 @@ import type { AiMode } from "../../shared/providerModels"
 import type { AppearanceTheme } from "../../shared/schemas"
 import { uiFontScaleLabel, uiFontScalePercent, uiFontScalePresets } from "../../shared/uiAppearance"
 import { AiProviderSettings, useAiProviderForm } from "./AiProviderSettings"
+import { ClaudeSettings } from "./ClaudeSettings"
 import { CodexSettings } from "./CodexSettings"
 import { DocumentOcrSettings } from "./DocumentOcrSettings"
 import {
@@ -64,7 +65,8 @@ export function SettingsModal({
     : appearanceOnly
       ? sections.filter((candidate) => candidate.id !== "ai")
       : sections
-  const aiProviderForm = useAiProviderForm(status, openRouterRequired)
+  const hideChatgptMode = locked && status.mode === undefined
+  const aiProviderForm = useAiProviderForm(status, openRouterRequired, hideChatgptMode)
   const credentialsReady = status.configured
   const dialog = useRef<HTMLDialogElement>(null)
   useLayoutEffect(() => {
@@ -107,7 +109,7 @@ export function SettingsModal({
               <h3>{visibleSections.find((item) => item.id === section)?.label}</h3>
               {section === "ai" ? (
                 <span className="settings-connection" data-ready={credentialsReady}>
-                  <i /> {credentialsReady ? "연결 준비됨" : "OpenRouter API 키 설정 필요"}
+                  <i /> {credentialsReady ? "연결 준비됨" : "AI 연결 설정 필요"}
                 </span>
               ) : null}
             </div>
@@ -186,11 +188,20 @@ export function SettingsModal({
                       onSave={onSave}
                       onModeSave={onModeSave ?? (async () => {})}
                       openRouterOnly={openRouterRequired}
+                      hideChatgptMode={hideChatgptMode}
+                      claudeAvailable={Boolean(window.ohmypaper?.claude)}
                     />
-                    {!openRouterRequired && aiProviderForm.mode === "chatgpt" ? (
+                    {!hideChatgptMode && aiProviderForm.mode === "chatgpt" ? (
                       <CodexSettings
                         onConnectionChange={async () => {
                           await onModeSave?.("chatgpt")
+                        }}
+                      />
+                    ) : null}
+                    {!hideChatgptMode && aiProviderForm.mode === "claude" ? (
+                      <ClaudeSettings
+                        onConnectionChange={async () => {
+                          await onModeSave?.("claude")
                         }}
                       />
                     ) : null}

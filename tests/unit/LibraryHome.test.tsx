@@ -221,7 +221,9 @@ describe("LibraryHome", () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole("button", { name: `${report.title} 열기` }))
+    const openButton = screen.getByRole("button", { name: `${report.title} 열기` })
+    expect(openButton).not.toBeDisabled()
+    fireEvent.click(openButton)
     expect(onSelect).toHaveBeenCalledWith(report.id)
     fireEvent.click(screen.getByRole("button", { name: `${report.title} 다시 시도` }))
     expect(onRetryAnalysis).toHaveBeenCalledWith(report.id)

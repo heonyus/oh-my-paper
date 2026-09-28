@@ -161,7 +161,12 @@ describe("Paddle page parser service", () => {
       expect(await log("starts.log")).toEqual([
         "--vlm-backend vllm-server --vlm-server-url http://127.0.0.1:18111/v1 --vlm-model PaddleOCR-VL-1.6-0.9B local-secret",
       ])
-      expect(await log("requests.log")).toEqual(["1,2,3,4,5,6,7,8", "10,9"])
+      const requests = await log("requests.log")
+      expect(requests[0]).toBe("1,2,3,4,5,6,7,8")
+      // Page 10 is asked for while the worker may already be taking the rest, so the
+      // order depends on timing; what matters is that every page is parsed exactly once.
+      const remaining = requests.slice(1).flatMap((line) => line.split(",").map(Number))
+      expect(remaining.sort((left, right) => left - right)).toEqual([9, 10])
       service.dispose()
       expect(vlmServer.stop).toHaveBeenCalledOnce()
     } finally {

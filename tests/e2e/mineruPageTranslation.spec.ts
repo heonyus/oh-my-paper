@@ -6,11 +6,13 @@ import { _electron as electron, expect, test } from "@playwright/test"
 const {
   OH_MY_PAPER_MINERU_COMMAND: mineruCommand,
   OH_MY_PAPER_E2E_EXECUTABLE: packagedExecutable,
+  OH_MY_PAPER_E2E_OPENAI_KEY: openaiKey,
 } = process.env
 
 test("MinerU paragraphs map to translated cards without visual blocks", async () => {
   test.skip(!mineruCommand, "requires the managed MinerU runtime")
-  if (!mineruCommand) return
+  test.skip(!openaiKey, "requires OH_MY_PAPER_E2E_OPENAI_KEY for AI translation")
+  if (!mineruCommand || !openaiKey) return
   test.setTimeout(120_000)
   const temporaryRoot = await mkdtemp(join(tmpdir(), "ohmypaper-mineru-translation-e2e-"))
   const evidenceDirectory = join(process.cwd(), ".omo", "evidence", "mineru-page-translation")
@@ -21,14 +23,14 @@ test("MinerU paragraphs map to translated cards without visual blocks", async ()
       ...process.env,
       OH_MY_PAPER_USER_DATA_DIR: join(temporaryRoot, "user-data"),
       OH_MY_PAPER_MINERU_COMMAND: mineruCommand,
-      OH_MY_PAPER_AI_PROVIDER: "opencodex",
-      OH_MY_PAPER_AI_MODEL: "gpt-5.6-terra",
     },
   })
   try {
     const page = await application.firstWindow()
-    await page.evaluate(() =>
-      window.ohmypaper.saveProviderConfig({ provider: "opencodex", model: "gpt-5.6-terra" }),
+    await page.evaluate(
+      (key) =>
+        window.ohmypaper.saveProviderConfig({ provider: "openai", apiKey: key, model: "gpt-5" }),
+      openaiKey,
     )
     const fixture = join(process.cwd(), "tests", "fixtures", "sample-paper.pdf")
     const imported = await page.evaluate(async (path) => {

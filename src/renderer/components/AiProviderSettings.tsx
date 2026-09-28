@@ -8,7 +8,6 @@ import {
   GROQ_MODEL_OPTIONS,
   isOpenRouterModel,
   OPENAI_MODEL_OPTIONS,
-  OPENCODEX_MODEL_OPTIONS,
   OPENROUTER_MODEL_OPTIONS,
   OPENROUTER_PAGE_TRANSLATION_MODEL,
   OPENROUTER_PAGE_TRANSLATION_OPTIONS,
@@ -25,8 +24,6 @@ function providerModelOptions(provider: ProviderConfig["provider"]): readonly st
       return OPENROUTER_MODEL_OPTIONS
     case "groq":
       return GROQ_MODEL_OPTIONS
-    case "opencodex":
-      return OPENCODEX_MODEL_OPTIONS
   }
 }
 
@@ -40,8 +37,6 @@ function nextProviderModel(provider: ProviderConfig["provider"]): string {
       return "gpt-5"
     case "openrouter":
       return DEFAULT_OPENROUTER_MODEL
-    case "opencodex":
-      return "gpt-5.6-sol"
     case "gemini":
       return "gemini-3.5-flash-lite"
     case "groq":
@@ -54,11 +49,15 @@ export function AiProviderSettings({
   onSave,
   onModeSave = async () => {},
   openRouterOnly = false,
+  hideChatgptMode = false,
+  claudeAvailable = false,
 }: {
   readonly form: AiProviderFormState
   readonly onSave: (config: ProviderConfig) => Promise<void>
   readonly onModeSave?: (mode: AiMode) => Promise<void>
   readonly openRouterOnly?: boolean | undefined
+  readonly hideChatgptMode?: boolean | undefined
+  readonly claudeAvailable?: boolean | undefined
 }): JSX.Element {
   const {
     mode,
@@ -75,32 +74,49 @@ export function AiProviderSettings({
     message,
     setMessage,
   } = form
+  const [saving, setSaving] = useState(false)
+
+  async function saveMode(nextMode: AiMode, previousMode: AiMode): Promise<void> {
+    setSaving(true)
+    setMessage("")
+    setMode(nextMode)
+    try {
+      await onModeSave(nextMode)
+      setMessage("저장됨")
+    } catch (error) {
+      setMode(previousMode)
+      setMessage(`저장 실패: ${errorMessage(error)}`)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
+    setSaving(true)
+    setMessage("")
     try {
       if (mode === "api") {
         await onSave(
           provider === "openrouter"
             ? { provider, model, apiKey: key, pageTranslationModel }
-            : provider === "opencodex"
-              ? { provider, model }
-              : { provider, model, apiKey: key },
+            : { provider, model, apiKey: key },
         )
       }
-      if (!openRouterOnly) await onModeSave(mode)
+      if (!hideChatgptMode) await onModeSave(mode)
       setKey("")
       setMessage("저장됨")
     } catch (error) {
-      if (!(error instanceof Error)) throw error
-      setMessage("저장 실패")
+      setMessage(`저장 실패: ${errorMessage(error)}`)
+    } finally {
+      setSaving(false)
     }
   }
 
   return (
     <form className="settings-ai-form" onSubmit={(event) => void submit(event)}>
       <div className="settings-group">
-        {!openRouterOnly ? (
+        {!hideChatgptMode ? (
           <label className="settings-row" htmlFor="ai-mode">
             <span>AI 접근 방식</span>
             <select
@@ -108,12 +124,17 @@ export function AiProviderSettings({
               value={mode}
               onChange={(event) => {
                 const next = event.currentTarget.value
-                if (next === "api" || next === "chatgpt") {
-                  setMode(next)
-                  void onModeSave(next)
+                if (
+                  next === "api" ||
+                  next === "chatgpt" ||
+                  (next === "claude" && claudeAvailable)
+                ) {
+                  void saveMode(next, mode)
                 }
               }}
+              disabled={saving}
             >
+              {claudeAvailable ? <option value="claude">Claude 구독</option> : null}
               <option value="chatgpt">ChatGPT 구독</option>
               <option value="api">API 키·로컬 연결 (고급)</option>
             </select>
@@ -121,34 +142,35 @@ export function AiProviderSettings({
         ) : null}
         {mode === "api" ? (
           <>
-            {!openRouterOnly ? (
-              <label className="settings-row" htmlFor="ai-provider">
-                <span>Provider</span>
-                <select
-                  id="ai-provider"
-                  value={provider}
-                  onChange={(event) => {
-                    const next = event.currentTarget.value
-                    if (
-                      next !== "openai" &&
-                      next !== "openrouter" &&
-                      next !== "opencodex" &&
-                      next !== "gemini" &&
-                      next !== "groq"
-                    )
-                      return
-                    setProvider(next)
-                    setModel(nextProviderModel(next))
-                  }}
-                >
-                  <option value="gemini">Gemini API</option>
-                  <option value="groq">Groq</option>
-                  <option value="openai">OpenAI API</option>
-                  <option value="openrouter">OpenRouter</option>
-                  <option value="opencodex">로컬 OpenAI 호환 프록시</option>
-                </select>
-              </label>
-            ) : null}
+            <label className="settings-row" htmlFor="ai-provider">
+              <span>Provider</span>
+              <select
+                id="ai-provider"
+                value={provider}
+                onChange={(event) => {
+                  const next = event.currentTarget.value
+                  if (
+                    next !== "openai" &&
+                    next !== "openrouter" &&
+                    next !== "gemini" &&
+                    next !== "groq"
+                  )
+                    return
+                  if (openRouterOnly && next !== "openrouter") return
+                  setProvider(next)
+                  setModel(nextProviderModel(next))
+                }}
+              >
+                {!openRouterOnly ? (
+                  <>
+                    <option value="gemini">Gemini API</option>
+                    <option value="groq">Groq</option>
+                    <option value="openai">OpenAI API</option>
+                  </>
+                ) : null}
+                <option value="openrouter">OpenRouter</option>
+              </select>
+            </label>
             <label className="settings-row" htmlFor="provider-model">
               <span>모델</span>
               <select
@@ -182,58 +204,57 @@ export function AiProviderSettings({
                 </select>
               </label>
             ) : null}
-            {provider !== "opencodex" ? (
-              <label className="settings-row" htmlFor="provider-key">
-                <span>
-                  {openRouterOnly ? "OpenRouter API 키" : "API 키"}
-                  {keyConfigured ? (
-                    <small className="settings-key-status">
-                      <Check size={12} aria-hidden /> 저장된 키 사용 중
-                    </small>
-                  ) : null}
-                </span>
-                <input
-                  id="provider-key"
-                  aria-label={openRouterOnly ? "OpenRouter API 키" : "API 키"}
-                  type="password"
-                  autoComplete="off"
-                  value={key}
-                  placeholder={
-                    keyConfigured
-                      ? "변경하려면 새 키 입력"
-                      : provider === "groq"
-                        ? "gsk_…"
-                        : "API 키"
-                  }
-                  onChange={(event) => setKey(event.currentTarget.value)}
-                />
-              </label>
-            ) : null}
+            <label className="settings-row" htmlFor="provider-key">
+              <span>
+                {openRouterOnly ? "OpenRouter API 키" : "API 키"}
+                {keyConfigured ? (
+                  <small className="settings-key-status">
+                    <Check size={12} aria-hidden /> 저장된 키 사용 중
+                  </small>
+                ) : null}
+              </span>
+              <input
+                id="provider-key"
+                aria-label={openRouterOnly ? "OpenRouter API 키" : "API 키"}
+                type="password"
+                autoComplete="off"
+                value={key}
+                placeholder={
+                  keyConfigured ? "변경하려면 새 키 입력" : provider === "groq" ? "gsk_…" : "API 키"
+                }
+                onChange={(event) => setKey(event.currentTarget.value)}
+                disabled={saving}
+              />
+            </label>
           </>
         ) : (
           <div className="settings-row">
             <span className="settings-help">
-              아래에서 ChatGPT로 로그인하세요. 별도 API 키는 필요하지 않습니다.
+              {mode === "claude"
+                ? "아래에서 Claude 연결 상태를 확인하세요. 별도 API 키는 필요하지 않습니다."
+                : "아래에서 ChatGPT로 로그인하세요. 별도 API 키는 필요하지 않습니다."}
             </span>
           </div>
         )}
       </div>
-      {mode === "api" ? (
+      {mode === "api" || message ? (
         <div className="settings-form-footer">
           {message ? (
-            <span role="status">
-              <Check size={13} /> {message}
+            <span role="status" data-error={message.startsWith("저장 실패") || undefined}>
+              {message.startsWith("저장 실패") ? null : <Check size={13} />} {message}
             </span>
           ) : (
             <span />
           )}
-          <button
-            className="settings-save"
-            type="submit"
-            disabled={openRouterOnly && key.trim().length < 20}
-          >
-            {openRouterOnly ? "OpenRouter 설정 저장" : "암호화하여 저장"}
-          </button>
+          {mode === "api" ? (
+            <button
+              className="settings-save"
+              type="submit"
+              disabled={saving || (openRouterOnly && key.trim().length < 20)}
+            >
+              {openRouterOnly ? "OpenRouter 설정 저장" : "암호화하여 저장"}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </form>
@@ -259,10 +280,14 @@ export type AiProviderFormState = {
 export function useAiProviderForm(
   status: ProviderStatus,
   openRouterOnly = false,
+  hideChatgptMode = false,
 ): AiProviderFormState {
-  const initialProvider = openRouterOnly ? "openrouter" : status.provider
+  const initialProvider =
+    openRouterOnly || status.provider === "opencodex" || status.provider === "anthropic"
+      ? "openrouter"
+      : status.provider
   const [provider, setProvider] = useState<ProviderConfig["provider"]>(initialProvider)
-  const [mode, setMode] = useState<AiMode>(openRouterOnly ? "api" : (status.mode ?? "api"))
+  const [mode, setMode] = useState<AiMode>(hideChatgptMode ? "api" : (status.mode ?? "api"))
   const [model, setModel] = useState(initialModel(initialProvider, status.model))
   const [pageTranslationModel, setPageTranslationModel] = useState(
     status.pageTranslationModel ?? OPENROUTER_PAGE_TRANSLATION_MODEL,
@@ -284,4 +309,10 @@ export function useAiProviderForm(
     message,
     setMessage,
   }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error && error.message.trim()
+    ? error.message
+    : "요청을 저장하지 못했습니다"
 }

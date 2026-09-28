@@ -1,4 +1,4 @@
-import { BookOpen, Library, Settings } from "lucide-react"
+import { BookOpen, Library, Settings, Sparkles } from "lucide-react"
 import { type JSX, lazy, Suspense, useEffect, useRef, useState } from "react"
 import leafMarkUrl from "../../assets/branding/ohmypaper-leaf-mark.png"
 import { Topbar } from "../renderer/components/AppChrome"
@@ -7,6 +7,7 @@ import { LibraryHome } from "../renderer/components/LibraryHome"
 import { appShellStyle } from "../renderer/lib/uiFontScale"
 import { useAppWorkspace } from "../renderer/lib/useAppWorkspace"
 import { type DocumentId, documentIdSchema } from "../shared/schemas"
+import { WebOnboarding } from "./WebOnboarding"
 
 const ReaderWorkspace = lazy(() =>
   import("../renderer/components/ReaderWorkspace").then((module) => ({
@@ -18,10 +19,16 @@ const AppSettingsDialog = lazy(() =>
     default: module.AppSettingsDialog,
   })),
 )
+const ResearchView = lazy(() =>
+  import("./research/ResearchView").then((module) => ({
+    default: module.ResearchView,
+  })),
+)
 
 export function ReaderApp(): JSX.Element {
   const app = useAppWorkspace()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [researchOpen, setResearchOpen] = useState(false)
   const [openImportUrl] = useState(() => {
     const current = new URL(window.location.href)
     return current.pathname === "/open" ? current.searchParams.get("url") : null
@@ -32,7 +39,8 @@ export function ReaderApp(): JSX.Element {
   )
   const openDocumentHandled = useRef(false)
   const workspace = app.workspace
-  const credentialsReady = app.provider.configured && app.provider.provider === "openrouter"
+  const credentialsReady = app.provider.configured
+  const libraryVisible = !researchOpen && app.libraryView
 
   useEffect(() => {
     if (!openImportUrl || !workspace || !credentialsReady || openImportState !== "idle") return
@@ -88,32 +96,11 @@ export function ReaderApp(): JSX.Element {
   if (!app.credentialsChecked)
     return (
       <main className="loading-screen" aria-live="polite">
-        <p>API 연결을 확인하는 중…</p>
+        <p>AI 연결을 확인하는 중…</p>
       </main>
     )
 
-  if (!credentialsReady)
-    return (
-      <main
-        className="app-shell web-reader-shell"
-        data-theme={workspace.theme}
-        style={appShellStyle(workspace.uiFontScale, workspace.uiFontFamily)}
-      >
-        <Suspense fallback={<p role="status">API 설정을 여는 중…</p>}>
-          <AppSettingsDialog
-            open
-            locked
-            status={app.provider}
-            ocrStatus={app.ocrStatus}
-            workspace={workspace}
-            onWorkspaceChange={app.setWorkspaceTransient}
-            onProviderChange={app.setProvider}
-            onOcrStatusChange={app.setOcrStatus}
-            onClose={() => undefined}
-          />
-        </Suspense>
-      </main>
-    )
+  if (!credentialsReady) return <WebOnboarding status={app.provider} onDone={app.setProvider} />
 
   if (openImportState === "loading")
     return (
@@ -143,6 +130,17 @@ export function ReaderApp(): JSX.Element {
     app.setDocumentReady(Boolean(selected.overview))
     app.setViewMode("reader")
     app.setLibraryOpen(false)
+    setResearchOpen(false)
+  }
+
+  async function openImportedDocument(id: DocumentId): Promise<void> {
+    const fresh = await window.ohmypaper.readWorkspace()
+    app.setWorkspace({ ...fresh, activeDocumentId: id })
+    app.setCurrentPage(1)
+    app.setDocumentReady(false)
+    app.setViewMode("reader")
+    app.setLibraryOpen(false)
+    setResearchOpen(false)
   }
 
   return (
@@ -165,19 +163,33 @@ export function ReaderApp(): JSX.Element {
         <nav aria-label="주 메뉴">
           <button
             type="button"
-            aria-current={app.libraryView ? "page" : undefined}
-            onClick={() => app.setLibraryOpen(true)}
+            aria-current={libraryVisible ? "page" : undefined}
+            onClick={() => {
+              setResearchOpen(false)
+              app.setLibraryOpen(true)
+            }}
           >
             <Library size={16} aria-hidden="true" />
             라이브러리
           </button>
           <button
             type="button"
-            aria-current={!app.libraryView ? "page" : undefined}
-            onClick={() => app.setLibraryOpen(false)}
+            aria-current={!libraryVisible && !researchOpen ? "page" : undefined}
+            onClick={() => {
+              setResearchOpen(false)
+              app.setLibraryOpen(false)
+            }}
           >
             <BookOpen size={16} aria-hidden="true" />
             리더
+          </button>
+          <button
+            type="button"
+            aria-current={researchOpen ? "page" : undefined}
+            onClick={() => setResearchOpen(true)}
+          >
+            <Sparkles size={16} aria-hidden="true" />
+            리서치
           </button>
         </nav>
         <button
@@ -190,7 +202,15 @@ export function ReaderApp(): JSX.Element {
         </button>
       </header>
       <div className="web-reader-main-area">
-        {app.libraryView ? (
+        {researchOpen ? (
+          <Suspense fallback={<p role="status">리서치를 여는 중…</p>}>
+            <ResearchView
+              workspace={workspace}
+              onWorkspaceChange={app.setWorkspace}
+              onOpenImportedDocument={(id) => void openImportedDocument(id)}
+            />
+          </Suspense>
+        ) : libraryVisible ? (
           <LibraryHome
             active={app.libraryView}
             documents={workspace.documents}

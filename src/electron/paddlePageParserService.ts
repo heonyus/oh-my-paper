@@ -250,14 +250,19 @@ export class PaddlePageParserService {
       while (pages.length < PAGES_PER_REQUEST) {
         const pageNumber = batch.queued.shift()
         if (pageNumber === undefined) break
+        // Taken from the queue: a request arriving during the cache checks below must
+        // wait for this pass instead of queueing the page a second time.
+        batch.running.add(pageNumber)
         if (!(await cachedPageExists(batch.directory, pageNumber))) {
           pages.push(pageNumber)
           continue
         }
         // Only a page someone is waiting for needs its cache read back.
-        if (!batch.requests.has(pageNumber)) continue
-        const cached = await readCachedPage(batch.directory, batch.document, pageNumber)
+        const cached = batch.requests.has(pageNumber)
+          ? await readCachedPage(batch.directory, batch.document, pageNumber)
+          : null
         if (cached) this.#settle(batch, pageNumber, { status: "ready", page: cached })
+        if (cached || !batch.requests.has(pageNumber)) batch.running.delete(pageNumber)
         else pages.push(pageNumber)
       }
       if (pages.length > 0) return { batch, pages }

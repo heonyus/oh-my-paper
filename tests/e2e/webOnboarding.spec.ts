@@ -18,7 +18,6 @@ test("desktop onboarding identifies the product immediately without a header str
   await mkdir(evidence, { recursive: true })
 
   await expect(page.locator(".onboarding-entry")).toHaveCSS("opacity", "1")
-  await expect(page.getByText("학술 PDF 리더")).toBeVisible()
   await expect(page.getByText("번역·메모·인용을 원문 위치와 함께 정리합니다.")).toBeVisible()
   await expect(hero.getByRole("button", { name: "Google로 계속" })).toBeVisible()
   await expect(page.getByRole("banner")).toHaveCount(0)

@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { agentAskRequestSchema, agentAskResultSchema } from "../shared/agentChat"
 import { jevDecisionResultSchema } from "../shared/aiDecision"
 import {
   type DiscoveryApi,
@@ -22,6 +23,7 @@ import type {
   ProviderStatus,
 } from "../shared/ipc"
 import {
+  aiModeRequestSchema,
   citationLookupResultSchema,
   documentImportUrlRequestSchema,
   documentOcrProviderStatusSchema,
@@ -38,7 +40,10 @@ import type { DocumentId, Workspace } from "../shared/schemas"
 import { workspaceSchema } from "../shared/schemas"
 import { scholarlySearchResultSchema } from "../shared/scholarlySearchSchemas"
 import { unavailableWebFeature } from "../shared/unavailableWebFeatures"
+import { agentAskStream } from "./localAgentStream"
 import { createLocalAiJobs } from "./localAiJobs"
+import { createLocalClaudeApi } from "./localClaudeApi"
+import { createLocalCodexApi } from "./localCodexApi"
 import { createLocalImporter } from "./localImport"
 import { createLocalPageParser } from "./localPageParser"
 import { localRpc, readLocalResponse } from "./localTransport"
@@ -138,9 +143,6 @@ export function installLocalReaderApi(): void {
     documentOcrStatus: async (): Promise<DocumentOcrProviderStatus> => {
       return localRpc("documentOcrStatus", {}, documentOcrProviderStatusSchema)
     },
-    saveDocumentOcrKey: async (key) => {
-      await localRpc("saveDocumentOcrKey", key, documentOcrProviderStatusSchema)
-    },
     readPageTranslationCache: async (
       request: PageTranslationCacheReadRequest,
     ): Promise<PageTranslationCacheResult> => {
@@ -161,10 +163,18 @@ export function installLocalReaderApi(): void {
     saveProviderConfig: async (config) => {
       await localRpc("saveProviderConfig", config, providerStatusSchema)
     },
-    saveAiMode: unavailableWebFeature("provider.saveAiMode"),
+    saveAiMode: async (input) => {
+      const request = aiModeRequestSchema.parse(typeof input === "string" ? { mode: input } : input)
+      await localRpc("saveAiMode", request, providerStatusSchema)
+    },
     providerStatus: async (): Promise<ProviderStatus> => {
       return localRpc("providerStatus", {}, providerStatusSchema)
     },
+    agentAsk: async (request) => {
+      const parsed = agentAskRequestSchema.parse(request)
+      return localRpc("agentAsk", parsed, agentAskResultSchema)
+    },
+    agentAskStream: async (request, onStep) => agentAskStream(request, onStep),
     runAi: async (request) => {
       _activeDocumentId = request.documentId
       return localRpc("runAi", request, z.object({ text: z.string(), model: z.string() }))
@@ -234,18 +244,8 @@ export function installLocalReaderApi(): void {
       updatePlacement: unavailableWebFeature("knowledge.updatePlacement"),
       deletePlacement: unavailableWebFeature("knowledge.deletePlacement"),
     },
-    codex: {
-      getStatus: async () => ({
-        available: false,
-        authenticated: false,
-        account: null,
-        requiresOpenaiAuth: false,
-      }),
-      startLogin: unavailableWebFeature("codex.startLogin"),
-      cancelLogin: async () => {},
-      logout: async () => {},
-      onLoginCompleted: () => () => {},
-    },
+    codex: createLocalCodexApi(),
+    claude: createLocalClaudeApi(),
     interchange: {
       exportMarkdown: unavailableWebFeature("interchange.exportMarkdown"),
       previewMarkdownImport: unavailableWebFeature("interchange.previewMarkdownImport"),

@@ -20,6 +20,7 @@ type PaddlePageParser = Pick<PaddlePageParserService, "parse">
 
 type ActivePageParse = {
   readonly promise: Promise<DocumentPageParseResult>
+  readonly nativeReady: Promise<DocumentPageParseResult | null>
   readonly controller: AbortController
   consumers: number
 }
@@ -69,14 +70,36 @@ export class DocumentPageParser {
     let active = this.#active.get(key)
     if (!active) {
       const controller = new AbortController()
-      const promise = this.#runParse({ ...input, signal: controller.signal }).finally(() => {
+      let settleNative: (value: DocumentPageParseResult | null) => void = () => {}
+      const nativeReady = new Promise<DocumentPageParseResult | null>((resolve) => {
+        settleNative = resolve
+      })
+      const promise = this.#runParse({
+        ...input,
+        signal: controller.signal,
+        onNativeReady: settleNative,
+      }).finally(() => {
         if (this.#active.get(key)?.promise === promise) this.#active.delete(key)
       })
-      active = { promise, controller, consumers: 0 }
+      active = { promise, nativeReady, controller, consumers: 0 }
       this.#active.set(key, active)
     }
     active.consumers += 1
+    const waitsForStructure = Boolean(
+      input.requireStructuredOcr || input.forceOcr || input.preparedOnly,
+    )
     try {
+      if (!waitsForStructure) {
+        const settled = await waitForAbort(
+          Promise.race([
+            active.nativeReady.then((result) => ({ kind: "native" as const, result })),
+            active.promise.then((result) => ({ kind: "final" as const, result })),
+          ]),
+          input.signal,
+        )
+        if (settled.kind === "final") return settled.result
+        if (settled.result?.status === "ready") return settled.result
+      }
       return await waitForAbort(active.promise, input.signal)
     } catch (error) {
       if (input.signal?.aborted) return { status: "unavailable", reason: "execution_failed" }
@@ -99,6 +122,7 @@ export class DocumentPageParser {
     readonly requireStructuredOcr?: boolean
     readonly preparedOnly?: boolean
     readonly signal?: AbortSignal | undefined
+    readonly onNativeReady?: (result: DocumentPageParseResult | null) => void
   }): Promise<DocumentPageParseResult> {
     if (!Number.isInteger(input.pageNumber) || input.pageNumber <= 0) {
       return { status: "unavailable", reason: "invalid_page" }
@@ -111,16 +135,26 @@ export class DocumentPageParser {
       return { status: "unavailable", reason: "invalid_page" }
 
     const cached = await this.#readCachedPage(store, document.hash, input.pageNumber)
-    if (cached) return documentPageParseResultSchema.parse({ status: "ready", page: cached })
-    if (input.preparedOnly) return { status: "unavailable", reason: "needs_ocr" }
+    if (cached) {
+      const ready = documentPageParseResultSchema.parse({ status: "ready", page: cached })
+      input.onNativeReady?.(ready)
+      return ready
+    }
+    if (input.preparedOnly) {
+      input.onNativeReady?.(null)
+      return { status: "unavailable", reason: "needs_ocr" }
+    }
 
-    const nativeResult = await this.#tryNativeParse(document, input.pageNumber, store)
-    const paddleResult = await this.#paddle.parse({
+    const nativePromise = this.#tryNativeParse(document, input.pageNumber, store).catch(() => null)
+    const paddlePromise = this.#paddle.parse({
       documentId: input.documentId,
       pageNumber: input.pageNumber,
       store,
       onProgress: input.onProgress,
     })
+    const nativeResult = await nativePromise
+    input.onNativeReady?.(nativeResult)
+    const paddleResult = await paddlePromise
     if (paddleResult.status === "ready") {
       if (nativeResult?.status !== "ready") return paddleResult
       const page = mergePdfJsAndPaddlePage(nativeResult.page, paddleResult.page)

@@ -31,12 +31,13 @@ test("fresh profile exposes the knowledge destinations and separate AI modes", a
     await expect(page.getByRole("region", { name: "ChatGPT 구독" })).toBeVisible()
     await page.getByRole("button", { name: "구독 연결 사용" }).click()
     await page.getByLabel("AI 접근 방식").selectOption("api")
-    await page.getByLabel("Provider").selectOption("opencodex")
-    await expect(page.locator("#provider-key")).not.toBeVisible()
+    await page.getByLabel("Provider").selectOption("openai")
+    await expect(page.locator("#provider-key")).toBeVisible()
+    await page.locator("#provider-key").fill("sk-e2e-placeholder-key-not-used-0000")
     await page.getByRole("button", { name: "암호화하여 저장" }).click()
     await expect
       .poll(async () => page.evaluate(() => window.ohmypaper.providerStatus()))
-      .toMatchObject({ mode: "api", provider: "opencodex" })
+      .toMatchObject({ mode: "api", provider: "openai" })
   } finally {
     await qa.close()
     await rm(temporaryRoot, { recursive: true, force: true })

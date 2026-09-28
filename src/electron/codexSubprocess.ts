@@ -1,6 +1,7 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process"
 import { existsSync } from "node:fs"
 import { chmod, mkdir, symlink, writeFile } from "node:fs/promises"
+import { createRequire } from "node:module"
 import { homedir } from "node:os"
 import { delimiter, join } from "node:path"
 import {
@@ -9,6 +10,22 @@ import {
   CodexEnvironmentError,
   getCodexAppServerCliArgs,
 } from "./codexEnvironment"
+
+const moduleRoot = typeof __dirname === "string" ? join(__dirname, "..", "..") : process.cwd()
+const require = createRequire(join(moduleRoot, "package.json"))
+
+function processEnvValue(key: string): string | undefined {
+  return process.env[key]
+}
+
+function bundledCodexExecutable(): string | null {
+  try {
+    return require.resolve("@openai/codex/bin/codex.js")
+  } catch (error) {
+    if (error instanceof Error) return null
+    throw error
+  }
+}
 
 export const DEFAULT_CODEX_SEARCH_PATHS: readonly string[] = [
   "/opt/homebrew/bin/codex",
@@ -21,24 +38,17 @@ export function findCodexExecutable(customPath?: string): string | null {
   if (customPath !== undefined) {
     return existsSync(customPath) ? customPath : null
   }
-  const codexPathEnvKey = "CODEX_PATH"
-  const envCodexPath = process.env[codexPathEnvKey]
-  if (envCodexPath !== undefined && existsSync(envCodexPath)) {
-    return envCodexPath
-  }
-  const pathEnvKey = "PATH"
-  const envPath = process.env[pathEnvKey] ?? ""
-  const pathDirs = envPath.split(delimiter)
-  for (const dir of pathDirs) {
+  const bundled = bundledCodexExecutable()
+  if (bundled !== null) return bundled
+  const envCodexPath = processEnvValue("CODEX_PATH")
+  if (envCodexPath !== undefined && existsSync(envCodexPath)) return envCodexPath
+  const envPath = processEnvValue("PATH") ?? ""
+  for (const dir of envPath.split(delimiter)) {
     const candidate = join(dir, process.platform === "win32" ? "codex.exe" : "codex")
-    if (candidate && existsSync(candidate)) {
-      return candidate
-    }
+    if (existsSync(candidate)) return candidate
   }
   for (const candidate of DEFAULT_CODEX_SEARCH_PATHS) {
-    if (existsSync(candidate)) {
-      return candidate
-    }
+    if (existsSync(candidate)) return candidate
   }
   return null
 }
@@ -94,9 +104,11 @@ export class CodexSubprocess {
     const env = buildSanitizedCodexEnv(this.options.codexHome, this.options.workdir)
     const args = getCodexAppServerCliArgs()
 
-    const child = spawn(exe, [...args], {
+    const command = exe.endsWith(".js") ? process.execPath : exe
+    const commandArgs = exe.endsWith(".js") ? [exe, ...args] : args
+    const child = spawn(command, commandArgs, {
       cwd: this.options.workdir,
-      env,
+      env: exe.endsWith(".js") ? { ...env, ELECTRON_RUN_AS_NODE: "1" } : env,
       stdio: ["pipe", "pipe", "pipe"],
     })
 

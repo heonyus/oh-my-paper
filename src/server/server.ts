@@ -2,6 +2,11 @@ import { readFile, stat } from "node:fs/promises"
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http"
 import { extname, join } from "node:path"
 import type { z } from "zod"
+import {
+  agentAskRequestSchema,
+  agentAskResultSchema,
+  agentStreamEventSchema,
+} from "../shared/agentChat"
 import { jevDecisionRequestSchema } from "../shared/aiDecision"
 import { aiJobCancelRequestSchema, aiJobStartRequestSchema, aiRequestSchema } from "../shared/aiIpc"
 import {
@@ -14,7 +19,6 @@ import {
   documentAnalysisSnapshotSchema,
 } from "../shared/documentAnalysis"
 import { documentAstRequestSchema, documentAstResultSchema } from "../shared/documentAstIpc"
-import { documentOcrKeySchema } from "../shared/documentOcr"
 import { documentPageParseRequestSchema } from "../shared/documentPageModel"
 import {
   citationLookupRequestSchema,
@@ -31,10 +35,12 @@ import {
   scholarlySearchRequestSchema,
   scholarlySearchResultSchema,
 } from "../shared/scholarlySearchSchemas"
+import { createClaudeRoutes } from "./claudeRoutes"
 import type { WebServerConfig } from "./config"
 import { streamParsedPage } from "./pageParseStream"
 import type { WebServices } from "./services"
 import { importPdfBytes, importPdfFromUrl, readDocumentBase64, readWorkspace } from "./services"
+import { createSubscriptionRoutes } from "./subscriptionRoutes"
 
 function sendJson(res: ServerResponse, status: number, data: unknown): void {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8" })
@@ -109,8 +115,15 @@ async function serveStatic(
 }
 
 export function createLocalWebServer(config: WebServerConfig, services: WebServices) {
-  return createServer(async (req, res) => {
+  const subscriptionRoutes = createSubscriptionRoutes(services)
+  const claudeRoutes = createClaudeRoutes(services)
+  const server = createServer(async (req, res) => {
     try {
+      const hostname = new URL(`http://${req.headers.host ?? config.host}`).hostname
+      if (hostname !== "127.0.0.1" && hostname !== "localhost") {
+        sendError(res, 403, "local_request_required")
+        return
+      }
       const url = new URL(req.url ?? "/", "http://127.0.0.1")
       const pathname = url.pathname
       const requestOrigin = req.headers.origin
@@ -123,11 +136,22 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
         typeof requestOrigin === "string" &&
         /^(chrome|moz|safari-web)-extension:\/\//.test(requestOrigin)
 
-      if (requestOrigin && requestOrigin !== localOrigin && !extensionUpload) {
+      const topLevelNavigation =
+        req.method === "GET" &&
+        req.headers["sec-fetch-mode"] === "navigate" &&
+        !pathname.startsWith("/api/")
+
+      if (
+        !extensionUpload &&
+        !topLevelNavigation &&
+        ((requestOrigin && requestOrigin !== localOrigin) ||
+          req.headers["sec-fetch-site"] === "cross-site")
+      ) {
         sendError(res, 403, "cross_origin_request_rejected")
         return
       }
 
+      res.setHeader("x-frame-options", "DENY")
       res.setHeader("access-control-allow-origin", localOrigin)
       res.setHeader("access-control-allow-methods", "GET, POST, OPTIONS")
       res.setHeader("access-control-allow-headers", "content-type, authorization")
@@ -137,6 +161,9 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
         res.end()
         return
       }
+
+      if (await subscriptionRoutes.handle(pathname, req, res)) return
+      if (await claudeRoutes.handle(pathname, req, res)) return
 
       if (!pathname.startsWith("/api/")) {
         const served = await serveStatic(req, res, config.staticDir)
@@ -230,22 +257,16 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
             return
           }
           case "providerStatus": {
-            sendJson(res, 200, services.ai.status())
+            sendJson(res, 200, await services.providerStatus())
             return
           }
           case "saveProviderConfig": {
             const input = await readJson(req, providerConfigSchema)
             await services.saveProviderConfig(input)
-            sendJson(res, 200, services.ai.status())
+            sendJson(res, 200, await services.providerStatus())
             return
           }
           case "documentOcrStatus": {
-            sendJson(res, 200, await services.ocrStatus())
-            return
-          }
-          case "saveDocumentOcrKey": {
-            const key = await readJson(req, documentOcrKeySchema)
-            await services.saveDocumentOcrKey(key)
             sendJson(res, 200, await services.ocrStatus())
             return
           }
@@ -290,6 +311,35 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
             const input = await readJson(req, pageTranslationCacheReadRequestSchema)
             await services.translationCache.clear(input)
             sendJson(res, 200, { ok: true })
+            return
+          }
+          case "agentAsk": {
+            const input = await readJson(req, agentAskRequestSchema)
+            const result = agentAskResultSchema.parse(await services.agentAsk(input))
+            sendJson(res, 200, result)
+            return
+          }
+          case "agentAskStream": {
+            const input = await readJson(req, agentAskRequestSchema)
+            res.writeHead(200, {
+              "content-type": "text/event-stream; charset=utf-8",
+              "cache-control": "no-store",
+              connection: "keep-alive",
+            })
+            const send = (event: unknown): void => {
+              if (!res.destroyed)
+                res.write(`data: ${JSON.stringify(agentStreamEventSchema.parse(event))}\n\n`)
+            }
+            try {
+              const result = await services.agentAsk(input, (step) => send({ type: "step", step }))
+              send({ type: "result", result })
+            } catch (error) {
+              send({
+                type: "error",
+                error: error instanceof Error ? error.message : "agent_ask_failed",
+              })
+            }
+            if (!res.destroyed) res.end()
             return
           }
           case "runAi": {
@@ -375,4 +425,6 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
       } else sendError(res, 500, message)
     }
   })
+  server.on("close", subscriptionRoutes.dispose)
+  return server
 }

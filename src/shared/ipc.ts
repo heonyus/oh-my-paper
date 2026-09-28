@@ -1,5 +1,14 @@
 import { z } from "zod"
 import type { AccountApi } from "./accountIpc"
+import {
+  agentAskRequestSchema,
+  agentAskResultSchema,
+  agentContextDocSchema,
+  agentMessageSchema,
+  agentPaperSchema,
+  type agentStepSchema,
+  agentThreadSchema,
+} from "./agentChat"
 import type { JevDecisionRequest, JevDecisionResult } from "./aiDecision"
 import {
   AI_CONTEXT_MAX_CHARACTERS,
@@ -16,6 +25,7 @@ import {
 } from "./aiIpc"
 import type { BackupApi } from "./backupIpc"
 import type { BibliographyApi } from "./bibliographyIpc"
+import { type ClaudeAccountStatus, type ClaudeEffort, claudeEffortSchema } from "./claudeTypes"
 import type {
   CodexAccountStatus,
   CodexLoginCompletedEvent,
@@ -166,7 +176,6 @@ export const providerConfigSchema = z.discriminatedUnion("provider", [
     apiKey: apiKeySchema,
     model: z.string().trim().min(1).max(160),
   }),
-  z.object({ provider: z.literal("opencodex"), model: z.string().trim().min(1).max(160) }),
 ])
 export const codexReasoningEffortSchema = z.enum([
   "none",
@@ -188,11 +197,15 @@ export const providerStatusSchema = z.object({
   mode: aiModeSchema.optional(),
   codexModel: z.string().optional(),
   codexReasoningEffort: codexReasoningEffortSchema.optional(),
+  claudeModel: z.string().optional(),
+  claudeEffort: claudeEffortSchema.optional(),
 })
 export const aiModeRequestSchema = z.object({
   mode: aiModeSchema,
   codexModel: z.string().optional(),
   codexReasoningEffort: codexReasoningEffortSchema.optional(),
+  claudeModel: z.string().trim().min(1).max(80).optional(),
+  claudeEffort: claudeEffortSchema.optional(),
 })
 const httpsUrlSchema = z
   .string()
@@ -302,7 +315,6 @@ export type OhMyPaperApi = {
   ) => () => void
   readonly retryDocumentAnalysis: (id: DocumentId) => Promise<void>
   readonly documentOcrStatus: () => Promise<DocumentOcrProviderStatus>
-  readonly saveDocumentOcrKey: (key: string) => Promise<void>
   readonly readPageTranslationCache: (
     request: PageTranslationCacheReadRequest,
   ) => Promise<PageTranslationCacheResult>
@@ -315,13 +327,26 @@ export type OhMyPaperApi = {
   readonly saveAiMode: (
     input:
       | AiMode
-      | { mode: AiMode; codexModel?: string; codexReasoningEffort?: CodexReasoningEffort },
+      | {
+          mode: AiMode
+          codexModel?: string
+          codexReasoningEffort?: CodexReasoningEffort
+          claudeModel?: string
+          claudeEffort?: ClaudeEffort
+        },
   ) => Promise<void>
   readonly providerStatus: () => Promise<z.infer<typeof providerStatusSchema>>
   readonly decideAi?: (
     request: JevDecisionRequest,
     signal?: AbortSignal,
   ) => Promise<JevDecisionResult>
+  readonly agentAsk: (
+    request: z.infer<typeof agentAskRequestSchema>,
+  ) => Promise<z.infer<typeof agentAskResultSchema>>
+  readonly agentAskStream: (
+    request: z.infer<typeof agentAskRequestSchema>,
+    onStep: (step: z.infer<typeof agentStepSchema>) => void,
+  ) => Promise<z.infer<typeof agentAskResultSchema>>
   readonly runAi: (
     request: z.infer<typeof aiRequestSchema>,
   ) => Promise<z.infer<typeof aiResultSchema>>
@@ -387,6 +412,12 @@ export type OhMyPaperApi = {
     readonly logout: () => Promise<void>
     readonly onLoginCompleted: (listener: (event: CodexLoginCompletedEvent) => void) => () => void
   }
+  /** Local Claude Code CLI subscription; only the browser app's loopback server provides it. */
+  readonly claude?: {
+    readonly getStatus: () => Promise<ClaudeAccountStatus>
+    readonly startLogin: () => Promise<ClaudeAccountStatus>
+    readonly cancelLogin: () => Promise<ClaudeAccountStatus>
+  }
   readonly interchange: {
     readonly exportMarkdown: (nodeId: KnowledgeNodeId) => Promise<string>
     readonly previewMarkdownImport: (
@@ -447,6 +478,12 @@ export type {
 } from "./aiIpc"
 export {
   AI_CONTEXT_MAX_CHARACTERS,
+  agentAskRequestSchema,
+  agentAskResultSchema,
+  agentContextDocSchema,
+  agentMessageSchema,
+  agentPaperSchema,
+  agentThreadSchema,
   aiActionSchema,
   aiHistoryMessageSchema,
   aiJobCancelRequestSchema,

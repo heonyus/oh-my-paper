@@ -75,7 +75,12 @@ describe("local library preparation", () => {
       fixture.collectionId,
     ])
 
-    expect(result.stderr).toBe("")
+    const stderr = result.stderr
+      .split("\n")
+      .filter((line) => !line.includes("ExperimentalWarning") && !line.includes("--trace-warnings"))
+      .join("\n")
+      .trim()
+    expect(stderr).toBe("")
     expect(cliSummarySchema.parse(JSON.parse(result.stdout))).toEqual({
       mode: "dry-run",
       noteCount: 1,

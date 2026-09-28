@@ -88,7 +88,7 @@ export function App({
   if (!app.credentialsChecked)
     return <main className="loading-screen">API 연결을 확인하는 중…</main>
 
-  const credentialsReady = provider.configured && provider.provider === "openrouter"
+  const credentialsReady = provider.configured
 
   if (!credentialsReady)
     return (

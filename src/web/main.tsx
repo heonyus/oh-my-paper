@@ -22,6 +22,8 @@ import "../renderer/components/font-family-picker.css"
 import "../renderer/research-shell.css"
 import "../renderer/components/reader-workspace.css"
 import "./local-reader.css"
+import "./web-onboarding.css"
+import "./research/research.css"
 
 const root = document.getElementById("root")
 if (!root) throw new Error("oh-my-paper web root is missing")

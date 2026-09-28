@@ -121,19 +121,35 @@ export const CODEX_MODEL_OPTIONS = [
   { id: "gpt-5.6-sol", label: "GPT-5.6 Sol (최고 성능 추론 및 리서치)" },
   { id: "gpt-5.6-terra", label: "GPT-5.6 Terra (균형 잡힌 에이전트 작업)" },
   { id: "gpt-5.6-luna", label: "GPT-5.6 Luna (빠르고 가벼운 속도)" },
-  { id: "gpt-5.3-codex-spark", label: "GPT-5.3 Codex Spark (네이티브 스파크)" },
   { id: "gpt-6-astra", label: "GPT-6 Astra (복합 고급 연구)" },
-  { id: "o3", label: "o3 (심층 추론)" },
-  { id: "o4-mini", label: "o4-mini (경량 추론)" },
+  { id: "gpt-5.5", label: "GPT-5.5 (호환 추론)" },
 ] as const
 
-export const CODEX_REASONING_EFFORT_OPTIONS = [
-  { id: "none", label: "none (추론 없음)" },
-  { id: "minimal", label: "minimal (최소)" },
+export type CodexModelId = (typeof CODEX_MODEL_OPTIONS)[number]["id"]
+
+export const CODEX_DEFAULT_MODEL: CodexModelId = "gpt-5.6-sol"
+
+export function isCodexModel(value: string): value is CodexModelId {
+  return CODEX_MODEL_OPTIONS.some((option) => option.id === value)
+}
+
+const CODEX_STANDARD_REASONING_EFFORT_OPTIONS = [
   { id: "low", label: "low (낮음)" },
   { id: "medium", label: "medium (중간 · 기본)" },
   { id: "high", label: "high (높음)" },
   { id: "xhigh", label: "xhigh (매우 높음)" },
+] as const
+
+export const CODEX_REASONING_EFFORT_OPTIONS = [
+  ...CODEX_STANDARD_REASONING_EFFORT_OPTIONS,
   { id: "max", label: "max (최대)" },
   { id: "ultra", label: "ultra (울트라)" },
 ] as const
+
+export function codexReasoningEffortOptions(
+  model: string,
+): readonly (typeof CODEX_REASONING_EFFORT_OPTIONS)[number][] {
+  if (model === "gpt-5.6-luna" || model === "gpt-5.5")
+    return CODEX_STANDARD_REASONING_EFFORT_OPTIONS
+  return CODEX_REASONING_EFFORT_OPTIONS
+}

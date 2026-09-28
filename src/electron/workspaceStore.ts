@@ -5,6 +5,7 @@ import { z } from "zod"
 import type { DocumentRecord, Workspace } from "../shared/schemas"
 import { workspaceSchema } from "../shared/schemas"
 import { researchSidebarLayout } from "../shared/uiLayout"
+import { readAgentThreads, writeAgentThreads } from "./agentThreadsFile"
 import { CollectionService } from "./collectionService"
 import { openKnowledgeDatabase } from "./knowledgeDatabase"
 import { migrateLegacyWorkspaceIfPresent } from "./knowledgeLegacyMigration"
@@ -21,6 +22,7 @@ export function defaultWorkspace(): Workspace {
   return {
     documents: [],
     cards: [],
+    agentThreads: [],
     insights: [],
     sidebarOpen: true,
     outlineWidth: 240,
@@ -96,17 +98,21 @@ export class WorkspaceStore {
   async read(): Promise<Workspace> {
     await this.ensureMigrated()
     await this.collectionService?.rescan()
+    const agentThreads = await readAgentThreads(this.root)
     const rawSettings = this.db.prepare("SELECT COUNT(*) as count FROM workspace_settings").get()
     const rawNodes = this.db.prepare("SELECT COUNT(*) as count FROM knowledge_nodes").get()
     const settingsCount = countRowSchema.parse(rawSettings).count
     const nodeCount = countRowSchema.parse(rawNodes).count
 
     if (settingsCount === 0 && nodeCount === 0) {
-      const def = acknowledgedWorkspace(defaultWorkspace())
+      const def = acknowledgedWorkspace({ ...defaultWorkspace(), agentThreads })
       this.rememberSnapshot(def)
       return def
     }
-    const ws = acknowledgedWorkspace(projectRepositoryToWorkspace(this.repository, this.db))
+    const ws = acknowledgedWorkspace({
+      ...projectRepositoryToWorkspace(this.repository, this.db),
+      agentThreads,
+    })
     this.rememberSnapshot(ws)
     return ws
   }
@@ -165,12 +171,13 @@ export class WorkspaceStore {
           effective.cards,
           hasRendererBaseline ? base?.cards : undefined,
         )
+        await writeAgentThreads(this.root, parsed.agentThreads)
         const savedWs = acknowledgedWorkspace(
           projectRepositoryToWorkspace(this.repository, this.db),
         )
         this.rememberSnapshot(savedWs)
         if (!this.collectionService) await this.writeProjection(savedWs)
-        return savedWs
+        return { ...savedWs, agentThreads: parsed.agentThreads }
       })
     this.saveQueue = operation.then(
       () => undefined,

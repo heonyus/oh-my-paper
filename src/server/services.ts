@@ -1,4 +1,6 @@
 import { fileURLToPath } from "node:url"
+import type { z } from "zod"
+import { type AgentStepListener, askAgent, planAgentQueries } from "../electron/agentService"
 import { lookupCitation } from "../electron/citationService"
 import { DocumentAnalysisService } from "../electron/documentAnalysisService"
 import { DocumentAstService } from "../electron/documentAstService"
@@ -8,7 +10,15 @@ import { PaddlePageParserService } from "../electron/paddlePageParserService"
 import { PageTranslationCacheService } from "../electron/pageTranslationCacheService"
 import { listScholarlyMetadata, saveScholarlyMetadata } from "../electron/scholarlyMetadata"
 import { searchScholarly } from "../electron/scholarlySearch"
+import { searchSemanticScholar } from "../electron/semanticScholarSearch"
 import { WorkspaceStore } from "../electron/workspaceStore"
+import {
+  AGENT_CONTEXT_EXCERPT_CHARACTERS,
+  AGENT_SEARCH_RESULT_LIMIT,
+  type AgentAskRequest,
+  type AgentAskResult,
+  type AgentContextDoc,
+} from "../shared/agentChat"
 import type { AiJobStartRequest } from "../shared/aiIpc"
 import {
   type DiscoverySaveInput,
@@ -17,14 +27,19 @@ import {
   discoverySaveResultSchema,
 } from "../shared/discoveryIpc"
 import type { DocumentOcrProviderStatus } from "../shared/documentOcr"
-import { type ProviderConfig, providerConfigSchema } from "../shared/ipc"
-import { isOpenRouterModel } from "../shared/providerModels"
+import {
+  type aiModeRequestSchema,
+  type ProviderConfig,
+  type ProviderStatus,
+  providerConfigSchema,
+} from "../shared/ipc"
 import type { DocumentId, Workspace } from "../shared/schemas"
+import { scholarlyProviders } from "../shared/scholarlySearchSchemas"
 import { createAiJobStreams } from "./aiJobStreams"
-import { WebAiService } from "./aiService"
+import { createAiModeServices } from "./aiModeServices"
 import type { WebServerConfig } from "./config"
 import { JevDecisionService } from "./decisionService"
-import { LocalCredentialStore } from "./localCredentialStore"
+import { createWebAiRuntime } from "./webAiRuntime"
 
 export type WebServices = {
   readonly store: WorkspaceStore
@@ -33,10 +48,14 @@ export type WebServices = {
   readonly analysis: DocumentAnalysisService
   readonly translationCache: PageTranslationCacheService
   readonly ocrStatus: () => Promise<DocumentOcrProviderStatus>
-  readonly ai: WebAiService
+  readonly ai: Awaited<ReturnType<typeof createWebAiRuntime>>["ai"]
+  readonly subscription: Awaited<ReturnType<typeof createWebAiRuntime>>["subscription"]
+  readonly claude: Awaited<ReturnType<typeof createWebAiRuntime>>["claude"]
+  readonly agentAsk: (input: AgentAskRequest, onStep?: AgentStepListener) => Promise<AgentAskResult>
   readonly decisionService: () => JevDecisionService | null
   readonly saveProviderConfig: (config: ProviderConfig) => Promise<void>
-  readonly saveDocumentOcrKey: (key: string) => Promise<void>
+  readonly saveAiMode: (input: z.infer<typeof aiModeRequestSchema>) => Promise<void>
+  readonly providerStatus: () => Promise<ProviderStatus>
   readonly startAiJob: (request: AiJobStartRequest) => AsyncIterable<Uint8Array>
   readonly cancelAiJob: (jobId: AiJobStartRequest["jobId"]) => void
   readonly lookupCitation: typeof lookupCitation
@@ -49,17 +68,9 @@ export type WebServices = {
 export async function createWebServices(config: WebServerConfig): Promise<WebServices> {
   const store = new WorkspaceStore(config.dataDir)
   await store.initialize()
-  const environmentOpenRouter =
-    config.provider === "openrouter" &&
-    config.model &&
-    isOpenRouterModel(config.model) &&
-    config.apiKeys.openrouter
-      ? { provider: "openrouter" as const, apiKey: config.apiKeys.openrouter, model: config.model }
-      : null
-  const credentials = await LocalCredentialStore.open(config.dataDir, {
-    openrouter: environmentOpenRouter,
-    mistral: config.mistralApiKey ?? null,
-  })
+  const runtime = await createWebAiRuntime(config)
+  const { credentials, subscription, claude, aiModes, initialProvider, ai } = runtime
+  const aiModeServices = createAiModeServices({ ai, aiModes, subscription, claude })
   const ast = new DocumentAstService(store)
   const sourceRoot = fileURLToPath(new URL("../..", import.meta.url))
   const paddle = new PaddlePageParserService({
@@ -74,9 +85,10 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
   })
   const analysis = new DocumentAnalysisService(store, pages, { maxConcurrency: 4 })
   await analysis.resumePending()
-  const initialProvider = credentials.openRouterConfig()
-  const ai = new WebAiService(initialProvider)
-  let decisions = initialProvider ? new JevDecisionService(initialProvider.apiKey) : null
+  let decisions =
+    initialProvider?.provider === "openrouter"
+      ? new JevDecisionService(initialProvider.apiKey)
+      : null
   const jobs = createAiJobStreams(ai)
   let metadataSaveQueue: Promise<void> = Promise.resolve()
   const saveMetadata = async (input: DiscoverySaveInput): Promise<DiscoverySaveResult> => {
@@ -99,15 +111,51 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
     translationCache: new PageTranslationCacheService(store),
     ocrStatus: () => paddle.status(),
     ai,
+    subscription,
+    claude,
+    agentAsk: async (input: AgentAskRequest, onStep?: AgentStepListener): Promise<AgentAskResult> =>
+      askAgent(
+        input,
+        {
+          plan: (question) => planAgentQueries(question, (messages) => ai.chat(messages)),
+          paperSearch: (query) => searchSemanticScholar(query),
+          search: ({ query }) =>
+            searchScholarly({
+              query,
+              providers: scholarlyProviders,
+              pageSize: AGENT_SEARCH_RESULT_LIMIT + 4,
+              page: 1,
+            }),
+          complete: (messages) => ai.chat(messages),
+          contextDocs: async (ids): Promise<readonly AgentContextDoc[]> => {
+            if (ids.length === 0) return []
+            const wanted = new Set<string>(ids)
+            const workspace = await store.read()
+            return workspace.documents
+              .filter((document) => wanted.has(document.id))
+              .map((document) => ({
+                documentId: document.id,
+                title: document.title,
+                authors: document.authors,
+                year: document.year,
+                excerpt: document.overview.slice(0, AGENT_CONTEXT_EXCERPT_CHARACTERS),
+              }))
+          },
+        },
+        onStep,
+      ),
     decisionService: () => decisions,
     saveProviderConfig: async (value) => {
       const parsed = providerConfigSchema.parse(value)
-      if (parsed.provider !== "openrouter") throw new Error("OpenRouter is required")
-      await credentials.saveOpenRouter(parsed)
+      await credentials.saveApiConfig(parsed)
       ai.configure(parsed)
-      decisions = new JevDecisionService(parsed.apiKey)
+      const nextMode = { ...ai.modeSettings(), mode: "api" as const }
+      await aiModes.save(nextMode)
+      ai.configureMode(nextMode)
+      decisions = parsed.provider === "openrouter" ? new JevDecisionService(parsed.apiKey) : null
     },
-    saveDocumentOcrKey: async (key) => credentials.saveMistralApiKey(key),
+    saveAiMode: aiModeServices.saveAiMode,
+    providerStatus: aiModeServices.providerStatus,
     startAiJob: jobs.start,
     cancelAiJob: jobs.cancel,
     lookupCitation,
@@ -118,6 +166,8 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
       jobs.dispose()
       await analysis.dispose()
       paddle.dispose()
+      subscription.dispose()
+      claude.dispose()
       await store.close()
     },
   }

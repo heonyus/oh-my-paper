@@ -22,7 +22,6 @@ import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
 import { saveCitationAssessment, saveSidebarInsight } from "../lib/sidebarCards"
 import type { AiRequestRunner, BoardCard, BoardTool, CardId, DocumentRecord } from "../types"
 import { AiOverviewPanel } from "./AiOverviewPanel"
-import { AutoHighlightControls } from "./AutoHighlightControls"
 import { BoardIndexPanel } from "./BoardIndexPanel"
 import { CitationPanel } from "./CitationPanel"
 import { PageTranslationPortal } from "./PageTranslationPortal"
@@ -209,21 +208,12 @@ export function ResearchSidebar({
                 onJump={onJumpToCard}
               />
             ) : mode === "highlight" ? (
-              <>
-                <AutoHighlightControls
-                  document={document}
-                  cards={cards}
-                  provider={provider}
-                  onCardsChange={onCardsChange}
-                  onAiRequest={onAiRequest}
-                />
-                <BoardIndexPanel
-                  cards={cards}
-                  kind="highlight"
-                  label={cardModeLabels.highlight}
-                  onJump={onJumpToCard}
-                />
-              </>
+              <BoardIndexPanel
+                cards={cards}
+                kind="highlight"
+                label={cardModeLabels.highlight}
+                onJump={onJumpToCard}
+              />
             ) : isCardMode(mode) ? (
               <BoardIndexPanel
                 cards={cards}

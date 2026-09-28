@@ -1,16 +1,10 @@
 import { z } from "zod"
+import { agentThreadSchema } from "./agentChat"
 import { citationAssessmentResultSchema } from "./citationAssessment"
+import { cardIdSchema, documentIdSchema, sha256Schema } from "./ids"
 import { researchSidebarLayout } from "./uiLayout"
 
-export const documentIdSchema = z
-  .string()
-  .regex(/^[a-f0-9]{16}$/)
-  .brand("DocumentId")
-export const cardIdSchema = z.string().uuid().brand("CardId")
-export const sha256Schema = z
-  .string()
-  .regex(/^[a-f0-9]{64}$/)
-  .brand("Sha256")
+export { cardIdSchema, documentIdSchema, sha256Schema }
 
 export const pointSchema = z.object({
   x: z.number().finite(),
@@ -176,6 +170,7 @@ export const workspaceSchema = z.object({
   baseSnapshotToken: sha256Schema.optional(),
   documents: z.array(documentRecordSchema),
   cards: z.array(boardCardSchema),
+  agentThreads: z.array(agentThreadSchema).default([]),
   insights: z.array(documentInsightSchema).default([]),
   sidebarOpen: z.boolean(),
   outlineWidth: z.number().min(200).max(420).default(240),

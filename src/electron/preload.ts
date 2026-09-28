@@ -5,7 +5,6 @@ import {
   documentAnalysisRequestSchema,
   documentAnalysisSnapshotSchema,
 } from "../shared/documentAnalysis"
-import { documentOcrKeySchema } from "../shared/documentOcr"
 import {
   aiJobCancelRequestSchema,
   aiJobEventSchema,
@@ -50,6 +49,7 @@ import {
   pageTranslationCacheResultSchema,
   pageTranslationCacheWriteRequestSchema,
 } from "../shared/pageTranslationCache"
+import { unavailableWebFeature } from "../shared/unavailableWebFeatures"
 import { createPreloadAccount } from "./preloadAccount"
 import { createPreloadBackup } from "./preloadBackup"
 import { createBibliographyPreload } from "./preloadBibliography"
@@ -163,9 +163,6 @@ const api: OhMyPaperApi = {
   },
   documentOcrStatus: async () =>
     documentOcrProviderStatusSchema.parse(await ipcRenderer.invoke(ipcChannels.documentOcrStatus)),
-  saveDocumentOcrKey: async (key) => {
-    await ipcRenderer.invoke(ipcChannels.documentOcrSaveKey, documentOcrKeySchema.parse(key))
-  },
   readPageTranslationCache: async (request) =>
     pageTranslationCacheResultSchema.parse(
       await ipcRenderer.invoke(
@@ -208,6 +205,8 @@ const api: OhMyPaperApi = {
   },
   providerStatus: async () =>
     providerStatusSchema.parse(await ipcRenderer.invoke(ipcChannels.providerStatus)),
+  agentAsk: unavailableWebFeature("agent.ask"),
+  agentAskStream: unavailableWebFeature("agent.askStream"),
   runAi: async (request) =>
     aiResultSchema.parse(
       await ipcRenderer.invoke(ipcChannels.aiRun, aiRequestSchema.parse(request)),

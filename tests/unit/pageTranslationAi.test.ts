@@ -78,7 +78,12 @@ describe("mapped page translation response", () => {
     const onAiRequestAuth = vi.fn().mockRejectedValue(authError)
 
     await expect(
-      translatePageBatch({ batch, page: 1, onAiRequest: onAiRequestAuth, onPartial: vi.fn() }),
+      translatePageBatch({
+        batch,
+        page: 1,
+        onAiRequest: onAiRequestAuth,
+        onPartial: vi.fn(),
+      }),
     ).rejects.toThrow("auth")
     expect(onAiRequestAuth).toHaveBeenCalledTimes(1)
 
@@ -86,7 +91,12 @@ describe("mapped page translation response", () => {
     const onAiRequestCancel = vi.fn().mockRejectedValue(cancelError)
 
     await expect(
-      translatePageBatch({ batch, page: 1, onAiRequest: onAiRequestCancel, onPartial: vi.fn() }),
+      translatePageBatch({
+        batch,
+        page: 1,
+        onAiRequest: onAiRequestCancel,
+        onPartial: vi.fn(),
+      }),
     ).rejects.toThrow("cancelled")
     expect(onAiRequestCancel).toHaveBeenCalledTimes(1)
   })
@@ -123,7 +133,12 @@ describe("mapped page translation response", () => {
         : Promise.resolve(response),
     )
     const inFlight = Array.from({ length: slotLimit }, (_, index) =>
-      translatePageBatch({ batch, page: index + 1, onAiRequest, onPartial: vi.fn() }),
+      translatePageBatch({
+        batch,
+        page: index + 1,
+        onAiRequest,
+        onPartial: vi.fn(),
+      }),
     )
     const controller = new AbortController()
     const queued = translatePageBatch({
@@ -298,5 +313,47 @@ describe("mapped page translation response", () => {
       ["page:1:block:27:sentence:3", "점수가 향상됐다."],
     ])
     expect(longBatch.map((block) => translated.get(block.id))).toEqual(["결과", "점수가 향상됐다."])
+  })
+
+  it("treats the literal placeholder `translation` as missing and retries that block", async () => {
+    const requests: Array<{ pageTranslationModel?: string }> = []
+    const onAiRequest = vi
+      .fn()
+      .mockImplementationOnce((request) => {
+        requests.push(request)
+        return Promise.resolve("@@b0@@ translation\n\n@@b1@@ 점수가 향상됐다.")
+      })
+      .mockImplementationOnce((request) => {
+        requests.push(request)
+        return Promise.resolve("@@b0@@ 결과")
+      })
+
+    const translated = await translatePageBatch({
+      batch,
+      page: 1,
+      onAiRequest,
+      onPartial: vi.fn(),
+    })
+
+    expect(onAiRequest).toHaveBeenCalledTimes(2)
+    expect(requests[0]?.pageTranslationModel).toBeUndefined()
+    expect(requests[1]?.pageTranslationModel).toBe("main")
+    expect(translated.get("p1-b1")).toBe("결과")
+    expect(translated.get("p1-b2")).toBe("점수가 향상됐다.")
+  })
+
+  it("drops echoed request wrapper tags instead of appending them to a block", async () => {
+    const response = "@@b0@@ 결과\n\n@@b1@@ 점수가 향상됐다.\n</USER_QUESTION_OR_TARGET>"
+    const onAiRequest = vi.fn(async () => response)
+
+    const translated = await translatePageBatch({
+      batch,
+      page: 1,
+      onAiRequest,
+      onPartial: vi.fn(),
+    })
+
+    expect(onAiRequest).toHaveBeenCalledTimes(1)
+    expect(translated.get("p1-b2")).toBe("점수가 향상됐다.")
   })
 })
