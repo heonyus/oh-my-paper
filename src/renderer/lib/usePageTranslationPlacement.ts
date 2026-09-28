@@ -13,6 +13,8 @@ export type PageTranslationPlacement = {
   readonly top: number
   readonly width: number
   readonly height: number
+  /** Width of the source page, for a pane that mirrors it. */
+  readonly pageWidth: number
 }
 
 export function pageTranslationWorldPlacement(
@@ -27,6 +29,7 @@ export function pageTranslationWorldPlacement(
     top: (page.top - world.top) / scale,
     width: pageTranslationLayout.width,
     height: page.height / scale,
+    pageWidth: page.width / scale,
   }
 }
 
@@ -39,7 +42,8 @@ function samePlacement(
     Math.abs(left.left - right.left) < 0.25 &&
     Math.abs(left.top - right.top) < 0.25 &&
     Math.abs(left.width - right.width) < 0.25 &&
-    Math.abs(left.height - right.height) < 0.25
+    Math.abs(left.height - right.height) < 0.25 &&
+    Math.abs(left.pageWidth - right.pageWidth) < 0.25
   )
 }
 

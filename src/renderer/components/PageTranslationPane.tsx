@@ -1,14 +1,18 @@
 import { FileDown, FileText, Languages, Printer, RefreshCw, Square, Type, X } from "lucide-react"
 import { type JSX, useEffect, useMemo, useRef, useState } from "react"
 import type { ProviderStatus } from "../../shared/ipc"
+import { parsedDocumentPage } from "../lib/documentPageRuntime"
 import { type PageTranslationMode, usePageTranslationMode } from "../lib/pageTranslationMode"
 import { nextTextSize, parserStageMessage, type TextSize } from "../lib/pageTranslationPaneState"
+import { paragraphRegions } from "../lib/pageTranslationParagraphs"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
 import { usePageSourceHover } from "../lib/usePageSourceHover"
 import { usePageTranslation } from "../lib/usePageTranslation"
 import { usePageTranslationPlacement } from "../lib/usePageTranslationPlacement"
+import { usePdfPage } from "../lib/usePdfPage"
 import type { AiRequestRunner, DocumentRecord } from "../types"
 import { PageTranslationBlock } from "./PageTranslationBlock"
+import { PageTranslationLayout } from "./PageTranslationLayout"
 import { PageTranslationPrintDocument } from "./PageTranslationPrintDocument"
 
 export function PageTranslationPane({
@@ -61,6 +65,11 @@ export function PageTranslationPane({
           )
         : blocks,
     [blocks, mode],
+  )
+  const source = usePdfPage(document.id, currentPage)
+  const regions = useMemo(
+    () => paragraphRegions(blocks, parsedDocumentPage(document.id, currentPage), source.runs),
+    [blocks, document.id, currentPage, source.runs],
   )
   const previousGroups = useRef<readonly (readonly (typeof blocks)[number][])[]>([])
   const bilingualGroups = useMemo(() => {
@@ -146,6 +155,7 @@ export function PageTranslationPane({
   }, [printPages])
 
   const modes: readonly { readonly id: PageTranslationMode; readonly label: string }[] = [
+    { id: "layout", label: "원본 배치" },
     { id: "source", label: "원문" },
     { id: "parallel", label: "대조" },
     { id: "bilingual", label: "함께 읽기" },
@@ -160,7 +170,16 @@ export function PageTranslationPane({
         data-mode={mode}
         data-page-number={currentPage}
         data-positioned={placement !== null}
-        style={placement ?? undefined}
+        style={
+          placement
+            ? {
+                left: placement.left,
+                top: placement.top,
+                width: mode === "layout" ? placement.pageWidth : placement.width,
+                height: placement.height,
+              }
+            : undefined
+        }
         onPointerDown={(event) => event.stopPropagation()}
         onWheel={(event) => event.stopPropagation()}
       >
@@ -239,88 +258,100 @@ export function PageTranslationPane({
           </div>
         </header>
         <div ref={bodyRef} className="page-translation-body">
-          {documentStatus === "running" && documentProgress ? (
-            <p className="page-translation-document-progress" role="status">
-              전체 문서 번역 · {documentProgress.completedPages}/{documentProgress.pageCount}페이지
-              · p. {documentProgress.page}
-            </p>
+          <div className="page-translation-notices">
+            {documentStatus === "running" && documentProgress ? (
+              <p className="page-translation-document-progress" role="status">
+                전체 문서 번역 · {documentProgress.completedPages}/{documentProgress.pageCount}
+                페이지 · p. {documentProgress.page}
+              </p>
+            ) : null}
+            {documentStatus === "complete" ? (
+              <p className="page-translation-document-progress" role="status">
+                전체 문서 번역이 완료되었습니다. 저장된 페이지는 다시 요청하지 않습니다.
+              </p>
+            ) : null}
+            {documentStatus === "cancelled" ? (
+              <p className="page-translation-document-progress" role="status">
+                전체 문서 번역을 중단했습니다. 완료된 페이지는 저장되어 다시 이어갈 수 있습니다.
+              </p>
+            ) : null}
+            {documentStatus === "failed" ? (
+              <div className="page-translation-document-progress" role="alert">
+                <p>전체 문서 번역 중 문제가 발생했습니다. 저장된 페이지는 유지됩니다.</p>
+                {documentError ? <code>{documentError}</code> : null}
+              </div>
+            ) : null}
+            {status === "waiting" ? (
+              <div className="page-translation-state" role="status">
+                <span className="page-translation-progress" />
+                <p>현재 페이지의 본문을 준비하고 있습니다.</p>
+              </div>
+            ) : null}
+            {status === "parser-running" ? (
+              <div className="page-translation-state" role="status">
+                <span className="page-translation-progress" />
+                <p>{parserStageMessage(parserStage)}</p>
+              </div>
+            ) : null}
+            {status === "streaming" ? (
+              <p className="page-translation-stream" role="status">
+                번역하는 중 · {progress}/{totalChunks}
+              </p>
+            ) : null}
+            {status === "setup" ? (
+              <p className="page-translation-message">AI 설정을 완료하면 이 페이지를 번역합니다.</p>
+            ) : null}
+            {status === "parser-unavailable" ? (
+              <div className="page-translation-message" role="alert">
+                <p>현재 페이지의 구조를 준비하지 못했습니다.</p>
+                <button type="button" onClick={() => void regenerate()}>
+                  다시 시도
+                </button>
+              </div>
+            ) : null}
+            {status === "failed" ? (
+              <div className="page-translation-message" role="alert">
+                <p>페이지 번역을 완료하지 못했습니다.</p>
+                <button type="button" onClick={() => void regenerate()}>
+                  다시 시도
+                </button>
+              </div>
+            ) : null}
+          </div>
+          {mode === "layout" ? (
+            <PageTranslationLayout
+              documentId={document.id}
+              page={currentPage}
+              pdfPage={source.page}
+              regions={regions}
+            />
           ) : null}
-          {documentStatus === "complete" ? (
-            <p className="page-translation-document-progress" role="status">
-              전체 문서 번역이 완료되었습니다. 저장된 페이지는 다시 요청하지 않습니다.
-            </p>
-          ) : null}
-          {documentStatus === "cancelled" ? (
-            <p className="page-translation-document-progress" role="status">
-              전체 문서 번역을 중단했습니다. 완료된 페이지는 저장되어 다시 이어갈 수 있습니다.
-            </p>
-          ) : null}
-          {documentStatus === "failed" ? (
-            <div className="page-translation-document-progress" role="alert">
-              <p>전체 문서 번역 중 문제가 발생했습니다. 저장된 페이지는 유지됩니다.</p>
-              {documentError ? <code>{documentError}</code> : null}
-            </div>
-          ) : null}
-          {status === "waiting" ? (
-            <div className="page-translation-state" role="status">
-              <span className="page-translation-progress" />
-              <p>현재 페이지의 본문을 준비하고 있습니다.</p>
-            </div>
-          ) : null}
-          {status === "parser-running" ? (
-            <div className="page-translation-state" role="status">
-              <span className="page-translation-progress" />
-              <p>{parserStageMessage(parserStage)}</p>
-            </div>
-          ) : null}
-          {status === "streaming" ? (
-            <p className="page-translation-stream" role="status">
-              번역하는 중 · {progress}/{totalChunks}
-            </p>
-          ) : null}
-          {status === "setup" ? (
-            <p className="page-translation-message">AI 설정을 완료하면 이 페이지를 번역합니다.</p>
-          ) : null}
-          {status === "parser-unavailable" ? (
-            <div className="page-translation-message" role="alert">
-              <p>현재 페이지의 구조를 준비하지 못했습니다.</p>
-              <button type="button" onClick={() => void regenerate()}>
-                다시 시도
-              </button>
-            </div>
-          ) : null}
-          {status === "failed" ? (
-            <div className="page-translation-message" role="alert">
-              <p>페이지 번역을 완료하지 못했습니다.</p>
-              <button type="button" onClick={() => void regenerate()}>
-                다시 시도
-              </button>
-            </div>
-          ) : null}
-          {(mode === "bilingual" ? bilingualGroups : visibleBlocks.map((block) => [block])).map(
-            (group, index) => {
-              const block = group[0]
-              if (!block) return null
-              return (
-                <PageTranslationBlock
-                  key={block.id}
-                  block={block}
-                  page={currentPage}
-                  mode={mode}
-                  group={mode === "bilingual" ? group : undefined}
-                  startsGroup={
-                    index === 0 ||
-                    block.parsedBlockId === undefined ||
-                    block.parsedBlockId !==
-                      (mode === "bilingual"
-                        ? bilingualGroups[index - 1]?.[0]
-                        : visibleBlocks[index - 1]
-                      )?.parsedBlockId
-                  }
-                />
-              )
-            },
-          )}
+          {mode === "layout"
+            ? null
+            : (mode === "bilingual" ? bilingualGroups : visibleBlocks.map((block) => [block])).map(
+                (group, index) => {
+                  const block = group[0]
+                  if (!block) return null
+                  return (
+                    <PageTranslationBlock
+                      key={block.id}
+                      block={block}
+                      page={currentPage}
+                      mode={mode}
+                      group={mode === "bilingual" ? group : undefined}
+                      startsGroup={
+                        index === 0 ||
+                        block.parsedBlockId === undefined ||
+                        block.parsedBlockId !==
+                          (mode === "bilingual"
+                            ? bilingualGroups[index - 1]?.[0]
+                            : visibleBlocks[index - 1]
+                          )?.parsedBlockId
+                      }
+                    />
+                  )
+                },
+              )}
         </div>
       </section>
       {printPages ? (

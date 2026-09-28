@@ -16,7 +16,8 @@ import { buildNativeParsedPage } from "./nativeTextPageParser"
 import type { PaddlePageParserService } from "./paddlePageParserService"
 import type { WorkspaceStore } from "./workspaceStore"
 
-type PaddlePageParser = Pick<PaddlePageParserService, "parse">
+type PaddlePageParser = Pick<PaddlePageParserService, "parse"> &
+  Partial<Pick<PaddlePageParserService, "readCached">>
 
 type ActivePageParse = {
   readonly promise: Promise<DocumentPageParseResult>
@@ -136,9 +137,15 @@ export class DocumentPageParser {
 
     const cached = await this.#readCachedPage(store, document.hash, input.pageNumber)
     if (cached) {
-      const ready = documentPageParseResultSchema.parse({ status: "ready", page: cached })
+      const page = await this.#withPaddleLayout(cached, document, input.pageNumber, store)
+      const ready = documentPageParseResultSchema.parse({ status: "ready", page })
       input.onNativeReady?.(ready)
       return ready
+    }
+    const merged = await this.#mergeWithCachedPaddle(document, input.pageNumber, store)
+    if (merged) {
+      input.onNativeReady?.(merged)
+      return merged
     }
     if (input.preparedOnly) {
       input.onNativeReady?.(null)
@@ -167,6 +174,51 @@ export class DocumentPageParser {
     return paddleResult
   }
 
+  /**
+   * When Paddle already parsed a page, the hybrid page is only a merge away — as after a
+   * change of the hybrid version. Builds it at once rather than handing out the PDF.js page
+   * first, so readers and translations never see the page change parser under them.
+   */
+  async #mergeWithCachedPaddle(
+    document: DocumentRecord,
+    pageNumber: number,
+    store: WorkspaceStore,
+  ): Promise<DocumentPageParseResult | null> {
+    if (!this.#paddle.readCached) return null
+    const paddle = await this.#paddle.readCached(document, pageNumber, store).catch(() => null)
+    if (!paddle) return null
+    const native = await this.#tryNativeParse(document, pageNumber, store).catch(() => null)
+    if (native?.status !== "ready") return null
+    const page = mergePdfJsAndPaddlePage(native.page, paddle)
+    await this.#writeCachedPage(store, page)
+    return documentPageParseResultSchema.parse({ status: "ready", page })
+  }
+
+  /**
+   * Hybrid pages cached before they carried Paddle's layout get it from Paddle's own cache,
+   * so a layout-preserving translation needs no new parse and no new translation.
+   */
+  async #withPaddleLayout(
+    page: ParsedDocumentPage,
+    document: DocumentRecord,
+    pageNumber: number,
+    store: WorkspaceStore,
+  ): Promise<ParsedDocumentPage> {
+    if (page.layout || page.parser !== "PDF.js+PaddleOCR-VL-1.6" || !this.#paddle.readCached)
+      return page
+    const paddle = await this.#paddle.readCached(document, pageNumber, store).catch(() => null)
+    if (!paddle || paddle.width !== page.width || paddle.height !== page.height) return page
+    return {
+      ...page,
+      layout: paddle.blocks.map(({ label, order, bounds, content }) => ({
+        label,
+        order,
+        bounds,
+        content,
+      })),
+    }
+  }
+
   async #tryNativeParse(
     document: DocumentRecord,
     pageNumber: number,
@@ -186,7 +238,7 @@ export class DocumentPageParser {
     hash: Sha256,
     pageNumber: number,
   ): Promise<ParsedDocumentPage | null> {
-    for (const cacheVersion of ["pdfjs-paddleocr-vl-1.6-hybrid-v10", "mistral-ocr-4-1-blocks-v2"]) {
+    for (const cacheVersion of ["pdfjs-paddleocr-vl-1.6-hybrid-v11", "mistral-ocr-4-1-blocks-v2"]) {
       const file = join(store.root, "parsed-pages", hash, cacheVersion, `page-${pageNumber}.json`)
       try {
         const raw = JSON.parse(await readFile(file, "utf8"))
@@ -210,7 +262,7 @@ export class DocumentPageParser {
       store.root,
       "parsed-pages",
       page.sourceHash,
-      "pdfjs-paddleocr-vl-1.6-hybrid-v10",
+      "pdfjs-paddleocr-vl-1.6-hybrid-v11",
       `page-${page.pageNumber}.json`,
     )
     await mkdir(dirname(file), { recursive: true })

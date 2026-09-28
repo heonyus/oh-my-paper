@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, it, vi } from "vitest"
@@ -187,12 +187,99 @@ describe("local document workflow", () => {
         expect(reopened.page.parser).toBe("PDF.js+PaddleOCR-VL-1.6")
       }
       expect(paddleParse).toHaveBeenCalledOnce()
+      if (reopened.status === "ready") {
+        expect(reopened.page.layout?.map((block) => block.label)).toEqual(["table"])
+      }
       for (const pageNumber of [0, -1, 1.5]) {
         await expect(parserResult(reopenedParser, document, pageNumber)).resolves.toEqual({
           status: "unavailable",
           reason: "invalid_page",
         })
       }
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it("gives a hybrid page cached before layouts existed its layout from Paddle's cache", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-hybrid-layout-"))
+    try {
+      const store = new WorkspaceStore(root)
+      await store.save(defaultWorkspace())
+      const document = await importFixture(
+        root,
+        store,
+        "structured.pdf",
+        await buildStructuredPdf(),
+      )
+      const paddleParse = vi.fn().mockResolvedValue({ status: "ready", page: paddlePage(document) })
+      await createDocumentPageParser({ store, paddlePageParser: { parse: paddleParse } }).parse({
+        documentId: document.id,
+        pageNumber: 1,
+        requireStructuredOcr: true,
+      })
+      const cacheFile = join(
+        root,
+        "parsed-pages",
+        document.hash,
+        "pdfjs-paddleocr-vl-1.6-hybrid-v11",
+        "page-1.json",
+      )
+      const { layout: _layout, ...withoutLayout } = JSON.parse(await readFile(cacheFile, "utf8"))
+      await writeFile(cacheFile, JSON.stringify(withoutLayout))
+      const readCached = vi.fn().mockResolvedValue(paddlePage(document))
+
+      const reopened = await createDocumentPageParser({
+        store,
+        paddlePageParser: { parse: paddleParse, readCached },
+      }).parse({ documentId: document.id, pageNumber: 1 })
+
+      expect(reopened.status).toBe("ready")
+      if (reopened.status === "ready") {
+        expect(reopened.page.configVersion).toBe("hybrid-v11")
+        expect(reopened.page.layout).toEqual([
+          {
+            label: "table",
+            order: 0,
+            bounds: { x: 100, y: 900, width: 1_000, height: 300 },
+            content: "<table><tr><td>39.92</td></tr></table>",
+          },
+        ])
+      }
+      expect(paddleParse).toHaveBeenCalledOnce()
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it("builds the hybrid page from Paddle's cache at once instead of handing out PDF.js first", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-hybrid-rebuild-"))
+    try {
+      const store = new WorkspaceStore(root)
+      await store.save(defaultWorkspace())
+      const document = await importFixture(
+        root,
+        store,
+        "structured.pdf",
+        await buildStructuredPdf(),
+      )
+      const paddleParse = vi.fn()
+      const readCached = vi.fn().mockResolvedValue(paddlePage(document))
+      const parser = createDocumentPageParser({
+        store,
+        paddlePageParser: { parse: paddleParse, readCached },
+      })
+
+      const first = await parser.parse({ documentId: document.id, pageNumber: 1 })
+      const prepared = await parser.parse({
+        documentId: document.id,
+        pageNumber: 1,
+        preparedOnly: true,
+      })
+
+      expect(first.status === "ready" && first.page.parser).toBe("PDF.js+PaddleOCR-VL-1.6")
+      expect(prepared.status === "ready" && prepared.page.configVersion).toBe("hybrid-v11")
+      expect(paddleParse).not.toHaveBeenCalled()
     } finally {
       await rm(root, { recursive: true, force: true })
     }

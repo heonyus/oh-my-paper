@@ -45,6 +45,17 @@ export const parsedPageBlockSchema = z.object({
   confidence: z.number().min(0).max(1).nullable().optional(),
 })
 
+/**
+ * The layout model's own reading of the page — paragraphs, list items, titles — kept beside
+ * the parsed blocks so a translation can be set paragraph by paragraph where the source is.
+ */
+export const parsedPageLayoutBlockSchema = z.object({
+  label: parsedPageBlockLabelSchema,
+  order: z.number().int().nonnegative(),
+  bounds: parsedPageBoundsSchema,
+  content: z.string().max(40_000),
+})
+
 export const parsedPageProvenanceSchema = z.object({
   model: z.string().min(1),
   pageIndex: z.number().int().nonnegative(),
@@ -62,6 +73,7 @@ export const parsedDocumentPageSchema = z
     height: z.number().finite().positive(),
     provenance: parsedPageProvenanceSchema.optional(),
     blocks: z.array(parsedPageBlockSchema).max(1_024).readonly(),
+    layout: z.array(parsedPageLayoutBlockSchema).max(1_024).readonly().optional(),
   })
   .superRefine((page, context) => {
     const ids = new Set<string>()
@@ -118,6 +130,7 @@ export const documentPageParseResultSchema = z.discriminatedUnion("status", [
 
 export type ParsedDocumentPage = z.infer<typeof parsedDocumentPageSchema>
 export type ParsedPageBlock = z.infer<typeof parsedPageBlockSchema>
+export type ParsedPageLayoutBlock = z.infer<typeof parsedPageLayoutBlockSchema>
 export type DocumentPageParseRequest = z.infer<typeof documentPageParseRequestSchema>
 export type DocumentPageParseResult = z.infer<typeof documentPageParseResultSchema>
 export type DocumentPageParseProgress = z.infer<typeof documentPageParseProgressSchema>
