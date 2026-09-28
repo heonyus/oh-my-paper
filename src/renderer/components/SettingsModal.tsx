@@ -5,6 +5,7 @@ import type { ProviderConfig, ProviderStatus } from "../../shared/ipc"
 import type { AiMode } from "../../shared/providerModels"
 import type { AppearanceTheme } from "../../shared/schemas"
 import { uiFontScaleLabel, uiFontScalePercent, uiFontScalePresets } from "../../shared/uiAppearance"
+import { translationFontOptions, useTranslationFont } from "../lib/translationFont"
 import { AiProviderSettings, useAiProviderForm } from "./AiProviderSettings"
 import { ClaudeSettings } from "./ClaudeSettings"
 import { CodexSettings } from "./CodexSettings"
@@ -60,6 +61,7 @@ export function SettingsModal({
   locked = false,
 }: SettingsModalProps): JSX.Element {
   const [section, setSection] = useState<SettingsSection>(appearanceOnly ? "general" : "ai")
+  const [translationFont, setTranslationFont] = useTranslationFont()
   const visibleSections = locked
     ? sections.filter((candidate) => candidate.id === "ai")
     : appearanceOnly
@@ -223,6 +225,31 @@ export function SettingsModal({
             {section === "reading" ? (
               <fieldset className="settings-group">
                 <legend>읽기 환경설정</legend>
+                <label className="settings-row" htmlFor="translation-font">
+                  <span>
+                    <strong>번역 글꼴</strong>
+                    <small>
+                      {translationFontOptions.find((option) => option.value === translationFont)
+                        ?.detail ?? ""}
+                    </small>
+                  </span>
+                  <select
+                    id="translation-font"
+                    value={translationFont}
+                    onChange={(event) => {
+                      const next = translationFontOptions.find(
+                        (option) => option.value === event.currentTarget.value,
+                      )
+                      if (next) setTranslationFont(next.value)
+                    }}
+                  >
+                    {translationFontOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <label className="settings-row settings-toggle-row">
                   <span>
                     <strong>미니맵 표시</strong>

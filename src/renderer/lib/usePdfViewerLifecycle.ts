@@ -9,6 +9,7 @@ import { PdfAstRuntimeSession } from "./pdfAstRuntimeSession"
 import type { ViewerSession } from "./pdfColumnSupport"
 import * as Pdf from "./pdfColumnSupport"
 import type { PreparedSummary } from "./pdfDocumentFeatures"
+import { registerPdfDocument } from "./pdfDocumentRegistry"
 import type { PdfOutlineEntry } from "./pdfOutline"
 import type { PageOverlayState } from "./pdfOverlayAnalysis"
 import { enrichOverlayCitations } from "./pdfOverlayBibliography"
@@ -91,6 +92,7 @@ export function usePdfViewerLifecycle({
 
   useEffect(() => {
     let disposed = false
+    let unregisterPdf: (() => void) | null = null
     const astRuntime = new PdfAstRuntimeSession({
       id: resourceDocument.id,
       hash: resourceDocument.hash,
@@ -163,6 +165,7 @@ export function usePdfViewerLifecycle({
         linkService.setDocument(pdf)
         viewer.setDocument(pdf)
         sessionRef.current = { viewer, pdf, loadingTask }
+        unregisterPdf = registerPdfDocument(resourceDocument.id, pdf)
         const ast = await astRuntime.load()
         if (disposed) {
           await loadingTask.destroy()
@@ -202,6 +205,7 @@ export function usePdfViewerLifecycle({
 
     return () => {
       disposed = true
+      unregisterPdf?.()
       astRuntime.dispose()
       clearParsedDocumentPages(resourceDocument.id)
       const activeSession = sessionRef.current?.viewer === viewer ? sessionRef.current : null
