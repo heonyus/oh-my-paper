@@ -190,6 +190,12 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
 
   function addCard(kind: BoardOverlays.SelectionAction): void {
     if (!selectionMenu) return
+    if (kind === "note" && props.onQuoteToNote) {
+      props.onQuoteToNote(selectionMenu.page, selectionMenu.quote)
+      setSelectionMenu(null)
+      window.getSelection()?.removeAllRanges()
+      return
+    }
     const card = createSelectionCard(props.document.id, selectionMenu, kind)
     if (!card) return
     const boardWidth = viewportRef.current?.clientWidth
@@ -204,6 +210,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
       )
     }
     commitCards([...cardsRef.current, card])
+    if (kind === "note") setCreatedStickyId(card.id)
     setSelectionMenu(null)
     window.getSelection()?.removeAllRanges()
     const request = selectionAiRequest(kind, selectionMenu)

@@ -61,6 +61,38 @@ function runtimeBlocks(
   }))
 }
 
+function comparable(text: string): string {
+  return text.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, "")
+}
+
+/**
+ * The Korean translation of a source passage, when this session already translated its page.
+ * Translated blocks are matched by their source text, since pages are translated line by line
+ * or paragraph by paragraph depending on the parser.
+ */
+export function cachedTranslationForPassage(
+  documentId: DocumentId,
+  page: number,
+  passage: string,
+): string | null {
+  const target = comparable(passage)
+  if (target.length < 12) return null
+  const prefix = `v10:${documentId}:${page}:ko:`
+  for (const [identity, blocks] of sessionCache) {
+    if (!identity.startsWith(prefix)) continue
+    const parts = blocks
+      .filter((block) => {
+        const source = comparable(block.source)
+        return (
+          source.length >= 12 && (target.includes(source) || source.includes(target.slice(0, 60)))
+        )
+      })
+      .map((block) => block.translation.trim())
+    if (parts.length > 0) return [...new Set(parts)].join(" ")
+  }
+  return null
+}
+
 export async function readCachedPageTranslation(
   documentId: DocumentId,
   page: number,

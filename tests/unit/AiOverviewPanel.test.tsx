@@ -1,9 +1,18 @@
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { type ComponentProps, type JSX, useState } from "react"
 import { describe, expect, it, vi } from "vitest"
 import { AiOverviewPanel } from "../../src/renderer/components/AiOverviewPanel"
+import { UNVERIFIED_NOTE } from "../../src/renderer/lib/ownSummaryCheck"
+import type { OwnSummaryUpdate } from "../../src/renderer/lib/useOwnSummary"
 import type { AiRequest } from "../../src/shared/ipc"
+import type { OwnSummary } from "../../src/shared/ownSummary"
 import { documentRecordSchema } from "../../src/shared/schemas"
+
+vi.mock("../../src/renderer/lib/documentAstRuntime", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/renderer/lib/documentAstRuntime")>()),
+  waitForDocumentAst: vi.fn(async () => null),
+}))
 
 const documentFixture = documentRecordSchema.parse({
   id: "aabbccddeeff0011",
@@ -19,16 +28,171 @@ const documentFixture = documentRecordSchema.parse({
   quality: { textCharacters: 2000, needsOcr: false, warnings: [] },
 })
 
+const skipped: OwnSummary = {
+  documentId: documentFixture.id,
+  status: "skipped",
+  afterReveal: false,
+  lines: { problem: "", method: "", result: "" },
+  updatedAt: "2026-09-28T00:00:00.000Z",
+}
+
+type HarnessProps = Omit<
+  ComponentProps<typeof AiOverviewPanel>,
+  "document" | "currentPage" | "ownSummary" | "onOwnSummaryChange" | "onSave"
+> & {
+  readonly initial?: OwnSummary | undefined
+  readonly onSave?: ComponentProps<typeof AiOverviewPanel>["onSave"] | undefined
+  readonly onOwnSummaryChange?: ((next: OwnSummaryUpdate) => void) | undefined
+}
+
+/** Feeds own-summary updates back the way the workspace does. */
+function Harness({ initial, onOwnSummaryChange, onSave, ...props }: HarnessProps): JSX.Element {
+  const [summary, setSummary] = useState(initial)
+  return (
+    <AiOverviewPanel
+      {...props}
+      document={documentFixture}
+      currentPage={1}
+      onSave={onSave ?? vi.fn()}
+      ownSummary={summary}
+      onOwnSummaryChange={(next) => {
+        onOwnSummaryChange?.(next)
+        setSummary({ ...next, documentId: documentFixture.id, updatedAt: new Date().toISOString() })
+      }}
+    />
+  )
+}
+
+const configured = {
+  configured: true,
+  provider: "openrouter",
+  model: "z-ai/glm-5.3-flash",
+} as const
+
 describe("AiOverviewPanel", () => {
-  it("generates the overview on open and can save it to the board", async () => {
+  it("keeps the AI overview closed until the reader writes or skips", async () => {
+    const onAiRequest = vi.fn(
+      async (request: Omit<AiRequest, "documentId">) => `result:${request.action}`,
+    )
+    const onOwnSummaryChange = vi.fn()
+    render(
+      <Harness
+        provider={configured}
+        onAiRequest={onAiRequest}
+        onOwnSummaryChange={onOwnSummaryChange}
+      />,
+    )
+
+    expect(screen.getByRole("textbox", { name: "문제" })).toBeVisible()
+    expect(screen.queryByRole("button", { name: /^3줄 요약$/u })).not.toBeInTheDocument()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(onAiRequest).not.toHaveBeenCalled()
+
+    await userEvent.click(screen.getByRole("button", { name: "건너뛰고 AI 요약 보기" }))
+
+    expect(onOwnSummaryChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: "skipped" }),
+    )
+    await waitFor(() => expect(onAiRequest).toHaveBeenCalledTimes(3))
+    expect(screen.getByText("내 3줄을 건너뛰었습니다.")).toBeVisible()
+    expect(screen.getByRole("button", { name: /^3줄 요약$/u })).toBeVisible()
+  })
+
+  it("keeps a draft without opening the overview", async () => {
+    const onAiRequest = vi.fn(async () => "unused")
+    const onOwnSummaryChange = vi.fn()
+    render(
+      <Harness
+        provider={configured}
+        onAiRequest={onAiRequest}
+        onOwnSummaryChange={onOwnSummaryChange}
+      />,
+    )
+
+    await userEvent.type(screen.getByRole("textbox", { name: "문제" }), "기억에 남는 읽기")
+    await userEvent.tab()
+
+    expect(onOwnSummaryChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        status: "draft",
+        lines: expect.objectContaining({ problem: "기억에 남는 읽기" }),
+      }),
+    )
+    expect(onAiRequest).not.toHaveBeenCalled()
+    expect(screen.queryByRole("button", { name: /^3줄 요약$/u })).not.toBeInTheDocument()
+  })
+
+  it("checks only written lines and never asserts a verdict without evidence", async () => {
+    const onAiRequest = vi.fn(async (request: Omit<AiRequest, "documentId">) =>
+      request.action === "own_summary_check"
+        ? JSON.stringify({
+            items: [
+              {
+                line: "problem",
+                verdict: "match",
+                note: "문제 설정을 정확히 짚었습니다.",
+                page: 1,
+                quote: "a sentence that does not appear on any page",
+              },
+            ],
+          })
+        : `result:${request.action}`,
+    )
+    const onOwnSummaryChange = vi.fn()
+    render(
+      <Harness
+        provider={configured}
+        onAiRequest={onAiRequest}
+        onOwnSummaryChange={onOwnSummaryChange}
+      />,
+    )
+
+    await userEvent.type(screen.getByRole("textbox", { name: "문제" }), "AI 요약이 기억을 줄인다")
+    await userEvent.click(screen.getByRole("button", { name: "제출하고 대조하기" }))
+
+    await waitFor(() => expect(screen.getByText("확인 불가")).toBeVisible())
+    const check = onAiRequest.mock.calls.find(([request]) => request.action === "own_summary_check")
+    expect(JSON.parse(check?.[0].quote ?? "")).toEqual({ problem: "AI 요약이 기억을 줄인다" })
+    expect(screen.getByText(UNVERIFIED_NOTE)).toBeVisible()
+    expect(screen.queryByText("맞음")).not.toBeInTheDocument()
+    expect(screen.getAllByText("떠올리지 못함")).toHaveLength(2)
+    expect(onOwnSummaryChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        status: "submitted",
+        afterReveal: false,
+        check: expect.objectContaining({
+          items: [expect.objectContaining({ line: "problem", verdict: "unverifiable" })],
+        }),
+      }),
+    )
+    await waitFor(() =>
+      expect(onAiRequest.mock.calls.map(([request]) => request.action)).toEqual(
+        expect.arrayContaining(["keywords", "three_line_summary", "paper_summary"]),
+      ),
+    )
+  })
+
+  it("reports a check that cannot be read instead of inventing a result", async () => {
+    const onAiRequest = vi.fn(async (request: Omit<AiRequest, "documentId">) =>
+      request.action === "own_summary_check" ? "좋은 요약입니다!" : `result:${request.action}`,
+    )
+    render(<Harness provider={configured} onAiRequest={onAiRequest} />)
+
+    await userEvent.type(screen.getByRole("textbox", { name: "결과" }), "정확도가 올랐다")
+    await userEvent.click(screen.getByRole("button", { name: "제출하고 대조하기" }))
+
+    expect(await screen.findByText("대조 결과를 읽지 못했습니다. 다시 시도해주세요.")).toBeVisible()
+    expect(screen.getByRole("button", { name: "원문과 대조" })).toBeEnabled()
+  })
+
+  it("generates the overview once revealed and can save it to the board", async () => {
     const onAiRequest = vi.fn(
       async (_request: Omit<AiRequest, "documentId">) => "1. 문제\n2. 방법\n3. 결과",
     )
     const onSave = vi.fn()
     render(
-      <AiOverviewPanel
-        document={documentFixture}
-        currentPage={1}
+      <Harness
+        initial={skipped}
         provider={{ configured: true, provider: "openai", model: "gpt-5" }}
         onAiRequest={onAiRequest}
         onSave={onSave}
@@ -47,10 +211,9 @@ describe("AiOverviewPanel", () => {
   it("restores cached insights without another provider request", () => {
     const onAiRequest = vi.fn(async () => "unused")
     render(
-      <AiOverviewPanel
-        document={documentFixture}
-        currentPage={1}
-        provider={{ configured: true, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
+      <Harness
+        initial={skipped}
+        provider={configured}
         cachedInsights={[
           {
             documentId: documentFixture.id,
@@ -72,7 +235,6 @@ describe("AiOverviewPanel", () => {
           },
         ]}
         onAiRequest={onAiRequest}
-        onSave={vi.fn()}
       />,
     )
 
@@ -82,21 +244,19 @@ describe("AiOverviewPanel", () => {
 
   it("adopts insights cached while the panel is mounted", () => {
     const onAiRequest = vi.fn(async () => "unused")
+    const unconfigured = {
+      configured: false,
+      provider: "openrouter",
+      model: "z-ai/glm-5.3-flash",
+    } as const
     const { rerender } = render(
-      <AiOverviewPanel
-        document={documentFixture}
-        currentPage={1}
-        provider={{ configured: false, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
-        onAiRequest={onAiRequest}
-        onSave={vi.fn()}
-      />,
+      <Harness initial={skipped} provider={unconfigured} onAiRequest={onAiRequest} />,
     )
 
     rerender(
-      <AiOverviewPanel
-        document={documentFixture}
-        currentPage={1}
-        provider={{ configured: false, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
+      <Harness
+        initial={skipped}
+        provider={unconfigured}
         cachedInsights={[
           {
             documentId: documentFixture.id,
@@ -118,7 +278,6 @@ describe("AiOverviewPanel", () => {
           },
         ]}
         onAiRequest={onAiRequest}
-        onSave={vi.fn()}
       />,
     )
 
@@ -143,12 +302,8 @@ describe("AiOverviewPanel", () => {
         document={documentFixture}
         currentPage={3}
         provider={{ configured: true, provider: "anthropic", model: "claude-sonnet-5" }}
-        cachedInsights={(["keywords", "threeLines", "summary"] as const).map((kind) => ({
-          documentId: documentFixture.id,
-          kind,
-          value: "cached",
-          updatedAt: "2026-08-28T00:00:00.000Z",
-        }))}
+        ownSummary={undefined}
+        onOwnSummaryChange={vi.fn()}
         onAiRequest={onAiRequest}
         onSave={vi.fn()}
       />,
@@ -167,10 +322,9 @@ describe("AiOverviewPanel", () => {
 
   it("uses a quiet text disclosure and an empty discussion composer", async () => {
     render(
-      <AiOverviewPanel
-        document={documentFixture}
-        currentPage={1}
-        provider={{ configured: true, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
+      <Harness
+        initial={skipped}
+        provider={configured}
         cachedInsights={[
           {
             documentId: documentFixture.id,
@@ -180,7 +334,6 @@ describe("AiOverviewPanel", () => {
           },
         ]}
         onAiRequest={vi.fn(async () => "unused")}
-        onSave={vi.fn()}
       />,
     )
 
@@ -203,37 +356,14 @@ describe("AiOverviewPanel", () => {
     expect(screen.queryByRole("heading", { name: "토론" })).not.toBeInTheDocument()
   })
 
-  it("generates missing overview sections automatically", async () => {
-    const onAiRequest = vi.fn(
-      async (request: Omit<AiRequest, "documentId">) => `result:${request.action}`,
-    )
-    const onInsightChange = vi.fn()
-    render(
-      <AiOverviewPanel
-        document={documentFixture}
-        currentPage={1}
-        provider={{ configured: true, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
-        onAiRequest={onAiRequest}
-        onInsightChange={onInsightChange}
-        onSave={vi.fn()}
-      />,
-    )
-
-    await waitFor(() => expect(onAiRequest).toHaveBeenCalledTimes(3))
-    await waitFor(() => expect(onInsightChange).toHaveBeenCalledTimes(3))
-    expect(screen.queryByRole("button", { name: "생성하기" })).not.toBeInTheDocument()
-  })
-
   it("distinguishes a configured provider request failure from missing setup", async () => {
     render(
-      <AiOverviewPanel
-        document={documentFixture}
-        currentPage={1}
-        provider={{ configured: true, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
+      <Harness
+        initial={skipped}
+        provider={configured}
         onAiRequest={vi.fn(async () => {
           throw new Error("request failed")
         })}
-        onSave={vi.fn()}
       />,
     )
 
@@ -245,12 +375,9 @@ describe("AiOverviewPanel", () => {
 
   it("does not show a redundant With AI heading", () => {
     render(
-      <AiOverviewPanel
-        document={documentFixture}
-        currentPage={1}
+      <Harness
         provider={{ configured: false, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
         onAiRequest={vi.fn(async () => "unused")}
-        onSave={vi.fn()}
       />,
     )
 

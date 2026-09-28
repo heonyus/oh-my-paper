@@ -14,6 +14,7 @@ import { countRowSchema } from "./knowledgeRepositoryRows"
 import { mergeWorkspaceForSave, WorkspaceConflictError } from "./knowledgeWorkspaceMerge"
 import { projectRepositoryToWorkspace } from "./knowledgeWorkspaceProjection"
 import { syncWorkspaceToRepository } from "./knowledgeWorkspaceSync"
+import { forgetLearningFiles, readLearningFiles, saveLearningFiles } from "./learningFiles"
 import { removeDocumentFromRepository } from "./workspaceDocumentDeletion"
 import { acknowledgedWorkspace } from "./workspaceSnapshot"
 
@@ -25,6 +26,8 @@ export function defaultWorkspace(): Workspace {
     cards: [],
     agentThreads: [],
     insights: [],
+    ownSummaries: [],
+    readerNotes: [],
     sidebarOpen: true,
     outlineWidth: 240,
     researchSidebarWidth: researchSidebarLayout.contentDefault,
@@ -100,19 +103,21 @@ export class WorkspaceStore {
     await this.ensureMigrated()
     await this.collectionService?.rescan()
     const agentThreads = await readAgentThreads(this.root)
+    const learning = await readLearningFiles(this.root)
     const rawSettings = this.db.prepare("SELECT COUNT(*) as count FROM workspace_settings").get()
     const rawNodes = this.db.prepare("SELECT COUNT(*) as count FROM knowledge_nodes").get()
     const settingsCount = countRowSchema.parse(rawSettings).count
     const nodeCount = countRowSchema.parse(rawNodes).count
 
     if (settingsCount === 0 && nodeCount === 0) {
-      const def = acknowledgedWorkspace({ ...defaultWorkspace(), agentThreads })
+      const def = acknowledgedWorkspace({ ...defaultWorkspace(), agentThreads, ...learning })
       this.rememberSnapshot(def)
       return def
     }
     const ws = acknowledgedWorkspace({
       ...projectRepositoryToWorkspace(this.repository, this.db),
       agentThreads,
+      ...learning,
     })
     this.rememberSnapshot(ws)
     return ws
@@ -169,6 +174,7 @@ export class WorkspaceStore {
         hasRendererBaseline ? base?.cards : undefined,
       )
       await writeAgentThreads(this.root, parsed.agentThreads)
+      await saveLearningFiles(this.root, base, parsed)
       const savedWs = await this.acknowledgeRepository()
       return { ...savedWs, agentThreads: parsed.agentThreads }
     })
@@ -223,7 +229,10 @@ export class WorkspaceStore {
       const removed = this.repository.withCanonicalNoteWrite(() =>
         removeDocumentFromRepository(this.repository, this.db, current, id),
       )
-      if (removed) await this.acknowledgeRepository()
+      if (removed) {
+        await forgetLearningFiles(this.root, id)
+        await this.acknowledgeRepository()
+      }
       return removed
     })
   }
@@ -240,7 +249,10 @@ export class WorkspaceStore {
 
   /** Projects the committed repository, remembers it as a save base, and mirrors it to disk. */
   private async acknowledgeRepository(): Promise<Workspace> {
-    const savedWs = acknowledgedWorkspace(projectRepositoryToWorkspace(this.repository, this.db))
+    const savedWs = acknowledgedWorkspace({
+      ...projectRepositoryToWorkspace(this.repository, this.db),
+      ...(await readLearningFiles(this.root)),
+    })
     this.rememberSnapshot(savedWs)
     if (!this.collectionService) await this.writeProjection(savedWs)
     return savedWs

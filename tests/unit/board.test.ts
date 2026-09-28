@@ -68,7 +68,7 @@ describe("createBoardCard", () => {
     const note = saveTranslationAsAnnotation(translation)
 
     expect(note.kind).toBe("highlight")
-    expect(note.title).toBe("번역 주석")
+    expect(note.title).toBe("AI 번역")
     expect(note.body).toBe(translation.body)
     expect(note.anchor).toEqual(translation.anchor)
   })

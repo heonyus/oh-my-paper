@@ -30,6 +30,7 @@ import {
   importResultSchema,
   providerStatusSchema,
 } from "../shared/ipc"
+import { meaningSearchResultSchema, meaningSearchStatusSchema } from "../shared/meaningSearch"
 import type {
   PageTranslationCacheReadRequest,
   PageTranslationCacheResult,
@@ -186,6 +187,17 @@ export function installLocalReaderApi(): void {
       _activeDocumentId = request.documentId
       return localRpc("runAi", request, z.object({ text: z.string(), model: z.string() }))
     },
+    rankByMeaning: async (request, signal) => {
+      const response = await fetch("/api/rpc/rankByMeaning", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(request),
+        ...(signal ? { signal } : {}),
+      })
+      return readLocalResponse(response, meaningSearchResultSchema)
+    },
+    meaningSearchStatus: async (prepare) =>
+      localRpc("meaningSearchStatus", { prepare }, meaningSearchStatusSchema),
     decideAi: async (request, signal) => {
       const response = await fetch("/api/rpc/decideAi", {
         method: "POST",

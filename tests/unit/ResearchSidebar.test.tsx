@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { useState } from "react"
+import { type ComponentProps, useState } from "react"
 import { describe, expect, it, vi } from "vitest"
 import { ResearchSidebar } from "../../src/renderer/components/ResearchSidebar"
 import type { AiRequest } from "../../src/shared/ipc"
@@ -72,6 +72,8 @@ function SidebarHarness({ expanded = false }: { readonly expanded?: boolean }) {
       onCardsChange={vi.fn()}
       onAiRequest={vi.fn(async () => "answer")}
       tool="select"
+      ownSummary={undefined}
+      onOwnSummaryChange={vi.fn()}
       onToolChange={vi.fn()}
     />
   )
@@ -122,7 +124,7 @@ describe("ResearchSidebar", () => {
     await userEvent.click(screen.getByRole("button", { name: "연구 사이드바 접기" }))
     expect(screen.queryByLabelText("연구 사이드바")).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole("button", { name: "연구 사이드바 펼치기" }))
-    await userEvent.click(screen.getByRole("button", { name: "노트 모드" }))
+    await userEvent.click(screen.getByRole("button", { name: "메모 모드" }))
     // Then: the new mode opens transiently and closes on pointer leave.
     const sidebar = screen.getByLabelText("연구 사이드바")
     expect(sidebar).toHaveAttribute("data-flyout", "open")
@@ -163,6 +165,8 @@ describe("ResearchSidebar", () => {
           onCardsChange={vi.fn()}
           onAiRequest={vi.fn(async () => "answer")}
           tool="select"
+          ownSummary={undefined}
+          onOwnSummaryChange={vi.fn()}
           onToolChange={onToolChange}
         />
       </>,
@@ -171,7 +175,7 @@ describe("ResearchSidebar", () => {
     expect(screen.getByRole("region", { name: "AI 논문 개요" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "보드 모드" })).not.toBeInTheDocument()
     expect(screen.queryByRole("toolbar", { name: "보드 카드 필터" })).not.toBeInTheDocument()
-    for (const label of ["번역", "AI 설명", "AI 카드", "노트", "포스트잇", "하이라이트"]) {
+    for (const label of ["번역", "AI 설명", "AI 카드", "메모", "포스트잇", "하이라이트"]) {
       expect(screen.getByRole("button", { name: `${label} 모드` })).toBeVisible()
     }
     await userEvent.click(screen.getByRole("button", { name: "번역 모드" }))
@@ -222,6 +226,8 @@ describe("ResearchSidebar", () => {
         onCardsChange={vi.fn()}
         onAiRequest={vi.fn(async () => "answer")}
         tool="select"
+        ownSummary={undefined}
+        onOwnSummaryChange={vi.fn()}
         onToolChange={vi.fn()}
       />,
     )
@@ -233,23 +239,39 @@ describe("ResearchSidebar", () => {
     expect(screen.queryByRole("button", { name: "Jev로 후보 선택" })).not.toBeInTheDocument()
   })
 
-  it("starts overview generation when the document is ready", async () => {
+  it("starts overview generation only after the reader writes or skips their three lines", async () => {
     const onAiRequest = vi.fn(async (_request: Omit<AiRequest, "documentId">) => "cached result")
-    render(
+    const props = {
+      document: documentFixture,
+      documentReady: true,
+      currentPage: 1,
+      cards: [],
+      citations: [],
+      expanded: true,
+      provider: { configured: true, provider: "openrouter", model: "z-ai/glm-5.3-flash" },
+      onToggle: vi.fn(),
+      onJumpToCard: vi.fn(),
+      onCardsChange: vi.fn(),
+      onAiRequest,
+      tool: "select",
+      onOwnSummaryChange: vi.fn(),
+      onToolChange: vi.fn(),
+    } satisfies Omit<ComponentProps<typeof ResearchSidebar>, "ownSummary">
+    const { rerender } = render(<ResearchSidebar {...props} ownSummary={undefined} />)
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(onAiRequest).not.toHaveBeenCalled()
+
+    rerender(
       <ResearchSidebar
-        document={documentFixture}
-        documentReady
-        currentPage={1}
-        cards={[]}
-        citations={[]}
-        expanded
-        provider={{ configured: true, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
-        onToggle={vi.fn()}
-        onJumpToCard={vi.fn()}
-        onCardsChange={vi.fn()}
-        onAiRequest={onAiRequest}
-        tool="select"
-        onToolChange={vi.fn()}
+        {...props}
+        ownSummary={{
+          documentId: documentFixture.id,
+          status: "skipped",
+          afterReveal: false,
+          lines: { problem: "", method: "", result: "" },
+          updatedAt: "2026-09-28T00:00:00.000Z",
+        }}
       />,
     )
 

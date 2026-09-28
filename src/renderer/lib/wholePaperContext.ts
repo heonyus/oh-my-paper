@@ -9,6 +9,7 @@ const WHOLE_PAPER_ACTIONS: ReadonlySet<AiRequest["action"]> = new Set([
   "paper_summary",
   "three_line_summary",
   "keywords",
+  "own_summary_check",
 ])
 
 /** Paper-level tools start on open, often before the reader has loaded the AST. */

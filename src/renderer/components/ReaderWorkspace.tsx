@@ -1,9 +1,11 @@
-import { type ComponentProps, type JSX, useCallback } from "react"
+import { type ComponentProps, type JSX, useCallback, useMemo, useState } from "react"
 import type { ProviderStatus } from "../../shared/ipc"
 import type { EvidenceNavigationTarget } from "../../shared/knowledgeTypes"
+import type { ReaderNote } from "../../shared/readerNote"
 import type { DocumentInsight } from "../../shared/schemas"
 import { researchSidebarLayout } from "../../shared/uiLayout"
 import type { SourceCitation } from "../lib/chatCitations"
+import { earlierNoteParagraphs } from "../lib/noteTutor"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
 import type { PreparedSummary } from "../lib/pdfDocumentFeatures"
 import type { PdfOutlineEntry } from "../lib/pdfOutline"
@@ -19,6 +21,8 @@ import type {
 import { BoardViewport } from "./BoardViewport"
 import { OutlinePanel } from "./OutlinePanel"
 import { ResearchSidebar } from "./ResearchSidebar"
+import type { PendingNoteQuote } from "./readerNote/noteQuote"
+import { ReaderNotePane } from "./readerNote/ReaderNotePane"
 
 export function ReaderWorkspace(props: {
   readonly document: DocumentRecord | null
@@ -39,6 +43,13 @@ export function ReaderWorkspace(props: {
   readonly citations: readonly CitationIndexEntry[]
   readonly insights: readonly DocumentInsight[]
   readonly updateInsight: ComponentProps<typeof ResearchSidebar>["onInsightChange"]
+  readonly ownSummary: ComponentProps<typeof ResearchSidebar>["ownSummary"]
+  readonly updateOwnSummary: ComponentProps<typeof ResearchSidebar>["onOwnSummaryChange"]
+  readonly noteOpen: boolean
+  readonly openNote: () => void
+  readonly closeNote: () => void
+  readonly readerNote: ReaderNote | undefined
+  readonly updateReaderNote: (markdown: string) => void
   readonly jumpToCard: (id: CardId) => void
   readonly onPrepared: (summary: PreparedSummary) => void
   readonly outline: readonly PdfOutlineEntry[]
@@ -64,6 +75,27 @@ export function ReaderWorkspace(props: {
       if (citation.quote) flashQuoteOnPage(citation.page, citation.quote)
     },
     [pageCount, setPage, jumpToPage],
+  )
+  const [pendingQuote, setPendingQuote] = useState<PendingNoteQuote | null>(null)
+  const openNote = props.openNote
+  const sendToNote = useCallback(
+    (page: number, quote: string): void => {
+      setPendingQuote({ id: crypto.randomUUID(), page, quote })
+      openNote()
+    },
+    [openNote],
+  )
+  const clearPendingQuote = useCallback(() => setPendingQuote(null), [])
+  const earlierNotes = useMemo(
+    () =>
+      documentId
+        ? earlierNoteParagraphs(
+            workspace.readerNotes,
+            new Map(workspace.documents.map((item) => [item.id, item.title])),
+            documentId,
+          )
+        : [],
+    [workspace.readerNotes, workspace.documents, documentId],
   )
   const onPageActive = useCallback(
     (page: number): void => {
@@ -114,6 +146,7 @@ export function ReaderWorkspace(props: {
           onMinimapVisibleChange={(minimapVisible) =>
             updateWorkspace({ ...workspace, minimapVisible })
           }
+          onQuoteToNote={sendToNote}
         />
       ) : (
         <section className="empty-board">
@@ -125,6 +158,20 @@ export function ReaderWorkspace(props: {
           </div>
         </section>
       )}
+      {document && props.noteOpen ? (
+        <ReaderNotePane
+          document={document}
+          note={props.readerNote}
+          currentPage={props.currentPage}
+          earlierNotes={earlierNotes}
+          onAiRequest={props.runAi}
+          onChange={props.updateReaderNote}
+          onClose={props.closeNote}
+          onNavigateToSource={navigateToSource}
+          pendingQuote={pendingQuote}
+          onPendingQuoteHandled={clearPendingQuote}
+        />
+      ) : null}
       <ResearchSidebar
         key={document?.id ?? "no-document"}
         document={document}
@@ -144,6 +191,8 @@ export function ReaderWorkspace(props: {
         onCardsChange={props.updateCards}
         onAiRequest={props.runAi}
         onInsightChange={props.updateInsight}
+        ownSummary={props.ownSummary}
+        onOwnSummaryChange={props.updateOwnSummary}
         onNavigateToSource={navigateToSource}
         tool={props.tool}
         onToolChange={props.setTool}

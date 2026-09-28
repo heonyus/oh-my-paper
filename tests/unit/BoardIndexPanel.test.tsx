@@ -104,8 +104,8 @@ describe("BoardIndexPanel", () => {
     expect(infographicPreview.textContent?.length ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(
       281,
     )
-    rerender(<BoardIndexPanel cards={[note]} kind="note" label="노트" onJump={vi.fn()} />)
-    expect(screen.getByText("메모와 연결된 원문을 다시 찾습니다.")).toBeVisible()
+    rerender(<BoardIndexPanel cards={[note]} kind="note" label="메모" onJump={vi.fn()} />)
+    expect(screen.getByText("보드에 남긴 메모와 그 원문을 함께 봅니다.")).toBeVisible()
     expect(screen.getByText("검증 가능한 메모")).toBeVisible()
     expect(screen.queryByText("보드에서 편집")).not.toBeInTheDocument()
     rerender(<BoardIndexPanel cards={[]} kind="highlight" label="하이라이트" onJump={vi.fn()} />)

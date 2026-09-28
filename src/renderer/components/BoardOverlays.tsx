@@ -2,8 +2,8 @@ import {
   Highlighter,
   Languages,
   MessageSquareText,
+  NotebookPen,
   Palette,
-  StickyNote,
   Trash2,
 } from "lucide-react"
 import type { CSSProperties, JSX } from "react"
@@ -140,7 +140,7 @@ export function SelectionToolbar({
         <Highlighter size={14} /> 하이라이트
       </button>
       <button type="button" aria-keyshortcuts="C" onClick={() => onAction("note")}>
-        <StickyNote size={14} /> 주석
+        <NotebookPen size={14} /> 노트에
       </button>
     </div>
   )

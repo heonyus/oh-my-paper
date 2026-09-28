@@ -4,6 +4,7 @@ import {
   ListTree,
   LogOut,
   MousePointer2,
+  NotebookPen,
   Redo2,
   Undo2,
   ZoomIn,
@@ -37,6 +38,8 @@ type TopbarProps = {
   readonly onRedo: () => void
   readonly outlineOpen: boolean
   readonly onToggleOutline: () => void
+  readonly noteOpen: boolean
+  readonly onToggleNote: () => void
 }
 
 export function Topbar({
@@ -53,6 +56,8 @@ export function Topbar({
   onRedo,
   outlineOpen,
   onToggleOutline,
+  noteOpen,
+  onToggleNote,
 }: TopbarProps): JSX.Element {
   const pageTranslation = usePageTranslationSession()
   function changeZoom(delta: number): void {
@@ -94,6 +99,16 @@ export function Topbar({
           onClick={onToggleOutline}
         >
           <ListTree size={17} />
+        </button>
+        <button
+          type="button"
+          className={noteOpen ? "topbar-note-action active" : "topbar-note-action"}
+          aria-label={noteOpen ? "내 노트 닫기" : "내 노트 열기"}
+          aria-pressed={noteOpen}
+          onClick={onToggleNote}
+        >
+          <NotebookPen size={16} />
+          <span>노트</span>
         </button>
         <div className="tool-cluster">
           <button

@@ -65,6 +65,12 @@ export function App({
     previewCards,
     activeInsights,
     updateInsight,
+    ownSummary,
+    updateOwnSummary,
+    noteOpen,
+    setNoteOpen,
+    readerNote,
+    updateReaderNote,
     runAi,
     importProgress,
     importPdf,
@@ -187,7 +193,12 @@ export function App({
         cards={activeCards}
       />
       {readerMode && !libraryView ? (
-        <section className="reader-workspace" data-outline-open={outlineOpen} aria-label="리더">
+        <section
+          className="reader-workspace"
+          data-outline-open={outlineOpen}
+          data-note-open={noteOpen && Boolean(activeDocument)}
+          aria-label="리더"
+        >
           <Topbar
             documents={workspace.documents}
             activeDocumentId={activeDocument?.id ?? null}
@@ -202,6 +213,8 @@ export function App({
             onRedo={app.redo}
             outlineOpen={outlineOpen}
             onToggleOutline={() => setOutlineOpen((open) => !open)}
+            noteOpen={noteOpen}
+            onToggleNote={() => setNoteOpen((open) => !open)}
           />
           <Suspense fallback={<p role="status">논문을 여는 중…</p>}>
             <ReaderWorkspace
@@ -219,6 +232,13 @@ export function App({
               citations={citations}
               insights={activeInsights}
               updateInsight={updateInsight}
+              ownSummary={ownSummary}
+              noteOpen={noteOpen}
+              openNote={() => setNoteOpen(true)}
+              closeNote={() => setNoteOpen(false)}
+              readerNote={readerNote}
+              updateReaderNote={updateReaderNote}
+              updateOwnSummary={updateOwnSummary}
               provider={provider}
               documentReady={documentReady}
               jumpToCard={jumpToCard}

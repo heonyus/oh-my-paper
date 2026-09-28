@@ -38,6 +38,7 @@ import { createAiModeServices } from "./aiModeServices"
 import type { WebServerConfig } from "./config"
 import { JevDecisionService } from "./decisionService"
 import { deleteLibraryDocument } from "./documentDeletion"
+import { MeaningSearchService } from "./meaningSearchService"
 import { createWebAiRuntime } from "./webAiRuntime"
 
 export type WebServices = {
@@ -56,6 +57,7 @@ export type WebServices = {
     signal?: AbortSignal,
   ) => Promise<AgentAskResult>
   readonly decisionService: () => JevDecisionService | null
+  readonly meaningSearch: MeaningSearchService
   readonly saveProviderConfig: (config: ProviderConfig) => Promise<void>
   readonly deleteDocument: (id: DocumentId) => Promise<boolean>
   readonly saveAiMode: (input: z.infer<typeof aiModeRequestSchema>) => Promise<void>
@@ -93,6 +95,7 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
     initialProvider?.provider === "openrouter"
       ? new JevDecisionService(initialProvider.apiKey)
       : null
+  const meaningSearch = new MeaningSearchService(config.dataDir)
   const jobs = createAiJobStreams(ai)
   const paperSources = createPaperDiscoverySources()
   let metadataSaveQueue: Promise<void> = Promise.resolve()
@@ -143,6 +146,7 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
         signal,
       ),
     decisionService: () => decisions,
+    meaningSearch,
     deleteDocument: (id) => deleteLibraryDocument({ store, analysis, paddle }, id),
     saveProviderConfig: async (value) => {
       const parsed = providerConfigSchema.parse(value)

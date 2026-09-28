@@ -1,6 +1,85 @@
 # oh-my-paper interaction and visual contract
 
-## 2026-09-15 Browser-first paper reading (current)
+## 2026-09-28 Learning core: reading that stays with the reader (current)
+
+This section supersedes the 2026-09-15 reference-family parity and its "context-aware AI
+beside the source" framing. The browser shell, Library and Reader navigation, local
+preparation, tokens, accessibility and responsive rules below stay in force. The typography
+specimen already states the goal: `읽은 것은 남고, 필요한 것은 다시 찾을 수 있어야 합니다.`
+Evidence and code survey: `docs/learning-core-research.md`.
+
+Primary persona: a Korean researcher reading English papers who wants to understand and keep
+them, not only finish them. English is read first; Korean is a check.
+
+**The reader's note (`내 노트`) is the center.** The owner rejected quiz-like mechanics on
+2026-09-28 (spaced-review prompts and graded `내 말로` cards). What stays with the reader is
+what they write themselves, beside the paper, in their own words. The toolbar `노트` button
+opens a note column between the PDF and the research sidebar.
+
+- Editor: a block editor (TipTap) over plain Markdown. `/` opens block choices
+  (제목, 소제목, 목록, 번호 목록, 인용, 코드, 구분선), blocks can be dragged by their handle,
+  and Markdown shortcuts work while typing. Typing saves after a short pause without entering
+  the reader toolbar's undo history; the editor keeps its own undo. Each paper's note is a
+  real file, `reader-notes/<documentId>.md`, merged three-way on save so a stale writer never
+  drops text.
+- Evidence chips: `[[p.N | quote]]`, the app's citation Markdown, render as small `p.N` chips.
+  Clicking one opens the page and flashes the quote. Only the reader inserts chips.
+- From the PDF: selecting a passage and choosing `노트에` (`C`) opens the note if needed and
+  appends the passage as a quote with its chip, then an empty paragraph with the caret, where
+  the reader writes what it means.
+- Live companion: the note header has one control, `조용히 · 보통 · 적극적` (default `보통`,
+  remembered per browser), and a short status (`준비 중`, `오류`) only when something is wrong or
+  loading. The UI carries no explanatory copy.
+  - Source match (local): once a sentence settles (sentence end, or a pause), it is matched by
+    meaning against the parsed paragraphs of the page in view and its neighbours using a local
+    multilingual embedding model (EmbeddingGemma-300M, downloaded once into the data folder and
+    run by the local server; nothing leaves the machine). A passage shows only when it scores at
+    least 0.40 and leads the next by 0.04, so most sentences show nothing. Only the sentence
+    being written shows it: the passage's text-layer spans get a quiet underline, a thin line
+    runs from it to the sentence, and the margin shows a `원문` card with the passage's Korean
+    translation when this session has translated that page, the English source and
+    `근거로 붙이기`. Moving to another sentence removes the underline and line.
+  - Tutor (connected model): when a paragraph settles (leaving the block, or a pause after a
+    finished sentence) the tutor streams 2–5 declarative Korean sentences beside it: what the
+    reader got right, the reason, mechanism or number the paper gives, a stated condition or
+    limitation, and a link to a related passage or to the reader's own earlier note on another
+    paper. It never asks questions, never rewrites or completes the reader's text, and uses only
+    the supplied passages and notes. Sentences ending in a question mark and sentences whose
+    `[[p.N | quote]]` is not on that page are removed before they show; while streaming, only
+    finished sentences that pass appear. One tutor reply per paragraph; `보통` waits 20 s between
+    replies, `적극적` 5 s and also answers settled sentences. The latest paragraph that settles
+    during the wait gets its reply when the wait ends, if it is still in the note. The newest reply is open, older
+    ones fold. Tutor text never enters the note; there is no copy or insert action for it.
+  - Privacy: embeddings stay local. While the control is `보통` or `적극적`, the tutor sends the
+    settled paragraph, a few earlier lines, the related passages and matching earlier notes to
+    the connected AI provider without a click. The owner chose this on 2026-09-28; `조용히`
+    sends nothing.
+  - Where the local server does not offer meaning search (the Electron shell today), only
+    `조용히` is available.
+
+**Existing features, repositioned.**
+- Summary: never generated before the reader writes three lines (문제/방법/결과) or skips.
+  Submitting reveals the AI overview (keywords, three lines, summary) and checks each written
+  line against the paper; a verdict whose quote is not found on its page is shown as
+  `확인 불가`. Blank lines read `떠올리지 못함`. Once revealed for a document, missing overview
+  sections load when the panel opens. Lines written after the reveal carry an
+  `AI 요약을 본 뒤 작성` tag. The reader's lines live in `own-summaries.json` beside the
+  knowledge database, never in the insight table an older build would reject.
+- Annotation (`C`): sends the passage to the note (above). Memo cards made earlier stay on the
+  board as editable `메모` cards (old fixed-text bodies open empty) with no grading.
+- Translation, explanation and chat keep their current behavior for now; attempt-first
+  translation and hint-ladder chat remain possible later steps, not commitments.
+- Highlight: saving an AI translation keeps it labelled `AI 번역`; it never becomes a user card.
+- Auto Highlight: not a product goal.
+
+**States and tone.** Writing surfaces never nag: no confetti, streaks, badges, scores, review
+queues or guilt copy. Failures are shown where they happen (the margin switch, the three-line
+check) and never block writing or reading.
+
+**Later, not yet built.** Lines for confirmed evidence chips on hover, a map of the reader's own
+sentences across papers, and a way to attach a chosen PDF passage to an existing sentence.
+
+## 2026-09-15 Browser-first paper reading (shell current; feature parity superseded 2026-09-28)
 
 This section supersedes the expanded desktop navigation below for the browser
 product.

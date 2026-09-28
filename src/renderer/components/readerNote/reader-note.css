@@ -1,0 +1,433 @@
+/* The reader's note: a quiet writing sheet with a margin for source suggestions. */
+.reader-workspace[data-note-open="true"] {
+  grid-template-columns: 0 minmax(0, 1fr) auto auto;
+}
+.reader-workspace[data-note-open="true"][data-outline-open="true"] {
+  grid-template-columns: 0 auto minmax(0, 1fr) auto auto;
+}
+.reader-workspace[data-note-open="true"] .note-pane {
+  grid-row: 2;
+  grid-column: 3;
+}
+.reader-workspace[data-note-open="true"] .research-sidebar {
+  grid-column: 4;
+}
+.reader-workspace[data-note-open="true"][data-outline-open="true"] .note-pane {
+  grid-column: 4;
+}
+.reader-workspace[data-note-open="true"][data-outline-open="true"] .research-sidebar {
+  grid-column: 5;
+}
+.note-pane {
+  container: note-pane / inline-size;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: clamp(420px, 46vw, 760px);
+  min-height: 0;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+}
+.note-pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px 12px 40px;
+}
+.note-pane-head h2 {
+  margin: 0;
+  font-size: var(--type-body-size);
+  font-weight: 650;
+}
+.note-pane-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.note-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  border-top: 1px solid var(--line);
+}
+.note-sheet {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 232px;
+  gap: 24px;
+  min-height: 100%;
+  padding: 28px 20px 120px 40px;
+}
+.note-editor {
+  position: relative;
+  min-width: 0;
+}
+.note-prose {
+  min-height: 60vh;
+  outline: none;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.75;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+.note-prose > * + * {
+  margin-top: 0.5em;
+}
+.note-prose p {
+  margin: 0;
+}
+.note-prose h1,
+.note-prose h2,
+.note-prose h3 {
+  margin: 1.2em 0 0.2em;
+  line-height: 1.35;
+  font-weight: 650;
+}
+.note-prose h1 {
+  font-size: 1.5em;
+}
+.note-prose h2 {
+  font-size: 1.25em;
+}
+.note-prose h3 {
+  font-size: 1.08em;
+}
+.note-prose > :first-child {
+  margin-top: 0;
+}
+.note-prose ul,
+.note-prose ol {
+  margin: 0.25em 0;
+  padding-left: 1.4em;
+}
+.note-prose blockquote {
+  margin: 0.5em 0;
+  padding-left: 14px;
+  border-left: 3px solid var(--line);
+  color: var(--ink-muted);
+}
+.note-prose code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--surface-muted);
+  font-size: 0.9em;
+}
+.note-prose pre {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--surface-muted);
+  overflow-x: auto;
+}
+.note-prose pre code {
+  padding: 0;
+  background: transparent;
+}
+.note-prose hr {
+  margin: 1.2em 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+.note-prose .is-empty::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: color-mix(in srgb, var(--ink-muted) 70%, transparent);
+  pointer-events: none;
+}
+.note-evidence {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 2px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--action-subtle);
+  color: var(--action);
+  font-size: 0.78em;
+  font-weight: 600;
+  line-height: 1.6;
+  vertical-align: 0.08em;
+  cursor: pointer;
+  user-select: none;
+}
+.ProseMirror-selectednode.note-evidence {
+  outline: 2px solid var(--focus);
+}
+.note-drag-handle {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 22px;
+  border-radius: 4px;
+  color: color-mix(in srgb, var(--ink-muted) 70%, transparent);
+  cursor: grab;
+}
+.note-drag-handle:hover {
+  background: var(--surface-muted);
+  color: var(--ink);
+}
+.note-slash-menu {
+  position: fixed;
+  z-index: 90;
+  display: grid;
+  width: 220px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 8px 28px rgba(13, 31, 22, 0.12);
+}
+.note-slash-menu button {
+  display: grid;
+  gap: 1px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.note-slash-menu button[aria-selected="true"],
+.note-slash-menu button:hover {
+  background: var(--surface-muted);
+}
+.note-slash-menu strong {
+  font-size: var(--type-toolbar-size);
+  font-weight: 600;
+}
+.note-slash-menu span,
+.note-slash-empty {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+}
+.note-margin {
+  position: relative;
+  min-width: 0;
+}
+.note-margin-group {
+  position: absolute;
+  inset-inline: 0;
+  display: grid;
+  gap: 6px;
+  transition: top 140ms ease;
+}
+.note-margin-group[data-earlier="true"] {
+  opacity: 0.6;
+}
+.note-margin-card {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-muted) 55%, var(--surface));
+  font-size: var(--type-compact-size);
+  line-height: 1.5;
+}
+.note-margin-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+.note-margin-card[data-kind="conflict"] header span {
+  color: var(--warning);
+}
+.note-margin-card header button {
+  padding: 0 6px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--action-subtle);
+  color: var(--action);
+  font: inherit;
+  cursor: pointer;
+}
+.note-margin-card p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--ink);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+}
+.note-margin-attach {
+  justify-self: start;
+  padding: 3px 10px;
+  border: 1px solid color-mix(in srgb, var(--action) 45%, var(--line));
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--action);
+  font: inherit;
+  cursor: pointer;
+}
+.note-margin-attached {
+  color: var(--ink-muted);
+}
+.note-margin-loading {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+}
+@media (prefers-reduced-motion: reduce) {
+  .note-margin-group {
+    transition: none;
+  }
+}
+@container note-pane (max-width: 560px) {
+  .note-sheet {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .note-margin {
+    display: none;
+  }
+}
+.reader-toolbar .topbar-note-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  min-height: 34px;
+  padding: 0 10px;
+}
+.note-pane-status {
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+}
+.note-density {
+  display: inline-flex;
+  min-width: 0;
+  margin: 0;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+.note-density button {
+  min-height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: var(--type-compact-size);
+  cursor: pointer;
+}
+.note-density button[aria-pressed="true"] {
+  background: var(--action-subtle);
+  color: var(--action);
+  font-weight: 600;
+}
+.note-density button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+.note-pane-close {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.note-pane-close:hover {
+  background: var(--surface-muted);
+}
+.note-margin-translation {
+  color: var(--ink);
+  word-break: keep-all;
+}
+.note-margin-card .note-margin-translation p {
+  margin: 0;
+}
+.note-margin-card .note-margin-original {
+  color: var(--ink-muted);
+  -webkit-line-clamp: 3;
+}
+.note-margin-card[data-kind="tutor"] {
+  border-color: color-mix(in srgb, var(--action) 28%, var(--line));
+  background: var(--surface);
+  animation: note-tutor-in 180ms ease-out;
+}
+.note-margin-card[data-kind="tutor"] .markdown-content {
+  color: var(--ink);
+  font-size: var(--type-compact-size);
+  line-height: 1.6;
+  word-break: keep-all;
+}
+.note-margin-card[data-kind="tutor"] .markdown-content p {
+  display: block;
+  margin: 0;
+  overflow: visible;
+}
+.note-tutor-typing {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--action);
+  animation: note-tutor-pulse 1s ease-in-out infinite;
+}
+.note-tutor-folded {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+@keyframes note-tutor-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes note-tutor-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .note-margin-card[data-kind="tutor"],
+  .note-tutor-typing {
+    animation: none;
+  }
+}
+/* The passage the sentence in progress rests on, and the line from it to that sentence. */
+.textLayer span.note-source-link {
+  border-radius: 2px;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--action) 45%, transparent) 0 2px,
+    color-mix(in srgb, var(--action) 10%, transparent) 2px
+  );
+}
+.note-link-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  width: 100vw;
+  height: 100vh;
+  overflow: visible;
+  pointer-events: none;
+}
+.note-link-overlay path {
+  fill: none;
+  stroke: color-mix(in srgb, var(--action) 60%, transparent);
+  stroke-width: 1.5;
+}

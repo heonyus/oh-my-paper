@@ -89,6 +89,11 @@ import type {
   UpdateRelationInput,
 } from "./knowledgeTypes"
 import type { LocalInferenceApi } from "./localInference"
+import type {
+  MeaningSearchRequest,
+  MeaningSearchResult,
+  MeaningSearchStatus,
+} from "./meaningSearch"
 import type { MemoryPreloadApi } from "./memoryIpc"
 import type {
   PageTranslationCacheReadRequest,
@@ -343,6 +348,12 @@ export type OhMyPaperApi = {
     request: JevDecisionRequest,
     signal?: AbortSignal,
   ) => Promise<JevDecisionResult>
+  /** Local meaning search for the reader's note; absent where no local server runs it. */
+  readonly rankByMeaning?: (
+    request: MeaningSearchRequest,
+    signal?: AbortSignal,
+  ) => Promise<MeaningSearchResult>
+  readonly meaningSearchStatus?: (prepare: boolean) => Promise<MeaningSearchStatus>
   readonly agentAsk: (
     request: z.input<typeof agentAskRequestSchema>,
   ) => Promise<z.infer<typeof agentAskResultSchema>>

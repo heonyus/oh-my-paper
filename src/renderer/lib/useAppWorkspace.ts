@@ -19,6 +19,7 @@ import { useEvidenceNavigation } from "./useEvidenceNavigation"
 import { useKnowledgeClientOps } from "./useKnowledgeClientOps"
 import { usePaperAiRequest } from "./usePaperAiRequest"
 import { usePostItShortcut } from "./usePostItShortcut"
+import { useReaderLearning } from "./useReaderLearning"
 import { useWorkspaceHistory } from "./useWorkspaceHistory"
 import { useWorkspacePersistence } from "./useWorkspacePersistence"
 
@@ -141,6 +142,12 @@ export function useAppWorkspace() {
     activeDocument?.id,
     history.setWorkspace,
   )
+  const learning = useReaderLearning(
+    history.workspace,
+    activeDocument?.id,
+    history.setWorkspace,
+    history.setWorkspaceTransient,
+  )
   const runAi = usePaperAiRequest(activeDocument, activeInsights, provider)
   const activeOverviewReady =
     Boolean(activeDocument?.overview) ||
@@ -219,6 +226,7 @@ export function useAppWorkspace() {
     previewCards,
     activeInsights,
     updateInsight,
+    ...learning,
     runAi,
     activeOverviewReady,
     importProgress,

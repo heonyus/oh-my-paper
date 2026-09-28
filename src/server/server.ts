@@ -26,6 +26,10 @@ import {
   providerConfigSchema,
 } from "../shared/ipc"
 import {
+  meaningSearchRequestSchema,
+  meaningSearchStatusRequestSchema,
+} from "../shared/meaningSearch"
+import {
   pageTranslationCacheReadRequestSchema,
   pageTranslationCacheWriteRequestSchema,
 } from "../shared/pageTranslationCache"
@@ -269,6 +273,17 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
             } finally {
               res.off("close", cancel)
             }
+            return
+          }
+          case "meaningSearchStatus": {
+            const input = await readJson(req, meaningSearchStatusRequestSchema)
+            if (input.prepare) void services.meaningSearch.prepare().catch(() => undefined)
+            sendJson(res, 200, { state: services.meaningSearch.state() })
+            return
+          }
+          case "rankByMeaning": {
+            const input = await readJson(req, meaningSearchRequestSchema)
+            sendJson(res, 200, await services.meaningSearch.rank(input))
             return
           }
           case "providerStatus": {

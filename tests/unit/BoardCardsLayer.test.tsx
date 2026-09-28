@@ -64,7 +64,7 @@ describe("BoardCardsLayer annotations", () => {
     expect(onActiveChange).toHaveBeenCalledWith(null)
     expect(commitCards.mock.lastCall?.[0]?.[0]).toMatchObject({
       kind: "highlight",
-      title: "번역 주석",
+      title: "AI 번역",
       body: translation.body,
       anchor: translation.anchor,
     })
