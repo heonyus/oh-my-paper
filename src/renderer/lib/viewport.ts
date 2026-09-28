@@ -18,9 +18,27 @@ export function panViewport(viewport: Viewport, delta: Point): Viewport {
   }
 }
 
+/** A trackpad stroke locks to one axis only when that axis clearly dominates it. */
+const AXIS_LOCK_RATIO = 2
+/** A clearly perpendicular stroke switches a lock left over from the previous gesture. */
+const AXIS_SWITCH_RATIO = 3
+
+export function nextWheelAxis(current: "x" | "y" | null, delta: Point): "x" | "y" | null {
+  const horizontal = Math.abs(delta.x)
+  const vertical = Math.abs(delta.y)
+  if (current === "y") return horizontal > vertical * AXIS_SWITCH_RATIO ? "x" : "y"
+  if (current === "x") return vertical > horizontal * AXIS_SWITCH_RATIO ? "y" : "x"
+  if (vertical > 0 && vertical >= horizontal * AXIS_LOCK_RATIO) return "y"
+  if (horizontal > 0 && horizontal >= vertical * AXIS_LOCK_RATIO) return "x"
+  return null
+}
+
 export function wheelPanDelta(delta: Point, shiftKey: boolean): Point {
   if (shiftKey) return { x: -(delta.y || delta.x), y: 0 }
-  return Math.abs(delta.y) >= Math.abs(delta.x) ? { x: 0, y: -delta.y } : { x: -delta.x, y: 0 }
+  const axis = nextWheelAxis(null, delta)
+  if (axis === "y") return { x: 0, y: -delta.y }
+  if (axis === "x") return { x: -delta.x, y: 0 }
+  return { x: -delta.x, y: -delta.y }
 }
 
 export function mostVisiblePage(

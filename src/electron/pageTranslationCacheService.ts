@@ -17,7 +17,7 @@ const cacheEntrySchema = pageTranslationCacheWriteRequestSchema.omit({ id: true 
   sourceHash: z.string().regex(/^[a-f0-9]{64}$/u),
   parser: cacheParserSchema,
   parserConfigVersion: z.string().trim().min(1).max(64),
-  translationRulesVersion: z.literal("page-translation-v10"),
+  translationRulesVersion: z.literal("page-translation-v11"),
 })
 
 function isMissingFile(error: unknown): boolean {
@@ -66,7 +66,7 @@ export class PageTranslationCacheService {
       sourceHash: resolved.sourceHash,
       parser: request.parser ?? "unknown",
       parserConfigVersion: request.parserConfigVersion ?? "unknown",
-      translationRulesVersion: "page-translation-v10",
+      translationRulesVersion: "page-translation-v11",
     })
     await mkdir(dirname(resolved.file), { recursive: true })
     const temporaryFile = `${resolved.file}.${randomUUID()}.tmp`
@@ -80,7 +80,7 @@ export class PageTranslationCacheService {
         const parsed = cacheEntrySchema.safeParse(
           JSON.parse(await readFile(candidate.file, "utf8")),
         )
-        if (parsed.success && parsed.data.translationRulesVersion === "page-translation-v10")
+        if (parsed.success && parsed.data.translationRulesVersion === "page-translation-v11")
           await rm(candidate.file, { force: true })
       } catch (error) {
         if (isMissingFile(error) || error instanceof SyntaxError) continue
@@ -100,7 +100,7 @@ export class PageTranslationCacheService {
       request.model,
       request.parser ?? "unknown",
       request.parserConfigVersion ?? "unknown",
-      "page-translation-v10",
+      "page-translation-v11",
     ].join("\0")
     const configurationHash = createHash("sha256").update(configuration).digest("hex")
     const exact = {

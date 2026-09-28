@@ -35,6 +35,7 @@ type LibraryHomeProps = {
   readonly onRetryAnalysis?: ((id: DocumentId) => void) | undefined
   readonly recentDocumentId?: DocumentId | null | undefined
   readonly recentPage?: number | null | undefined
+  readonly onDeleteDocument?: ((id: DocumentId) => Promise<void>) | undefined
 }
 
 function collectionFailureMessage(cause: unknown): string {
@@ -64,6 +65,7 @@ export function LibraryHome({
   onRetryAnalysis,
   recentDocumentId,
   recentPage,
+  onDeleteDocument,
 }: LibraryHomeProps): JSX.Element {
   const [query, setQuery] = useState("")
   const [dragging, setDragging] = useState(false)
@@ -280,6 +282,7 @@ export function LibraryHome({
         onOpenExternal={onOpenExternal}
         onImport={onImport}
         onToggleMembership={(documentId, boardId) => void toggleMembership(documentId, boardId)}
+        onDeleteDocument={onDeleteDocument}
       />
       <LibraryTaskQueue
         imports={importProgress}

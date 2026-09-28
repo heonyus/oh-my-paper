@@ -172,6 +172,15 @@ export class PaddlePageParserService {
     return this.#request(document, store, directory, pageNumber, input.onProgress)
   }
 
+  /** Stops queueing pages of a deleted document; a request already in the worker still ends. */
+  forget(hash: string): void {
+    const batch = this.#batches.get(hash)
+    if (!batch) return
+    batch.queued.length = 0
+    for (const pageNumber of [...batch.requests.keys()])
+      this.#settle(batch, pageNumber, { status: "unavailable", reason: "unknown_document" })
+  }
+
   dispose(): void {
     this.#disposed = true
     this.#clearIdleTimer()

@@ -135,8 +135,9 @@
 }
 .discussion-messages {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
-  max-height: 300px;
+  max-height: min(70vh, 720px);
   overflow-y: auto;
   padding: 0 0 8px;
 }
@@ -149,11 +150,77 @@
   word-break: keep-all;
   overflow-wrap: break-word;
 }
+/* Long display math scrolls inside its message instead of widening the whole thread. */
+.discussion-messages article {
+  min-width: 0;
+}
+.discussion-messages .katex-display {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
 .discussion-messages article[data-role="user"] {
-  margin-left: 40px;
+  margin-left: 24px;
   background: var(--action-subtle);
 }
 .discussion-messages article p {
   margin: 4px 0 0;
   white-space: pre-wrap;
+}
+/* Source chips in chat answers jump to the cited page; see chatCitations.ts. */
+.markdown-content .source-citation {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 1px;
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--action) 35%, var(--line));
+  border-radius: 999px;
+  background: var(--action-subtle);
+  color: var(--action);
+  font: inherit;
+  font-size: 0.86em;
+  line-height: 1.5;
+  vertical-align: baseline;
+  cursor: pointer;
+}
+.markdown-content .source-citation:hover {
+  border-color: var(--action);
+}
+.textLayer span.source-quote-flash {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--warning, #d9a400) 42%, transparent);
+  animation: source-quote-fade 2.6s ease-out forwards;
+}
+@keyframes source-quote-fade {
+  0%,
+  60% {
+    background: color-mix(in srgb, var(--warning, #d9a400) 42%, transparent);
+  }
+  100% {
+    background: transparent;
+  }
+}
+.discussion-messages .discussion-image {
+  display: block;
+  max-width: 100%;
+  max-height: 220px;
+  margin: 6px 0 2px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  object-fit: contain;
+  background: var(--surface);
+}
+.discussion-attachment {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+}
+.discussion-image-error {
+  margin: 8px 0 0;
+  color: var(--error);
+  font-size: var(--type-compact-size);
 }

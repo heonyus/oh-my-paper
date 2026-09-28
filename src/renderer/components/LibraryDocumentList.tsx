@@ -1,4 +1,4 @@
-import { BookOpen, Grid2X2, List, SortAsc } from "lucide-react"
+import { BookOpen, Grid2X2, List, SortAsc, Trash2 } from "lucide-react"
 import { type JSX, useRef } from "react"
 import type { DocumentId, DocumentRecord } from "../types"
 import { DocumentThumbnail } from "./DocumentThumbnail"
@@ -18,6 +18,7 @@ export function LibraryDocumentList({
   onViewChange,
   onPreview,
   onOpenReader,
+  onRequestDelete,
 }: {
   readonly documents: readonly DocumentRecord[]
   readonly selectedId: DocumentId | null
@@ -25,6 +26,7 @@ export function LibraryDocumentList({
   readonly onViewChange: (view: LibraryView) => void
   readonly onPreview: (id: DocumentId) => void
   readonly onOpenReader: (id: DocumentId) => void
+  readonly onRequestDelete?: ((id: DocumentId) => void) | undefined
 }): JSX.Element {
   const itemRefs = useRef<Readonly<Record<string, HTMLButtonElement | null>>>({})
   const focusDocument = (index: number): void => {
@@ -107,6 +109,17 @@ export function LibraryDocumentList({
                 <BookOpen size={15} aria-hidden="true" />
                 <span>열기</span>
               </button>
+              {onRequestDelete ? (
+                <button
+                  type="button"
+                  className="library-document-delete"
+                  aria-label={`${document.title} 삭제`}
+                  title="라이브러리에서 삭제"
+                  onClick={() => onRequestDelete(document.id)}
+                >
+                  <Trash2 size={15} aria-hidden="true" />
+                </button>
+              ) : null}
               <span className="library-document-date">{formatImportedAt(document.importedAt)}</span>
             </li>
           )

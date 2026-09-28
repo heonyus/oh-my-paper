@@ -18,7 +18,7 @@
   inset: 0 40px 0 auto;
   z-index: 1;
   min-width: 260px;
-  max-width: 520px;
+  max-width: 760px;
   border-left: 1px solid var(--line);
   background: var(--surface);
   box-shadow: -12px 0 28px rgb(25 35 45 / 10%);

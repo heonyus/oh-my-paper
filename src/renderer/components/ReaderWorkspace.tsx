@@ -2,9 +2,12 @@ import { type ComponentProps, type JSX, useCallback } from "react"
 import type { ProviderStatus } from "../../shared/ipc"
 import type { EvidenceNavigationTarget } from "../../shared/knowledgeTypes"
 import type { DocumentInsight } from "../../shared/schemas"
+import { researchSidebarLayout } from "../../shared/uiLayout"
+import type { SourceCitation } from "../lib/chatCitations"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
 import type { PreparedSummary } from "../lib/pdfDocumentFeatures"
 import type { PdfOutlineEntry } from "../lib/pdfOutline"
+import { flashQuoteOnPage } from "../lib/sourceQuoteFlash"
 import type {
   AiRequestRunner,
   BoardCard,
@@ -51,6 +54,17 @@ export function ReaderWorkspace(props: {
   const { document, workspace, updateWorkspace } = props
   const onViewportChange = props.updateViewport
   const documentId = document?.id
+  const pageCount = document?.pageCount ?? 0
+  const { setPage, jumpToPage } = props
+  const navigateToSource = useCallback(
+    (citation: SourceCitation): void => {
+      if (citation.page > pageCount) return
+      setPage(citation.page)
+      jumpToPage(citation.page)
+      if (citation.quote) flashQuoteOnPage(citation.page, citation.quote)
+    },
+    [pageCount, setPage, jumpToPage],
+  )
   const onPageActive = useCallback(
     (page: number): void => {
       if (!documentId) return
@@ -89,6 +103,10 @@ export function ReaderWorkspace(props: {
           currentPage={props.currentPage}
           onOutlineChange={props.updateOutline}
           onRegisterPageJump={props.registerPageJump}
+          rightOcclusion={
+            researchSidebarLayout.railWidth +
+            (workspace.sidebarOpen ? workspace.researchSidebarWidth : 0)
+          }
           onAiRequest={props.runAi}
           tool={props.tool}
           onToolChange={props.setTool}
@@ -126,6 +144,7 @@ export function ReaderWorkspace(props: {
         onCardsChange={props.updateCards}
         onAiRequest={props.runAi}
         onInsightChange={props.updateInsight}
+        onNavigateToSource={navigateToSource}
         tool={props.tool}
         onToolChange={props.setTool}
       />

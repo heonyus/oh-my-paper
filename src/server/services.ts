@@ -39,6 +39,7 @@ import { createAiJobStreams } from "./aiJobStreams"
 import { createAiModeServices } from "./aiModeServices"
 import type { WebServerConfig } from "./config"
 import { JevDecisionService } from "./decisionService"
+import { deleteLibraryDocument } from "./documentDeletion"
 import { createWebAiRuntime } from "./webAiRuntime"
 
 export type WebServices = {
@@ -54,6 +55,7 @@ export type WebServices = {
   readonly agentAsk: (input: AgentAskRequest, onStep?: AgentStepListener) => Promise<AgentAskResult>
   readonly decisionService: () => JevDecisionService | null
   readonly saveProviderConfig: (config: ProviderConfig) => Promise<void>
+  readonly deleteDocument: (id: DocumentId) => Promise<boolean>
   readonly saveAiMode: (input: z.infer<typeof aiModeRequestSchema>) => Promise<void>
   readonly providerStatus: () => Promise<ProviderStatus>
   readonly startAiJob: (request: AiJobStartRequest) => AsyncIterable<Uint8Array>
@@ -145,6 +147,7 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
         onStep,
       ),
     decisionService: () => decisions,
+    deleteDocument: (id) => deleteLibraryDocument({ store, analysis, paddle }, id),
     saveProviderConfig: async (value) => {
       const parsed = providerConfigSchema.parse(value)
       await credentials.saveApiConfig(parsed)

@@ -20,6 +20,8 @@ export class DocumentAnalysisService {
   readonly #listeners = new Set<(snapshot: DocumentAnalysisSnapshot) => void>()
   readonly #pending = new Set<DocumentId>()
   readonly #readyDocuments = new Set<DocumentId>()
+  /** Deleted while queued or running; their in-flight work must not report back. */
+  readonly #forgotten = new Set<DocumentId>()
   readonly #queue: DocumentRecord[] = []
   readonly #scheduling = new Map<DocumentId, Promise<void>>()
   readonly #running = new Set<Promise<void>>()
@@ -81,6 +83,7 @@ export class DocumentAnalysisService {
   async #schedule(documentId: DocumentId): Promise<void> {
     await this.#ready
     if (this.#disposed) return
+    this.#forgotten.delete(documentId)
     if (this.#jobs.has(documentId)) return
     const workspace = await this.store.read()
     if (this.#disposed) return
@@ -105,6 +108,19 @@ export class DocumentAnalysisService {
     this.#readyDocuments.delete(documentId)
     await this.#persistPending()
     await this.schedule(documentId)
+  }
+
+  /** Drops a document that is being deleted from the queue and the persisted state. */
+  async forget(documentId: DocumentId): Promise<void> {
+    await this.#ready
+    this.#forgotten.add(documentId)
+    const queued = this.#queue.findIndex((document) => document.id === documentId)
+    if (queued !== -1) this.#queue.splice(queued, 1)
+    this.#pending.delete(documentId)
+    this.#readyDocuments.delete(documentId)
+    this.#jobs.delete(documentId)
+    await this.#persistPending()
+    this.#emit()
   }
 
   dispose(): Promise<void> {
@@ -152,7 +168,7 @@ export class DocumentAnalysisService {
         async () => {
           for (;;) {
             const pageNumber = takePage()
-            if (pageNumber === null || this.#disposed) return
+            if (pageNumber === null || this.#disposed || this.#forgotten.has(document.id)) return
             const result = await this.#parsePage(document, () => completedPages, pageNumber)
             if (this.#disposed) return
             if (result.status !== "ready") {
@@ -164,7 +180,7 @@ export class DocumentAnalysisService {
         },
       )
       await Promise.all(workers)
-      if (this.#disposed) return
+      if (this.#disposed || this.#forgotten.has(document.id)) return
       if (failureMessage !== null) {
         await this.#fail(document, completedPages, failureMessage)
         return
@@ -193,7 +209,7 @@ export class DocumentAnalysisService {
       signal: this.#abort.signal,
       maxAttempts,
       onProgress: (stage, attempt) => {
-        if (this.#disposed) return
+        if (this.#disposed || this.#forgotten.has(document.id)) return
         this.#jobs.set(
           document.id,
           runningAnalysisJob({
@@ -211,7 +227,7 @@ export class DocumentAnalysisService {
   }
 
   async #fail(document: DocumentRecord, completedPages: number, message: string): Promise<void> {
-    if (this.#disposed) return
+    if (this.#disposed || this.#forgotten.has(document.id)) return
     await this.#persistPending()
     this.#jobs.set(document.id, failedAnalysisJob(document, completedPages, message))
     this.#emit()

@@ -400,4 +400,48 @@ describe("DocumentAnalysisService", () => {
     await service2.dispose()
     await rm(root, { recursive: true, force: true })
   })
+
+  it("forgets a deleted document without letting its in-flight run report back", async () => {
+    const root = await mkdtemp(join(tmpdir(), "document-analysis-test-"))
+    const store = new WorkspaceStore(root)
+    const paper = record("c", "Deleted paper")
+    await store.save({ ...defaultWorkspace(), documents: [paper] })
+    const resolvers = new Map<number, (result: DocumentPageParseResult) => void>()
+    const parser = {
+      parse: vi.fn(
+        (input: { readonly pageNumber: number }) =>
+          new Promise<DocumentPageParseResult>((resolve) => {
+            resolvers.set(input.pageNumber, resolve)
+          }),
+      ),
+    }
+    const service = new DocumentAnalysisService(store, parser, { pageConcurrency: 1 })
+
+    try {
+      await service.schedule(paper.id)
+      await vi.waitFor(() => expect(resolvers.has(1)).toBe(true))
+
+      await service.forget(paper.id)
+      resolvers.get(1)?.(readyPage(paper.hash, 1))
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      expect(service.snapshot()).toEqual([])
+      expect(service.isReady(paper.id)).toBe(false)
+      expect(resolvers.has(2)).toBe(false)
+      expect(
+        JSON.parse(await readFile(join(root, "document-analysis-queue.json"), "utf8")),
+      ).toEqual({ version: 2, pendingIds: [], readyIds: [] })
+
+      await service.schedule(paper.id)
+      expect(service.snapshot().map((job) => job.id)).toEqual([paper.id])
+      await vi.waitFor(() => expect(parser.parse).toHaveBeenCalledTimes(2))
+      resolvers.get(1)?.(readyPage(paper.hash, 1))
+      await vi.waitFor(() => expect(parser.parse).toHaveBeenCalledTimes(3))
+      resolvers.get(2)?.(readyPage(paper.hash, 2))
+      await vi.waitFor(() => expect(service.isReady(paper.id)).toBe(true))
+    } finally {
+      await service.dispose()
+      await rm(root, { recursive: true, force: true })
+    }
+  })
 })

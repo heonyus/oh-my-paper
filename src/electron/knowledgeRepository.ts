@@ -143,6 +143,10 @@ export class KnowledgeRepository {
     return this.evidence.findDocumentVersionsByDocId(documentId)
   }
 
+  deleteDocumentVersionsForDocument(documentId: string): readonly DocumentVersionRecord[] {
+    return this.evidence.deleteDocumentVersionsForDocument(documentId)
+  }
+
   listBoards(): readonly BoardRecord[] {
     return this.placements.listBoards()
   }

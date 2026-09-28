@@ -102,6 +102,13 @@ export function installLocalReaderApi(): void {
     importDocument: importer.importDocument,
     importDocumentPath: importer.importDocumentPath,
     importDocumentPaths: importer.importDocumentPaths,
+    deleteDocument: async (id: DocumentId): Promise<void> => {
+      const response = await fetch(`/api/documents/${id}`, {
+        method: "DELETE",
+        signal: AbortSignal.timeout(60_000),
+      })
+      await readLocalResponse(response, z.object({ ok: z.literal(true) }))
+    },
     importDocumentUrl: async (url: string) => {
       const response = await fetch("/api/documents/url", {
         method: "POST",

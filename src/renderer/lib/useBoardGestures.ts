@@ -7,7 +7,7 @@ import {
 } from "react"
 import type { Viewport } from "../../shared/schemas"
 import type { BoardTool } from "../types"
-import { panViewport, zoomViewportAt } from "./viewport"
+import { nextWheelAxis, panViewport, zoomViewportAt } from "./viewport"
 
 type UseBoardGesturesProps = {
   readonly wheelTargetRef: RefObject<HTMLElement | null>
@@ -85,9 +85,11 @@ export function useBoardGestures({
     readonly x: number
     readonly y: number
   } {
-    wheelAxis.current ??= Math.abs(delta.y) >= Math.abs(delta.x) ? "y" : "x"
+    wheelAxis.current = nextWheelAxis(wheelAxis.current, delta)
     resetWheelAxisAfterIdle()
-    return wheelAxis.current === "y" ? { x: 0, y: -delta.y } : { x: -delta.x, y: 0 }
+    if (wheelAxis.current === "y") return { x: 0, y: -delta.y }
+    if (wheelAxis.current === "x") return { x: -delta.x, y: 0 }
+    return { x: -delta.x, y: -delta.y }
   }
 
   function queueViewport(next: Viewport): void {

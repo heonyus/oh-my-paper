@@ -14,6 +14,7 @@ import {
   centerViewportOnWorldPoint,
   constrainViewportToBounds,
   hasCompletePageSet,
+  type PanReach,
   symmetricBoardBounds,
   type ViewportConstraint,
   type ViewportSize,
@@ -24,6 +25,8 @@ import { BoardMinimap } from "./BoardMinimap"
 
 const navigationPadding = 40
 const minimumBoardSideSpace = 720
+/** How far content may be pushed past its bounds, so panning never feels walled in. */
+const maximumPanSlack = 360
 
 type BoardNavigationControllerProps = {
   readonly viewport: Viewport
@@ -35,6 +38,8 @@ type BoardNavigationControllerProps = {
   readonly onVisibleChange: (visible: boolean) => void
   readonly panning: boolean
   readonly panConstraintRef: RefObject<ViewportConstraint>
+  /** Screen width covered on the right by the research sidebar. */
+  readonly occludedRight?: number | undefined
 }
 
 function equalRects(left: readonly WorldRect[], right: readonly WorldRect[]): boolean {
@@ -74,6 +79,7 @@ export function BoardNavigationController({
   onVisibleChange,
   panning,
   panConstraintRef,
+  occludedRight,
 }: BoardNavigationControllerProps): JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewportRef = useRef(viewport)
@@ -143,6 +149,13 @@ export function BoardNavigationController({
     () => symmetricBoardBounds(pages, cardRects, minimumBoardSideSpace),
     [pages, cardRects],
   )
+  const reach = useMemo<PanReach>(
+    () => ({
+      slack: Math.min(available.width * 0.25, maximumPanSlack),
+      occludedRight: occludedRight ?? 0,
+    }),
+    [available.width, occludedRight],
+  )
   useLayoutEffect(() => {
     if (
       !bounds ||
@@ -154,8 +167,8 @@ export function BoardNavigationController({
       return
     }
     panConstraintRef.current = (candidate) =>
-      constrainViewportToBounds(candidate, available, bounds, navigationPadding)
-  }, [available, bounds, pageCount, pages, panConstraintRef])
+      constrainViewportToBounds(candidate, available, bounds, navigationPadding, reach)
+  }, [available, bounds, pageCount, pages, panConstraintRef, reach])
   if (
     !bounds ||
     !hasCompletePageSet(pages, pageCount) ||
@@ -166,7 +179,7 @@ export function BoardNavigationController({
   }
   const navigate = (point: { readonly x: number; readonly y: number }): void => {
     onViewportChange(
-      centerViewportOnWorldPoint(viewport, available, point, bounds, navigationPadding),
+      centerViewportOnWorldPoint(viewport, available, point, bounds, navigationPadding, reach),
     )
   }
   const firstPage = pages[0]
@@ -182,6 +195,7 @@ export function BoardNavigationController({
         available,
         bounds,
         navigationPadding,
+        reach,
       ),
     )
   }

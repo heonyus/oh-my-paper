@@ -2,7 +2,7 @@ import { mkdir, rename, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
-import type { DocumentRecord, Workspace } from "../shared/schemas"
+import type { DocumentId, DocumentRecord, Workspace } from "../shared/schemas"
 import { workspaceSchema } from "../shared/schemas"
 import { researchSidebarLayout } from "../shared/uiLayout"
 import { readAgentThreads, writeAgentThreads } from "./agentThreadsFile"
@@ -14,6 +14,7 @@ import { countRowSchema } from "./knowledgeRepositoryRows"
 import { mergeWorkspaceForSave, WorkspaceConflictError } from "./knowledgeWorkspaceMerge"
 import { projectRepositoryToWorkspace } from "./knowledgeWorkspaceProjection"
 import { syncWorkspaceToRepository } from "./knowledgeWorkspaceSync"
+import { removeDocumentFromRepository } from "./workspaceDocumentDeletion"
 import { acknowledgedWorkspace } from "./workspaceSnapshot"
 
 const persistedWorkspaceSchema = workspaceSchema.extend({ layoutVersion: z.literal(2) })
@@ -131,59 +132,46 @@ export class WorkspaceStore {
 
   async save(workspace: Workspace): Promise<Workspace> {
     const parsed = workspaceSchema.parse(workspace)
-    const operation = this.saveQueue
-      .catch(() => undefined)
-      .then(async () => {
-        await this.ensureMigrated()
-        await this.collectionService?.rescan()
-        const current = acknowledgedWorkspace(
-          projectRepositoryToWorkspace(this.repository, this.db),
+    return this.enqueue(async () => {
+      await this.ensureMigrated()
+      await this.collectionService?.rescan()
+      const current = acknowledgedWorkspace(projectRepositoryToWorkspace(this.repository, this.db))
+      this.rememberSnapshot(current)
+      const baseRevision = parsed.baseRevision ?? parsed.revision
+      const baseToken = parsed.baseSnapshotToken ?? parsed.snapshotToken
+      const hasRendererBaseline = baseToken !== undefined || baseRevision !== undefined
+      const base = baseToken
+        ? this.snapshots.get(baseToken)
+        : baseRevision === undefined
+          ? current
+          : [...this.snapshots.values()].filter((snapshot) => snapshot.revision === baseRevision)
+                .length === 1
+            ? [...this.snapshots.values()].find((snapshot) => snapshot.revision === baseRevision)
+            : undefined
+      if ((baseToken !== undefined || baseRevision !== undefined) && !base) {
+        throw new WorkspaceConflictError(
+          baseToken ? `baseSnapshotToken:${baseToken}` : `baseRevision:${baseRevision}`,
         )
-        this.rememberSnapshot(current)
-        const baseRevision = parsed.baseRevision ?? parsed.revision
-        const baseToken = parsed.baseSnapshotToken ?? parsed.snapshotToken
-        const hasRendererBaseline = baseToken !== undefined || baseRevision !== undefined
-        const base = baseToken
-          ? this.snapshots.get(baseToken)
-          : baseRevision === undefined
-            ? current
-            : [...this.snapshots.values()].filter((snapshot) => snapshot.revision === baseRevision)
-                  .length === 1
-              ? [...this.snapshots.values()].find((snapshot) => snapshot.revision === baseRevision)
-              : undefined
-        if ((baseToken !== undefined || baseRevision !== undefined) && !base) {
-          throw new WorkspaceConflictError(
-            baseToken ? `baseSnapshotToken:${baseToken}` : `baseRevision:${baseRevision}`,
-          )
-        }
-        const effective = base ? mergeWorkspaceForSave(base, current, parsed) : parsed
-        this.repository.withCanonicalNoteWrite(() =>
-          syncWorkspaceToRepository(
-            this.repository,
-            this.db,
-            parsed,
-            base,
-            false,
-            this.collectionService ? undefined : this.workspaceFile,
-          ),
-        )
-        await this.collectionService?.syncWorkspaceNotes(
-          effective.cards,
-          hasRendererBaseline ? base?.cards : undefined,
-        )
-        await writeAgentThreads(this.root, parsed.agentThreads)
-        const savedWs = acknowledgedWorkspace(
-          projectRepositoryToWorkspace(this.repository, this.db),
-        )
-        this.rememberSnapshot(savedWs)
-        if (!this.collectionService) await this.writeProjection(savedWs)
-        return { ...savedWs, agentThreads: parsed.agentThreads }
-      })
-    this.saveQueue = operation.then(
-      () => undefined,
-      () => undefined,
-    )
-    return operation
+      }
+      const effective = base ? mergeWorkspaceForSave(base, current, parsed) : parsed
+      this.repository.withCanonicalNoteWrite(() =>
+        syncWorkspaceToRepository(
+          this.repository,
+          this.db,
+          parsed,
+          base,
+          false,
+          this.collectionService ? undefined : this.workspaceFile,
+        ),
+      )
+      await this.collectionService?.syncWorkspaceNotes(
+        effective.cards,
+        hasRendererBaseline ? base?.cards : undefined,
+      )
+      await writeAgentThreads(this.root, parsed.agentThreads)
+      const savedWs = await this.acknowledgeRepository()
+      return { ...savedWs, agentThreads: parsed.agentThreads }
+    })
   }
 
   async flush(): Promise<void> {
@@ -193,46 +181,69 @@ export class WorkspaceStore {
   async addDocument(
     document: DocumentRecord,
   ): Promise<{ readonly document: DocumentRecord; readonly duplicate: boolean }> {
-    const operation = this.saveQueue
-      .catch(() => undefined)
-      .then(async () => {
-        await this.ensureMigrated()
-        const existingVersions = this.repository.findDocumentVersionsByHash(document.hash)
-        if (existingVersions.length > 0) {
-          const workspace = await this.read()
-          const existing = workspace.documents.find((d) => d.hash === document.hash)
-          if (existing) return { document: existing, duplicate: true }
-        }
-
+    return this.enqueue(async () => {
+      await this.ensureMigrated()
+      const existingVersions = this.repository.findDocumentVersionsByHash(document.hash)
+      if (existingVersions.length > 0) {
         const workspace = await this.read()
-        const updated: Workspace = {
-          ...workspace,
-          documents: [...workspace.documents, document],
-          activeDocumentId: document.id,
-        }
-        this.repository.withCanonicalNoteWrite(() =>
-          syncWorkspaceToRepository(
-            this.repository,
-            this.db,
-            updated,
-            undefined,
-            false,
-            this.collectionService ? undefined : this.workspaceFile,
-          ),
-        )
-        await this.collectionService?.syncWorkspaceNotes(updated.cards, workspace.cards)
-        const savedWs = acknowledgedWorkspace(
-          projectRepositoryToWorkspace(this.repository, this.db),
-        )
-        this.rememberSnapshot(savedWs)
-        if (!this.collectionService) await this.writeProjection(savedWs)
-        return { document, duplicate: false }
-      })
+        const existing = workspace.documents.find((d) => d.hash === document.hash)
+        if (existing) return { document: existing, duplicate: true }
+      }
+
+      const workspace = await this.read()
+      const updated: Workspace = {
+        ...workspace,
+        documents: [...workspace.documents, document],
+        activeDocumentId: document.id,
+      }
+      this.repository.withCanonicalNoteWrite(() =>
+        syncWorkspaceToRepository(
+          this.repository,
+          this.db,
+          updated,
+          undefined,
+          false,
+          this.collectionService ? undefined : this.workspaceFile,
+        ),
+      )
+      await this.collectionService?.syncWorkspaceNotes(updated.cards, workspace.cards)
+      await this.acknowledgeRepository()
+      return { document, duplicate: false }
+    })
+  }
+
+  /** Deletes a document record; returns it, or null when it is not in the library. */
+  async deleteDocument(id: DocumentId): Promise<DocumentRecord | null> {
+    if (this.collectionService) {
+      throw new Error("Document deletion is not available for collection libraries")
+    }
+    return this.enqueue(async () => {
+      await this.ensureMigrated()
+      const current = projectRepositoryToWorkspace(this.repository, this.db)
+      const removed = this.repository.withCanonicalNoteWrite(() =>
+        removeDocumentFromRepository(this.repository, this.db, current, id),
+      )
+      if (removed) await this.acknowledgeRepository()
+      return removed
+    })
+  }
+
+  /** Serializes a mutation behind earlier saves; a failure does not block later ones. */
+  private enqueue<T>(mutation: () => Promise<T>): Promise<T> {
+    const operation = this.saveQueue.catch(() => undefined).then(mutation)
     this.saveQueue = operation.then(
       () => undefined,
       () => undefined,
     )
     return operation
+  }
+
+  /** Projects the committed repository, remembers it as a save base, and mirrors it to disk. */
+  private async acknowledgeRepository(): Promise<Workspace> {
+    const savedWs = acknowledgedWorkspace(projectRepositoryToWorkspace(this.repository, this.db))
+    this.rememberSnapshot(savedWs)
+    if (!this.collectionService) await this.writeProjection(savedWs)
+    return savedWs
   }
 
   private async writeProjection(workspace: Workspace): Promise<void> {

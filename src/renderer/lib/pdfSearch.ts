@@ -32,7 +32,7 @@ function parsedPageRetrievalText(page: ParsedDocumentPage): string {
     .join("\n\n")
 }
 
-function pageTextsWithParsedPages(
+export function pageTextsWithParsedPages(
   ast: NonNullable<ReturnType<typeof activeDocumentAst>>,
 ): readonly string[] {
   const pageTexts = [...pageTextsFromAst(ast)]

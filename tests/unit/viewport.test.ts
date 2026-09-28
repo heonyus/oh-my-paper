@@ -4,6 +4,7 @@ import {
   fitWorldRectHorizontally,
   focusWorldRect,
   moveWorldPointByScreenDelta,
+  nextWheelAxis,
   panViewport,
   revealWorldRectHorizontally,
   wheelPanDelta,
@@ -100,5 +101,15 @@ describe("board viewport", () => {
 
     expect(next.x + (1200 + 320 / 2) * next.zoom).toBeCloseTo(640)
     expect(next.y + 900 * next.zoom).toBeCloseTo(84)
+  })
+
+  it("locks a trackpad stroke only to a clearly dominant axis and lets it switch", () => {
+    expect(nextWheelAxis(null, { x: 3, y: 40 })).toBe("y")
+    expect(nextWheelAxis(null, { x: 30, y: 4 })).toBe("x")
+    expect(nextWheelAxis(null, { x: 20, y: 18 })).toBeNull()
+    expect(nextWheelAxis(null, { x: 0, y: 0 })).toBeNull()
+    expect(nextWheelAxis("y", { x: 40, y: 2 })).toBe("x")
+    expect(nextWheelAxis("y", { x: 10, y: 8 })).toBe("y")
+    expect(wheelPanDelta({ x: 20, y: 18 }, false)).toEqual({ x: -20, y: -18 })
   })
 })

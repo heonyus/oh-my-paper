@@ -56,22 +56,32 @@ export function hasCompletePageSet(pages: readonly WorldRect[], pageCount: numbe
   )
 }
 
+/**
+ * Extra horizontal room beyond the content bounds, in screen pixels. `occludedRight` is the
+ * width an overlay (the research sidebar) covers on the right, so content under it can
+ * still be pulled into view.
+ */
+export type PanReach = { readonly slack: number; readonly occludedRight: number }
+
+const noReach: PanReach = { slack: 0, occludedRight: 0 }
+
 export function constrainViewportToBounds(
   viewport: Viewport,
   available: ViewportSize,
   bounds: WorldRect,
   padding: number,
+  reach: PanReach = noReach,
 ): Viewport {
-  const scaledWidth = bounds.width * viewport.zoom
   const scaledHeight = bounds.height * viewport.zoom
-  const minimumX = available.width - padding - (bounds.x + bounds.width) * viewport.zoom
-  const maximumX = padding - bounds.x * viewport.zoom
+  // Content either spans the view (edges bound it) or fits inside it (it may slide freely).
+  const alignRight =
+    available.width - padding - reach.occludedRight - (bounds.x + bounds.width) * viewport.zoom
+  const alignLeft = padding - bounds.x * viewport.zoom
+  const minimumX = Math.min(alignRight, alignLeft) - reach.slack
+  const maximumX = Math.max(alignRight, alignLeft) + reach.slack
   const minimumY = available.height - padding - (bounds.y + bounds.height) * viewport.zoom
   const maximumY = padding - bounds.y * viewport.zoom
-  const x =
-    scaledWidth <= available.width - padding * 2
-      ? (available.width - scaledWidth) / 2 - bounds.x * viewport.zoom
-      : clamp(viewport.x, minimumX, maximumX)
+  const x = clamp(viewport.x, minimumX, maximumX)
   const y =
     scaledHeight <= available.height - padding * 2
       ? maximumY
@@ -85,6 +95,7 @@ export function centerViewportOnWorldPoint(
   point: Point,
   bounds: WorldRect,
   padding: number,
+  reach: PanReach = noReach,
 ): Viewport {
   return constrainViewportToBounds(
     {
@@ -95,6 +106,7 @@ export function centerViewportOnWorldPoint(
     available,
     bounds,
     padding,
+    reach,
   )
 }
 

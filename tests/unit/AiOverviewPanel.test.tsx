@@ -126,6 +126,45 @@ describe("AiOverviewPanel", () => {
     expect(onAiRequest).not.toHaveBeenCalled()
   })
 
+  it("sends chat history within the request schema's bounds", async () => {
+    const saved = Array.from({ length: 30 }, (_, index) => ({
+      id: `entry-${index}`,
+      role: index % 2 === 0 ? "user" : "assistant",
+      content: index === 29 ? "긴 답변 ".repeat(1_500) : `message ${index}`,
+    }))
+    const values = new Map([[`ohmypaper:discussion:${documentFixture.id}`, JSON.stringify(saved)]])
+    vi.stubGlobal("localStorage", {
+      getItem: (item: string) => values.get(item) ?? null,
+      setItem: (item: string, value: string) => values.set(item, value),
+    })
+    const onAiRequest = vi.fn(async (_request: Omit<AiRequest, "documentId">) => "답변")
+    render(
+      <AiOverviewPanel
+        document={documentFixture}
+        currentPage={3}
+        provider={{ configured: true, provider: "anthropic", model: "claude-sonnet-5" }}
+        cachedInsights={(["keywords", "threeLines", "summary"] as const).map((kind) => ({
+          documentId: documentFixture.id,
+          kind,
+          value: "cached",
+          updatedAt: "2026-08-28T00:00:00.000Z",
+        }))}
+        onAiRequest={onAiRequest}
+        onSave={vi.fn()}
+      />,
+    )
+
+    await userEvent.type(screen.getByRole("textbox", { name: "논문 토론 질문" }), "변수는?")
+    await userEvent.click(screen.getByRole("button", { name: "토론 질문 보내기" }))
+
+    await waitFor(() => expect(onAiRequest).toHaveBeenCalledOnce())
+    const request = onAiRequest.mock.calls[0]?.[0]
+    expect(request).toMatchObject({ action: "chat", quote: "변수는?", page: 3 })
+    expect(request?.history?.length).toBeLessThanOrEqual(24)
+    expect(request?.history?.every((message) => message.content.length <= 4_000)).toBe(true)
+    vi.unstubAllGlobals()
+  })
+
   it("uses a quiet text disclosure and an empty discussion composer", async () => {
     render(
       <AiOverviewPanel

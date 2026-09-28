@@ -220,4 +220,66 @@ describe("hybridPageParser", () => {
       "Right column follows.",
     ])
   })
+  it("takes headings from Paddle and cuts them out of the PDF.js lines they were glued to", () => {
+    const block = (
+      order: number,
+      label: string,
+      bounds: { x: number; y: number; width: number; height: number },
+      content: string,
+    ) => ({
+      id: `page:3:block:${order}`,
+      label,
+      order,
+      bounds,
+      content,
+      contentFormat: "markdown",
+      translationPolicy: "include",
+    })
+    const page = (parser: string, blocks: readonly unknown[]) =>
+      parsedDocumentPageSchema.parse({
+        schemaVersion: "1.0.0",
+        sourceHash,
+        parser,
+        configVersion: "v",
+        pageNumber: 3,
+        width: 1_000,
+        height: 1_000,
+        blocks,
+      })
+    const native = page("NativeText-1.0", [
+      block(0, "text", { x: 80, y: 200, width: 400, height: 30 }, "the end of the introduction."),
+      block(
+        1,
+        "text",
+        { x: 80, y: 250, width: 400, height: 40 },
+        "Results Preparation of the dataset. The",
+      ),
+      block(
+        2,
+        "paragraph_title",
+        { x: 80, y: 300, width: 400, height: 16 },
+        "3 billion observations.",
+      ),
+      block(3, "text", { x: 540, y: 100, width: 400, height: 200 }, "Right column before."),
+      block(4, "text", { x: 540, y: 450, width: 400, height: 200 }, "Right column after."),
+    ])
+    const paddle = page("PaddleOCR-VL-1.6", [
+      block(0, "paragraph_title", { x: 80, y: 250, width: 70, height: 20 }, "## Results"),
+      block(1, "paragraph_title", { x: 540, y: 400, width: 120, height: 22 }, "## Discussion"),
+    ])
+
+    const merged = mergePdfJsAndPaddlePage(native, paddle)
+
+    expect(merged.configVersion).toBe("hybrid-v10")
+    expect(merged.blocks.map((item) => [item.label, item.content])).toEqual([
+      ["text", "the end of the introduction."],
+      ["paragraph_title", "## Results"],
+      ["text", "Preparation of the dataset. The"],
+      ["text", "3 billion observations."],
+      ["text", "Right column before."],
+      ["paragraph_title", "## Discussion"],
+      ["text", "Right column after."],
+    ])
+    expect(merged.blocks[2]?.bounds).toEqual({ x: 80, y: 270, width: 400, height: 20 })
+  })
 })
