@@ -1,5 +1,4 @@
 import type { JSX } from "react"
-import type { OwnWordsCheck } from "../../shared/ownWords"
 import { saveTranslationAsAnnotation } from "../lib/board"
 import { conciseCardTitle } from "../lib/cardPresentation"
 import type { AiDeltaHandler, BoardCard, CardId } from "../types"
@@ -17,7 +16,6 @@ export function BoardCardsLayer({
   onJump,
   onAsk,
   onRegenerateTitle,
-  onCheckOwnWords,
   streamingCardIds = new Set<string>(),
 }: {
   readonly cards: readonly BoardCard[]
@@ -36,7 +34,6 @@ export function BoardCardsLayer({
     onDelta?: AiDeltaHandler,
   ) => Promise<string>
   readonly onRegenerateTitle: (card: BoardCard) => Promise<string>
-  readonly onCheckOwnWords: (card: BoardCard, signal: AbortSignal) => Promise<OwnWordsCheck>
   readonly streamingCardIds?: ReadonlySet<string> | undefined
 }): JSX.Element {
   return (
@@ -94,10 +91,6 @@ export function BoardCardsLayer({
               commitCards(getCards().map((item) => (item.id === id ? { ...item, chat } : item)))
             }
             onAsk={onAsk}
-            onCheckOwnWords={onCheckOwnWords}
-            onOwnCheckChange={(id, ownCheck) =>
-              commitCards(getCards().map((item) => (item.id === id ? { ...item, ownCheck } : item)))
-            }
             onRegenerateTitle={(id) => {
               const target = getCards().find((item) => item.id === id)
               if (!target) return

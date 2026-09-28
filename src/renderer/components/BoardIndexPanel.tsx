@@ -36,8 +36,8 @@ const categoryCopy: Readonly<Record<BoardCategoryKind, CategoryCopy>> = {
     action: "분석 카드 보기",
   },
   note: {
-    purpose: "내 말로 쓴 문장과 그 원문을 함께 봅니다.",
-    empty: "PDF 구절을 선택하고 ‘내 말로’(C)를 누르면 직접 쓴 문장이 여기에 모입니다.",
+    purpose: "보드에 남긴 메모와 그 원문을 함께 봅니다.",
+    empty: "보드에 남긴 메모 카드가 여기에 모입니다.",
     action: null,
   },
   sticky: {

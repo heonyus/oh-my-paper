@@ -124,7 +124,7 @@ describe("ResearchSidebar", () => {
     await userEvent.click(screen.getByRole("button", { name: "연구 사이드바 접기" }))
     expect(screen.queryByLabelText("연구 사이드바")).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole("button", { name: "연구 사이드바 펼치기" }))
-    await userEvent.click(screen.getByRole("button", { name: "내 말로 모드" }))
+    await userEvent.click(screen.getByRole("button", { name: "메모 모드" }))
     // Then: the new mode opens transiently and closes on pointer leave.
     const sidebar = screen.getByLabelText("연구 사이드바")
     expect(sidebar).toHaveAttribute("data-flyout", "open")
@@ -175,7 +175,7 @@ describe("ResearchSidebar", () => {
     expect(screen.getByRole("region", { name: "AI 논문 개요" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "보드 모드" })).not.toBeInTheDocument()
     expect(screen.queryByRole("toolbar", { name: "보드 카드 필터" })).not.toBeInTheDocument()
-    for (const label of ["번역", "AI 설명", "AI 카드", "내 말로", "포스트잇", "하이라이트"]) {
+    for (const label of ["번역", "AI 설명", "AI 카드", "메모", "포스트잇", "하이라이트"]) {
       expect(screen.getByRole("button", { name: `${label} 모드` })).toBeVisible()
     }
     await userEvent.click(screen.getByRole("button", { name: "번역 모드" }))

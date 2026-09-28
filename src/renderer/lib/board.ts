@@ -33,7 +33,7 @@ export const CARD_COPY = {
     body: "",
   },
   infographic: { title: "인포그래픽", body: "" },
-  note: { title: "내 말로", body: "" },
+  note: { title: "메모", body: "" },
   highlight: { title: "하이라이트", body: "" },
 } as const
 

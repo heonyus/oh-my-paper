@@ -15,7 +15,6 @@ function metadataForCard(card: BoardCard): Readonly<Record<string, unknown>> {
     ...(card.sourceKey === undefined ? {} : { sourceKey: card.sourceKey }),
     ...(card.sourceUrl === undefined ? {} : { sourceUrl: card.sourceUrl }),
     ...(card.sourceMeta === undefined ? {} : { sourceMeta: card.sourceMeta }),
-    ...(card.ownCheck === undefined ? {} : { ownCheck: card.ownCheck }),
     anchor: card.anchor,
   }
 }

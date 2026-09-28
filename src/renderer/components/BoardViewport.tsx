@@ -13,7 +13,6 @@ import { askBoardCard, regenerateBoardCardTitle } from "../lib/boardCardAi"
 import { boardHighlightState, highlightAtPoint } from "../lib/boardHighlights"
 import { type BoardTextSelection, captureNativeBoardTextSelection } from "../lib/boardSelection"
 import { parsedCardResponse, parsedTranslationResponse } from "../lib/cardPresentation"
-import { checkOwnWords } from "../lib/ownWordsCheck"
 import { postItFromPointer } from "../lib/postItPlacement"
 import { useSelectionShortcuts } from "../lib/selectionActions"
 import { selectionAiRequest } from "../lib/selectionAiRequest"
@@ -191,6 +190,12 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
 
   function addCard(kind: BoardOverlays.SelectionAction): void {
     if (!selectionMenu) return
+    if (kind === "note" && props.onQuoteToNote) {
+      props.onQuoteToNote(selectionMenu.page, selectionMenu.quote)
+      setSelectionMenu(null)
+      window.getSelection()?.removeAllRanges()
+      return
+    }
     const card = createSelectionCard(props.document.id, selectionMenu, kind)
     if (!card) return
     const boardWidth = viewportRef.current?.clientWidth
@@ -365,7 +370,6 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
             askBoardCard(card, question, history, props.onAiRequest, onDelta)
           }
           onRegenerateTitle={(card) => regenerateBoardCardTitle(card, props.onAiRequest)}
-          onCheckOwnWords={(card, signal) => checkOwnWords(card, props.onAiRequest, signal)}
         />
       </div>
       {selectionMenu && menuPosition ? (

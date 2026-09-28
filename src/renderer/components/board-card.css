@@ -216,47 +216,10 @@
     opacity: 0.65;
   }
 }
-/* `내 말로` cards hold the reader's own words on the note surface; see OwnWordsCard.tsx. */
+/* Memo cards hold the reader's own words on the note surface; see NoteCardBody.tsx. */
 .board-card[data-kind="note"] .card-body {
   background: var(--note);
 }
-.own-words {
-  display: grid;
-  gap: 8px;
-}
-.own-words-editor {
+.note-card-editor {
   min-height: 88px;
-}
-.own-words-check {
-  display: grid;
-  justify-items: start;
-  gap: 4px;
-  padding-top: 8px;
-  border-top: 1px solid var(--line);
-  font-size: var(--type-toolbar-size);
-  line-height: 1.55;
-}
-.own-words-check p {
-  margin: 0;
-  color: var(--ink-muted);
-  word-break: keep-all;
-  overflow-wrap: anywhere;
-}
-.own-words-check[data-stale="true"] > :not(.own-words-stale) {
-  opacity: 0.55;
-}
-.own-words-check .own-words-stale {
-  color: var(--ink);
-}
-.own-words-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.own-words-actions .source-link:disabled {
-  cursor: default;
-  opacity: 0.5;
-}
-.own-words .own-summary-status {
-  margin: 0;
 }

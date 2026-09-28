@@ -1,5 +1,4 @@
 import { type JSX, useEffect, useRef, useState } from "react"
-import type { OwnWordsCheck } from "../../shared/ownWords"
 import { initialResearchCardHeight } from "../lib/board"
 import type { AiDeltaHandler, BoardCard as Card, CardId } from "../types"
 import { BoardCardChat } from "./BoardCardChat"
@@ -8,7 +7,7 @@ import { BoardCardFooter } from "./BoardCardFooter"
 import { BoardCardHeader } from "./BoardCardHeader"
 import { BoardCardResizeHandle } from "./BoardCardResizeHandle"
 import { MarkdownContent } from "./MarkdownContent"
-import { OwnWordsCard } from "./OwnWordsCard"
+import { NoteCardBody } from "./NoteCardBody"
 
 type BoardCardProps = {
   readonly card: Card
@@ -29,10 +28,6 @@ type BoardCardProps = {
     history: Card["chat"],
     onDelta?: AiDeltaHandler,
   ) => Promise<string>
-  readonly onCheckOwnWords?:
-    | ((card: Card, signal: AbortSignal) => Promise<OwnWordsCheck>)
-    | undefined
-  readonly onOwnCheckChange?: ((id: CardId, check: OwnWordsCheck) => void) | undefined
   readonly autoEdit?: boolean | undefined
   readonly streaming?: boolean | undefined
   readonly active: boolean
@@ -53,8 +48,6 @@ export function BoardCard({
   onResizeEnd,
   onChatChange,
   onAsk,
-  onCheckOwnWords,
-  onOwnCheckChange,
   autoEdit = false,
   streaming = false,
   active,
@@ -162,13 +155,10 @@ export function BoardCard({
               onBlur={finishEditing}
             />
           ) : card.kind === "note" ? (
-            <OwnWordsCard
+            <NoteCardBody
               card={card}
               autoEdit={autoEdit}
               onBodyChange={(body) => onBodyChange?.(card.id, body)}
-              onCheck={onCheckOwnWords}
-              onCheckChange={(check) => onOwnCheckChange?.(card.id, check)}
-              onJump={onJump}
             />
           ) : card.kind === "sticky" ? (
             <button

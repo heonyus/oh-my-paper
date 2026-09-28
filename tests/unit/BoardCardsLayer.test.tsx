@@ -42,7 +42,6 @@ function renderLayer(cards = [translation], commitCards = vi.fn(), onActiveChang
       onJump={vi.fn()}
       onAsk={vi.fn(async () => "answer")}
       onRegenerateTitle={vi.fn(async () => "title")}
-      onCheckOwnWords={vi.fn()}
     />,
   )
 }

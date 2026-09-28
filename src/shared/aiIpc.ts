@@ -27,7 +27,6 @@ export const aiActionSchema = z.enum([
   "chat",
   "card_title",
   "own_summary_check",
-  "own_words_check",
 ])
 export const aiHistoryMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),

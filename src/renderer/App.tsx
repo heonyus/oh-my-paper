@@ -234,6 +234,7 @@ export function App({
               updateInsight={updateInsight}
               ownSummary={ownSummary}
               noteOpen={noteOpen}
+              openNote={() => setNoteOpen(true)}
               closeNote={() => setNoteOpen(false)}
               readerNote={readerNote}
               updateReaderNote={updateReaderNote}

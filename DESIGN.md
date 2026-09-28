@@ -11,35 +11,31 @@ Evidence and code survey: `docs/learning-core-research.md`.
 Primary persona: a Korean researcher reading English papers who wants to understand and keep
 them, not only finish them. English is read first; Korean is a check.
 
-**Own-words sentence (`내 문장`, working name).** A short Korean or English statement the
-reader writes, anchored to a source passage. Kinds: 예측, 요지, 주장, 방법, 결과, 한계, 그림,
-용어 (English term ↔ Korean concept) and 질문. States: 초안, 대조됨, 남김 (kept for review).
-A question is an entry point; review needs a statement. User writing and AI text are told
-apart by label and surface (own words on the existing opaque note surface, AI text with a
-neutral inline label), never by a colored rail.
+**The reader's note (`내 노트`) is the center.** The owner rejected quiz-like mechanics on
+2026-09-28 (spaced-review prompts and graded `내 말로` cards). What stays with the reader is
+what they write themselves, beside the paper, in their own words. The toolbar `노트` button
+opens a note column between the PDF and the research sidebar.
 
-**Reading intent.** Each document is read as `공부` (study; the loop below applies) or `훑기`
-(triage; AI tools open immediately, nothing enters review, and the Library shows that nothing
-was kept). Intent is visible in the reader toolbar and can change at any time; promoting a
-훑기 document to 공부 keeps its cards.
-
-**The loop in 공부.**
-1. `예측`: before reading, one line from the title, abstract and figures. The AI may pose two
-   or three pre-questions aimed at the paper's central claims; it does not answer them.
-2. `읽기`: a paragraph's translation opens after the reader writes its gist or chooses
-   `모르겠음` with a confidence choice. The reader's line stays beside the revealed
-   translation. Existing translation modes, jobs and caches are reused; revealing a cached
-   block never starts another request.
-3. `내 말로`: leaving a section offers a one-line prompt for it. Figure, table and equation
-   explanations offer the reader's reading first. The selection action `내 말로` creates an
-   anchored card with an editable body.
-4. `대조`: an explicit check compares the sentence with its anchored source and returns
-   `맞음`, `빠짐`, `어긋남` or `확인 불가`, each with its quoted source `[[p.N | quote]]`. The
-   result never contains a replacement sentence; the reader edits their own text.
-5. `되살리기`: kept sentences return on a spaced schedule as "what did this paper say about
-   …?". The reader recalls first, then sees their past sentence and the source.
-   `다시 이해하기` opens the anchor as an open-book fallback. Reopening a studied paper offers a
-   skippable `기억나는 3줄` warm-up before the PDF.
+- Editor: a block editor (TipTap) over plain Markdown. `/` opens block choices
+  (제목, 소제목, 목록, 번호 목록, 인용, 코드, 구분선), blocks can be dragged by their handle,
+  and Markdown shortcuts work while typing. Typing saves after a short pause without entering
+  the reader toolbar's undo history; the editor keeps its own undo. Each paper's note is a
+  real file, `reader-notes/<documentId>.md`, merged three-way on save so a stale writer never
+  drops text.
+- Evidence chips: `[[p.N | quote]]`, the app's citation Markdown, render as small `p.N` chips.
+  Clicking one opens the page and flashes the quote. Only the reader inserts chips.
+- From the PDF: selecting a passage and choosing `노트에` (`C`) opens the note if needed and
+  appends the passage as a quote with its chip, then an empty paragraph with the caret, where
+  the reader writes what it means.
+- Margin (`여백 AI`): off by default and remembered per browser. While on, each settled
+  sentence (sentence end, or a pause) is sent with up to 32 prepared paragraphs from the page in
+  view and its neighbours to Jev on OpenRouter, twice: which paragraph the sentence rests on,
+  and which contradicts it. Jev only chooses among supplied paragraphs, so every card is real
+  source text; low-confidence and `none` answers show nothing. Cards sit beside their block,
+  never take focus, and offer `근거로 붙이기` (support) or the page link (both). Results are keyed
+  by the block's text, so edited text never shows suggestions for words it no longer contains.
+  The UI carries no explanatory copy; the switch alone shows `켜짐`, `꺼짐`, `키 없음` or `오류`.
+  Without an OpenRouter key the switch is unavailable. Narrow note columns hide the margin.
 
 **Existing features, repositioned.**
 - Summary: never generated before the reader writes three lines (문제/방법/결과) or skips.
@@ -49,33 +45,20 @@ was kept). Intent is visible in the reader toolbar and can change at any time; p
   sections load when the panel opens. Lines written after the reveal carry an
   `AI 요약을 본 뒤 작성` tag. The reader's lines live in `own-summaries.json` beside the
   knowledge database, never in the insight table an older build would reject.
-- Translation: the paragraph check layer in 공부; unchanged in 훑기.
-- Explanation (selection, figure, table, equation, citation): the reader's attempt slot comes
-  first in 공부.
-- Chat: the default reply is a hint ladder: where to look, then a hint, then an explanation on
-  request. Escalating is always one action. After an explanation, offer an empty
-  `내 문장으로 남기기` slot, never a prefilled one.
-- Annotation (`C`): the former fixed-text `주석` card is the `내 말로` card. It opens as an
-  empty editor beside the selected passage (old placeholder bodies open empty too), is never
-  prefilled, and offers `원문과 대조`, which checks the text against the selected passage only.
-  A verdict needs a quote found in that passage, otherwise `확인 불가`; editing after a check
-  marks the result as not yet checked. The sidebar, index and metadata call it `내 말로`.
-- Highlight: an entry to a sentence, with an optional `왜?` line. Saving an AI translation keeps
-  it labelled `AI 번역`; it never becomes a user card.
-- Auto Highlight: not a product goal. A post-reading `놓친 곳` check may follow once the loop
-  is validated.
-- Library: each document shows its intent and real counts: kept sentences and the latest recall
-  result. No reading-time or progress scores.
+- Annotation (`C`): sends the passage to the note (above). Memo cards made earlier stay on the
+  board as editable `메모` cards (old fixed-text bodies open empty) with no grading.
+- Translation, explanation and chat keep their current behavior for now; attempt-first
+  translation and hint-ladder chat remain possible later steps, not commitments.
+- Highlight: saving an AI translation keeps it labelled `AI 번역`; it never becomes a user card.
+- Auto Highlight: not a product goal.
 
-**States and tone.** Attempt slots, reveals, checks and reviews have explicit empty, writing,
-skipped, checking, checked, unverifiable, failed and cancelled states. Skipped and unknown are
-neutral, never styled as errors. Checks use the existing AI job lifecycle (streaming,
-cancellation, provider errors). No confetti, streaks, badges or guilt copy. Review load stays
-bounded to kept sentences, and overdue reviews never block reading.
+**States and tone.** Writing surfaces never nag: no confetti, streaks, badges, scores, review
+queues or guilt copy. Failures are shown where they happen (the margin switch, the three-line
+check) and never block writing or reading.
 
-**Defaults pending the owner's trial** (`docs/learning-core-research.md` §7): new imports start
-in 공부; skipping is one action; at most 20 kept sentences per paper enter review; spacing
-uses a standard scheduler (FSRS-class). Record the decisions here when they are made.
+**Later, not yet built.** Connections to notes written about other papers (local multilingual
+embeddings), a map of the reader's own sentences, and margin questions from a generative model
+used sparingly.
 
 ## 2026-09-15 Browser-first paper reading (shell current; feature parity superseded 2026-09-28)
 

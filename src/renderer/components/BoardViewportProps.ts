@@ -24,4 +24,6 @@ export type BoardViewportProps = {
   /** Screen width the research sidebar covers on the right of the board. */
   readonly rightOcclusion?: number | undefined
   readonly onMinimapVisibleChange: (visible: boolean) => void
+  /** Sends a selected passage into the reader's note instead of a memo card. */
+  readonly onQuoteToNote?: ((page: number, quote: string) => void) | undefined
 }

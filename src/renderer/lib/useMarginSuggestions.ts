@@ -48,7 +48,7 @@ function withEntry(
 export function useMarginSuggestions(editor: Editor | null, options: Options) {
   const { enabled, documentId, pageCount, decide } = options
   const [entries, setEntries] = useState<ReadonlyMap<string, MarginEntry>>(() => new Map())
-  const [failed, setFailed] = useState(false)
+  const [failure, setFailure] = useState<"none" | "unavailable" | "error">("none")
   const entriesRef = useRef(entries)
   entriesRef.current = entries
   const currentPage = useRef(options.currentPage)
@@ -76,14 +76,16 @@ export function useMarginSuggestions(editor: Editor | null, options: Options) {
         const suggestions = await suggestForNote(key, candidates, decide, controller.signal)
         if (controller.signal.aborted) return
         update(key, { status: "ready", suggestions })
-        setFailed(false)
-      } catch {
+        setFailure("none")
+      } catch (error) {
         if (controller.signal.aborted) {
           update(key, null)
           return
         }
         update(key, { status: "failed" })
-        setFailed(true)
+        // The server answers 503 when it has no OpenRouter key for Jev.
+        const status = error instanceof Error ? Reflect.get(error, "status") : undefined
+        setFailure(status === 503 ? "unavailable" : "error")
       }
     }
     const onUpdate = (): void => {
@@ -103,5 +105,5 @@ export function useMarginSuggestions(editor: Editor | null, options: Options) {
     }
   }, [editor, enabled, decide, documentId, pageCount])
 
-  return { entries, failed }
+  return { entries, failure }
 }

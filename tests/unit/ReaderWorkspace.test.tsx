@@ -62,6 +62,7 @@ function readerProps(document: DocumentRecord): Parameters<typeof ReaderWorkspac
     ownSummary: undefined,
     updateOwnSummary: vi.fn(),
     noteOpen: false,
+    openNote: vi.fn(),
     closeNote: vi.fn(),
     readerNote: undefined,
     updateReaderNote: vi.fn(),

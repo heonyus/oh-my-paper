@@ -269,6 +269,7 @@ export function ReaderApp(): JSX.Element {
                 updateInsight={app.updateInsight}
                 ownSummary={app.ownSummary}
                 noteOpen={app.noteOpen}
+                openNote={() => app.setNoteOpen(true)}
                 closeNote={() => app.setNoteOpen(false)}
                 readerNote={app.readerNote}
                 updateReaderNote={app.updateReaderNote}

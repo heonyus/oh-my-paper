@@ -1,4 +1,4 @@
-import { type ComponentProps, type JSX, useCallback } from "react"
+import { type ComponentProps, type JSX, useCallback, useState } from "react"
 import type { ProviderStatus } from "../../shared/ipc"
 import type { EvidenceNavigationTarget } from "../../shared/knowledgeTypes"
 import type { ReaderNote } from "../../shared/readerNote"
@@ -20,6 +20,7 @@ import type {
 import { BoardViewport } from "./BoardViewport"
 import { OutlinePanel } from "./OutlinePanel"
 import { ResearchSidebar } from "./ResearchSidebar"
+import type { PendingNoteQuote } from "./readerNote/noteQuote"
 import { ReaderNotePane } from "./readerNote/ReaderNotePane"
 
 export function ReaderWorkspace(props: {
@@ -44,6 +45,7 @@ export function ReaderWorkspace(props: {
   readonly ownSummary: ComponentProps<typeof ResearchSidebar>["ownSummary"]
   readonly updateOwnSummary: ComponentProps<typeof ResearchSidebar>["onOwnSummaryChange"]
   readonly noteOpen: boolean
+  readonly openNote: () => void
   readonly closeNote: () => void
   readonly readerNote: ReaderNote | undefined
   readonly updateReaderNote: (markdown: string) => void
@@ -73,6 +75,16 @@ export function ReaderWorkspace(props: {
     },
     [pageCount, setPage, jumpToPage],
   )
+  const [pendingQuote, setPendingQuote] = useState<PendingNoteQuote | null>(null)
+  const openNote = props.openNote
+  const sendToNote = useCallback(
+    (page: number, quote: string): void => {
+      setPendingQuote({ id: crypto.randomUUID(), page, quote })
+      openNote()
+    },
+    [openNote],
+  )
+  const clearPendingQuote = useCallback(() => setPendingQuote(null), [])
   const onPageActive = useCallback(
     (page: number): void => {
       if (!documentId) return
@@ -122,6 +134,7 @@ export function ReaderWorkspace(props: {
           onMinimapVisibleChange={(minimapVisible) =>
             updateWorkspace({ ...workspace, minimapVisible })
           }
+          onQuoteToNote={sendToNote}
         />
       ) : (
         <section className="empty-board">
@@ -141,6 +154,8 @@ export function ReaderWorkspace(props: {
           onChange={props.updateReaderNote}
           onClose={props.closeNote}
           onNavigateToSource={navigateToSource}
+          pendingQuote={pendingQuote}
+          onPendingQuoteHandled={clearPendingQuote}
         />
       ) : null}
       <ResearchSidebar

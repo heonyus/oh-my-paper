@@ -1,6 +1,6 @@
 import type { Editor } from "@tiptap/react"
 import { X } from "lucide-react"
-import { type JSX, useCallback, useState } from "react"
+import { type JSX, useCallback, useEffect, useState } from "react"
 import type { ReaderNote } from "../../../shared/readerNote"
 import type { SourceCitation } from "../../lib/chatCitations"
 import type { MarginSuggestion } from "../../lib/marginSuggestions"
@@ -8,9 +8,18 @@ import { useMarginSuggestions } from "../../lib/useMarginSuggestions"
 import type { DocumentRecord } from "../../types"
 import { evidenceQuote } from "./evidenceNode"
 import { MarginColumn } from "./MarginColumn"
+import { noteQuoteContent, type PendingNoteQuote } from "./noteQuote"
 import { ReaderNoteEditor } from "./ReaderNoteEditor"
 
 const MARGIN_SETTING_KEY = "ohmypaper:margin-ai"
+
+type MarginState = "on" | "off" | "unavailable" | "error"
+const marginLabels: Readonly<Record<MarginState, string>> = {
+  on: "켜짐",
+  off: "꺼짐",
+  unavailable: "키 없음",
+  error: "오류",
+}
 
 function storedMarginSetting(): boolean {
   try {
@@ -30,7 +39,8 @@ function storeMarginSetting(on: boolean): void {
 
 /**
  * The reader's note beside the paper, with a margin where Jev points at the source paragraphs
- * each sentence rests on. The margin sends text out only while the reader has switched it on.
+ * each sentence rests on. The margin sends text out only while the reader has switched it on;
+ * without an OpenRouter key it stays off and says so on its switch.
  */
 export function ReaderNotePane({
   document,
@@ -39,6 +49,8 @@ export function ReaderNotePane({
   onChange,
   onClose,
   onNavigateToSource,
+  pendingQuote,
+  onPendingQuoteHandled,
 }: {
   readonly document: DocumentRecord
   readonly note: ReaderNote | undefined
@@ -46,6 +58,8 @@ export function ReaderNotePane({
   readonly onChange: (markdown: string) => void
   readonly onClose: () => void
   readonly onNavigateToSource: (citation: SourceCitation) => void
+  readonly pendingQuote: PendingNoteQuote | null
+  readonly onPendingQuoteHandled: () => void
 }): JSX.Element {
   const [editor, setEditor] = useState<Editor | null>(null)
   const [marginOn, setMarginOn] = useState(storedMarginSetting)
@@ -57,6 +71,29 @@ export function ReaderNotePane({
     currentPage,
     decide,
   })
+
+  useEffect(() => {
+    if (!editor || !pendingQuote) return
+    editor
+      .chain()
+      .insertContentAt(
+        editor.state.doc.content.size,
+        noteQuoteContent(pendingQuote.page, pendingQuote.quote),
+      )
+      .focus("end")
+      .scrollIntoView()
+      .run()
+    onPendingQuoteHandled()
+  }, [editor, pendingQuote, onPendingQuoteHandled])
+
+  const marginState: MarginState =
+    !decide || margin.failure === "unavailable"
+      ? "unavailable"
+      : !marginOn
+        ? "off"
+        : margin.failure === "error"
+          ? "error"
+          : "on"
 
   const attach = useCallback(
     (pos: number, suggestion: MarginSuggestion): void => {
@@ -85,39 +122,26 @@ export function ReaderNotePane({
   return (
     <section className="note-pane" aria-label="내 노트">
       <header className="note-pane-head">
-        <div>
-          <h2>내 노트</h2>
-          <p>AI는 여기에 쓰지 않아요</p>
-        </div>
+        <h2>내 노트</h2>
         <div className="note-pane-actions">
           <button
             type="button"
             className="note-margin-toggle"
-            aria-pressed={marginOn}
+            aria-pressed={marginOn && Boolean(decide)}
+            data-state={marginState}
             disabled={!decide}
             onClick={() => {
               storeMarginSetting(!marginOn)
               setMarginOn(!marginOn)
             }}
           >
-            여백 AI {marginOn && decide ? "켜짐" : "꺼짐"}
+            여백 AI {marginLabels[marginState]}
           </button>
           <button type="button" aria-label="노트 닫기" onClick={onClose}>
             <X size={16} />
           </button>
         </div>
       </header>
-      {!decide ? (
-        <p className="note-pane-notice">여백 AI를 쓰려면 OpenRouter 키가 필요합니다.</p>
-      ) : !marginOn ? (
-        <p className="note-pane-notice">
-          켜면 쓰는 문장과 지금 페이지 근처 문단이 OpenRouter(Jev)로 전송돼 근거를 찾습니다.
-        </p>
-      ) : margin.failed ? (
-        <p className="note-pane-notice" role="status">
-          여백 AI 응답을 받지 못했습니다. 계속 쓰면 다시 시도합니다.
-        </p>
-      ) : null}
       <div className="note-scroll">
         <div className="note-sheet">
           <ReaderNoteEditor

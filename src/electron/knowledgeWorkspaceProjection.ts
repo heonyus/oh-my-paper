@@ -20,7 +20,6 @@ const cardMetaSchema = boardCardSchema
     sourceKey: true,
     sourceUrl: true,
     sourceMeta: true,
-    ownCheck: true,
   })
   .partial()
   .extend({
@@ -80,7 +79,6 @@ export function projectRepositoryToWorkspace(
         sourceKey: cardMeta.sourceKey,
         sourceUrl: cardMeta.sourceUrl,
         sourceMeta: cardMeta.sourceMeta,
-        ownCheck: cardMeta.ownCheck,
         anchor: sourceAnchorSchema.parse(anchor),
       }),
     )

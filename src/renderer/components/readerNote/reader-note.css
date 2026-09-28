@@ -21,7 +21,7 @@
 .note-pane {
   container: note-pane / inline-size;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   width: clamp(420px, 46vw, 760px);
   min-height: 0;
   border-left: 1px solid var(--line);
@@ -38,11 +38,6 @@
   margin: 0;
   font-size: var(--type-body-size);
   font-weight: 650;
-}
-.note-pane-head p {
-  margin: 2px 0 0;
-  color: var(--ink-muted);
-  font-size: var(--type-compact-size);
 }
 .note-pane-actions {
   display: flex;
@@ -73,17 +68,13 @@
   background: var(--action-subtle);
   color: var(--action);
 }
+.note-pane-actions .note-margin-toggle[data-state="error"] {
+  border-color: color-mix(in srgb, var(--error) 40%, var(--line));
+  color: var(--error);
+}
 .note-pane-actions button:disabled {
   cursor: default;
   opacity: 0.5;
-}
-.note-pane-notice {
-  margin: 0;
-  padding: 0 20px 10px 40px;
-  color: var(--ink-muted);
-  font-size: var(--type-compact-size);
-  line-height: 1.5;
-  word-break: keep-all;
 }
 .note-scroll {
   min-height: 0;
