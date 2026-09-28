@@ -7,6 +7,7 @@ import {
   parsedDocumentPage,
   subscribeParsedDocumentPages,
 } from "./documentPageRuntime"
+import { announcePageRendered } from "./pageRenderEvents"
 import { parsedPageStructures } from "./parsedPageStructures"
 import type { PdfAstRuntimeSession } from "./pdfAstRuntimeSession"
 import type { PdfOutlineEntry } from "./pdfOutline"
@@ -141,9 +142,14 @@ export function bindViewerEventBridge(params: EventBridgeParams): {
     loadPreparedPage(pageNumber, pageDiv)
   }
 
+  const handlePageRendered = ({ pageNumber }: { readonly pageNumber: number }): void => {
+    scheduleOverlayRefresh()
+    announcePageRendered(pageNumber)
+  }
+
   params.eventBus.on("pagesinit", handlePagesInit)
   params.eventBus.on("scalechanging", scheduleOverlayRefresh)
-  params.eventBus.on("pagerendered", scheduleOverlayRefresh)
+  params.eventBus.on("pagerendered", handlePageRendered)
   params.eventBus.on("textlayerrendered", handleTextLayerRendered)
 
   const unsubscribeParsedPages = subscribeParsedDocumentPages(params.document.id, (parsed) => {
@@ -173,7 +179,7 @@ export function bindViewerEventBridge(params: EventBridgeParams): {
     dispose: () => {
       params.eventBus.off("pagesinit", handlePagesInit)
       params.eventBus.off("scalechanging", scheduleOverlayRefresh)
-      params.eventBus.off("pagerendered", scheduleOverlayRefresh)
+      params.eventBus.off("pagerendered", handlePageRendered)
       params.eventBus.off("textlayerrendered", handleTextLayerRendered)
       unsubscribeParsedPages()
       unsubscribeAnalysis?.()

@@ -270,7 +270,7 @@ describe("hybridPageParser", () => {
 
     const merged = mergePdfJsAndPaddlePage(native, paddle)
 
-    expect(merged.configVersion).toBe("hybrid-v10")
+    expect(merged.configVersion).toBe("hybrid-v11")
     expect(merged.blocks.map((item) => [item.label, item.content])).toEqual([
       ["text", "the end of the introduction."],
       ["paragraph_title", "## Results"],
@@ -281,5 +281,72 @@ describe("hybridPageParser", () => {
       ["text", "Right column after."],
     ])
     expect(merged.blocks[2]?.bounds).toEqual({ x: 80, y: 270, width: 400, height: 20 })
+  })
+
+  it("keeps the body line a PDF.js unit shares with a heading, whatever its case", () => {
+    const block = (
+      order: number,
+      label: string,
+      bounds: { x: number; y: number; width: number; height: number },
+      content: string,
+    ) => ({
+      id: `page:4:block:${order}`,
+      label,
+      order,
+      bounds,
+      content,
+      contentFormat: "markdown",
+      translationPolicy: "include",
+    })
+    const page = (parser: string, blocks: readonly unknown[]) =>
+      parsedDocumentPageSchema.parse({
+        schemaVersion: "1.0.0",
+        sourceHash,
+        parser,
+        configVersion: "v",
+        pageNumber: 4,
+        width: 1_000,
+        height: 1_000,
+        blocks,
+      })
+    const native = page("NativeText-1.0", [
+      // Centre inside the heading box: the unit is mostly the heading.
+      block(
+        0,
+        "text",
+        { x: 600, y: 100, width: 300, height: 36 },
+        "Competing interests The authors declare none.",
+      ),
+      // Centre below the heading, small-caps text PDF.js lower-cased.
+      block(
+        1,
+        "text",
+        { x: 600, y: 300, width: 380, height: 36 },
+        "a cknowledgements Funding came from a grant.",
+      ),
+    ])
+    const paddle = page("PaddleOCR-VL-1.6", [
+      block(
+        0,
+        "paragraph_title",
+        { x: 600, y: 100, width: 180, height: 20 },
+        "## Competing interests",
+      ),
+      block(
+        1,
+        "paragraph_title",
+        { x: 600, y: 300, width: 180, height: 20 },
+        "## Acknowledgements",
+      ),
+    ])
+
+    const merged = mergePdfJsAndPaddlePage(native, paddle)
+
+    expect(merged.blocks.map((item) => [item.label, item.content])).toEqual([
+      ["paragraph_title", "## Competing interests"],
+      ["text", "The authors declare none."],
+      ["paragraph_title", "## Acknowledgements"],
+      ["text", "Funding came from a grant."],
+    ])
   })
 })

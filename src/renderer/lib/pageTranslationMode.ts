@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react"
 
-export type PageTranslationMode = "source" | "parallel" | "bilingual"
+/** `layout` sets each translation where its source paragraph sits on the page. */
+export type PageTranslationMode = "layout" | "source" | "parallel" | "bilingual"
 
-const defaultMode: PageTranslationMode = "bilingual"
+const defaultMode: PageTranslationMode = "layout"
 const storagePrefix = "ohmypaper:page-translation-mode:v1:"
 
 function isPageTranslationMode(value: string | null): value is PageTranslationMode {
-  return value === "source" || value === "parallel" || value === "bilingual"
+  return value === "layout" || value === "source" || value === "parallel" || value === "bilingual"
 }
 
 export function pageTranslationModeKey(documentId: string): string {

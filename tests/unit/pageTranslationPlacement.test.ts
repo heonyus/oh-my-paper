@@ -9,6 +9,6 @@ describe("page translation board placement", () => {
       4_800,
     )
 
-    expect(placement).toEqual({ left: 616, top: 100, width: 640, height: 600 })
+    expect(placement).toEqual({ left: 616, top: 100, width: 640, height: 600, pageWidth: 400 })
   })
 })

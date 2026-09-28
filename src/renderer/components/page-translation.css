@@ -128,6 +128,132 @@
   word-break: keep-all;
   overflow-wrap: break-word;
 }
+.page-translation-notices {
+  display: contents;
+}
+
+/* 원본 배치: the pane becomes a copy of the page with translations set in place. */
+.page-translation-pane[data-mode="layout"] {
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.page-translation-pane[data-mode="layout"] .page-translation-head {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  left: 0;
+  min-height: 0;
+  flex-wrap: nowrap;
+  gap: 10px;
+  padding: 4px 6px 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 4px 14px rgb(25 35 45 / 8%);
+}
+.page-translation-pane[data-mode="layout"] .page-translation-title {
+  flex: 0 0 auto;
+}
+.page-translation-pane[data-mode="layout"] .page-translation-title > :not(svg) {
+  display: none;
+}
+.page-translation-pane[data-mode="layout"] .page-translation-modes {
+  order: 1;
+  flex: 0 1 auto;
+}
+.page-translation-pane[data-mode="layout"] .page-translation-count {
+  order: 2;
+  margin-left: auto;
+}
+.page-translation-pane[data-mode="layout"] .page-translation-body {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 1px 4px rgb(25 35 45 / 18%);
+}
+.page-translation-pane[data-mode="layout"] .page-translation-notices {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  left: 10px;
+  z-index: 2;
+  display: grid;
+  gap: 6px;
+  pointer-events: none;
+}
+.page-translation-pane[data-mode="layout"] .page-translation-notices > * {
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: 0 4px 14px rgb(25 35 45 / 8%);
+  pointer-events: auto;
+}
+.page-translation-layout {
+  --translation-serif:
+    "Times New Roman", "Nanum Myeongjo", "Noto Serif KR", "AppleMyungjo", "Batang", serif;
+  position: absolute;
+  inset: 0;
+  container-type: inline-size;
+  color: #16181d;
+}
+.page-translation-layout-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.page-translation-layout-region {
+  position: absolute;
+  overflow: hidden;
+  border-radius: 2px;
+  font-family: var(--ui-font-family);
+  font-size: calc(var(--fit-font-size, 1.6) * 1cqw);
+  line-height: var(--region-line-height, 1.34);
+  letter-spacing: -0.01em;
+  text-align: justify;
+  text-indent: calc(var(--region-indent, 0) * 1cqw);
+  /* Breaking between syllables, as Korean print does, keeps justified columns even. */
+  word-break: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.page-translation-layout[data-font="serif"] .page-translation-layout-region,
+.page-translation-layout[data-font="auto"] .page-translation-layout-region[data-serif="true"] {
+  font-family: var(--translation-serif);
+}
+.page-translation-layout-region:not([data-bullet]) {
+  padding-left: calc(var(--region-hang, 0) * 1cqw);
+}
+
+.page-translation-layout-region[data-kind="heading"] {
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+}
+.page-translation-pane[data-mode="layout"]
+  .page-translation-layout-region
+  :is(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote) {
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+}
+.page-translation-layout-region a {
+  color: inherit;
+  text-decoration: underline dotted color-mix(in srgb, currentColor 45%, transparent);
+}
+.page-translation-layout-region:hover,
+.page-translation-layout-region[data-source-hover="true"] {
+  background: color-mix(in srgb, var(--action) 8%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--action) 30%, transparent);
+}
+
 .page-translation-pane[data-size="large"] .page-translation-body {
   font-size: calc(var(--type-body-size) * 1.14);
 }
@@ -141,6 +267,19 @@
 .page-translation-body .markdown-content ul,
 .page-translation-body .markdown-content ol {
   margin: 0 0 24px;
+}
+/* List items hang from the source's marker column, one marker per item. */
+.page-translation-pane[data-mode="layout"] .page-translation-layout-region ul {
+  padding-left: calc(var(--region-hang, 0) * 1cqw);
+  list-style: none;
+}
+.page-translation-pane[data-mode="layout"] .page-translation-layout-region li {
+  position: relative;
+}
+.page-translation-pane[data-mode="layout"] .page-translation-layout-region li::before {
+  position: absolute;
+  left: calc(var(--region-hang, 0) * -1cqw);
+  content: "•";
 }
 .page-translation-body .markdown-content h1,
 .page-translation-body .markdown-content h2,

@@ -22,7 +22,7 @@ describe("page translation reading mode", () => {
   it("keeps a document mode across a later reader mount", () => {
     const documentId = "aabbccddeeff0011"
 
-    expect(readPageTranslationMode(documentId)).toBe("bilingual")
+    expect(readPageTranslationMode(documentId)).toBe("layout")
     writePageTranslationMode(documentId, "parallel")
 
     expect(localStorage.getItem(pageTranslationModeKey(documentId))).toBe("parallel")
@@ -32,6 +32,6 @@ describe("page translation reading mode", () => {
   it("falls back when stored mode is not a supported renderer", () => {
     localStorage.setItem(pageTranslationModeKey("1122334455667788"), "unknown")
 
-    expect(readPageTranslationMode("1122334455667788")).toBe("bilingual")
+    expect(readPageTranslationMode("1122334455667788")).toBe("layout")
   })
 })
