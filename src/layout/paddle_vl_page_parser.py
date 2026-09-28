@@ -13,11 +13,10 @@
 # uv run src/layout/paddle_vl_page_parser.py INPUT.pdf SOURCE_HASH PAGE OUTPUT.json
 
 from contextlib import closing
-from functools import partial
 from hashlib import file_digest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Final
+from typing import Any, Final, Literal
 
 import pypdfium2 as pdfium
 import typer
@@ -32,6 +31,15 @@ SCHEMA_VERSION: Final = "1.0.0"
 PARSER: Final = "PaddleOCR-VL-1.6"
 CONFIG_VERSION: Final = "page-v2"
 RENDER_SCALE: Final = 2
+PREDICT_OPTIONS: Final[dict[str, Any]] = {
+    "layout_shape_mode": "rect",
+    "temperature": 0.0,
+    "format_block_content": True,
+    "merge_layout_blocks": True,
+    "markdown_ignore_labels": [],
+}
+
+VlmBackend = Literal["native", "mlx-vlm-server", "vllm-server"]
 
 
 class ParserInputError(RuntimeError):
@@ -51,6 +59,53 @@ def render_page(pdf_path: Path, page_number: int, target: Path) -> tuple[int, in
             return image.width, image.height
 
 
+def create_pipeline(
+    backend: VlmBackend = "native",
+    server_url: str = "",
+    model: str = "",
+    api_key: str = "",
+) -> Any:
+    """Build the PaddleOCR-VL pipeline, optionally recognizing text through a local VLM server."""
+    from paddleocr import PaddleOCRVL
+
+    options: dict[str, Any] = {
+        "pipeline_version": "v1.6",
+        "use_doc_orientation_classify": False,
+        "use_doc_unwarping": False,
+        "use_layout_detection": True,
+        "use_chart_recognition": False,
+        "use_seal_recognition": False,
+        "use_ocr_for_image_block": False,
+        "format_block_content": True,
+        "merge_layout_blocks": True,
+        "markdown_ignore_labels": [],
+    }
+    if backend != "native":
+        # Naming the served model up front keeps the client from querying the server while
+        # the pipeline loads, so the server may still be starting.
+        options |= {
+            "vl_rec_backend": backend,
+            "vl_rec_server_url": server_url,
+            "vl_rec_api_model_name": model,
+            "vl_rec_api_key": api_key,
+        }
+    return PaddleOCRVL(**options)
+
+
+def parsed_page(
+    result_json: Any, source_hash: str, page_number: int, width: int, height: int
+) -> ParsedPage:
+    envelope = RawEnvelope.model_validate(result_json)
+    payload = envelope.res or RawPayload(parsing_res_list=envelope.parsing_res_list)
+    return ParsedPage(
+        sourceHash=source_hash,
+        pageNumber=page_number,
+        width=width,
+        height=height,
+        blocks=convert_blocks(page_number, payload.parsing_res_list),
+    )
+
+
 def main(
     pdf_path: Path,
     source_hash: str,
@@ -67,53 +122,15 @@ def main(
     with TemporaryDirectory(prefix="ohmypaper-paddle-page-") as temporary:
         image_path = Path(temporary) / f"page-{page_number}.png"
         width, height = render_page(pdf_path, page_number, image_path)
-        from paddleocr import PaddleOCRVL
-
-        pipeline_factory = partial(
-            PaddleOCRVL,
-            pipeline_version="v1.6",
-            use_doc_orientation_classify=False,
-            use_doc_unwarping=False,
-            use_layout_detection=True,
-            use_chart_recognition=False,
-            use_seal_recognition=False,
-            use_ocr_for_image_block=False,
-            format_block_content=True,
-            merge_layout_blocks=True,
-            markdown_ignore_labels=[],
-        )
         pipeline = (
-            pipeline_factory(
-                vl_rec_backend="mlx-vlm-server",
-                vl_rec_server_url=vlm_server_url,
-                vl_rec_api_model_name=vlm_model,
-                vl_rec_api_key=vlm_api_key,
-            )
+            create_pipeline("mlx-vlm-server", vlm_server_url, vlm_model, vlm_api_key)
             if vlm_server_url and vlm_model
-            else pipeline_factory()
+            else create_pipeline()
         )
         result = next(
-            iter(
-                pipeline.predict(
-                    str(image_path),
-                    layout_shape_mode="rect",
-                    use_queues=False,
-                    temperature=0.0,
-                    format_block_content=True,
-                    merge_layout_blocks=True,
-                    markdown_ignore_labels=[],
-                )
-            )
+            iter(pipeline.predict(str(image_path), use_queues=False, **PREDICT_OPTIONS))
         )
-        envelope = RawEnvelope.model_validate(result.json)
-        payload = envelope.res or RawPayload(parsing_res_list=envelope.parsing_res_list)
-        page = ParsedPage(
-            sourceHash=source_hash,
-            pageNumber=page_number,
-            width=width,
-            height=height,
-            blocks=convert_blocks(page_number, payload.parsing_res_list),
-        )
+        page = parsed_page(result.json, source_hash, page_number, width, height)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(page.model_dump_json(), encoding="utf-8")
 

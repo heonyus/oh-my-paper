@@ -27,7 +27,6 @@ export async function checkEnvironment(
     appPath: sourceRoot,
     resourcesPath: sourceRoot,
     packaged: false,
-    maxConcurrency: 1,
   })
   let ocrReady = false
   try {

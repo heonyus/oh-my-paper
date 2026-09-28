@@ -140,6 +140,20 @@ PDF rendering, library storage, notes, highlights, search, and built-in structur
 detection work locally. Page structure analysis runs on-device through PDF.js and
 PaddleOCR-VL; importing or opening a PDF never sends it anywhere by itself.
 
+### GPU acceleration for PaddleOCR-VL
+
+PaddleOCR-VL recognizes pages far faster through a local GPU server (about 2 seconds per page on
+an RTX 3060 Ti, against tens of seconds in-process):
+
+- **Apple silicon:** `npm run setup:paddle-vl` also installs an MLX-VLM server.
+- **Windows with an NVIDIA GPU:** `npm run setup:paddle-vl` also installs a vLLM server inside WSL
+  (an Ubuntu distribution with `uv`). `npm run setup:paddle-vllm` reinstalls just that part. It
+  takes about 13 GB inside WSL and about 4.6 GB of GPU memory while documents are analyzed.
+
+The app starts the server when a document needs analysis and stops it after ten idle minutes; the
+first start after WSL boots takes about two minutes. Documents open right away, and page structure
+appears as analysis reaches each page.
+
 ## Optional AI providers
 
 ### Desktop and existing API connections

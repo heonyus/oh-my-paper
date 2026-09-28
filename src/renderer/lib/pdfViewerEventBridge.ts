@@ -1,4 +1,5 @@
 import type { EventBus, PDFViewer } from "pdfjs-dist/legacy/web/pdf_viewer.mjs"
+import type { DocumentAnalysisSnapshot } from "../../shared/documentAnalysis"
 import type { ParsedDocumentPage } from "../../shared/documentPageModel"
 import type { DocumentRecord } from "../types"
 import {
@@ -37,6 +38,10 @@ export type EventBridgeParams = {
   readonly getRetrievalSession: () => PdfRetrievalSession | null
   readonly setRetrievalSession: (session: PdfRetrievalSession | null) => void
   readonly isDisposed: () => boolean
+  /** Background analysis progress; pages it finishes get their overlays without a re-render. */
+  readonly subscribeDocumentAnalysis?:
+    | ((listener: (snapshot: DocumentAnalysisSnapshot) => void) => () => void)
+    | undefined
 }
 
 type InitialPageViewer = Pick<PDFViewer, "currentPageNumber" | "scrollPageIntoView">
@@ -148,6 +153,21 @@ export function bindViewerEventBridge(params: EventBridgeParams): {
     if (pageDiv) applyParsedPage(parsed, pageDiv)
   })
 
+  let analyzedPages = 0
+  const unsubscribeAnalysis = params.subscribeDocumentAnalysis?.((snapshot) => {
+    const job = snapshot.find((candidate) => candidate.id === params.document.id)
+    if (!job) return
+    const completed = job.state === "complete" ? job.pageCount : job.completedPages
+    if (completed <= analyzedPages) return
+    analyzedPages = completed
+    // Pages rendered before their analysis finished have no overlay yet.
+    for (const pageDiv of params.container.querySelectorAll<HTMLElement>(".page[data-loaded]")) {
+      const pageNumber = Number(pageDiv.getAttribute("data-page-number"))
+      if (!Number.isInteger(pageNumber) || pageNumber < 1 || pageNumber > completed) continue
+      if (!parsedDocumentPage(params.document.id, pageNumber)) loadPreparedPage(pageNumber, pageDiv)
+    }
+  })
+
   return {
     scheduleOverlayRefresh,
     dispose: () => {
@@ -156,6 +176,7 @@ export function bindViewerEventBridge(params: EventBridgeParams): {
       params.eventBus.off("pagerendered", scheduleOverlayRefresh)
       params.eventBus.off("textlayerrendered", handleTextLayerRendered)
       unsubscribeParsedPages()
+      unsubscribeAnalysis?.()
     },
   }
 }

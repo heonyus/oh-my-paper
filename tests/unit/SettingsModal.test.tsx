@@ -40,13 +40,13 @@ describe("SettingsModal", () => {
     )
     await userEvent.click(screen.getByRole("button", { name: "암호화하여 저장" }))
 
-    expect(screen.getByLabelText("모델 ID")).toHaveValue("z-ai/glm-5.3-flash")
+    expect(screen.getByLabelText("모델 ID")).toHaveValue("deepseek/deepseek-v4.1-flash")
     expect(screen.queryByText(/ChatGPT Plus/)).not.toBeInTheDocument()
     expect(screen.getByLabelText("페이지 번역 모델")).toHaveValue("tencent/hy-mt2-30b-a3b")
     expect(onSave).toHaveBeenCalledWith({
       provider: "openrouter",
       apiKey: "sk-or-example-key-at-least-twenty-characters",
-      model: "z-ai/glm-5.3-flash",
+      model: "deepseek/deepseek-v4.1-flash",
       pageTranslationModel: "tencent/hy-mt2-30b-a3b",
     })
   })
@@ -63,9 +63,9 @@ describe("SettingsModal", () => {
     )
 
     const model = screen.getByLabelText("모델 ID")
-    expect(model).toHaveValue("z-ai/glm-5.3-flash")
-    await userEvent.selectOptions(model, "deepseek/deepseek-v4.1-flash")
     expect(model).toHaveValue("deepseek/deepseek-v4.1-flash")
+    await userEvent.selectOptions(model, "google/gemini-2.5-flash-lite")
+    expect(model).toHaveValue("google/gemini-2.5-flash-lite")
   })
 
   it("saves the selected page-translation model", async () => {
@@ -132,7 +132,12 @@ describe("SettingsModal", () => {
     render(
       <SettingsModal
         status={{ configured: true, provider: "gemini", model: "gemini-3.5-flash-lite" }}
-        ocrStatus={{ configured: false, provider: "paddle", model: "PaddleOCR-VL-1.6" }}
+        ocrStatus={{
+          configured: false,
+          provider: "paddle",
+          model: "PaddleOCR-VL-1.6",
+          acceleration: null,
+        }}
         fontScale={1}
         onClose={vi.fn()}
         onSave={vi.fn(async () => {})}
@@ -146,13 +151,38 @@ describe("SettingsModal", () => {
     expect(screen.queryByLabelText(/OCR API 키/)).not.toBeInTheDocument()
   })
 
+  it("reports the GPU server that recognizes pages", () => {
+    render(
+      <SettingsModal
+        status={{ configured: true, provider: "gemini", model: "gemini-3.5-flash-lite" }}
+        ocrStatus={{
+          configured: true,
+          provider: "paddle",
+          model: "PaddleOCR-VL-1.6",
+          acceleration: "vllm",
+        }}
+        fontScale={1}
+        onClose={vi.fn()}
+        onSave={vi.fn(async () => {})}
+        onFontScaleChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText("GPU 가속 (vLLM) 준비됨")).toBeVisible()
+  })
+
   it("locks first run to AI provider setup without a close button", async () => {
     const onSave = vi.fn(async () => {})
     const onModeSave = vi.fn(async () => {})
     render(
       <SettingsModal
         status={{ configured: false, provider: "openrouter", model: "qwen/qwen3.7-flash" }}
-        ocrStatus={{ configured: false, provider: "paddle", model: "PaddleOCR-VL-1.6" }}
+        ocrStatus={{
+          configured: false,
+          provider: "paddle",
+          model: "PaddleOCR-VL-1.6",
+          acceleration: null,
+        }}
         fontScale={1}
         locked
         openRouterRequired
@@ -186,7 +216,12 @@ describe("SettingsModal", () => {
     render(
       <SettingsModal
         status={{ configured: false, provider: "openrouter", model: "qwen/qwen3.7-flash" }}
-        ocrStatus={{ configured: false, provider: "paddle", model: "PaddleOCR-VL-1.6" }}
+        ocrStatus={{
+          configured: false,
+          provider: "paddle",
+          model: "PaddleOCR-VL-1.6",
+          acceleration: null,
+        }}
         fontScale={1}
         locked
         openRouterRequired

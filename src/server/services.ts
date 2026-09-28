@@ -77,17 +77,13 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
     appPath: sourceRoot,
     resourcesPath: sourceRoot,
     packaged: false,
-    maxConcurrency: 4,
   })
   const pages = createDocumentPageParser({
     store,
     paddlePageParser: paddle,
     astService: ast,
   })
-  const analysis = new DocumentAnalysisService(store, pages, {
-    maxConcurrency: 2,
-    pageConcurrency: 4,
-  })
+  const analysis = new DocumentAnalysisService(store, pages, { maxConcurrency: 4 })
   await analysis.resumePending()
   let decisions =
     initialProvider?.provider === "openrouter"
@@ -113,7 +109,7 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
     pages,
     analysis,
     translationCache: new PageTranslationCacheService(store),
-    ocrStatus: async () => paddle.status(),
+    ocrStatus: () => paddle.status(),
     ai,
     subscription,
     claude,

@@ -197,7 +197,7 @@ describe("LibraryHome", () => {
     expect(screen.getByText("0 / 12페이지 · 분석 대기 중")).toBeVisible()
   })
 
-  it("keeps reader entry available while preparation runs and exposes failed-job retry", () => {
+  it("keeps the reader open while analysis runs and exposes failed-job retry", () => {
     const onSelect = vi.fn()
     const onRetryAnalysis = vi.fn()
     render(
@@ -215,7 +215,7 @@ describe("LibraryHome", () => {
             pageCount: report.pageCount,
             completedPages: 3,
             state: "failed",
-            message: "Mistral OCR API 키가 필요합니다",
+            message: "문서 구조 분석을 완료하지 못했습니다",
           },
         ]}
       />,

@@ -27,7 +27,8 @@ export async function parseAnalysisPage(input: {
 }): Promise<DocumentPageParseResult> {
   let result: DocumentPageParseResult = { status: "unavailable", reason: "execution_failed" }
   for (let attempt = 1; attempt <= input.maxAttempts; attempt += 1) {
-    input.onProgress("engine-starting", attempt)
+    // The parser reports "engine-starting" itself when it has to wait for its engine.
+    input.onProgress("page-rendering", attempt)
     try {
       result = await input.parser.parse({
         documentId: input.document.id,

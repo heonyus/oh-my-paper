@@ -1216,6 +1216,7 @@ button:focus-visible {
 .settings-page {
   min-height: 0;
   overflow: auto;
+  scrollbar-gutter: stable;
   padding: 24px;
 }
 .settings-group {
@@ -1241,8 +1242,8 @@ button:focus-visible {
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 18px;
-  padding: 0 14px;
+  gap: 8px 18px;
+  padding: 8px 14px;
   border-bottom: 1px solid var(--line);
   color: var(--ink);
   font-size: var(--type-toolbar-size);
@@ -1252,7 +1253,7 @@ button:focus-visible {
 }
 .settings-row > span:first-child {
   display: grid;
-  flex: 1 1 11rem;
+  flex: 1 1 8rem;
   min-width: 0;
   gap: 2px;
   word-break: keep-all;

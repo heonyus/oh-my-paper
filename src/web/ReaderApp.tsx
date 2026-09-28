@@ -212,7 +212,7 @@ export function ReaderApp(): JSX.Element {
           </Suspense>
         ) : libraryVisible ? (
           <LibraryHome
-            active={libraryVisible}
+            active={app.libraryView}
             documents={workspace.documents}
             activeId={workspace.activeDocumentId}
             onSelect={openDocument}

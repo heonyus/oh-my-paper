@@ -38,6 +38,7 @@
     "setup:layout": "node scripts/setup-layout-runtime.mjs",
     "setup:mineru": "node scripts/setup-mineru-runtime.mjs",
     "setup:paddle-vl": "node scripts/setup-paddle-vl-runtime.mjs",
+    "setup:paddle-vllm": "node scripts/setup-paddle-vllm-wsl.mjs",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test",
     "verify:installed-layout": "node scripts/verify-installed-layout.mjs",
     "menubar:build": "mkdir -p menubar/bin && swiftc -O -o menubar/bin/oh-my-paper-menubar menubar/main.swift",
@@ -111,6 +112,10 @@
       {
         "from": "src/layout/paddle_vl_blocks.py",
         "to": "layout/paddle_vl_blocks.py"
+      },
+      {
+        "from": "src/layout/paddle_vl_worker.py",
+        "to": "layout/paddle_vl_worker.py"
       }
     ],
     "publish": {

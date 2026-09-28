@@ -5,7 +5,7 @@ import { WebOnboarding } from "../../src/web/WebOnboarding"
 const status = {
   configured: true,
   provider: "openrouter",
-  model: "z-ai/glm-5.3-flash",
+  model: "deepseek/deepseek-v4.1-flash",
   mode: "api",
 } as const
 
@@ -73,7 +73,7 @@ function installClaudeApi(): void {
 const providerStatusProp = {
   configured: false,
   provider: "openrouter",
-  model: "z-ai/glm-5.3-flash",
+  model: "deepseek/deepseek-v4.1-flash",
 } as const
 
 describe("WebOnboarding", () => {
@@ -125,7 +125,7 @@ describe("WebOnboarding", () => {
       expect(mocks.saveProviderConfig).toHaveBeenCalledWith(
         expect.objectContaining({
           provider: "openrouter",
-          model: "z-ai/glm-5.3-flash",
+          model: "deepseek/deepseek-v4.1-flash",
           pageTranslationModel: "tencent/hy-mt2-30b-a3b",
         }),
       ),

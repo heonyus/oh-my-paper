@@ -141,7 +141,7 @@ export function registerApplicationIpc(
     store,
     paddlePageParser,
   })
-  const analysis = new DocumentAnalysisService(store, pageParser)
+  const analysis = new DocumentAnalysisService(store, pageParser, { maxConcurrency: 4 })
   const disposeAnalysisIpc = registerDocumentAnalysisIpc(analysis)
   const disposeTranslationCacheIpc = registerPageTranslationCacheIpc(
     new PageTranslationCacheService(store),
@@ -216,7 +216,7 @@ export function registerApplicationIpc(
       }),
     )
   })
-  ipcMain.handle(ipcChannels.documentOcrStatus, async () => paddlePageParser.status())
+  ipcMain.handle(ipcChannels.documentOcrStatus, () => paddlePageParser.status())
   return async () => {
     disposeLocalInference()
     localInference.dispose()
