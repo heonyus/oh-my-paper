@@ -1,12 +1,14 @@
-import { Check, Copy, ExternalLink, Maximize2, StickyNote } from "lucide-react"
 import { type JSX, useEffect, useRef, useState } from "react"
+import type { OwnWordsCheck } from "../../shared/ownWords"
 import { initialResearchCardHeight } from "../lib/board"
 import type { AiDeltaHandler, BoardCard as Card, CardId } from "../types"
 import { BoardCardChat } from "./BoardCardChat"
 import { BoardCardCitationMeta } from "./BoardCardCitationMeta"
+import { BoardCardFooter } from "./BoardCardFooter"
 import { BoardCardHeader } from "./BoardCardHeader"
 import { BoardCardResizeHandle } from "./BoardCardResizeHandle"
 import { MarkdownContent } from "./MarkdownContent"
+import { OwnWordsCard } from "./OwnWordsCard"
 
 type BoardCardProps = {
   readonly card: Card
@@ -27,6 +29,10 @@ type BoardCardProps = {
     history: Card["chat"],
     onDelta?: AiDeltaHandler,
   ) => Promise<string>
+  readonly onCheckOwnWords?:
+    | ((card: Card, signal: AbortSignal) => Promise<OwnWordsCheck>)
+    | undefined
+  readonly onOwnCheckChange?: ((id: CardId, check: OwnWordsCheck) => void) | undefined
   readonly autoEdit?: boolean | undefined
   readonly streaming?: boolean | undefined
   readonly active: boolean
@@ -47,6 +53,8 @@ export function BoardCard({
   onResizeEnd,
   onChatChange,
   onAsk,
+  onCheckOwnWords,
+  onOwnCheckChange,
   autoEdit = false,
   streaming = false,
   active,
@@ -57,7 +65,6 @@ export function BoardCard({
   const editor = useRef<HTMLTextAreaElement>(null)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(card.body)
-  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle")
 
   useEffect(() => {
     if (autoEdit) setEditing(true)
@@ -69,18 +76,7 @@ export function BoardCard({
 
   useEffect(() => {
     setDraft(card.body)
-    setCopyState("idle")
   }, [card.body])
-
-  async function copyCardBody(): Promise<void> {
-    try {
-      await window.ohmypaper.writeClipboardText(card.body)
-      setCopyState("copied")
-    } catch (error: unknown) {
-      if (!(error instanceof Error)) throw error
-      setCopyState("failed")
-    }
-  }
 
   function finishEditing(): void {
     onBodyChange?.(card.id, draft)
@@ -90,11 +86,8 @@ export function BoardCard({
   const renderedBody = <MarkdownContent source={card.kind === "sticky" ? draft : card.body} />
   const supportsChat =
     card.kind === "explanation" || card.kind === "infographic" || card.kind === "citation"
-  const sourceUrl =
-    card.sourceUrl ??
-    card.sourceMeta?.url ??
-    (card.sourceMeta?.doi ? `https://doi.org/${card.sourceMeta.doi}` : null)
-  const usesNaturalHeight = card.kind === "sticky" || card.kind === "highlight"
+  const usesNaturalHeight =
+    card.kind === "sticky" || card.kind === "highlight" || card.kind === "note"
   const expandedHeight = card.height ?? (usesNaturalHeight ? null : initialResearchCardHeight(card))
 
   return (
@@ -130,7 +123,9 @@ export function BoardCard({
         onMoveEnd={onMoveEnd ?? onMove}
         onMinimize={onMinimize}
         onDelete={onDelete}
-        onRegenerateTitle={card.kind === "translation" ? undefined : onRegenerateTitle}
+        onRegenerateTitle={
+          card.kind === "translation" || card.kind === "note" ? undefined : onRegenerateTitle
+        }
       />
       {!card.minimized ? (
         <div className="card-body" onWheel={(event) => event.stopPropagation()}>
@@ -166,6 +161,15 @@ export function BoardCard({
               onChange={(event) => setDraft(event.target.value)}
               onBlur={finishEditing}
             />
+          ) : card.kind === "note" ? (
+            <OwnWordsCard
+              card={card}
+              autoEdit={autoEdit}
+              onBodyChange={(body) => onBodyChange?.(card.id, body)}
+              onCheck={onCheckOwnWords}
+              onCheckChange={(check) => onOwnCheckChange?.(card.id, check)}
+              onJump={onJump}
+            />
           ) : card.kind === "sticky" ? (
             <button
               type="button"
@@ -190,52 +194,12 @@ export function BoardCard({
         </div>
       ) : null}
       {!card.minimized && card.kind !== "sticky" ? (
-        <footer className="card-source-footer">
-          {!card.loading && !streaming && card.body.trim() ? (
-            <button
-              type="button"
-              className="source-link card-copy-action"
-              data-state={copyState}
-              aria-label={
-                copyState === "copied"
-                  ? "카드 내용 복사됨"
-                  : copyState === "failed"
-                    ? "카드 내용 복사 실패"
-                    : "카드 내용 복사"
-              }
-              onClick={() => void copyCardBody()}
-            >
-              {copyState === "copied" ? "복사됨" : copyState === "failed" ? "복사 실패" : "복사"}
-              {copyState === "copied" ? <Check size={13} /> : <Copy size={13} />}
-            </button>
-          ) : null}
-          {sourceUrl ? (
-            <button
-              type="button"
-              className="source-link"
-              onClick={() => void window.ohmypaper.openExternal({ url: sourceUrl })}
-            >
-              논문 열기 <ExternalLink size={13} />
-            </button>
-          ) : null}
-          {card.kind === "translation" && onSaveAsAnnotation ? (
-            <button
-              type="button"
-              className="source-link"
-              aria-label="번역을 주석으로 저장"
-              onClick={() => onSaveAsAnnotation(card.id)}
-            >
-              주석으로 저장 <StickyNote size={13} />
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="source-link source-jump"
-            onClick={() => onJump(card.anchor.page)}
-          >
-            p. {card.anchor.page} 원문으로 이동 <Maximize2 size={13} />
-          </button>
-        </footer>
+        <BoardCardFooter
+          card={card}
+          streaming={streaming}
+          onJump={onJump}
+          onSaveAsAnnotation={onSaveAsAnnotation}
+        />
       ) : null}
       {!card.minimized ? (
         <BoardCardResizeHandle

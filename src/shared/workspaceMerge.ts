@@ -69,6 +69,7 @@ function mergeCard(base: BoardCard, current: BoardCard, incoming: BoardCard): Bo
     current.sourceMeta,
     incoming.sourceMeta,
   )
+  const ownCheck = mergeField("card.ownCheck", base.ownCheck, current.ownCheck, incoming.ownCheck)
   return {
     id: current.id,
     documentId: mergeField(
@@ -91,6 +92,7 @@ function mergeCard(base: BoardCard, current: BoardCard, incoming: BoardCard): Bo
     ...(sourceKey === undefined ? {} : { sourceKey }),
     ...(sourceUrl === undefined ? {} : { sourceUrl }),
     ...(sourceMeta === undefined ? {} : { sourceMeta }),
+    ...(ownCheck === undefined ? {} : { ownCheck }),
   }
 }
 

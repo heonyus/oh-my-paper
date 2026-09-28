@@ -68,6 +68,13 @@ const actionInstruction: Readonly<Record<AiAction, string>> = {
     "`page` is the page number from the nearest preceding `[Page N]` marker, never a printed journal page. `quote` is 6-25 consecutive words copied exactly from that page that support the verdict. Use null for both only with `unverifiable`.",
     'Return JSON only with this exact shape: {"items":[{"line":"problem","verdict":"match","note":"...","page":1,"quote":"..."}]}.',
   ].join(" "),
+  own_words_check: [
+    "The reader selected the passage in SOURCE EVIDENCE and wrote in their own words what it says; USER INPUT is the reader's text, possibly in Korean. Judge meaning, not wording or language.",
+    "Verdicts: `match` when the text states what the passage says; `missing` when it is not wrong but leaves out the passage's central point; `diverges` when it contradicts or misstates the passage; `unverifiable` when the passage alone cannot settle it.",
+    "`note` is one Korean sentence under 120 characters addressed to the reader. Name what is right, or the kind of thing that is left out or misstated, and point to where it is in the passage. Never write a corrected, model, or replacement version of the reader's text, and never give a sentence the reader could copy in as their answer.",
+    "`quote` is 6-25 consecutive words copied exactly from the passage in SOURCE EVIDENCE that support the verdict; use null only with `unverifiable`.",
+    'Return JSON only with this exact shape: {"verdict":"match","note":"...","quote":"..."}.',
+  ].join(" "),
 }
 
 const hyMtPageTranslationInstruction =

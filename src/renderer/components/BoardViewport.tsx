@@ -13,6 +13,7 @@ import { askBoardCard, regenerateBoardCardTitle } from "../lib/boardCardAi"
 import { boardHighlightState, highlightAtPoint } from "../lib/boardHighlights"
 import { type BoardTextSelection, captureNativeBoardTextSelection } from "../lib/boardSelection"
 import { parsedCardResponse, parsedTranslationResponse } from "../lib/cardPresentation"
+import { checkOwnWords } from "../lib/ownWordsCheck"
 import { postItFromPointer } from "../lib/postItPlacement"
 import { useSelectionShortcuts } from "../lib/selectionActions"
 import { selectionAiRequest } from "../lib/selectionAiRequest"
@@ -204,6 +205,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
       )
     }
     commitCards([...cardsRef.current, card])
+    if (kind === "note") setCreatedStickyId(card.id)
     setSelectionMenu(null)
     window.getSelection()?.removeAllRanges()
     const request = selectionAiRequest(kind, selectionMenu)
@@ -363,6 +365,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
             askBoardCard(card, question, history, props.onAiRequest, onDelta)
           }
           onRegenerateTitle={(card) => regenerateBoardCardTitle(card, props.onAiRequest)}
+          onCheckOwnWords={(card, signal) => checkOwnWords(card, props.onAiRequest, signal)}
         />
       </div>
       {selectionMenu && menuPosition ? (

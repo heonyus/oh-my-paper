@@ -10,6 +10,7 @@ import {
 } from "../../shared/ownSummary"
 import type { AiRequestRunner, DocumentRecord } from "../types"
 import { waitForDocumentAst } from "./documentAstRuntime"
+import { parseJsonReply } from "./jsonReply"
 import { pageTextsWithParsedPages, paperOverviewContext } from "./pdfSearch"
 import { normalizedQuoteText, quoteMatchTarget } from "./sourceQuoteFlash"
 
@@ -43,22 +44,26 @@ export function ownSummaryCheckInput(lines: OwnSummaryLines): string {
 }
 
 export function parseOwnSummaryCheck(value: string): readonly ModelCheckItem[] {
-  const withoutFence = value
-    .trim()
-    .replace(/^```(?:json)?\s*/iu, "")
-    .replace(/\s*```$/u, "")
-    .trim()
-  return modelResponseSchema.parse(JSON.parse(withoutFence)).items
+  return modelResponseSchema.parse(parseJsonReply(value)).items
+}
+
+/**
+ * True when the quote's opening appears in the source text. A quote shorter than the minimum
+ * counts only when the whole source is that short, since it would match too many places.
+ */
+export function sourceContainsQuote(source: string, quote: string): boolean {
+  const text = normalizedQuoteText(source)
+  const target = quoteMatchTarget(quote)
+  return (
+    target.length >= Math.min(MIN_QUOTE_CHARACTERS, text.length) &&
+    target.length > 0 &&
+    text.includes(target)
+  )
 }
 
 function quoteOnPage(pageTexts: readonly string[], page: number, quote: string): boolean {
   const text = pageTexts[page - 1]
-  const target = quoteMatchTarget(quote)
-  return (
-    text !== undefined &&
-    target.length >= MIN_QUOTE_CHARACTERS &&
-    normalizedQuoteText(text).includes(target)
-  )
+  return text !== undefined && sourceContainsQuote(text, quote)
 }
 
 function verifiedItem(

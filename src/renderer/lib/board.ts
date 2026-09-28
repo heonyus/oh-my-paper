@@ -33,7 +33,7 @@ export const CARD_COPY = {
     body: "",
   },
   infographic: { title: "인포그래픽", body: "" },
-  note: { title: "주석", body: "이 구절에 연결된 메모입니다." },
+  note: { title: "내 말로", body: "" },
   highlight: { title: "하이라이트", body: "" },
 } as const
 
@@ -68,7 +68,7 @@ export function createBoardCard(input: CreateCardInput): BoardCard {
 }
 
 export function saveTranslationAsAnnotation(card: BoardCard): BoardCard {
-  return card.kind === "translation" ? { ...card, kind: "highlight", title: "번역 주석" } : card
+  return card.kind === "translation" ? { ...card, kind: "highlight", title: "AI 번역" } : card
 }
 
 export function createPostIt(documentId: DocumentId, page: number, placement: Point): BoardCard {

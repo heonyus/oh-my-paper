@@ -55,8 +55,13 @@ was kept). Intent is visible in the reader toolbar and can change at any time; p
 - Chat: the default reply is a hint ladder: where to look, then a hint, then an explanation on
   request. Escalating is always one action. After an explanation, offer an empty
   `내 문장으로 남기기` slot, never a prefilled one.
+- Annotation (`C`): the former fixed-text `주석` card is the `내 말로` card. It opens as an
+  empty editor beside the selected passage (old placeholder bodies open empty too), is never
+  prefilled, and offers `원문과 대조`, which checks the text against the selected passage only.
+  A verdict needs a quote found in that passage, otherwise `확인 불가`; editing after a check
+  marks the result as not yet checked. The sidebar, index and metadata call it `내 말로`.
 - Highlight: an entry to a sentence, with an optional `왜?` line. Saving an AI translation keeps
-  it labelled as AI; it never becomes a user card.
+  it labelled `AI 번역`; it never becomes a user card.
 - Auto Highlight: not a product goal. A post-reading `놓친 곳` check may follow once the loop
   is validated.
 - Library: each document shows its intent and real counts: kept sentences and the latest recall

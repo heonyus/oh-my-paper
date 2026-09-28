@@ -3,6 +3,7 @@ import { agentThreadSchema } from "./agentChat"
 import { citationAssessmentResultSchema } from "./citationAssessment"
 import { cardIdSchema, documentIdSchema, sha256Schema } from "./ids"
 import { OWN_SUMMARIES_MAX, ownSummarySchema } from "./ownSummary"
+import { ownWordsCheckSchema } from "./ownWords"
 import { researchSidebarLayout } from "./uiLayout"
 
 export { cardIdSchema, documentIdSchema, sha256Schema }
@@ -145,6 +146,7 @@ export const boardCardSchema = z.object({
       assessment: citationAssessmentResultSchema.optional(),
     })
     .optional(),
+  ownCheck: ownWordsCheckSchema.optional(),
   anchor: sourceAnchorSchema,
 })
 

@@ -37,7 +37,7 @@ type ResearchMode = "ai" | "citations" | "translation" | "scholar" | CardMode
 const cardModeLabels: Readonly<Record<CardMode, string>> = {
   explanation: "AI 설명",
   infographic: "AI 카드",
-  note: "노트",
+  note: "내 말로",
   sticky: "포스트잇",
   highlight: "하이라이트",
 }
@@ -118,7 +118,7 @@ export function ResearchSidebar({
     },
     {
       id: "note",
-      label: "노트",
+      label: "내 말로",
       count: cards.filter((card) => card.kind === "note").length,
       icon: <NotebookPen size={18} />,
     },
