@@ -251,4 +251,37 @@ describe("local document workflow", () => {
       await rm(root, { recursive: true, force: true })
     }
   })
+
+  it("builds the hybrid page from Paddle's cache at once instead of handing out PDF.js first", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-hybrid-rebuild-"))
+    try {
+      const store = new WorkspaceStore(root)
+      await store.save(defaultWorkspace())
+      const document = await importFixture(
+        root,
+        store,
+        "structured.pdf",
+        await buildStructuredPdf(),
+      )
+      const paddleParse = vi.fn()
+      const readCached = vi.fn().mockResolvedValue(paddlePage(document))
+      const parser = createDocumentPageParser({
+        store,
+        paddlePageParser: { parse: paddleParse, readCached },
+      })
+
+      const first = await parser.parse({ documentId: document.id, pageNumber: 1 })
+      const prepared = await parser.parse({
+        documentId: document.id,
+        pageNumber: 1,
+        preparedOnly: true,
+      })
+
+      expect(first.status === "ready" && first.page.parser).toBe("PDF.js+PaddleOCR-VL-1.6")
+      expect(prepared.status === "ready" && prepared.page.configVersion).toBe("hybrid-v11")
+      expect(paddleParse).not.toHaveBeenCalled()
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
 })

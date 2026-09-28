@@ -142,6 +142,11 @@ export class DocumentPageParser {
       input.onNativeReady?.(ready)
       return ready
     }
+    const merged = await this.#mergeWithCachedPaddle(document, input.pageNumber, store)
+    if (merged) {
+      input.onNativeReady?.(merged)
+      return merged
+    }
     if (input.preparedOnly) {
       input.onNativeReady?.(null)
       return { status: "unavailable", reason: "needs_ocr" }
@@ -167,6 +172,26 @@ export class DocumentPageParser {
       return nativeResult
     }
     return paddleResult
+  }
+
+  /**
+   * When Paddle already parsed a page, the hybrid page is only a merge away — as after a
+   * change of the hybrid version. Builds it at once rather than handing out the PDF.js page
+   * first, so readers and translations never see the page change parser under them.
+   */
+  async #mergeWithCachedPaddle(
+    document: DocumentRecord,
+    pageNumber: number,
+    store: WorkspaceStore,
+  ): Promise<DocumentPageParseResult | null> {
+    if (!this.#paddle.readCached) return null
+    const paddle = await this.#paddle.readCached(document, pageNumber, store).catch(() => null)
+    if (!paddle) return null
+    const native = await this.#tryNativeParse(document, pageNumber, store).catch(() => null)
+    if (native?.status !== "ready") return null
+    const page = mergePdfJsAndPaddlePage(native.page, paddle)
+    await this.#writeCachedPage(store, page)
+    return documentPageParseResultSchema.parse({ status: "ready", page })
   }
 
   /**
