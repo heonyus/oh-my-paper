@@ -291,13 +291,16 @@ describe("DocumentAnalysisService", () => {
         expect(service.isReady(first.id)).toBe(true)
         expect(service.isReady(second.id)).toBe(true)
       })
-      expect(
-        JSON.parse(await readFile(join(root, "document-analysis-queue.json"), "utf8")),
-      ).toEqual({
-        version: 2,
-        pendingIds: [],
-        readyIds: expect.arrayContaining([first.id, second.id]),
-      })
+      // A document reports ready before its queued state write lands on disk.
+      await vi.waitFor(async () =>
+        expect(
+          JSON.parse(await readFile(join(root, "document-analysis-queue.json"), "utf8")),
+        ).toEqual({
+          version: 2,
+          pendingIds: [],
+          readyIds: expect.arrayContaining([first.id, second.id]),
+        }),
+      )
     } finally {
       await service.dispose()
       await rm(root, { recursive: true, force: true })
