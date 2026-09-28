@@ -10,9 +10,16 @@ export type ScholarlyWireResponse = {
   readonly body: AsyncIterable<Uint8Array>
 }
 
+export type ScholarlyRequestInit = {
+  readonly method?: "GET" | "POST"
+  readonly headers?: Readonly<Record<string, string>>
+  readonly body?: string
+}
+
 export type ScholarlyWire = (input: {
   readonly url: URL
   readonly signal: AbortSignal
+  readonly init?: ScholarlyRequestInit
 }) => Promise<ScholarlyWireResponse>
 
 export type ScholarlyTransportResponse = {
@@ -24,6 +31,7 @@ export type ScholarlyTransportResponse = {
 export type ScholarlyTransport = (
   url: URL,
   signal?: AbortSignal,
+  init?: ScholarlyRequestInit,
 ) => Promise<ScholarlyTransportResponse>
 
 export class ScholarlyTransportError extends Error {
@@ -43,14 +51,17 @@ export class ScholarlyTransportError extends Error {
 async function undiciWire(input: {
   readonly url: URL
   readonly signal: AbortSignal
+  readonly init?: ScholarlyRequestInit
 }): Promise<ScholarlyWireResponse> {
   const response = await request(input.url, {
-    method: "GET",
+    method: input.init?.method ?? "GET",
     headers: {
       accept:
         input.url.hostname === "export.arxiv.org" ? "application/atom+xml" : "application/json",
       "user-agent": "oh-my-paper/2.0 (https://github.com/heonyus/oh-my-paper)",
+      ...input.init?.headers,
     },
+    ...(input.init?.body === undefined ? {} : { body: input.init.body }),
     headersTimeout: SCHOLARLY_REQUEST_TIMEOUT_MS,
     bodyTimeout: SCHOLARLY_REQUEST_TIMEOUT_MS,
     maxRedirections: 0,
@@ -82,11 +93,15 @@ export function createScholarlyTransport(
   const wire = options.wire ?? undiciWire
   const timeoutMs = options.timeoutMs ?? SCHOLARLY_REQUEST_TIMEOUT_MS
   const maxBodyBytes = options.maxBodyBytes ?? SCHOLARLY_MAX_BODY_BYTES
-  return async (url, signal) => {
+  return async (url, signal, init) => {
     const timeoutSignal = AbortSignal.timeout(timeoutMs)
     const requestSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal
     try {
-      const response = await wire({ url, signal: requestSignal })
+      const response = await wire({
+        url,
+        signal: requestSignal,
+        ...(init === undefined ? {} : { init }),
+      })
       const decoder = new TextDecoder()
       let body = ""
       let size = 0

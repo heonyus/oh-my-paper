@@ -20,6 +20,7 @@ import {
 } from "../shared/ipc"
 import { DEFAULT_OPENROUTER_MODEL } from "../shared/providerModels"
 import {
+  type ChatOptions,
   chatWithClaude,
   chatWithCodex,
   claudeModelOf,
@@ -129,12 +130,13 @@ export class WebAiService {
 
   async chat(
     messages: readonly { role: "system" | "user" | "assistant"; content: string }[],
+    options: ChatOptions = {},
   ): Promise<{ readonly text: string; readonly model: string }> {
     if (this.#modeSettings.mode === "chatgpt") {
-      return chatWithCodex(this.#subscription, this.#modeSettings, messages)
+      return chatWithCodex(this.#subscription, this.#modeSettings, messages, options)
     }
     if (this.#modeSettings.mode === "claude") {
-      return chatWithClaude(this.#claude, this.#modeSettings, messages)
+      return chatWithClaude(this.#claude, this.#modeSettings, messages, options)
     }
     if (!this.#providerConfig) {
       throw new ProviderConfigurationError("missing_key")
@@ -155,6 +157,7 @@ export class WebAiService {
         model: this.#providerConfig.model,
         messages: openAiMessages,
         parameters: { max_completion_tokens: 4_096 },
+        ...(options.signal ? { signal: options.signal } : {}),
       })
     } catch (error) {
       throw providerFailure(error)

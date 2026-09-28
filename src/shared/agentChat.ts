@@ -6,7 +6,8 @@ export const AGENT_HISTORY_MAX_MESSAGES = 20
 export const AGENT_CONTEXT_DOC_MAX = 8
 export const AGENT_CONTEXT_EXCERPT_CHARACTERS = 1_500
 export const AGENT_SEARCH_RESULT_LIMIT = 8
-export const AGENT_QUERY_MAX = 3
+export const AGENT_PAPER_LIMIT = 20
+export const AGENT_QUERY_MAX = 6
 
 export const agentMessageSchema = z
   .object({
@@ -16,12 +17,6 @@ export const agentMessageSchema = z
   .readonly()
 
 export const agentPaperProviderSchema = z.enum(["semanticscholar", "crossref", "arxiv", "openalex"])
-
-export const agentPlanSchema = z
-  .object({
-    queries: z.array(z.string().trim().min(1).max(300)).min(1).max(AGENT_QUERY_MAX),
-  })
-  .readonly()
 
 export const agentPaperSchema = z
   .object({
@@ -33,14 +28,19 @@ export const agentPaperSchema = z
     landingUrl: z.string().url().nullable(),
     fullTextUrl: z.string().url().nullable(),
     citationCount: z.number().int().nonnegative().nullable(),
+    relevance: z.number().int().min(0).max(3).optional(),
+    reason: z.string().max(300).optional(),
   })
   .readonly()
+
+export const agentModeSchema = z.enum(["quick", "deep"])
 
 export const agentAskRequestSchema = z
   .object({
     question: z.string().trim().min(1).max(AGENT_QUESTION_MAX_CHARACTERS),
     contextDocIds: z.array(documentIdSchema).max(AGENT_CONTEXT_DOC_MAX).default([]),
     history: z.array(agentMessageSchema).max(AGENT_HISTORY_MAX_MESSAGES).default([]),
+    mode: agentModeSchema.default("quick"),
   })
   .readonly()
 
@@ -48,14 +48,14 @@ export const agentAskResultSchema = z
   .object({
     answer: z.string().min(1).max(32_000),
     model: z.string().min(1),
-    papers: z.array(agentPaperSchema).max(AGENT_SEARCH_RESULT_LIMIT).readonly(),
+    papers: z.array(agentPaperSchema).max(AGENT_PAPER_LIMIT).readonly(),
   })
   .readonly()
 
 export const agentStepSchema = z
   .object({
     id: z.string().min(1).max(64),
-    kind: z.enum(["context", "plan", "search", "fallback", "compose"]),
+    kind: z.enum(["context", "plan", "search", "fallback", "judge", "expand", "compose"]),
     status: z.enum(["running", "done", "failed"]),
     query: z.string().max(300).optional(),
     queries: z.array(z.string().max(300)).max(AGENT_QUERY_MAX).readonly().optional(),
@@ -85,8 +85,9 @@ export const agentThreadMessageSchema = z
     id: z.string().min(1).max(64).optional(),
     role: z.enum(["user", "assistant"]),
     content: z.string().min(1).max(32_000),
-    papers: z.array(agentPaperSchema).max(AGENT_SEARCH_RESULT_LIMIT).readonly().optional(),
+    papers: z.array(agentPaperSchema).max(AGENT_PAPER_LIMIT).readonly().optional(),
     steps: z.array(agentStepSchema).max(64).readonly().optional(),
+    mode: agentModeSchema.optional(),
   })
   .readonly()
 
@@ -102,61 +103,16 @@ export const agentThreadSchema = z
   .readonly()
 
 export type AgentMessage = z.infer<typeof agentMessageSchema>
-export type AgentPlan = z.infer<typeof agentPlanSchema>
+export type AgentMode = z.infer<typeof agentModeSchema>
 export type AgentPaper = z.infer<typeof agentPaperSchema>
 export type AgentAskRequest = z.input<typeof agentAskRequestSchema>
+export type ParsedAgentAskRequest = z.infer<typeof agentAskRequestSchema>
 export type AgentAskResult = z.infer<typeof agentAskResultSchema>
 export type AgentStep = z.infer<typeof agentStepSchema>
 export type AgentStreamEvent = z.infer<typeof agentStreamEventSchema>
 export type AgentContextDoc = z.infer<typeof agentContextDocSchema>
 export type AgentThreadMessage = z.infer<typeof agentThreadMessageSchema>
 export type AgentThread = z.infer<typeof agentThreadSchema>
-
-export const AGENT_SYSTEM_PROMPT = [
-  "You are oh-my-paper's research agent: an assistant for reading, finding and discussing academic papers.",
-  "",
-  "Rules:",
-  "- Answer in the same language the user writes in (Korean questions get Korean answers).",
-  "- Ground paper-specific claims in the provided SEARCH RESULTS or ATTACHED LIBRARY PAPERS.",
-  "- Cite sources as [n] matching the numbered search results, or [L1], [L2]... for attached library papers. Never fabricate citations, titles, authors or findings.",
-  "- When the search results do not support a claim, say so honestly instead of guessing.",
-  "- Be concise and structured: short paragraphs or bullet lists. Use Markdown formatting.",
-  "- When the user asks to find papers, summarize what was found and what each relevant paper contributes.",
-].join("\n")
-
-export function buildAgentUserPrompt(input: {
-  readonly question: string
-  readonly contextDocs: readonly AgentContextDoc[]
-  readonly papers: readonly AgentPaper[]
-  readonly abstracts: readonly (string | null)[]
-}): string {
-  const parts: string[] = [`QUESTION:\n${input.question}`]
-  if (input.contextDocs.length > 0) {
-    const docs = input.contextDocs
-      .map((doc, index) => {
-        const meta = [doc.authors.slice(0, 3).join(", "), doc.year ?? "n.d."]
-          .filter((v) => v !== "")
-          .join(", ")
-        return `[L${index + 1}] "${doc.title}" (${meta})\nexcerpt: ${doc.excerpt}`
-      })
-      .join("\n\n")
-    parts.push(`ATTACHED LIBRARY PAPERS:\n${docs}`)
-  }
-  if (input.papers.length > 0) {
-    const results = input.papers
-      .map((paper, index) => {
-        const meta = [paper.authors.slice(0, 3).join(", "), paper.year ?? "n.d.", paper.venue]
-          .filter((v) => v !== "")
-          .join(", ")
-        const abstract = input.abstracts[index]
-        const clipped = abstract && abstract.length > 600 ? `${abstract.slice(0, 600)}…` : abstract
-        return `[${index + 1}] "${paper.title}" (${meta})${clipped ? `\nabstract: ${clipped}` : ""}`
-      })
-      .join("\n\n")
-    parts.push(`SEARCH RESULTS:\n${results}`)
-  }
-  return parts.join("\n\n")
-}
 
 export function threadTitleFromQuestion(question: string): string {
   const trimmed = question.trim().replaceAll("\n", " ")

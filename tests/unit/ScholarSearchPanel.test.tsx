@@ -83,6 +83,38 @@ describe("ScholarSearchPanel", () => {
     expect(screen.getByText(/추천 근거: 제목 핵심어 일치/u)).toBeVisible()
   })
 
+  it("keeps results for a typed query even when they share no words with the open paper", async () => {
+    const unrelatedToDocument = {
+      ...result,
+      results: [
+        {
+          ...result.results[0],
+          identity: { ...result.results[0].identity, providerRecordId: "W2", openAlexId: "W2" },
+          title: "Cache-augmented generation without retrieval",
+          abstract: "Preload documents into the context.",
+        },
+      ],
+    }
+    const fetchMock = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify(unrelatedToDocument), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    render(<ScholarSearchPanel document={documentFixture} />)
+
+    const input = screen.getByRole("textbox", { name: "관련 논문 검색어" })
+    await userEvent.clear(input)
+    await userEvent.type(input, "RAG 대신 캐시 cache augmented")
+    expect(screen.getByText("검색어", { exact: false })).toBeVisible()
+    await userEvent.click(screen.getByRole("button", { name: "검색 실행" }))
+
+    expect(await screen.findByText("Cache-augmented generation without retrieval")).toBeVisible()
+    expect(screen.getByText(/추천 근거: 검색어 일치: cache, augmented/u)).toBeVisible()
+  })
+
   it("exposes cancellation without converting it into an error", async () => {
     const fetchMock = vi.fn<typeof fetch>(
       async (_input, init) =>

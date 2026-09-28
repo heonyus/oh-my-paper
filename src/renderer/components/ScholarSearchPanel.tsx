@@ -7,6 +7,7 @@ import type {
 } from "../../shared/scholarlySearchSchemas"
 import { scholarlySearchResultSchema } from "../../shared/scholarlySearchSchemas"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
+import { rankForUserQuery } from "../lib/scholarlyQueryRanking"
 import {
   rankScholarlyRecommendations,
   scholarlyQueryForDocument,
@@ -77,9 +78,14 @@ export function ScholarSearchPanel({
   const query = scholarlyQueryForDocument(document, citations)
   const basis = scholarlySearchBasis(document, citations)
   const [searchQuery, setSearchQuery] = useState(query ?? "")
-  const recommendations = result
-    ? rankScholarlyRecommendations(document, citations, result.results)
-    : []
+  // A query the user typed is ranked on its own terms; the document's suggested query keeps
+  // the stricter "related to this paper" filter.
+  const [customQuery, setCustomQuery] = useState<string | null>(null)
+  const rank = (items: ScholarlySearchResult["results"], typed: string | null) =>
+    typed === null
+      ? rankScholarlyRecommendations(document, citations, items)
+      : rankForUserQuery(typed, items, document)
+  const recommendations = result ? rank(result.results, customQuery) : []
   const orderedRecommendations = [...recommendations].sort((left, right) => {
     if (decisionChoice === null) return 0
     if (left.item.title === decisionChoice) return -1
@@ -106,6 +112,8 @@ export function ScholarSearchPanel({
     setDecisionNote(null)
     setDecisionChoice(null)
     setResult(null)
+    const typed = activeQuery === (query ?? "").trim() ? null : activeQuery
+    setCustomQuery(typed)
     try {
       const response = await fetch("/api/rpc/scholarlySearch", {
         method: "POST",
@@ -127,7 +135,7 @@ export function ScholarSearchPanel({
         throw new ScholarSearchRequestError(response.status, message)
       }
       const data = scholarlySearchResultSchema.parse(await response.json())
-      const ranked = rankScholarlyRecommendations(document, citations, data.results)
+      const ranked = rank(data.results, typed)
       const decideAi = window.ohmypaper?.decideAi
       if (decideAi && ranked.length > 1) {
         try {
@@ -139,7 +147,10 @@ export function ScholarSearchPanel({
                 id: `candidate-${index}`,
                 text: `${item.title}\n${item.abstract ?? ""}`.slice(0, 8_000),
               })),
-              instructions: "Choose the most relevant paper for the current document.",
+              instructions:
+                typed === null
+                  ? "Choose the most relevant paper for the current document."
+                  : "Choose the paper that best matches the search query.",
             },
             controller.signal,
           )
@@ -231,13 +242,15 @@ export function ScholarSearchPanel({
         <div>
           <h2 className="scholar-search-heading">{title}</h2>
           <label className="scholar-search-query" htmlFor="scholar-search-query">
-            {basis === "title"
-              ? "확인된 제목"
-              : basis === "doi"
-                ? "확인된 DOI"
-                : basis === "topic"
-                  ? "본문·참고문헌 주제"
-                  : "검색어"}
+            {searchQuery.trim() !== (query ?? "").trim()
+              ? "검색어"
+              : basis === "title"
+                ? "확인된 제목"
+                : basis === "doi"
+                  ? "확인된 DOI"
+                  : basis === "topic"
+                    ? "본문·참고문헌 주제"
+                    : "검색어"}
             <input
               id="scholar-search-query"
               aria-label="관련 논문 검색어"
@@ -295,7 +308,11 @@ export function ScholarSearchPanel({
             </p>
           ) : null}
           {recommendations.length === 0 ? (
-            <p className="mode-empty">현재 논문과 겹치는 확인 가능한 관련 결과가 없습니다.</p>
+            <p className="mode-empty">
+              {customQuery === null
+                ? "현재 논문과 겹치는 확인 가능한 관련 결과가 없습니다."
+                : "검색 결과가 없습니다. 다른 표현으로 검색하거나 리서치 탭에서 질문해 보세요."}
+            </p>
           ) : (
             <ul className="scholar-search-list">
               {orderedRecommendations.map(({ item, reasons }) => {

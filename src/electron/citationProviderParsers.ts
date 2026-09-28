@@ -61,7 +61,21 @@ const openAlexWorkSchema = z.object({
     })
     .nullable()
     .optional(),
+  abstract_inverted_index: z.record(z.string(), z.array(z.number().int())).nullable().optional(),
 })
+
+/** OpenAlex ships abstracts as `{ word: [positions] }`; rebuild the running text. */
+export function abstractFromInvertedIndex(
+  index: Readonly<Record<string, readonly number[]>> | null | undefined,
+): string | null {
+  if (!index) return null
+  const words: string[] = []
+  for (const [word, positions] of Object.entries(index)) {
+    for (const position of positions) if (position >= 0 && position < 5_000) words[position] = word
+  }
+  const text = words.filter((word) => word !== undefined).join(" ")
+  return text.length > 0 ? text : null
+}
 
 function isHttpsUrl(value: string | null | undefined): string | null {
   if (!value) return null
@@ -212,7 +226,7 @@ export function parseOpenAlexPapers(value: unknown): readonly CitationPaper[] {
       ),
       year: item.publication_year ?? null,
       venue: item.primary_location?.source?.display_name ?? "OpenAlex",
-      abstract: null,
+      abstract: abstractFromInvertedIndex(item.abstract_inverted_index),
       doi,
       url: item.doi && isHttpsUrl(item.doi) ? item.doi : null,
       openAccessUrl: null,

@@ -285,7 +285,7 @@
 
 .research-suggestions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
   width: 100%;
 }
@@ -555,6 +555,95 @@
 
 .research-paper-site:hover {
   color: var(--action);
+}
+
+.research-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface-raised);
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+  cursor: pointer;
+}
+
+.research-mode-toggle:hover:not(:disabled) {
+  color: var(--action);
+  border-color: var(--action);
+}
+
+.research-mode-toggle[aria-pressed="true"] {
+  color: var(--action);
+  border-color: var(--action);
+  background: var(--action-subtle);
+}
+
+.research-mode-toggle:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.research-cancel {
+  background: var(--ink-muted);
+}
+
+.research-step-detail {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-muted);
+  font-size: 11px;
+}
+
+.research-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 var(--space-2);
+  font-size: var(--type-compact-size);
+  color: var(--action);
+}
+
+.research-paper-index {
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.research-paper-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.research-paper-relevance {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--ink-muted);
+}
+
+.research-relevance-3 {
+  color: var(--action);
+  border-color: var(--action);
+  background: var(--action-subtle);
+}
+
+.research-paper p.research-paper-reason {
+  color: var(--ink);
+  white-space: normal;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.research-paper-failed {
+  font-size: var(--type-compact-size);
+  color: var(--error);
 }
 
 .research-thread-composer {

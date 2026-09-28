@@ -344,11 +344,12 @@ export type OhMyPaperApi = {
     signal?: AbortSignal,
   ) => Promise<JevDecisionResult>
   readonly agentAsk: (
-    request: z.infer<typeof agentAskRequestSchema>,
+    request: z.input<typeof agentAskRequestSchema>,
   ) => Promise<z.infer<typeof agentAskResultSchema>>
   readonly agentAskStream: (
-    request: z.infer<typeof agentAskRequestSchema>,
+    request: z.input<typeof agentAskRequestSchema>,
     onStep: (step: z.infer<typeof agentStepSchema>) => void,
+    signal?: AbortSignal,
   ) => Promise<z.infer<typeof agentAskResultSchema>>
   readonly runAi: (
     request: z.infer<typeof aiRequestSchema>,
