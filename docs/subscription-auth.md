@@ -63,3 +63,31 @@ reopen must be verified with the user's own OpenAI login.
 OAuth itself does not require Electron. OCX's HTTP implementation shows why the earlier claim that a server-side Codex subprocess is universally necessary was too strong. However, current oh-my-paper relies on local IPC, SQLite/files and the managed App Server transport. Ordinary Workers cannot run that subprocess.
 
 A hosted UI plus personal local companion can retain credentials and documents on-device. A fully hosted multi-user service instead needs a supported provider authorization arrangement, strict per-user credential isolation, refresh/revocation, storage and abuse controls. A community client's working private endpoint is not a public third-party SaaS API contract. No Cloudflare/GCP resources were recreated, and no free-hosting or unlimited-subscription claim is made.
+
+## Claude subscription through the local Claude Code CLI (2026-09-28)
+
+Personal-use only. Anthropic's Agent SDK documentation states that, unless previously
+approved, third-party developers may not offer claude.ai login or rate limits in their
+products. The owner accepted that constraint for their own Mac; this mode must not be
+advertised or shipped to other users.
+
+- The loopback server runs the installed `claude` CLI (`CLAUDE_PATH`, `PATH`, then
+  `~/.local/bin`, `~/.claude/local`, Homebrew and `/usr/local/bin`). No runtime is bundled.
+- Authentication is the CLI's own login. The app reads `claude auth status --json` for the
+  account, plan and email, and can start `claude auth login --claudeai`, which opens the
+  browser itself. No token is read, copied or stored by oh-my-paper. There is no logout
+  button because it would sign the user out of Claude Code everywhere.
+- Each request is one headless turn: `-p` with stream-json input/output, `--tools ""`,
+  `--safe-mode` (no CLAUDE.md, plugins, hooks or MCP), `--no-session-persistence`, the
+  action's system prompt, and the selected model and effort (effort is omitted for Haiku).
+  Images travel as base64 content blocks, never inside the prompt text.
+- The child environment is an allowlist (`PATH`, `HOME`, locale, `TMPDIR`,
+  `CLAUDE_CONFIG_DIR`). `ANTHROPIC_API_KEY`, auth tokens and base-URL overrides are never
+  passed, so a failed subscription request cannot silently fall back to paid API billing.
+- At most three CLI runs are active at once; queued and running requests honour
+  cancellation. Logged-out, rate-limited, timed-out and cancelled runs map to the existing
+  AI job error codes.
+- Remaining-usage percentages are not available from the CLI and are not invented.
+  Subscription usage is shared with the user's other Claude Code sessions.
+- The Electron desktop shell does not implement this mode and rejects saving it.
+

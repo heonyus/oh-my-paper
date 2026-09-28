@@ -35,6 +35,7 @@ import {
   scholarlySearchRequestSchema,
   scholarlySearchResultSchema,
 } from "../shared/scholarlySearchSchemas"
+import { createClaudeRoutes } from "./claudeRoutes"
 import type { WebServerConfig } from "./config"
 import { streamParsedPage } from "./pageParseStream"
 import type { WebServices } from "./services"
@@ -115,6 +116,7 @@ async function serveStatic(
 
 export function createLocalWebServer(config: WebServerConfig, services: WebServices) {
   const subscriptionRoutes = createSubscriptionRoutes(services)
+  const claudeRoutes = createClaudeRoutes(services)
   const server = createServer(async (req, res) => {
     try {
       const hostname = new URL(`http://${req.headers.host ?? config.host}`).hostname
@@ -161,6 +163,7 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
       }
 
       if (await subscriptionRoutes.handle(pathname, req, res)) return
+      if (await claudeRoutes.handle(pathname, req, res)) return
 
       if (!pathname.startsWith("/api/")) {
         const served = await serveStatic(req, res, config.staticDir)

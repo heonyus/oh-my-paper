@@ -12,8 +12,9 @@ import {
   OPENROUTER_MODEL_OPTIONS,
   OPENROUTER_PAGE_TRANSLATION_MODEL,
 } from "../shared/providerModels"
+import { ClaudeOnboardingStep } from "./ClaudeOnboardingStep"
 
-type Step = "welcome" | "choose" | "chatgpt" | "api" | "done"
+type Step = "welcome" | "choose" | "claude" | "chatgpt" | "api" | "done"
 
 const API_PROVIDERS: ReadonlyArray<{
   id: ProviderConfig["provider"]
@@ -251,10 +252,25 @@ export function WebOnboarding({
           <div className="web-onboarding-step">
             <h2>AI 연결 방식을 선택하세요</h2>
             <div className="web-onboarding-choices">
+              {window.ohmypaper.claude ? (
+                <button
+                  type="button"
+                  className="web-onboarding-choice"
+                  onClick={() => setStep("claude")}
+                >
+                  <span className="web-onboarding-choice-title">
+                    <Sparkles size={15} aria-hidden="true" /> Claude 구독
+                    <em>권장</em>
+                  </span>
+                  <span className="web-onboarding-choice-hint">
+                    이 Mac의 Claude Code 로그인으로 · 기본 모델 Sonnet 5
+                  </span>
+                </button>
+              ) : null}
               <button type="button" className="web-onboarding-choice" onClick={beginChatgpt}>
                 <span className="web-onboarding-choice-title">
                   <Sparkles size={15} aria-hidden="true" /> ChatGPT 구독
-                  <em>권장</em>
+                  {window.ohmypaper.claude ? null : <em>권장</em>}
                 </span>
                 <span className="web-onboarding-choice-hint">
                   API 키 없이 내 구독 사용량으로 바로 시작
@@ -348,6 +364,13 @@ export function WebOnboarding({
               </div>
             )}
           </div>
+        ) : null}
+
+        {step === "claude" ? (
+          <ClaudeOnboardingStep
+            onBack={() => setStep("choose")}
+            onConnected={() => finish("Claude 구독")}
+          />
         ) : null}
 
         {step === "api" ? (

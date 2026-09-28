@@ -1,8 +1,15 @@
 import { z } from "zod"
 
-export const providerKindSchema = z.enum(["openai", "openrouter", "opencodex", "gemini", "groq"])
+export const providerKindSchema = z.enum([
+  "openai",
+  "openrouter",
+  "opencodex",
+  "gemini",
+  "groq",
+  "anthropic",
+])
 
-export const aiModeSchema = z.enum(["api", "chatgpt"])
+export const aiModeSchema = z.enum(["api", "chatgpt", "claude"])
 export type AiMode = z.infer<typeof aiModeSchema>
 
 export const OPENAI_MODEL_OPTIONS = [

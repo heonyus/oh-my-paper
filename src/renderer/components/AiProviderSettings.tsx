@@ -50,12 +50,14 @@ export function AiProviderSettings({
   onModeSave = async () => {},
   openRouterOnly = false,
   hideChatgptMode = false,
+  claudeAvailable = false,
 }: {
   readonly form: AiProviderFormState
   readonly onSave: (config: ProviderConfig) => Promise<void>
   readonly onModeSave?: (mode: AiMode) => Promise<void>
   readonly openRouterOnly?: boolean | undefined
   readonly hideChatgptMode?: boolean | undefined
+  readonly claudeAvailable?: boolean | undefined
 }): JSX.Element {
   const {
     mode,
@@ -122,12 +124,17 @@ export function AiProviderSettings({
               value={mode}
               onChange={(event) => {
                 const next = event.currentTarget.value
-                if (next === "api" || next === "chatgpt") {
+                if (
+                  next === "api" ||
+                  next === "chatgpt" ||
+                  (next === "claude" && claudeAvailable)
+                ) {
                   void saveMode(next, mode)
                 }
               }}
               disabled={saving}
             >
+              {claudeAvailable ? <option value="claude">Claude 구독</option> : null}
               <option value="chatgpt">ChatGPT 구독</option>
               <option value="api">API 키·로컬 연결 (고급)</option>
             </select>
@@ -223,7 +230,9 @@ export function AiProviderSettings({
         ) : (
           <div className="settings-row">
             <span className="settings-help">
-              아래에서 ChatGPT로 로그인하세요. 별도 API 키는 필요하지 않습니다.
+              {mode === "claude"
+                ? "아래에서 Claude 연결 상태를 확인하세요. 별도 API 키는 필요하지 않습니다."
+                : "아래에서 ChatGPT로 로그인하세요. 별도 API 키는 필요하지 않습니다."}
             </span>
           </div>
         )}
@@ -274,7 +283,9 @@ export function useAiProviderForm(
   hideChatgptMode = false,
 ): AiProviderFormState {
   const initialProvider =
-    openRouterOnly || status.provider === "opencodex" ? "openrouter" : status.provider
+    openRouterOnly || status.provider === "opencodex" || status.provider === "anthropic"
+      ? "openrouter"
+      : status.provider
   const [provider, setProvider] = useState<ProviderConfig["provider"]>(initialProvider)
   const [mode, setMode] = useState<AiMode>(hideChatgptMode ? "api" : (status.mode ?? "api"))
   const [model, setModel] = useState(initialModel(initialProvider, status.model))

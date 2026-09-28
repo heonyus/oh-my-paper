@@ -1,5 +1,7 @@
 import { type AiModeSettings, AiModeStore } from "../electron/aiModeStore"
+import { ClaudeSubscriptionAdapter } from "../electron/claudeSubscriptionAdapter"
 import { CodexSubscriptionAdapter } from "../electron/codexSubscriptionAdapter"
+import { DEFAULT_CLAUDE_EFFORT, DEFAULT_CLAUDE_MODEL } from "../shared/claudeTypes"
 import type { ProviderConfig } from "../shared/ipc"
 import { isOpenRouterModel } from "../shared/providerModels"
 import { WebAiService } from "./aiService"
@@ -9,16 +11,20 @@ import { LocalCredentialStore } from "./localCredentialStore"
 export type WebAiRuntime = {
   readonly credentials: LocalCredentialStore
   readonly subscription: CodexSubscriptionAdapter
+  readonly claude: ClaudeSubscriptionAdapter
   readonly aiModes: AiModeStore
   readonly initialProvider: ProviderConfig | null
   readonly ai: WebAiService
 }
 
-function initialMode(provider: ProviderConfig | null): AiModeSettings {
+/** Without a saved choice, prefer the local Claude Code subscription whenever its CLI exists. */
+function initialMode(provider: ProviderConfig | null, claudeInstalled: boolean): AiModeSettings {
   return {
-    mode: provider ? "api" : "chatgpt",
+    mode: claudeInstalled ? "claude" : provider ? "api" : "chatgpt",
     codexModel: "gpt-5.6-sol",
     codexReasoningEffort: "medium",
+    claudeModel: DEFAULT_CLAUDE_MODEL,
+    claudeEffort: DEFAULT_CLAUDE_EFFORT,
   }
 }
 
@@ -61,15 +67,19 @@ export async function createWebAiRuntime(config: WebServerConfig): Promise<WebAi
     ...(environmentGroq ? { groq: environmentGroq } : {}),
   })
   const subscription = new CodexSubscriptionAdapter({ appRoot: config.dataDir })
+  const claude = new ClaudeSubscriptionAdapter({ appRoot: config.dataDir })
   const aiModes = new AiModeStore(config.dataDir)
   const initialProvider = credentials.providerConfig()
   const savedMode = await aiModes.hasSavedSettings()
-  const modeSettings = savedMode ? await aiModes.loadSettings() : initialMode(initialProvider)
+  const modeSettings = savedMode
+    ? await aiModes.loadSettings()
+    : initialMode(initialProvider, claude.isAvailable)
   return {
     credentials,
     subscription,
+    claude,
     aiModes,
     initialProvider,
-    ai: new WebAiService(initialProvider, subscription, modeSettings),
+    ai: new WebAiService(initialProvider, subscription, modeSettings, claude),
   }
 }

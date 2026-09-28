@@ -42,6 +42,7 @@ import { scholarlySearchResultSchema } from "../shared/scholarlySearchSchemas"
 import { unavailableWebFeature } from "../shared/unavailableWebFeatures"
 import { agentAskStream } from "./localAgentStream"
 import { createLocalAiJobs } from "./localAiJobs"
+import { createLocalClaudeApi } from "./localClaudeApi"
 import { createLocalCodexApi } from "./localCodexApi"
 import { createLocalImporter } from "./localImport"
 import { createLocalPageParser } from "./localPageParser"
@@ -244,6 +245,7 @@ export function installLocalReaderApi(): void {
       deletePlacement: unavailableWebFeature("knowledge.deletePlacement"),
     },
     codex: createLocalCodexApi(),
+    claude: createLocalClaudeApi(),
     interchange: {
       exportMarkdown: unavailableWebFeature("interchange.exportMarkdown"),
       previewMarkdownImport: unavailableWebFeature("interchange.previewMarkdownImport"),

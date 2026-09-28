@@ -6,6 +6,7 @@ import type { AiMode } from "../../shared/providerModels"
 import type { AppearanceTheme } from "../../shared/schemas"
 import { uiFontScaleLabel, uiFontScalePercent, uiFontScalePresets } from "../../shared/uiAppearance"
 import { AiProviderSettings, useAiProviderForm } from "./AiProviderSettings"
+import { ClaudeSettings } from "./ClaudeSettings"
 import { CodexSettings } from "./CodexSettings"
 import { DocumentOcrSettings } from "./DocumentOcrSettings"
 import {
@@ -188,11 +189,19 @@ export function SettingsModal({
                       onModeSave={onModeSave ?? (async () => {})}
                       openRouterOnly={openRouterRequired}
                       hideChatgptMode={hideChatgptMode}
+                      claudeAvailable={Boolean(window.ohmypaper?.claude)}
                     />
                     {!hideChatgptMode && aiProviderForm.mode === "chatgpt" ? (
                       <CodexSettings
                         onConnectionChange={async () => {
                           await onModeSave?.("chatgpt")
+                        }}
+                      />
+                    ) : null}
+                    {!hideChatgptMode && aiProviderForm.mode === "claude" ? (
+                      <ClaudeSettings
+                        onConnectionChange={async () => {
+                          await onModeSave?.("claude")
                         }}
                       />
                     ) : null}

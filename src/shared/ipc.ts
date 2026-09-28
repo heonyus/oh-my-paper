@@ -25,6 +25,7 @@ import {
 } from "./aiIpc"
 import type { BackupApi } from "./backupIpc"
 import type { BibliographyApi } from "./bibliographyIpc"
+import { type ClaudeAccountStatus, type ClaudeEffort, claudeEffortSchema } from "./claudeTypes"
 import type {
   CodexAccountStatus,
   CodexLoginCompletedEvent,
@@ -196,11 +197,15 @@ export const providerStatusSchema = z.object({
   mode: aiModeSchema.optional(),
   codexModel: z.string().optional(),
   codexReasoningEffort: codexReasoningEffortSchema.optional(),
+  claudeModel: z.string().optional(),
+  claudeEffort: claudeEffortSchema.optional(),
 })
 export const aiModeRequestSchema = z.object({
   mode: aiModeSchema,
   codexModel: z.string().optional(),
   codexReasoningEffort: codexReasoningEffortSchema.optional(),
+  claudeModel: z.string().trim().min(1).max(80).optional(),
+  claudeEffort: claudeEffortSchema.optional(),
 })
 const httpsUrlSchema = z
   .string()
@@ -322,7 +327,13 @@ export type OhMyPaperApi = {
   readonly saveAiMode: (
     input:
       | AiMode
-      | { mode: AiMode; codexModel?: string; codexReasoningEffort?: CodexReasoningEffort },
+      | {
+          mode: AiMode
+          codexModel?: string
+          codexReasoningEffort?: CodexReasoningEffort
+          claudeModel?: string
+          claudeEffort?: ClaudeEffort
+        },
   ) => Promise<void>
   readonly providerStatus: () => Promise<z.infer<typeof providerStatusSchema>>
   readonly decideAi?: (
@@ -400,6 +411,12 @@ export type OhMyPaperApi = {
     readonly cancelLogin: (loginId: string) => Promise<void>
     readonly logout: () => Promise<void>
     readonly onLoginCompleted: (listener: (event: CodexLoginCompletedEvent) => void) => () => void
+  }
+  /** Local Claude Code CLI subscription; only the browser app's loopback server provides it. */
+  readonly claude?: {
+    readonly getStatus: () => Promise<ClaudeAccountStatus>
+    readonly startLogin: () => Promise<ClaudeAccountStatus>
+    readonly cancelLogin: () => Promise<ClaudeAccountStatus>
   }
   readonly interchange: {
     readonly exportMarkdown: (nodeId: KnowledgeNodeId) => Promise<string>

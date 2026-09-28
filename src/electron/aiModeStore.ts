@@ -1,6 +1,7 @@
 import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { ZodError } from "zod"
+import { type ClaudeEffort, claudeEffortSchema } from "../shared/claudeTypes"
 import { type CodexReasoningEffort, codexReasoningEffortSchema } from "../shared/ipc"
 import { type AiMode, aiModeSchema } from "../shared/providerModels"
 
@@ -45,6 +46,11 @@ export class AiModeStore {
           typeof parsed.codexReasoningEffort === "string"
             ? codexReasoningEffortSchema.parse(parsed.codexReasoningEffort)
             : "medium",
+        claudeModel: typeof parsed.claudeModel === "string" ? parsed.claudeModel : undefined,
+        claudeEffort:
+          typeof parsed.claudeEffort === "string"
+            ? claudeEffortSchema.parse(parsed.claudeEffort)
+            : undefined,
       }
     } catch (error) {
       if (isMissingFile(error)) {
@@ -75,6 +81,11 @@ export class AiModeStore {
             codexReasoningEffort: settings.codexReasoningEffort
               ? codexReasoningEffortSchema.parse(settings.codexReasoningEffort)
               : undefined,
+            claudeModel:
+              typeof settings.claudeModel === "string" ? settings.claudeModel : undefined,
+            claudeEffort: settings.claudeEffort
+              ? claudeEffortSchema.parse(settings.claudeEffort)
+              : undefined,
           }
     const root = join(this.filePath, "..")
     await mkdir(root, { recursive: true })
@@ -91,6 +102,8 @@ export type AiModeSettings = {
   readonly mode: AiMode
   readonly codexModel?: string | undefined
   readonly codexReasoningEffort?: CodexReasoningEffort | undefined
+  readonly claudeModel?: string | undefined
+  readonly claudeEffort?: ClaudeEffort | undefined
 }
 
 function isMissingFile(error: unknown): boolean {

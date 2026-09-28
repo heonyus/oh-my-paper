@@ -28,15 +28,15 @@ import {
 } from "../shared/discoveryIpc"
 import type { DocumentOcrProviderStatus } from "../shared/documentOcr"
 import {
-  aiModeRequestSchema,
+  type aiModeRequestSchema,
   type ProviderConfig,
   type ProviderStatus,
   providerConfigSchema,
-  providerStatusSchema,
 } from "../shared/ipc"
 import type { DocumentId, Workspace } from "../shared/schemas"
 import { scholarlyProviders } from "../shared/scholarlySearchSchemas"
 import { createAiJobStreams } from "./aiJobStreams"
+import { createAiModeServices } from "./aiModeServices"
 import type { WebServerConfig } from "./config"
 import { JevDecisionService } from "./decisionService"
 import { createWebAiRuntime } from "./webAiRuntime"
@@ -50,6 +50,7 @@ export type WebServices = {
   readonly ocrStatus: () => Promise<DocumentOcrProviderStatus>
   readonly ai: Awaited<ReturnType<typeof createWebAiRuntime>>["ai"]
   readonly subscription: Awaited<ReturnType<typeof createWebAiRuntime>>["subscription"]
+  readonly claude: Awaited<ReturnType<typeof createWebAiRuntime>>["claude"]
   readonly agentAsk: (input: AgentAskRequest, onStep?: AgentStepListener) => Promise<AgentAskResult>
   readonly decisionService: () => JevDecisionService | null
   readonly saveProviderConfig: (config: ProviderConfig) => Promise<void>
@@ -68,7 +69,8 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
   const store = new WorkspaceStore(config.dataDir)
   await store.initialize()
   const runtime = await createWebAiRuntime(config)
-  const { credentials, subscription, aiModes, initialProvider, ai } = runtime
+  const { credentials, subscription, claude, aiModes, initialProvider, ai } = runtime
+  const aiModeServices = createAiModeServices({ ai, aiModes, subscription, claude })
   const ast = new DocumentAstService(store)
   const sourceRoot = fileURLToPath(new URL("../..", import.meta.url))
   const paddle = new PaddlePageParserService({
@@ -114,6 +116,7 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
     ocrStatus: async () => paddle.status(),
     ai,
     subscription,
+    claude,
     agentAsk: async (input: AgentAskRequest, onStep?: AgentStepListener): Promise<AgentAskResult> =>
       askAgent(
         input,
@@ -150,41 +153,13 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
       const parsed = providerConfigSchema.parse(value)
       await credentials.saveApiConfig(parsed)
       ai.configure(parsed)
-      const current = ai.modeSettings()
-      const nextMode = {
-        mode: "api" as const,
-        codexModel: current.codexModel,
-        codexReasoningEffort: current.codexReasoningEffort,
-      }
+      const nextMode = { ...ai.modeSettings(), mode: "api" as const }
       await aiModes.save(nextMode)
       ai.configureMode(nextMode)
       decisions = parsed.provider === "openrouter" ? new JevDecisionService(parsed.apiKey) : null
     },
-    saveAiMode: async (input) => {
-      const parsed = aiModeRequestSchema.parse(input)
-      const current = ai.modeSettings()
-      const next = {
-        mode: parsed.mode,
-        codexModel: parsed.codexModel ?? current.codexModel ?? "gpt-5.6-sol",
-        codexReasoningEffort:
-          parsed.codexReasoningEffort ?? current.codexReasoningEffort ?? "medium",
-      }
-      await aiModes.save(next)
-      ai.configureMode(next)
-    },
-    providerStatus: async () => {
-      const settings = ai.modeSettings()
-      if (settings.mode === "api") return ai.status()
-      const account = await subscription.getStatus()
-      return providerStatusSchema.parse({
-        configured: account.authenticated,
-        provider: "openai",
-        model: settings.codexModel ?? "gpt-5.6-sol",
-        mode: "chatgpt",
-        codexModel: settings.codexModel ?? "gpt-5.6-sol",
-        codexReasoningEffort: settings.codexReasoningEffort ?? "medium",
-      })
-    },
+    saveAiMode: aiModeServices.saveAiMode,
+    providerStatus: aiModeServices.providerStatus,
     startAiJob: jobs.start,
     cancelAiJob: jobs.cancel,
     lookupCitation,
@@ -196,6 +171,7 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
       await analysis.dispose()
       paddle.dispose()
       subscription.dispose()
+      claude.dispose()
       await store.close()
     },
   }

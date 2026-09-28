@@ -55,14 +55,17 @@ npm run start:web
 
 The first `npm run start:web` checks the local runtime step by step — dependencies, the
 bundled ChatGPT login runtime, and the PaddleOCR-VL engine — and opens a terminal
-onboarding picker when no AI connection exists. Choose ChatGPT 구독 (browser or
-device-code login, no API key) or an API-key provider with arrow keys and Enter. When
+onboarding picker when no AI connection exists. Choose Claude 구독 (the local Claude Code
+login, default model Claude Sonnet 5), ChatGPT 구독 (browser or device-code login, no API
+key) or an API-key provider with arrow keys and Enter. When
 the OCR engine is missing, the picker offers to download it; you can also install it
 later with `npm run setup:paddle-vl`. Re-run setup anytime with `npm run setup`.
 Non-interactive shells skip the picker and start the server directly.
 
 Open `http://127.0.0.1:8788`. If AI is not connected yet, the browser shows a short
-guided connect screen (ChatGPT 로그인 or API 키) instead of the library.
+guided connect screen (Claude 구독, ChatGPT 로그인 or API 키) instead of the library.
+Without a saved choice, the browser app starts in Claude 구독 mode whenever the `claude`
+CLI is installed.
 
 Reader translation, explanation, summary, chat and research answers use the connected
 subscription or API model. The official `@openai/codex` runtime is an application
@@ -147,6 +150,10 @@ Google app identity does not grant AI access. Configure a separate connection un
   an app-owned profile with OS-keyring credentials. It does not copy another app's login or silently
   fall back to a paid API. A working runtime and eligible user subscription are prerequisites;
   live login, inference, cancellation, and usage reporting still need verification.
+- Claude subscription mode (browser app only, personal use) runs the locally installed Claude
+  Code CLI headlessly with its existing login; the default model is `claude-sonnet-5`. Anthropic
+  does not allow third-party products to offer claude.ai login without approval, so this mode
+  is for the owner's own Mac and must not be shipped to other users.
 - API mode uses your own provider keys. Gemini, Groq, OpenAI and OpenRouter are separate
   choices. PDF structure analysis stays local through PDF.js and
   PaddleOCR-VL and does not need a hosted OCR key.

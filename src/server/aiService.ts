@@ -5,12 +5,8 @@ import type {
 import type { z } from "zod"
 import { completionLimitParameters, routedModelForRequest } from "../electron/aiCompletion"
 import type { AiModeSettings } from "../electron/aiModeStore"
-import {
-  systemPromptFor,
-  systemPromptForRequest,
-  userInputFor,
-  userInputForRequest,
-} from "../electron/aiPrompts"
+import { systemPromptForRequest, userInputForRequest } from "../electron/aiPrompts"
+import type { ClaudeSubscriptionAdapter } from "../electron/claudeSubscriptionAdapter"
 import type { CodexSubscriptionAdapter } from "../electron/codexSubscriptionAdapter"
 import { providerClient, providerFailure } from "../electron/providerClient"
 import { completeChat, streamChat } from "../electron/providerCompletion"
@@ -23,6 +19,14 @@ import {
   providerStatusSchema,
 } from "../shared/ipc"
 import { DEFAULT_OPENROUTER_MODEL } from "../shared/providerModels"
+import {
+  chatWithClaude,
+  chatWithCodex,
+  claudeModelOf,
+  codexModelOf,
+  runWithClaude,
+  runWithCodex,
+} from "./subscriptionAi"
 
 type AiRequest = z.infer<typeof aiRequestSchema>
 type AiResult = z.infer<typeof aiResultSchema>
@@ -34,6 +38,7 @@ function translationModel(config: ProviderConfig): string | undefined {
 export class WebAiService {
   #providerConfig: ProviderConfig | null
   readonly #subscription: CodexSubscriptionAdapter | null
+  readonly #claude: ClaudeSubscriptionAdapter | null
   #modeSettings: AiModeSettings
 
   constructor(
@@ -44,10 +49,12 @@ export class WebAiService {
       codexModel: "gpt-5.6-sol",
       codexReasoningEffort: "medium",
     },
+    claude: ClaudeSubscriptionAdapter | null = null,
   ) {
     this.#providerConfig = config
     this.#subscription = subscription
     this.#modeSettings = modeSettings
+    this.#claude = claude
   }
 
   configure(config: ProviderConfig): void {
@@ -63,14 +70,25 @@ export class WebAiService {
   }
 
   status(): ProviderStatus {
-    if (this.#modeSettings.mode === "chatgpt") {
+    const settings = this.#modeSettings
+    if (settings.mode === "chatgpt") {
       return providerStatusSchema.parse({
         configured: false,
         provider: "openai",
-        model: this.#modeSettings.codexModel ?? "gpt-5.6-sol",
+        model: codexModelOf(settings),
         mode: "chatgpt",
-        codexModel: this.#modeSettings.codexModel ?? "gpt-5.6-sol",
-        codexReasoningEffort: this.#modeSettings.codexReasoningEffort ?? "medium",
+        codexModel: codexModelOf(settings),
+        codexReasoningEffort: settings.codexReasoningEffort ?? "medium",
+      })
+    }
+    if (settings.mode === "claude") {
+      return providerStatusSchema.parse({
+        configured: false,
+        provider: "anthropic",
+        model: claudeModelOf(settings),
+        mode: "claude",
+        claudeModel: claudeModelOf(settings),
+        claudeEffort: settings.claudeEffort,
       })
     }
     if (this.#providerConfig) {
@@ -113,7 +131,10 @@ export class WebAiService {
     messages: readonly { role: "system" | "user" | "assistant"; content: string }[],
   ): Promise<{ readonly text: string; readonly model: string }> {
     if (this.#modeSettings.mode === "chatgpt") {
-      return this.#chatWithSubscription(messages)
+      return chatWithCodex(this.#subscription, this.#modeSettings, messages)
+    }
+    if (this.#modeSettings.mode === "claude") {
+      return chatWithClaude(this.#claude, this.#modeSettings, messages)
     }
     if (!this.#providerConfig) {
       throw new ProviderConfigurationError("missing_key")
@@ -143,7 +164,10 @@ export class WebAiService {
   async run(value: AiRequest): Promise<AiResult> {
     const request = aiRequestSchema.parse(value)
     if (this.#modeSettings.mode === "chatgpt") {
-      return this.#runWithSubscription(request)
+      return runWithCodex(this.#subscription, this.#modeSettings, request)
+    }
+    if (this.#modeSettings.mode === "claude") {
+      return runWithClaude(this.#claude, this.#modeSettings, request)
     }
     if (!this.#providerConfig) {
       throw new ProviderConfigurationError("missing_key")
@@ -175,7 +199,10 @@ export class WebAiService {
   ): Promise<AiResult> {
     const request = aiRequestSchema.parse(value)
     if (this.#modeSettings.mode === "chatgpt") {
-      return this.#runWithSubscription(request, onDelta, signal)
+      return runWithCodex(this.#subscription, this.#modeSettings, request, { onDelta, signal })
+    }
+    if (this.#modeSettings.mode === "claude") {
+      return runWithClaude(this.#claude, this.#modeSettings, request, { onDelta, signal })
     }
     if (!this.#providerConfig) {
       throw new ProviderConfigurationError("missing_key")
@@ -200,51 +227,5 @@ export class WebAiService {
     } catch (error) {
       throw providerFailure(error)
     }
-  }
-
-  #subscriptionModel(): string {
-    return this.#modeSettings.codexModel ?? "gpt-5.6-sol"
-  }
-
-  #subscriptionPrompt(messages: readonly { role: string; content: string }[]): string {
-    return messages
-      .map((message) => `${message.role.toUpperCase()}:\n${message.content}`)
-      .join("\n\n")
-  }
-
-  async #chatWithSubscription(
-    messages: readonly { role: "system" | "user" | "assistant"; content: string }[],
-  ): Promise<{ readonly text: string; readonly model: string }> {
-    if (!this.#subscription) throw new ProviderConfigurationError("auth")
-    const model = this.#subscriptionModel()
-    const text = await this.#subscription.runCompletion({
-      prompt: this.#subscriptionPrompt(messages),
-      model,
-      reasoningEffort: this.#modeSettings.codexReasoningEffort,
-    })
-    return { text, model }
-  }
-
-  async #runWithSubscription(
-    request: AiRequest,
-    onDelta?: (delta: string) => void,
-    signal?: AbortSignal,
-  ): Promise<AiResult> {
-    if (!this.#subscription) throw new ProviderConfigurationError("auth")
-    const model = this.#subscriptionModel()
-    const messages = [
-      { role: "system", content: systemPromptFor(request.action) },
-      ...(request.history ?? []),
-      { role: "user", content: userInputFor(request) },
-    ]
-    const text = await this.#subscription.runCompletion({
-      prompt: this.#subscriptionPrompt(messages),
-      imageDataUrl: request.imageDataUrl,
-      model,
-      reasoningEffort: this.#modeSettings.codexReasoningEffort,
-      ...(onDelta ? { onDelta } : {}),
-      ...(signal ? { signal } : {}),
-    })
-    return aiResultSchema.parse({ text, model })
   }
 }

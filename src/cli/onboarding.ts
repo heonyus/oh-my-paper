@@ -1,12 +1,19 @@
 import { cancel, confirm, intro, isCancel, log, note, outro, select } from "@clack/prompts"
 import { AiModeStore } from "../electron/aiModeStore"
+import { ClaudeSubscriptionAdapter } from "../electron/claudeSubscriptionAdapter"
 import { CodexSubscriptionAdapter } from "../electron/codexSubscriptionAdapter"
 import { readWebServerConfig, type WebServerConfig } from "../server/config"
 import { type LocalCredentialFallback, LocalCredentialStore } from "../server/localCredentialStore"
-import { DEFAULT_OPENROUTER_MODEL, OPENROUTER_MODEL_OPTIONS } from "../shared/providerModels"
+import { DEFAULT_CLAUDE_EFFORT, DEFAULT_CLAUDE_MODEL } from "../shared/claudeTypes"
+import {
+  type AiMode,
+  DEFAULT_OPENROUTER_MODEL,
+  OPENROUTER_MODEL_OPTIONS,
+} from "../shared/providerModels"
 import { checkEnvironment, installOcrRuntime } from "./environment"
 import { runApiKeyOnboarding } from "./onboardingApi"
 import { runChatgptOnboarding } from "./onboardingChatgpt"
+import { runClaudeOnboarding } from "./onboardingClaude"
 
 function environmentFallback(config: WebServerConfig): LocalCredentialFallback {
   const provider = config.provider
@@ -40,28 +47,37 @@ function environmentFallback(config: WebServerConfig): LocalCredentialFallback {
 export type OnboardingState = {
   readonly configured: boolean
   readonly chatgptConnected: boolean
+  readonly claudeConnected: boolean
   readonly accountEmail: string | null
+  readonly claudeEmail: string | null
   readonly apiProvider: string | null
 }
 
 export async function readOnboardingState(config: WebServerConfig): Promise<OnboardingState> {
   const credentials = await LocalCredentialStore.open(config.dataDir, environmentFallback(config))
   const subscription = new CodexSubscriptionAdapter({ appRoot: config.dataDir })
+  const claude = new ClaudeSubscriptionAdapter({ appRoot: config.dataDir })
   try {
-    const account = await subscription.getStatus()
+    const [account, claudeAccount] = await Promise.all([
+      subscription.getStatus(),
+      claude.getStatus(),
+    ])
     const provider = credentials.providerConfig()
     const email =
       account.account && "email" in account.account && account.account.email
         ? String(account.account.email)
         : null
     return {
-      configured: account.authenticated || provider !== null,
+      configured: account.authenticated || claudeAccount.authenticated || provider !== null,
       chatgptConnected: account.authenticated,
+      claudeConnected: claudeAccount.authenticated,
       accountEmail: email,
+      claudeEmail: claudeAccount.email,
       apiProvider: provider?.provider ?? null,
     }
   } finally {
     subscription.dispose()
+    claude.dispose()
   }
 }
 
@@ -108,25 +124,32 @@ export async function runOnboarding(
   const credentials = await LocalCredentialStore.open(config.dataDir, environmentFallback(config))
   const aiModes = new AiModeStore(config.dataDir)
   const subscription = new CodexSubscriptionAdapter({ appRoot: config.dataDir })
+  const claude = new ClaudeSubscriptionAdapter({ appRoot: config.dataDir })
 
   try {
     await reportEnvironment(config, subscription.isAvailable)
 
     const state = await readOnboardingState(config)
+    const saved = await aiModes.loadSettings().catch(() => null)
     if (state.configured) {
-      const current = state.chatgptConnected
-        ? `ChatGPT 구독${state.accountEmail ? ` (${state.accountEmail})` : ""}`
-        : `${state.apiProvider} API 키`
-      note(`현재 연결: ${current}\n그대로 두려면 Enter를 눌러 건너뛰세요`, "이미 설정됨")
+      note(
+        `현재 연결: ${currentConnection(state, saved?.mode ?? null)}\n그대로 두려면 Enter를 눌러 건너뛰세요`,
+        "이미 설정됨",
+      )
     }
 
     const choice = await select({
       message: "AI 연결 방식을 선택하세요",
       options: [
         {
+          value: "claude",
+          label: "Claude 구독",
+          hint: "이 Mac의 Claude Code 로그인 · 기본 모델 Sonnet 5 · 권장",
+        },
+        {
           value: "chatgpt",
           label: "ChatGPT 구독",
-          hint: "API 키 없이 구독 사용량으로 · 권장",
+          hint: "API 키 없이 구독 사용량으로",
         },
         {
           value: "api",
@@ -135,14 +158,23 @@ export async function runOnboarding(
         },
         { value: "skip", label: "나중에 설정", hint: "앱 설정에서 언제든 가능" },
       ],
-      initialValue: state.configured ? "skip" : "chatgpt",
+      initialValue: state.configured ? "skip" : "claude",
     })
     if (isCancel(choice)) {
       cancel("설정을 건너뛰었습니다")
       return false
     }
 
-    if (choice === "chatgpt") {
+    if (choice === "claude") {
+      if (!(await runClaudeOnboarding(claude))) return false
+      await aiModes.save({
+        ...saved,
+        mode: "claude",
+        claudeModel: saved?.claudeModel ?? DEFAULT_CLAUDE_MODEL,
+        claudeEffort: saved?.claudeEffort ?? DEFAULT_CLAUDE_EFFORT,
+      })
+      note(`모델 ${saved?.claudeModel ?? DEFAULT_CLAUDE_MODEL}`, "Claude 구독 연결 완료")
+    } else if (choice === "chatgpt") {
       const result = await runChatgptOnboarding(subscription)
       if (!result) return false
       await aiModes.save({
@@ -169,7 +201,19 @@ export async function runOnboarding(
     return true
   } finally {
     subscription.dispose()
+    claude.dispose()
   }
+}
+
+function currentConnection(state: OnboardingState, mode: AiMode | null): string {
+  if (mode === "claude" && state.claudeConnected) {
+    return `Claude 구독${state.claudeEmail ? ` (${state.claudeEmail})` : ""}`
+  }
+  if (state.chatgptConnected && mode !== "api") {
+    return `ChatGPT 구독${state.accountEmail ? ` (${state.accountEmail})` : ""}`
+  }
+  if (state.apiProvider) return `${state.apiProvider} API 키`
+  return state.claudeConnected ? "Claude 구독" : "없음"
 }
 
 export async function runOnboardingFromEnvironment(): Promise<boolean> {

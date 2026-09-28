@@ -28,6 +28,16 @@ const mocks = vi.hoisted(() => ({
   saveProviderConfig: vi.fn(async () => ({ ...status })),
   saveAiMode: vi.fn(async () => ({ ...status })),
   openExternal: vi.fn(async () => {}),
+  claudeStatus: vi.fn(async () => ({
+    available: true,
+    authenticated: true,
+    email: "reader@example.test",
+    subscriptionType: "max",
+    loginPending: false,
+    loginUrl: null,
+  })),
+  claudeStartLogin: vi.fn(),
+  claudeCancelLogin: vi.fn(),
 }))
 
 function installApi(): void {
@@ -46,6 +56,17 @@ function installApi(): void {
       openExternal: mocks.openExternal,
     },
     configurable: true,
+  })
+}
+
+function installClaudeApi(): void {
+  installApi()
+  Object.assign(window.ohmypaper, {
+    claude: {
+      getStatus: mocks.claudeStatus,
+      startLogin: mocks.claudeStartLogin,
+      cancelLogin: mocks.claudeCancelLogin,
+    },
   })
 }
 
@@ -69,6 +90,24 @@ describe("WebOnboarding", () => {
 
     expect(screen.getByRole("button", { name: /ChatGPT 구독/ })).toBeVisible()
     expect(screen.getByRole("button", { name: /^API 키 OpenRouter/ })).toBeVisible()
+  })
+
+  it("recommends Claude and connects an existing Claude Code login with Sonnet 5", async () => {
+    installClaudeApi()
+    render(<WebOnboarding status={{ ...providerStatusProp }} onDone={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole("button", { name: "시작하기" }))
+    fireEvent.click(screen.getByRole("button", { name: /Claude 구독 권장/ }))
+
+    await waitFor(() =>
+      expect(mocks.saveAiMode).toHaveBeenCalledWith({
+        mode: "claude",
+        claudeModel: "claude-sonnet-5",
+        claudeEffort: "medium",
+      }),
+    )
+    expect(await screen.findByText(/Claude 구독 연결됨/)).toBeVisible()
+    expect(mocks.claudeStartLogin).not.toHaveBeenCalled()
   })
 
   it("saves an API key and finishes through the done step", async () => {

@@ -10,9 +10,9 @@ import {
 import { aiModeRequestSchema, providerStatusSchema } from "../shared/ipc"
 import type { WebServices } from "./services"
 
-const emptyRequestSchema = z.object({}).strict()
+export const emptyRequestSchema = z.object({}).strict()
 
-async function readInput<T>(request: IncomingMessage, schema: z.ZodType<T>): Promise<T> {
+export async function readInput<T>(request: IncomingMessage, schema: z.ZodType<T>): Promise<T> {
   if (!request.headers["content-type"]?.startsWith("application/json")) {
     throw new Error("JSON 요청이 필요합니다")
   }
@@ -28,7 +28,7 @@ async function readInput<T>(request: IncomingMessage, schema: z.ZodType<T>): Pro
   return schema.parse(value)
 }
 
-function reply(response: ServerResponse, value: unknown): void {
+export function reply(response: ServerResponse, value: unknown): void {
   response.writeHead(200, {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",

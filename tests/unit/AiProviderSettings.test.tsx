@@ -16,11 +16,20 @@ const status: ProviderStatus = {
 
 function Harness({
   onModeSave,
+  claudeAvailable = false,
 }: {
-  readonly onModeSave: (mode: "api" | "chatgpt") => Promise<void>
+  readonly onModeSave: (mode: "api" | "chatgpt" | "claude") => Promise<void>
+  readonly claudeAvailable?: boolean
 }) {
   const form = useAiProviderForm(status)
-  return <AiProviderSettings form={form} onSave={vi.fn(async () => {})} onModeSave={onModeSave} />
+  return (
+    <AiProviderSettings
+      form={form}
+      onSave={vi.fn(async () => {})}
+      onModeSave={onModeSave}
+      claudeAvailable={claudeAvailable}
+    />
+  )
 }
 
 describe("AiProviderSettings", () => {
@@ -38,5 +47,18 @@ describe("AiProviderSettings", () => {
     )
     expect(mode).toHaveValue("chatgpt")
     expect(onModeSave).toHaveBeenCalledWith("api")
+  })
+
+  it("offers Claude only when the local server provides it", async () => {
+    const onModeSave = vi.fn(async () => {})
+    const { unmount } = render(<Harness onModeSave={onModeSave} />)
+    expect(screen.queryByRole("option", { name: "Claude 구독" })).toBeNull()
+    unmount()
+
+    render(<Harness onModeSave={onModeSave} claudeAvailable />)
+    await userEvent.selectOptions(screen.getByLabelText("AI 접근 방식"), "claude")
+
+    await waitFor(() => expect(onModeSave).toHaveBeenCalledWith("claude"))
+    expect(screen.getByText(/Claude 연결 상태를 확인하세요/)).toBeVisible()
   })
 })
