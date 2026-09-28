@@ -118,6 +118,35 @@ export function setPageSourceActive(pageNumber: number, blockId: string, active:
   }
 }
 
+/**
+ * Translation block ids under a pointer on a PDF page: a mapped text-layer span, or a
+ * source bound drawn for a block whose spans could not be matched.
+ */
+export function pageSourceBlockIdsAt(
+  pageNumber: number,
+  target: EventTarget | null,
+  point: { readonly x: number; readonly y: number },
+): readonly string[] {
+  if (!(target instanceof Element)) return []
+  const page = target.closest<HTMLElement>(".page[data-page-number]")
+  if (page?.getAttribute("data-page-number") !== String(pageNumber)) return []
+  const span = target.closest<HTMLElement>("[data-page-translation-block]")
+  if (span && page.contains(span))
+    return span.getAttribute("data-page-translation-block")?.split(",").filter(Boolean) ?? []
+  const overlay = document.querySelector<HTMLElement>(
+    `.paper-structure-host > [data-page-number="${pageNumber}"]`,
+  )
+  const bound = [
+    ...(overlay?.querySelectorAll<HTMLElement>(".page-translation-source-bound") ?? []),
+  ].find((element) => {
+    const rect = element.getBoundingClientRect()
+    return (
+      point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom
+    )
+  })
+  return bound?.getAttribute("data-page-translation-block")?.split(",").filter(Boolean) ?? []
+}
+
 export function focusPageSource(pageNumber: number, blockId: string): void {
   const page = document.querySelector<HTMLElement>(`.page[data-page-number="${pageNumber}"]`)
   const overlay = document.querySelector<HTMLElement>(
