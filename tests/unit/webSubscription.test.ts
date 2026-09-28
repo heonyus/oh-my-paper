@@ -7,6 +7,7 @@ import { ClaudeSubscriptionAdapter } from "../../src/electron/claudeSubscription
 import { CodexSubscriptionAdapter } from "../../src/electron/codexSubscriptionAdapter"
 import { WebAiService } from "../../src/server/aiService"
 import { aiRequestSchema } from "../../src/shared/ipc"
+import { pageTranslationResponseFormat } from "../../src/shared/pageTranslationProtocol"
 
 const roots: string[] = []
 
@@ -110,6 +111,34 @@ describe("browser Claude subscription AI service", () => {
     expect(params?.imageDataUrl).toBe(image)
     expect(params?.effort).toBe("medium")
     expect(service.status()).toMatchObject({ provider: "anthropic", mode: "claude" })
+  })
+
+  it("enforces the page translation schema that API mode sends as response_format", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-web-claude-"))
+    roots.push(root)
+    const adapter = new ClaudeSubscriptionAdapter({
+      appRoot: root,
+      executablePath: process.execPath,
+    })
+    const completion = vi
+      .spyOn(adapter, "runCompletion")
+      .mockResolvedValue('{"translations":[{"id":"b0","markdown":"번역"}]}')
+    const service = new WebAiService(null, null, { mode: "claude" }, adapter)
+    const base = { documentId: "aabbccddeeff0011", page: 1, before: "", after: "" }
+
+    await service.run(
+      aiRequestSchema.parse({
+        ...base,
+        action: "page_translation",
+        quote: JSON.stringify({ blocks: [{ id: "b0", kind: "body", source: "Hello" }] }),
+      }),
+    )
+    await service.run(aiRequestSchema.parse({ ...base, action: "explanation", quote: "Hello" }))
+
+    expect(completion.mock.calls[0]?.[0].jsonSchema).toBe(
+      pageTranslationResponseFormat.json_schema.schema,
+    )
+    expect(completion.mock.calls[1]?.[0].jsonSchema).toBeUndefined()
   })
 
   it("routes research chat through Claude with the chosen model", async () => {

@@ -38,6 +38,16 @@ process.stdin.on("end", () => {
     setTimeout(() => undefined, 60_000)
     return
   }
+  if (args.includes("--json-schema")) {
+    const schema = JSON.parse(args[args.indexOf("--json-schema") + 1])
+    const answer = { translations: [{ id: "b0", markdown: "번역" }] }
+    const json = JSON.stringify(answer)
+    delta("Let me answer.")
+    for (const part of [json.slice(0, 20), json.slice(20)])
+      out({ type: "stream_event", parent_tool_use_id: null, event: { type: "content_block_delta", index: 1, delta: { type: "input_json_delta", partial_json: part } } })
+    out({ type: "result", is_error: false, result: "", structured_output: answer, schema_required: schema.required })
+    return
+  }
   if (model === "fake-echo") {
     delta(JSON.stringify({ types: message.content.map((block) => block.type), args }))
     out({ type: "result", is_error: false, result: "" })
