@@ -297,7 +297,7 @@ describe("askAgent quick search", () => {
       .filter((step) => step.kind === "search" && step.status === "done")
       .map((step) => step.detail)
     expect(details).toContain("arXiv 1 · Semantic Scholar 요청 한도 초과")
-    expect(details).toContain("arXiv 1 · Semantic Scholar 건너뜀")
+    expect(details).toContain("arXiv 1")
   })
 
   it("uses history for planning and cites attached library papers", async () => {

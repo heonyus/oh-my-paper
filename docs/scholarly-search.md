@@ -85,7 +85,7 @@ API:
 - Expansion (deep mode): Semantic Scholar recommendations, references and citations of the best
   papers so far; OpenAlex `cites:` when only an OpenAlex id is known.
 - Pacing is shared per host (`src/electron/paperSourceHttp.ts`): arXiv one request at a time at
-  least 3.1 s apart, OpenAlex and Semantic Scholar 1.1 s apart. A 429/503 is retried once (twice
+  least 3.1 s apart, OpenAlex and Semantic Scholar 1.1 s apart. A 429/502/503/504 is retried once (twice
   with a key) after `Retry-After` (capped at 6 s); a source that stays rate-limited is skipped for
   the rest of that turn and the trace shows it.
 - Keyless Semantic Scholar keyword search shares a public pool that is often throttled; set

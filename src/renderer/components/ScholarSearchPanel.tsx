@@ -242,13 +242,15 @@ export function ScholarSearchPanel({
         <div>
           <h2 className="scholar-search-heading">{title}</h2>
           <label className="scholar-search-query" htmlFor="scholar-search-query">
-            {basis === "title"
-              ? "확인된 제목"
-              : basis === "doi"
-                ? "확인된 DOI"
-                : basis === "topic"
-                  ? "본문·참고문헌 주제"
-                  : "검색어"}
+            {searchQuery.trim() !== (query ?? "").trim()
+              ? "검색어"
+              : basis === "title"
+                ? "확인된 제목"
+                : basis === "doi"
+                  ? "확인된 DOI"
+                  : basis === "topic"
+                    ? "본문·참고문헌 주제"
+                    : "검색어"}
             <input
               id="scholar-search-query"
               aria-label="관련 논문 검색어"

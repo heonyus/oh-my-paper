@@ -2,8 +2,12 @@ import { AlertCircle, Check, Loader2 } from "lucide-react"
 import type { JSX } from "react"
 import type { AgentStep } from "../../shared/agentChat"
 
+const maxQueryLabel = 60
+
 function stepLabel(step: AgentStep): string {
-  const query = step.query ? `"${step.query}"` : ""
+  const text = step.query ?? ""
+  const clipped = text.length > maxQueryLabel ? `${text.slice(0, maxQueryLabel)}…` : text
+  const query = clipped ? `"${clipped}"` : ""
   switch (step.kind) {
     case "context":
       return `라이브러리 첨부 논문 ${step.found ?? 0}편 불러옴`

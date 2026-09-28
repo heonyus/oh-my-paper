@@ -27,6 +27,7 @@ export function ResearchView({
   const [sending, setSending] = useState(false)
   const [liveSteps, setLiveSteps] = useState<readonly AgentStep[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [cancelled, setCancelled] = useState(false)
   const [mode, setMode] = useState<AgentMode>("quick")
   const controllerRef = useRef<AbortController | null>(null)
   const [paperOpenStates, setPaperOpenStates] = useState<Readonly<Record<string, PaperOpenState>>>(
@@ -50,6 +51,7 @@ export function ResearchView({
   const selectThread = (id: string | null): void => {
     setActiveId(id)
     setError(null)
+    setCancelled(false)
     const thread = id ? threads.find((existing) => existing.id === id) : null
     setAttachedIds(thread?.contextDocIds ?? [])
   }
@@ -83,6 +85,7 @@ export function ResearchView({
     setSending(true)
     setLiveSteps([])
     setError(null)
+    setCancelled(false)
     const steps: AgentStep[] = []
     try {
       const result = await window.ohmypaper.agentAskStream(
@@ -109,7 +112,7 @@ export function ResearchView({
       })
       persistThread(done)
     } catch (cause) {
-      if (controller.signal.aborted) setError("검색을 취소했습니다.")
+      if (controller.signal.aborted) setCancelled(true)
       else setError(cause instanceof Error ? cause.message : "답변을 만들지 못했습니다")
     } finally {
       if (controllerRef.current === controller) controllerRef.current = null
@@ -150,6 +153,7 @@ export function ResearchView({
           onCancel={() => controllerRef.current?.abort()}
           liveSteps={liveSteps}
           error={error}
+          cancelled={cancelled}
           paperOpenStates={paperOpenStates}
           onAttach={attach}
           onDetach={detach}

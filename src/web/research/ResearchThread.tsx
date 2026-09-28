@@ -1,5 +1,5 @@
 import { Flame, LibraryBig, Telescope } from "lucide-react"
-import type { JSX } from "react"
+import { type JSX, useLayoutEffect, useRef } from "react"
 import { MarkdownContent } from "../../renderer/components/MarkdownContent"
 import type { AgentMode, AgentPaper, AgentStep, AgentThread } from "../../shared/agentChat"
 import type { DocumentId, DocumentRecord } from "../../shared/schemas"
@@ -10,6 +10,8 @@ import { AgentStepList } from "./ResearchSteps"
 export type { PaperOpenState } from "./ResearchPaperCard"
 
 const deepExample = "LLM이 긴 문서를 RAG 없이 기억하게 하는 연구들 정리해줘"
+/** Follow new steps only while the reader is already at the bottom of the thread. */
+const stickToBottomPx = 160
 
 export function ResearchThread({
   thread,
@@ -21,6 +23,7 @@ export function ResearchThread({
   onCancel,
   liveSteps,
   error,
+  cancelled,
   paperOpenStates,
   onAttach,
   onDetach,
@@ -36,6 +39,7 @@ export function ResearchThread({
   readonly onCancel: () => void
   readonly liveSteps: readonly AgentStep[]
   readonly error: string | null
+  readonly cancelled: boolean
   readonly paperOpenStates: Readonly<Record<string, PaperOpenState>>
   readonly onAttach: (id: DocumentId) => void
   readonly onDetach: (id: DocumentId) => void
@@ -43,6 +47,19 @@ export function ResearchThread({
   readonly onOpenInReader: (paper: AgentPaper) => void
 }): JSX.Element {
   const related = documents[0]?.title
+  const messagesRef = useRef<HTMLOListElement>(null)
+  const pinnedRef = useRef(true)
+  const messageCount = thread?.messages.length ?? 0
+
+  useLayoutEffect(() => {
+    if (sending) pinnedRef.current = true
+  }, [sending])
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll when steps or messages are added
+  useLayoutEffect(() => {
+    const list = messagesRef.current
+    if (list && pinnedRef.current) list.scrollTop = list.scrollHeight
+  }, [liveSteps.length, messageCount, sending])
   const composer = (
     <ResearchComposer
       documents={documents}
@@ -102,7 +119,15 @@ export function ResearchThread({
 
   return (
     <div className="research-thread">
-      <ol className="research-messages">
+      <ol
+        className="research-messages"
+        ref={messagesRef}
+        onScroll={(event) => {
+          const list = event.currentTarget
+          pinnedRef.current =
+            list.scrollHeight - list.scrollTop - list.clientHeight < stickToBottomPx
+        }}
+      >
         {thread.messages.map((message) => (
           <li
             key={message.id ?? `${message.role}:${message.content.slice(0, 48)}`}
@@ -158,6 +183,13 @@ export function ResearchThread({
         {error ? (
           <li className="research-message research-assistant" role="alert">
             <p className="research-error">{error}</p>
+          </li>
+        ) : null}
+        {cancelled ? (
+          <li className="research-message research-assistant" role="status">
+            <p className="research-thinking">
+              검색을 취소했습니다. 질문을 다시 보내면 처음부터 찾습니다.
+            </p>
           </li>
         ) : null}
       </ol>

@@ -106,7 +106,9 @@ function retryDelayMs(response: ScholarlyTransportResponse, attempt: number): nu
   return Math.min(hinted ?? 1_500 * (attempt + 1), maxRetryDelayMs)
 }
 
-/** Fetches one provider URL with pacing and a small bounded retry on 429/503. */
+const retryableStatuses = new Set([429, 502, 503, 504])
+
+/** Fetches one provider URL with pacing and a small bounded retry on throttling or gateway errors. */
 export async function requestSource(request: SourceRequest): Promise<string> {
   const transport = request.transport ?? defaultScholarlyTransport
   const retries = request.retries ?? 1
@@ -125,8 +127,7 @@ export async function requestSource(request: SourceRequest): Promise<string> {
       throw error
     }
     if (response.statusCode >= 200 && response.statusCode < 300) return response.body
-    const retryable = response.statusCode === 429 || response.statusCode === 503
-    if (!retryable || attempt >= retries) {
+    if (!retryableStatuses.has(response.statusCode) || attempt >= retries) {
       throw new PaperSourceError(
         response.statusCode === 429 ? "rate_limited" : "http_error",
         response.statusCode,

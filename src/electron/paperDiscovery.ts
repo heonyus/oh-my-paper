@@ -40,6 +40,8 @@ export type RoundLimits = {
 
 type Lookup = { readonly label: string; readonly run: () => Promise<readonly PaperCandidate[]> }
 
+const skippedNote = "건너뜀"
+
 type LookupOutcome = {
   readonly label: string
   readonly found: number | null
@@ -125,7 +127,7 @@ export class DiscoveryRun {
       lookups.map((lookup) =>
         this.#queue(lookup.label)(async (): Promise<LookupOutcome> => {
           const skipped = { label: lookup.label, found: null, added: 0 }
-          if (this.#blocked.has(lookup.label)) return { ...skipped, note: "건너뜀" }
+          if (this.#blocked.has(lookup.label)) return { ...skipped, note: skippedNote }
           try {
             const found = await lookup.run()
             const added = this.#addRanked(found, weight, window)
@@ -145,7 +147,9 @@ export class DiscoveryRun {
       ...stepBase,
       status: outcomes.every((outcome) => outcome.found === null) ? "failed" : "done",
       found: added,
+      // A source already reported as rate-limited is not repeated on every later row.
       detail: outcomes
+        .filter((outcome, _index, all) => outcome.note !== skippedNote || all.length === 1)
         .map((outcome) => `${outcome.label} ${outcome.found ?? outcome.note ?? ""}`)
         .join(" · ")
         .slice(0, 500),

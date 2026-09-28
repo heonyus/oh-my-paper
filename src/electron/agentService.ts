@@ -183,7 +183,7 @@ export async function askAgent(
     id: "plan",
     kind: "plan",
     status: planned ? "done" : "failed",
-    queries: brief.queries.slice(0, AGENT_QUERY_MAX),
+    queries: brief.queries.slice(0, Math.min(config.keywordQueries, AGENT_QUERY_MAX)),
     ...(brief.interpretation ? { detail: brief.interpretation.slice(0, 500) } : {}),
   })
   const { run, judgments, byModel } = await discover(request, brief, deps, onStep, signal)
