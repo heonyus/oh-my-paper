@@ -37,26 +37,61 @@ const equationPattern =
   /(?:Equation\s*\((\d+)\)|\((\d+)\)\s*$|[=≤≥≈∑∫∆θσμφ]\s*[A-Za-z0-9_+\-/*()^]+)/iu
 const citationPattern = /\[(\d+(?:\s*,\s*\d+)*)\]/gu
 
+const referenceHeadingPattern =
+  /\bR\s+E\s*F\s*E\s*R\s*E\s*N\s*C\s*E\s*S\b|\b(?:References|REFERENCES|Bibliography|BIBLIOGRAPHY)\b/gu
+const numberedListStartPattern = /^\s*(?:\[\d{1,3}\]|\d{1,3}\.)\s/u
+const appendixHeadingPattern = /\b[A-Z]\s+[A-Z]\s+[A-Z]{3,}\b/u
+/**
+ * Back-matter headings that follow a reference list. Small-caps headings often extract with the
+ * first letter detached ("a cknowledgements"), so an optional space is allowed after it.
+ */
+const backMatterHeadingPattern =
+  /(?:^|[.)]\s+)(?:a\s?cknowledge?ments?|a\s?uthor\s+contributions|c\s?ompeting\s+interests|a\s?dditional\s+information|e\s?xtended\s+data\s+fig|p\s?ublisher[’']s\s+note|d\s?ata\s+availability|c\s?ode\s+availability)\b/iu
+
+type HeadingMatch = { readonly index: number; readonly end: number }
+
+/**
+ * Collects every reference list in the text. Journals such as Nature print a second numbered list
+ * after the Methods, so all headings followed by a numbered entry count; otherwise the last heading
+ * wins. Each list ends at the next list, an appendix heading, or a back-matter heading.
+ */
 function bibliographySection(text: string): string {
-  const spacedHeading = /\bR\s+E\s*F\s*E\s*R\s*E\s*N\s*C\s*E\s*S\b/u.exec(text)
-  const plainHeading = [...text.matchAll(/\b(?:References|Bibliography)\b/giu)].at(-1)
-  const heading = spacedHeading ?? plainHeading
-  if (!heading || heading.index === undefined) return ""
-  const afterHeading = text.slice(heading.index + heading[0].length)
-  const appendix = /\b[A-Z]\s+[A-Z]\s+[A-Z]{3,}\b/u.exec(afterHeading)
-  return (
-    appendix?.index === undefined ? afterHeading : afterHeading.slice(0, appendix.index)
-  ).trim()
+  const headings: readonly HeadingMatch[] = [...text.matchAll(referenceHeadingPattern)].flatMap(
+    (match) =>
+      match.index === undefined ? [] : [{ index: match.index, end: match.index + match[0].length }],
+  )
+  const listHeadings = headings.filter((heading) =>
+    numberedListStartPattern.test(text.slice(heading.end, heading.end + 40)),
+  )
+  const chosen = listHeadings.length > 0 ? listHeadings : headings.slice(-1)
+  return chosen
+    .map((heading, index) => {
+      const afterHeading = text.slice(heading.end, chosen[index + 1]?.index ?? text.length)
+      const appendix = appendixHeadingPattern.exec(afterHeading)
+      const backMatter = backMatterHeadingPattern.exec(afterHeading)
+      const end = Math.min(
+        ...[appendix?.index, backMatter?.index].filter(
+          (value): value is number => value !== undefined,
+        ),
+        afterHeading.length,
+      )
+      return afterHeading.slice(0, end).trim()
+    })
+    .filter((section) => section.length > 0)
+    .join("\n")
 }
 
-const numberedReferencePattern = /(?:^|\s)(?:\[(\d{1,3})\]|(\d{1,3})\.)\s+/gu
+const numberedReferencePattern = /(?:^|\s)(?:\[(\d{1,3})\]|(\d{1,3})\.)(?=\s)/gu
 
 function trimReferenceText(value: string): string {
   return value
     .replace(/\s+/gu, " ")
-    .replace(/^[.\s]+|[.\s]+$/gu, "")
+    .replace(/^[.,)\s]+|[.,(\s]+$/gu, "")
     .trim()
 }
+
+/** Longer bodies are not references; they are prose that followed the last numbered marker. */
+const maxReferenceBodyLength = 900
 
 function bibliographyEntryBody(value: string): string {
   const visualMarker = value.match(/\s+(?:Figure|Fig\.?|Table|Tab\.?)\s+\d+\s*[:.]/iu)
@@ -70,7 +105,16 @@ function bibliographyEntryBody(value: string): string {
       : undefined,
   ].filter((index): index is number => index !== undefined)
   const boundary = Math.min(...boundaries, value.length)
-  return value.slice(0, boundary)
+  const body = value.slice(0, boundary)
+  if (body.length <= maxReferenceBodyLength) return body
+  const sentenceEnd = body.lastIndexOf(". ", maxReferenceBodyLength)
+  return body.slice(0, sentenceEnd > 40 ? sentenceEnd + 1 : maxReferenceBodyLength)
+}
+
+/** Drops a trailing "(Publisher," fragment left when the year closes the parenthesis. */
+function withoutUnclosedParenthesis(value: string): string {
+  const open = value.lastIndexOf("(")
+  return open >= 0 && !value.slice(open).includes(")") ? value.slice(0, open) : value
 }
 
 function referenceFromNumberedSegment(marker: string, body: string): ReferenceItem | null {
@@ -79,7 +123,7 @@ function referenceFromNumberedSegment(marker: string, body: string): ReferenceIt
   const rawText = trimReferenceText(`[${key}] ${entryBody}`)
   if (rawText.length < 24) return null
   const yearMatches = [
-    ...entryBody.matchAll(/(?:^|[,.]\s+|\s)(19\d{2}|20\d{2})([a-z]?)(?=[.,;\s]|$)/giu),
+    ...entryBody.matchAll(/(?:^|[,.(]\s*|\s)(19\d{2}|20\d{2})([a-z]?)(?=[.,;)\s]|$)/giu),
   ]
   const yearFollowedByPageMarker = yearMatches.find((match) => {
     if (match.index === undefined) return false
@@ -91,8 +135,14 @@ function referenceFromNumberedSegment(marker: string, body: string): ReferenceIt
   const yearEnd = yearMatch?.index === undefined ? -1 : yearMatch.index + yearMatch[0].length
   const textAfterYear = yearEnd >= 0 ? trimReferenceText(entryBody.slice(yearEnd)) : ""
   const yearAtEnd =
-    yearEnd >= 0 && (textAfterYear.length < 8 || /^\d{1,3}\s+[A-Za-z]/u.test(textAfterYear))
-  const authorTitle = yearAtEnd && yearMatch ? entryBody.slice(0, yearMatch.index) : entryBody
+    yearEnd >= 0 &&
+    (textAfterYear.length < 8 ||
+      /^\d{1,3}\s+[A-Za-z]/u.test(textAfterYear) ||
+      /^[);\s]*(?:https?:|www\.|doi)/iu.test(textAfterYear))
+  const authorTitle =
+    yearAtEnd && yearMatch
+      ? withoutUnclosedParenthesis(entryBody.slice(0, yearMatch.index))
+      : entryBody
   const boundary = yearAtEnd ? authorBoundary(authorTitle) : -1
   const authors = trimReferenceText(
     yearAtEnd && boundary >= 0
@@ -109,8 +159,18 @@ function referenceFromNumberedSegment(marker: string, body: string): ReferenceIt
         ? entryBody.slice(yearEnd)
         : authorTitle.slice(authors.length),
   )
+  const inVenue = remainder.match(/^in\s+(.+)$/u)?.[1]
+  if (inVenue) {
+    const venue = trimReferenceText(
+      inVenue.replace(/\s*\(eds?\.?.*$/iu, "").replace(/\s+(?:vol\.\s*\d+\s+)?\d+[–-]\d+$/u, ""),
+    )
+    return venue.length < 8 ? null : { key, title: venue, authors, year, venue, rawText }
+  }
   const titleEnd = remainder.search(/\.\s+(?=[A-Za-z0-9])/u)
-  const title = trimReferenceText(titleEnd >= 8 ? remainder.slice(0, titleEnd) : remainder)
+  const title = trimReferenceText(titleEnd >= 8 ? remainder.slice(0, titleEnd) : remainder).replace(
+    /^\((?:eds?|editors?)\.?\)\s*/iu,
+    "",
+  )
   if (title.length < 8) return null
   const venue = titleEnd >= 8 ? trimReferenceText(remainder.slice(titleEnd + 1)) : ""
   return { key, title, authors, year, venue, rawText }
@@ -129,16 +189,27 @@ function addNumberedReferences(text: string, map: Record<string, ReferenceItem>)
     const bodyStart = current.index + current[0].length
     const next = markers[index + 1]
     const bodyEnd = next?.index ?? text.length
-    const entry = referenceFromNumberedSegment(key, text.slice(bodyStart, bodyEnd))
+    const entry = referenceFromNumberedSegment(key, text.slice(bodyStart, bodyEnd).trimStart())
     if (entry) map[key] = entry
   }
 }
 
+/** "Surname, I." or "Surname, I.-J." at the end of a "Surname, Initials" author list. */
+const surnameInitialsEndPattern = /(?:^|[\s,&])[\p{L}'’-]+,\s*(?:\p{Lu}\.[\s-]*)*\p{Lu}\.$/u
+/** Text that continues an author list rather than starting the title. */
+const authorListContinuesPattern = /^(?:\p{Lu}\.(?:[\s,-]|$)|&\s|and\s|et\s+al\b)/u
+
 function authorBoundary(entry: string): number {
-  for (const match of entry.matchAll(/\.\s+(?=[A-Z])/gu)) {
+  for (const match of entry.matchAll(/\.\s+(?=[\p{L}(])/gu)) {
     if (match.index === undefined) continue
     const prefix = entry.slice(0, match.index + 1)
-    if (/\b\p{Lu}\.$/u.test(prefix)) continue
+    if (/\b\p{Lu}\.$/u.test(prefix)) {
+      const rest = entry.slice(match.index + match[0].length)
+      if (surnameInitialsEndPattern.test(prefix) && !authorListContinuesPattern.test(rest)) {
+        return match.index + 1
+      }
+      continue
+    }
     const words = prefix.split(/\s+/u)
     if (
       /\bet al\.$/iu.test(prefix) ||

@@ -1,5 +1,5 @@
-import { BookOpen, ExternalLink, Pin } from "lucide-react"
-import { type FormEvent, type JSX, useState } from "react"
+import { BookOpen, ChevronDown, ExternalLink, Pin } from "lucide-react"
+import { type FormEvent, type JSX, useId, useState } from "react"
 import type { CitationAssessmentResult, ReadingTier } from "../../shared/citationAssessment"
 import { citationAssessmentResultSchema } from "../../shared/citationAssessment"
 import type { RankedCitation } from "../lib/citationTriage"
@@ -15,6 +15,9 @@ const tierLabels: Readonly<Record<ReadingTier, string>> = {
   abstract_only: "초록만",
   pass: "패스",
 }
+
+/** Headings longer than this (title plus byline) start collapsed behind a 펼쳐보기 toggle. */
+const collapsedHeadingCharacters = 220
 
 const scoreParts = [
   { key: "dependency", label: "현재 논문 의존도", maximum: 30 },
@@ -50,6 +53,8 @@ export function CitationItem({
   const [question, setQuestion] = useState("")
   const [answer, setAnswer] = useState("")
   const [asking, setAsking] = useState(false)
+  const [headingExpanded, setHeadingExpanded] = useState(false)
+  const headingId = useId()
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
@@ -79,16 +84,35 @@ export function CitationItem({
         })
       : null
   const sourceUrl = citationSourceUrl(state)
+  const heading = complete?.paper.title ?? entry.title
+  const year = complete?.paper.year ?? entry.year
+  const byline = `${complete?.paper.authors.join(", ") || entry.authors}${year ? ` · ${year}` : ""}`
+  const longHeading = heading.length + byline.length > collapsedHeadingCharacters
   return (
     <article className="citation-item" data-tier={ranked?.tier ?? "unassessed"}>
       <header>
         <span className="citation-key">[{entry.key}]</span>
         <div>
-          <strong>{complete?.paper.title ?? entry.title}</strong>
-          <span>
-            {complete?.paper.authors.join(", ") || entry.authors}
-            {(complete?.paper.year ?? entry.year) ? ` · ${complete?.paper.year ?? entry.year}` : ""}
-          </span>
+          <div
+            className="citation-heading"
+            id={headingId}
+            data-clamped={longHeading && !headingExpanded}
+          >
+            <strong>{heading}</strong>
+            <span>{byline}</span>
+          </div>
+          {longHeading ? (
+            <button
+              type="button"
+              className="citation-heading-toggle"
+              aria-expanded={headingExpanded}
+              aria-controls={headingId}
+              onClick={() => setHeadingExpanded(!headingExpanded)}
+            >
+              <span>{headingExpanded ? "접기" : "펼쳐보기"}</span>
+              <ChevronDown size={12} aria-hidden="true" />
+            </button>
+          ) : null}
         </div>
         {ranked ? (
           <span className="reading-tier" data-tier={ranked.tier}>

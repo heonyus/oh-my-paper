@@ -2,6 +2,7 @@ import type { PDFDocumentProxy } from "pdfjs-dist/legacy/build/pdf.mjs"
 import type { SourceDocumentAst } from "../../shared/documentAst"
 import type { DocumentKind } from "../../shared/schemas"
 import { outlineFromAst, pageTextsFromAst, preparedSummaryFromAst } from "./documentAstProjection"
+import { withoutPageFurniture } from "./pageFurniture"
 import { cachedPdfDocumentAnalysis } from "./pdfAnalysisCache"
 import { buildCitationIndex } from "./pdfCitationIndex"
 import { analyzePdfDocument } from "./pdfDocumentFeatures"
@@ -17,7 +18,7 @@ export async function preparePdfView(
 ) {
   if (ast) {
     const pageTexts = pageTextsFromAst(ast)
-    const bibliography = extractReferencesFromText(pageTexts.join("\n"))
+    const bibliography = extractReferencesFromText(withoutPageFurniture(pageTexts).join("\n"))
     return {
       summary: {
         ...preparedSummaryFromAst(ast, { title, kind }),
