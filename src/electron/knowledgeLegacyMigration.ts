@@ -7,6 +7,7 @@ import { boardCardSchema, sourceAnchorSchema, workspaceSchema } from "../shared/
 import { researchSidebarLayout } from "../shared/uiLayout"
 import type { KnowledgeRepository } from "./knowledgeRepository"
 import { countRowSchema } from "./knowledgeRepositoryRows"
+import { cachedStatement } from "./knowledgeStatements"
 import { syncWorkspaceToRepository } from "./knowledgeWorkspaceSync"
 
 const legacySourceAnchorSchema = sourceAnchorSchema.omit({ fragments: true }).strict()
@@ -42,6 +43,22 @@ export function parseLegacyWorkspace(value: unknown): Workspace {
       },
     })),
   })
+}
+
+/**
+ * Records that `sourceFile` is this store's own projection mirror, so opening the store never
+ * imports it as legacy data. One stable row per file; later calls leave it unchanged.
+ */
+export function markProjectionSource(
+  db: DatabaseSync,
+  sourceFile: string,
+  nodeCount: number,
+): void {
+  cachedStatement(
+    db,
+    `INSERT OR IGNORE INTO legacy_migration_markers (id, migrated_at, source_file, node_count)
+     VALUES (?, ?, ?, ?)`,
+  ).run(`projection:${sourceFile}`, new Date().toISOString(), sourceFile, nodeCount)
 }
 
 export async function migrateLegacyWorkspaceIfPresent(

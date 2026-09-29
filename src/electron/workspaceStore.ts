@@ -8,8 +8,12 @@ import { researchSidebarLayout } from "../shared/uiLayout"
 import { readAgentThreads, writeAgentThreads } from "./agentThreadsFile"
 import { CollectionService } from "./collectionService"
 import { replaceFile } from "./fileReplace"
-import { openKnowledgeDatabase } from "./knowledgeDatabase"
-import { migrateLegacyWorkspaceIfPresent } from "./knowledgeLegacyMigration"
+import {
+  closeKnowledgeDatabase,
+  openKnowledgeDatabase,
+  optimizeKnowledgeDatabase,
+} from "./knowledgeDatabase"
+import { markProjectionSource, migrateLegacyWorkspaceIfPresent } from "./knowledgeLegacyMigration"
 import { KnowledgeRepository } from "./knowledgeRepository"
 import { countRowSchema } from "./knowledgeRepositoryRows"
 import { mergeWorkspaceForSave, WorkspaceConflictError } from "./knowledgeWorkspaceMerge"
@@ -88,10 +92,11 @@ export class WorkspaceStore {
   async close(): Promise<void> {
     await this.flush()
     if (this.collectionService) {
+      optimizeKnowledgeDatabase(this.db)
       await this.collectionService.close()
       return
     }
-    this.db.close()
+    closeKnowledgeDatabase(this.db)
   }
 
   private async ensureMigrated(): Promise<void> {
@@ -175,14 +180,7 @@ export class WorkspaceStore {
       }
       const effective = base ? mergeWorkspaceForSave(base, current, parsed) : parsed
       this.repository.withCanonicalNoteWrite(() =>
-        syncWorkspaceToRepository(
-          this.repository,
-          this.db,
-          parsed,
-          base,
-          false,
-          this.collectionService ? undefined : this.workspaceFile,
-        ),
+        syncWorkspaceToRepository(this.repository, this.db, parsed, base, false),
       )
       await this.collectionService?.syncWorkspaceNotes(
         effective.cards,
@@ -218,14 +216,7 @@ export class WorkspaceStore {
         activeDocumentId: document.id,
       }
       this.repository.withCanonicalNoteWrite(() =>
-        syncWorkspaceToRepository(
-          this.repository,
-          this.db,
-          updated,
-          undefined,
-          false,
-          this.collectionService ? undefined : this.workspaceFile,
-        ),
+        syncWorkspaceToRepository(this.repository, this.db, updated, undefined, false),
       )
       await this.collectionService?.syncWorkspaceNotes(updated.cards, workspace.cards)
       await this.acknowledgeRepository()
@@ -276,6 +267,7 @@ export class WorkspaceStore {
   private async writeProjection(workspace: Workspace): Promise<void> {
     const parsed = workspaceSchema.parse(workspace)
     const persisted = persistedWorkspaceSchema.parse({ ...parsed, layoutVersion: 2 })
+    markProjectionSource(this.db, this.workspaceFile, parsed.documents.length + parsed.cards.length)
     const temporaryFile = `${this.workspaceFile}.tmp`
     await mkdir(this.root, { recursive: true })
     await writeFile(temporaryFile, JSON.stringify(persisted), {

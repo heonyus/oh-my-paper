@@ -12,7 +12,6 @@ export function syncWorkspaceToRepository(
   workspace: Workspace,
   baseWorkspace?: Workspace,
   transactionAlreadyOpen = false,
-  projectionSourceFile?: string,
 ): void {
   const currentWorkspace = projectRepositoryToWorkspace(repo, db)
   const effectiveWorkspace = baseWorkspace
@@ -64,17 +63,6 @@ export function syncWorkspaceToRepository(
     applyDocuments(repo, effectiveWorkspace.documents, currentWorkspace.documents, now)
     applyCards(repo, effectiveWorkspace.cards, currentWorkspace.cards)
     applyInsights(db, currentWorkspace.insights, effectiveWorkspace.insights)
-    if (projectionSourceFile) {
-      db.prepare(`
-        INSERT OR IGNORE INTO legacy_migration_markers (id, migrated_at, source_file, node_count)
-        VALUES (?, ?, ?, ?)
-      `).run(
-        `projection-${Date.now()}`,
-        now,
-        projectionSourceFile,
-        effectiveWorkspace.documents.length + effectiveWorkspace.cards.length,
-      )
-    }
 
     if (!transactionAlreadyOpen) db.exec("COMMIT")
   } catch (error) {
