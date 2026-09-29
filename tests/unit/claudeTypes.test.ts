@@ -6,8 +6,8 @@ import {
 } from "../../src/shared/claudeTypes"
 
 describe("Claude model choices", () => {
-  it("offers Sonnet 5.5 first as the default", () => {
-    expect(DEFAULT_CLAUDE_MODEL).toBe("claude-sonnet-5-5")
+  it("offers Haiku 4.5 first as the default", () => {
+    expect(DEFAULT_CLAUDE_MODEL).toBe("claude-haiku-4-5")
     expect(CLAUDE_MODEL_OPTIONS[0]?.id).toBe(DEFAULT_CLAUDE_MODEL)
     expect(claudeModelChoices(DEFAULT_CLAUDE_MODEL)).toBe(CLAUDE_MODEL_OPTIONS)
   })

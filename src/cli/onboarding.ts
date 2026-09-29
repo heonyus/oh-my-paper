@@ -144,7 +144,7 @@ export async function runOnboarding(
         {
           value: "claude",
           label: "Claude 구독",
-          hint: "이 Mac의 Claude Code 로그인 · 기본 모델 Sonnet 5.5 · 권장",
+          hint: "이 Mac의 Claude Code 로그인 · 기본 모델 Haiku 4.5 · 권장",
         },
         {
           value: "chatgpt",

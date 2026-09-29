@@ -1,14 +1,14 @@
 import { z } from "zod"
 
-export const DEFAULT_CLAUDE_MODEL = "claude-sonnet-5-5"
+export const DEFAULT_CLAUDE_MODEL = "claude-haiku-4-5"
 
 export const CLAUDE_MODEL_OPTIONS = [
-  { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5 (기본)" },
+  { id: "claude-haiku-4-5", label: "Claude Haiku 4.5 (기본)" },
+  { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5" },
   { id: "claude-opus-5-5", label: "Claude Opus 5.5" },
   { id: "claude-fable-5-1", label: "Claude Fable 5.1" },
   { id: "claude-sonnet-5", label: "Claude Sonnet 5" },
   { id: "claude-opus-5", label: "Claude Opus 5" },
-  { id: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
 ] as const
 
 /** The model choices, keeping a saved model that is no longer listed so the select shows it. */
@@ -39,6 +39,11 @@ export function isClaudeEffort(value: string): value is ClaudeEffort {
 
 /** Haiku 4.5 rejects the effort parameter, so the CLI flag is omitted for it. */
 export function claudeModelSupportsEffort(model: string): boolean {
+  return !model.startsWith("claude-haiku")
+}
+
+/** Haiku 4.5 has a 200K-token context window; the other listed models take 1M. */
+export function claudeModelHasLargeContext(model: string): boolean {
   return !model.startsWith("claude-haiku")
 }
 

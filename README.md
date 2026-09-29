@@ -56,7 +56,7 @@ npm run start:web
 The first `npm run start:web` checks the local runtime step by step — dependencies, the
 bundled ChatGPT login runtime, and the PaddleOCR-VL engine — and opens a terminal
 onboarding picker when no AI connection exists. Choose Claude 구독 (the local Claude Code
-login, default model Claude Sonnet 5.5), ChatGPT 구독 (browser or device-code login, no API
+login, default model Claude Haiku 4.5), ChatGPT 구독 (browser or device-code login, no API
 key) or an API-key provider with arrow keys and Enter. When
 the OCR engine is missing, the picker offers to download it; you can also install it
 later with `npm run setup:paddle-vl`. Re-run setup anytime with `npm run setup`.
@@ -165,7 +165,7 @@ Google app identity does not grant AI access. Configure a separate connection un
   fall back to a paid API. A working runtime and eligible user subscription are prerequisites;
   live login, inference, cancellation, and usage reporting still need verification.
 - Claude subscription mode (browser app only, personal use) runs the locally installed Claude
-  Code CLI headlessly with its existing login; the default model is `claude-sonnet-5-5`. Anthropic
+  Code CLI headlessly with its existing login; the default model is `claude-haiku-4-5`. Anthropic
   does not allow third-party products to offer claude.ai login without approval, so this mode
   is for the owner's own Mac and must not be shipped to other users.
 - API mode uses your own provider keys. Gemini, Groq, OpenAI and OpenRouter are separate

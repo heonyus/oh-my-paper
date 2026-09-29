@@ -56,7 +56,15 @@ describe("whole-paper context", () => {
   })
 
   it("sizes the paper by connection and covers chat and the paper-level tools", () => {
-    expect(wholePaperCharacterBudget({ mode: "claude" })).toBeGreaterThanOrEqual(500_000)
+    expect(
+      wholePaperCharacterBudget({ mode: "claude", claudeModel: "claude-sonnet-5-5" }),
+    ).toBeGreaterThanOrEqual(500_000)
+    expect(wholePaperCharacterBudget({ mode: "claude", claudeModel: "claude-haiku-4-5" })).toBe(
+      wholePaperCharacterBudget({ mode: "claude" }),
+    )
+    expect(wholePaperCharacterBudget({ mode: "claude" })).toBeLessThan(
+      wholePaperCharacterBudget({ mode: "claude", claudeModel: "claude-sonnet-5-5" }),
+    )
     expect(wholePaperCharacterBudget({ mode: "api" })).toBeLessThan(
       wholePaperCharacterBudget({ mode: "chatgpt" }),
     )
