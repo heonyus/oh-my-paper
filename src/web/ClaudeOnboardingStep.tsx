@@ -58,7 +58,8 @@ export function ClaudeOnboardingStep({
               ? "열린 브라우저에서 Claude 로그인을 완료하세요"
               : status.authenticated
                 ? `${status.email ?? "Claude"} 계정으로 연결하는 중…`
-                : problem || "이 Mac의 Claude Code로 로그인하면 구독 사용량으로 바로 시작합니다."}
+                : problem ||
+                  "이 컴퓨터의 Claude Code로 로그인하면 구독 사용량으로 바로 시작합니다."}
         </p>
         <div className="web-onboarding-actions">
           <button type="button" className="web-onboarding-ghost" onClick={onBack}>

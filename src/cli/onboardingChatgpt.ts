@@ -10,14 +10,13 @@ import {
 import { type CodexReasoningEffort, codexReasoningEffortSchema } from "../shared/ipc"
 
 function openBrowser(url: string): void {
-  const command =
-    process.platform === "darwin" ? "open" : process.platform === "win32" ? "cmd" : "xdg-open"
-  const args =
+  // `cmd /c start` would cut the login URL at its first `&`; the URL handler takes it whole.
+  const [command, args]: [string, string[]] =
     process.platform === "darwin"
-      ? [url]
+      ? ["open", [url]]
       : process.platform === "win32"
-        ? ["/c", "start", "", url]
-        : [url]
+        ? ["rundll32.exe", ["url.dll,FileProtocolHandler", url]]
+        : ["xdg-open", [url]]
   execFile(command, args, () => undefined)
 }
 

@@ -3,13 +3,14 @@ import { existsSync } from "node:fs"
 import { chmod, mkdir, symlink, writeFile } from "node:fs/promises"
 import { createRequire } from "node:module"
 import { homedir } from "node:os"
-import { delimiter, join } from "node:path"
+import { join } from "node:path"
 import {
   buildCodexConfigToml,
   buildSanitizedCodexEnv,
   CodexEnvironmentError,
   getCodexAppServerCliArgs,
 } from "./codexEnvironment"
+import { findOnPath } from "./executableLookup"
 
 const moduleRoot = typeof __dirname === "string" ? join(__dirname, "..", "..") : process.cwd()
 const require = createRequire(join(moduleRoot, "package.json"))
@@ -42,11 +43,8 @@ export function findCodexExecutable(customPath?: string): string | null {
   if (bundled !== null) return bundled
   const envCodexPath = processEnvValue("CODEX_PATH")
   if (envCodexPath !== undefined && existsSync(envCodexPath)) return envCodexPath
-  const envPath = processEnvValue("PATH") ?? ""
-  for (const dir of envPath.split(delimiter)) {
-    const candidate = join(dir, process.platform === "win32" ? "codex.exe" : "codex")
-    if (existsSync(candidate)) return candidate
-  }
+  const onPath = findOnPath("codex")
+  if (onPath !== null) return onPath
   for (const candidate of DEFAULT_CODEX_SEARCH_PATHS) {
     if (existsSync(candidate)) return candidate
   }

@@ -1,7 +1,8 @@
 import { existsSync } from "node:fs"
 import { homedir } from "node:os"
-import { delimiter, join } from "node:path"
+import { join, win32 } from "node:path"
 import { type ClaudeEffort, claudeModelSupportsEffort } from "../shared/claudeTypes"
+import { type ExecutableLookupOptions, findOnPath, pathDirectories } from "./executableLookup"
 
 export const DEFAULT_CLAUDE_SEARCH_PATHS: readonly string[] = [
   join(homedir(), ".local/bin/claude"),
@@ -14,22 +15,46 @@ function envValue(env: NodeJS.ProcessEnv, key: string): string | undefined {
   return env[key]
 }
 
+/** The binary that `npm install -g @anthropic-ai/claude-code` wraps in a `claude.cmd` shim. */
+function npmClaudeBinary(prefix: string): string {
+  return win32.join(prefix, "node_modules", "@anthropic-ai", "claude-code", "bin", "claude.exe")
+}
+
+function windowsClaudeSearchPaths(env: NodeJS.ProcessEnv, home: string): string[] {
+  const appData = envValue(env, "APPDATA")
+  return [
+    // The native installer's default location.
+    win32.join(home, ".local", "bin", "claude.exe"),
+    ...(appData ? [npmClaudeBinary(win32.join(appData, "npm"))] : []),
+  ]
+}
+
+export type ClaudeExecutableLookup = Omit<ExecutableLookupOptions, "env"> & {
+  readonly home?: string | undefined
+}
+
 export function findClaudeExecutable(
   customPath?: string,
   env: NodeJS.ProcessEnv = process.env,
+  lookup: ClaudeExecutableLookup = {},
 ): string | null {
-  if (customPath !== undefined) return existsSync(customPath) ? customPath : null
+  const exists = lookup.exists ?? existsSync
+  if (customPath !== undefined) return exists(customPath) ? customPath : null
   const envPath = envValue(env, "CLAUDE_PATH")
-  if (envPath !== undefined && existsSync(envPath)) return envPath
-  for (const dir of (envValue(env, "PATH") ?? "").split(delimiter)) {
-    if (!dir) continue
-    const candidate = join(dir, process.platform === "win32" ? "claude.exe" : "claude")
-    if (existsSync(candidate)) return candidate
+  if (envPath !== undefined && exists(envPath)) return envPath
+  const options = { ...lookup, env, exists }
+  const onPath = findOnPath("claude", options)
+  if (onPath !== null) return onPath
+  if ((lookup.platform ?? process.platform) !== "win32") {
+    return DEFAULT_CLAUDE_SEARCH_PATHS.find((candidate) => exists(candidate)) ?? null
   }
-  for (const candidate of DEFAULT_CLAUDE_SEARCH_PATHS) {
-    if (existsSync(candidate)) return candidate
-  }
-  return null
+  // A shim cannot be spawned without a shell, which would mangle the prompt arguments,
+  // so run the binary behind an npm install's `claude.cmd` directly.
+  const candidates = [
+    ...pathDirectories(options).map(npmClaudeBinary),
+    ...windowsClaudeSearchPaths(env, lookup.home ?? homedir()),
+  ]
+  return candidates.find((candidate) => exists(candidate)) ?? null
 }
 
 /**
@@ -48,6 +73,25 @@ const INHERITED_ENV_KEYS = [
   "LC_CTYPE",
   "TMPDIR",
   "CLAUDE_CONFIG_DIR",
+  // Windows equivalents of HOME and TMPDIR, plus the system paths networking and the
+  // CLI's Git Bash lookup depend on.
+  "USERPROFILE",
+  "USERNAME",
+  "HOMEDRIVE",
+  "HOMEPATH",
+  "APPDATA",
+  "LOCALAPPDATA",
+  "PROGRAMDATA",
+  "ProgramFiles",
+  "ProgramFiles(x86)",
+  "SystemRoot",
+  "SystemDrive",
+  "WINDIR",
+  "COMSPEC",
+  "PATHEXT",
+  "TEMP",
+  "TMP",
+  "CLAUDE_CODE_GIT_BASH_PATH",
 ] as const
 
 export function buildClaudeEnv(source: NodeJS.ProcessEnv = process.env): Record<string, string> {

@@ -92,7 +92,11 @@ def parse_pages(pipeline: Any, request: ParseRequest, stream: TextIO) -> None:
         if file_digest(source, "sha256").hexdigest() != request.sourceHash:
             raise ParserInputError("source_hash_mismatch")
     request.outputDir.mkdir(parents=True, exist_ok=True)
-    with TemporaryDirectory(prefix="ohmypaper-paddle-worker-") as temporary:
+    # Windows refuses to delete a page image the pipeline still holds open; a leftover
+    # temporary file must not turn pages that were already written into a failed batch.
+    with TemporaryDirectory(
+        prefix="ohmypaper-paddle-worker-", ignore_cleanup_errors=True
+    ) as temporary:
         directory = Path(temporary)
         rendered = render_pages(request.pdfPath, request.pages, directory)
         images = [str(directory / name) for name in rendered]

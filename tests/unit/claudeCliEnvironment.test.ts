@@ -25,6 +25,25 @@ describe("Claude CLI environment", () => {
     })
   })
 
+  it("keeps the Windows profile and system paths the CLI needs to find its login", () => {
+    const env = buildClaudeEnv({
+      PATH: "C:\\Windows\\System32",
+      USERPROFILE: "C:\\Users\\reader",
+      APPDATA: "C:\\Users\\reader\\AppData\\Roaming",
+      SystemRoot: "C:\\Windows",
+      TEMP: "C:\\Users\\reader\\AppData\\Local\\Temp",
+      ANTHROPIC_API_KEY: "sk-ant-secret",
+    })
+
+    expect(env).toMatchObject({
+      USERPROFILE: "C:\\Users\\reader",
+      APPDATA: "C:\\Users\\reader\\AppData\\Roaming",
+      SystemRoot: "C:\\Windows",
+      TEMP: "C:\\Users\\reader\\AppData\\Local\\Temp",
+    })
+    expect(env).not.toHaveProperty("ANTHROPIC_API_KEY")
+  })
+
   it("defaults to the requested model and omits effort for Haiku", () => {
     const sonnet = buildClaudeCompletionArgs({
       model: "claude-sonnet-5",

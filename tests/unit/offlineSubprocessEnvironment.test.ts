@@ -32,4 +32,17 @@ describe("offline subprocess environment", () => {
     expect(env).not.toHaveProperty("HTTPS_PROXY")
     expect(env).not.toHaveProperty("CODEX_AUTH_TOKEN")
   })
+
+  it("keeps the Windows home directory and runs Python in UTF-8 mode", () => {
+    vi.stubEnv("USERPROFILE", "C:\\Users\\reader")
+    vi.stubEnv("USERNAME", "reader")
+    vi.stubEnv("LOCALAPPDATA", "C:\\Users\\reader\\AppData\\Local")
+
+    expect(buildOfflineSubprocessEnv({})).toMatchObject({
+      USERPROFILE: "C:\\Users\\reader",
+      USERNAME: "reader",
+      LOCALAPPDATA: "C:\\Users\\reader\\AppData\\Local",
+      PYTHONUTF8: "1",
+    })
+  })
 })

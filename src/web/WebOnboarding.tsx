@@ -106,7 +106,7 @@ function ApiKeyStep({
   return (
     <form className="web-onboarding-step" onSubmit={(event) => void submit(event)}>
       <h2>API 키로 연결</h2>
-      <p className="web-onboarding-hint">키는 이 Mac의 로컬 저장소에만 보관됩니다.</p>
+      <p className="web-onboarding-hint">키는 이 컴퓨터의 로컬 저장소에만 보관됩니다.</p>
       <span className="web-onboarding-field-label">프로바이더</span>
       <div className="web-onboarding-chips">
         {API_PROVIDERS.map((option) => (
@@ -263,7 +263,7 @@ export function WebOnboarding({
                     <em>권장</em>
                   </span>
                   <span className="web-onboarding-choice-hint">
-                    이 Mac의 Claude Code 로그인으로 · 기본 모델 Haiku 4.5
+                    이 컴퓨터의 Claude Code 로그인으로 · 기본 모델 Haiku 4.5
                   </span>
                 </button>
               ) : null}

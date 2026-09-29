@@ -42,8 +42,10 @@ validated. See [Mac packaging](docs/mac-release.md) for local commands and distr
 
 ### Run from source (local browser app)
 
-Requirements: Node.js 22+ and npm. An Apple Silicon Mac is needed for the optional OCR
-runtime and the desktop app.
+Requirements: Node.js 22+ and npm, on macOS or Windows. The optional OCR runtime needs
+[`uv`](https://docs.astral.sh/uv/) on `PATH`; on Windows with an NVIDIA GPU it can also recognize
+pages through WSL (see [GPU acceleration](#gpu-acceleration-for-paddleocr-vl)). Desktop app
+packages are built for Apple Silicon macOS only.
 
 ```bash
 git clone https://github.com/heonyus/oh-my-paper.git
