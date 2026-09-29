@@ -27,6 +27,19 @@ export const noPaperIds: PaperIds = { doi: null, arxivId: null, s2Id: null, open
 
 const arxivDoiPrefix = "10.48550/arxiv."
 
+/** The DataCite DOI arXiv registers for a paper; OpenAlex and Crossref-style lookups accept it. */
+export function arxivDoiFor(arxivId: string): string {
+  return `${arxivDoiPrefix}${arxivId.toLowerCase()}`
+}
+
+/** "Family, Given", as arXiv and DataCite write names, becomes "Given Family". */
+export function displayName(name: string): string {
+  const parts = name.split(",")
+  if (parts.length !== 2) return name.trim()
+  const [family, given] = parts
+  return `${given?.trim() ?? ""} ${family?.trim() ?? ""}`.trim()
+}
+
 export function normalizedDoiValue(value: string | null | undefined): string | null {
   const doi = value
     ?.trim()

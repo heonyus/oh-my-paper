@@ -42,6 +42,24 @@ describe("Claude CLI environment", () => {
     expect(haiku).not.toContain("--effort")
   })
 
+  it("keeps turns tool-less unless tools are named", () => {
+    const plain = buildClaudeCompletionArgs({ model: "claude-sonnet-5-5", systemPrompt: "system" })
+    expect(plain[plain.indexOf("--tools") + 1]).toBe("")
+    expect(plain).not.toContain("--allowedTools")
+    expect(plain).not.toContain("--max-turns")
+
+    const search = buildClaudeCompletionArgs({
+      model: "claude-sonnet-5-5",
+      systemPrompt: "system",
+      tools: ["WebSearch"],
+      maxTurns: 8,
+    })
+    expect(search[search.indexOf("--tools") + 1]).toBe("WebSearch")
+    expect(search[search.indexOf("--allowedTools") + 1]).toBe("WebSearch")
+    expect(search[search.indexOf("--max-turns") + 1]).toBe("8")
+    expect(search).toContain("--safe-mode")
+  })
+
   it("redacts credentials and control sequences from CLI messages", () => {
     const message = sanitizeClaudeMessage("\u001b[31mfailed sk-ant-abc123 Bearer xyz.789\u001b[0m")
 

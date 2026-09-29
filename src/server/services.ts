@@ -2,6 +2,7 @@ import { fileURLToPath } from "node:url"
 import type { z } from "zod"
 import { type AgentStepListener, askAgent } from "../electron/agentService"
 import { lookupCitation } from "../electron/citationService"
+import { createClaudeWebSearchEngine } from "../electron/claudeWebSearch"
 import { DocumentAnalysisService } from "../electron/documentAnalysisService"
 import { DocumentAstService } from "../electron/documentAstService"
 import { createDocumentPageParser } from "../electron/documentPageParser"
@@ -39,6 +40,7 @@ import type { WebServerConfig } from "./config"
 import { JevDecisionService } from "./decisionService"
 import { deleteLibraryDocument } from "./documentDeletion"
 import { MeaningSearchService } from "./meaningSearchService"
+import { claudeModelOf } from "./subscriptionAi"
 import { createWebAiRuntime } from "./webAiRuntime"
 
 export type WebServices = {
@@ -98,6 +100,17 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
   const meaningSearch = new MeaningSearchService(config.dataDir)
   const jobs = createAiJobStreams(ai)
   const paperSources = createPaperDiscoverySources()
+  // In Claude subscription mode the CLI's own WebSearch backs a once-per-turn web fallback.
+  const paperSourcesWithWeb = createPaperDiscoverySources(process.env, {
+    fallbackEngine: createClaudeWebSearchEngine({
+      claude,
+      settings: () => ({ model: claudeModelOf(ai.modeSettings()), effort: "low" }),
+    }),
+  })
+  const discoverySources = async () => {
+    if (ai.modeSettings().mode !== "claude" || !claude.isAvailable) return paperSources
+    return (await claude.getStatus()).authenticated ? paperSourcesWithWeb : paperSources
+  }
   let metadataSaveQueue: Promise<void> = Promise.resolve()
   const saveMetadata = async (input: DiscoverySaveInput): Promise<DiscoverySaveResult> => {
     const parsed = discoverySaveInputSchema.parse(input)
@@ -125,7 +138,7 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
       askAgent(
         input,
         {
-          sources: paperSources,
+          sources: await discoverySources(),
           complete: (messages, options) => ai.chat(messages, options),
           contextDocs: async (ids): Promise<readonly AgentContextDoc[]> => {
             if (ids.length === 0) return []

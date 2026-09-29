@@ -16,6 +16,8 @@ export type ClaudeCompletionOptions = {
   readonly model: string
   readonly effort?: ClaudeEffort | undefined
   readonly jsonSchema?: Readonly<Record<string, unknown>> | undefined
+  readonly tools?: readonly string[] | undefined
+  readonly maxTurns?: number | undefined
   readonly onDelta?: ((delta: string) => void) | undefined
   readonly signal?: AbortSignal | undefined
   readonly timeoutMs?: number | undefined

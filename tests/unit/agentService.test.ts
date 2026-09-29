@@ -273,7 +273,7 @@ describe("askAgent quick search", () => {
     expect(judged?.detail).toContain("키워드 일치로 판정")
   })
 
-  it("skips a rate-limited source for the rest of the run", async () => {
+  it("rests a rate-limited source and lists it only on rows where nothing else ran", async () => {
     const h = harness()
     let s2Calls = 0
     const steps: AgentStep[] = []
@@ -298,6 +298,53 @@ describe("askAgent quick search", () => {
       .map((step) => step.detail)
     expect(details).toContain("arXiv 1 · Semantic Scholar 요청 한도 초과")
     expect(details).toContain("arXiv 1")
+  })
+
+  it("says why a row ran nothing when every keyword source is resting", async () => {
+    const steps: AgentStep[] = []
+    const limited = async () => {
+      throw new PaperSourceError("rate_limited", 429)
+    }
+    await askAgent(
+      { question: "q" },
+      {
+        complete: completion(harness()),
+        contextDocs: () => [],
+        sources: sources({ s2: limited, arxiv: limited }),
+      },
+      (step) => steps.push(step),
+    )
+    const failed = steps
+      .filter((step) => step.kind === "search" && step.status === "failed")
+      .map((step) => step.detail)
+    expect(failed).toContain("arXiv 요청 한도 초과 · Semantic Scholar 요청 한도 초과")
+    expect(failed).toContain("arXiv 한도 초과로 건너뜀 · Semantic Scholar 한도 초과로 건너뜀")
+  })
+
+  it("tries a rate-limited source again once its cool-down has passed", async () => {
+    let clock = 1_000_000
+    let s2Calls = 0
+    const result = await askAgent(
+      { question: "q" },
+      {
+        complete: completion(harness()),
+        contextDocs: () => [],
+        // Every look at the clock moves it past the 20 s cool-down.
+        now: () => {
+          clock += 25_000
+          return new Date(clock)
+        },
+        sources: sources({
+          s2: async () => {
+            s2Calls += 1
+            if (s2Calls === 1) throw new PaperSourceError("rate_limited", 429, 5)
+            return [candidate("A core result")]
+          },
+        }),
+      },
+    )
+    expect(s2Calls).toBe(2)
+    expect(result.papers.map((paper) => paper.title)).toEqual(["A core result"])
   })
 
   it("uses history for planning and cites attached library papers", async () => {
@@ -377,6 +424,82 @@ describe("askAgent quick search", () => {
         { complete: completion(harness()), contextDocs: () => [], sources: sources() },
       ),
     ).rejects.toThrow()
+  })
+})
+
+describe("askAgent web fallback", () => {
+  it("searches the web once when the indices find fewer than two relevant papers", async () => {
+    const h = harness()
+    const steps: AgentStep[] = []
+    const webQueries: string[] = []
+    const result = await askAgent(
+      { question: "medRSI 논문 찾아와" },
+      {
+        complete: completion(h),
+        contextDocs: () => [],
+        sources: {
+          ...sources({ semantic: async () => [candidate("Nothing relevant")] }),
+          fallback: {
+            label: "웹(Claude)",
+            search: async ({ query }) => {
+              webQueries.push(query)
+              return [candidate("The core web paper")]
+            },
+          },
+        },
+      },
+      (step) => steps.push(step),
+    )
+    expect(webQueries).toEqual([
+      "medRSI 논문 찾아와 (keywords: parametric memory | document memorization)",
+    ])
+    expect(h.calls).toEqual(["plan", "judge", "judge", "compose"])
+    expect(steps.find((step) => step.kind === "fallback" && step.status === "done")).toMatchObject({
+      found: 1,
+      detail: "웹(Claude) 1",
+    })
+    expect(result.papers.map((paper) => paper.title)).toEqual(["The core web paper"])
+  })
+
+  it("leaves the web alone when the indices already found enough", async () => {
+    let webCalls = 0
+    await askAgent(
+      { question: "q" },
+      {
+        complete: completion(harness()),
+        contextDocs: () => [],
+        sources: {
+          ...sources({
+            semantic: async () => [candidate("First core paper"), candidate("Second core paper")],
+          }),
+          fallback: {
+            label: "웹(Claude)",
+            search: async () => {
+              webCalls += 1
+              return []
+            },
+          },
+        },
+      },
+    )
+    expect(webCalls).toBe(0)
+  })
+
+  it("still searches the web when every index came back empty", async () => {
+    const h = harness()
+    const result = await askAgent(
+      { question: "q" },
+      {
+        complete: completion(h),
+        contextDocs: () => [],
+        sources: {
+          ...sources(),
+          fallback: { label: "웹(Claude)", search: async () => [candidate("A useful web paper")] },
+        },
+      },
+    )
+    expect(h.calls).toEqual(["plan", "judge", "compose"])
+    expect(result.papers.map((paper) => paper.title)).toEqual(["A useful web paper"])
   })
 })
 

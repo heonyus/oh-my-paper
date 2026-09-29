@@ -30,6 +30,8 @@ export type PaperDiscoverySources = {
     limit: number,
     signal?: AbortSignal,
   ) => Promise<readonly PaperCandidate[]>
+  /** A slower web search run once per turn when the indices come up short; null when unavailable. */
+  readonly fallback?: { readonly label: string; readonly search: PaperSearchFunction } | null
 }
 
 export type RoundLimits = {
@@ -38,9 +40,17 @@ export type RoundLimits = {
   readonly expansionLimit: number
 }
 
+export type DiscoveryRunOptions = {
+  readonly now?: () => number
+  readonly rateLimitCooldownMs?: number
+}
+
+/** After a rate limit, a source rests this long (or its `Retry-After`, if longer) before retry. */
+export const RATE_LIMIT_COOLDOWN_MS = 20_000
+
 type Lookup = { readonly label: string; readonly run: () => Promise<readonly PaperCandidate[]> }
 
-const skippedNote = "건너뜀"
+const skippedNote = "한도 초과로 건너뜀"
 
 type LookupOutcome = {
   readonly label: string
@@ -74,19 +84,26 @@ function serialQueue(): <T>(task: () => Promise<T>) => Promise<T> {
 
 /**
  * One research run: pools candidates across rounds, keeps a fused rank per paper, and reports
- * each lookup as a step. A source that rate-limits is skipped for the rest of the run.
+ * each lookup as a step. A source that rate-limits rests for a cool-down before it is tried
+ * again; rows that ran nothing because every source was resting say so.
  */
 export class DiscoveryRun {
   readonly pool = new CandidatePool()
   readonly #rank = new Map<string, number>()
-  readonly #blocked = new Set<string>()
+  readonly #restingUntil = new Map<string, number>()
   readonly #queues = new Map<string, <T>(task: () => Promise<T>) => Promise<T>>()
+  readonly #now: () => number
+  readonly #cooldownMs: number
 
   constructor(
     readonly sources: PaperDiscoverySources,
     readonly onStep: (step: AgentStep) => void,
     readonly signal?: AbortSignal,
-  ) {}
+    options: DiscoveryRunOptions = {},
+  ) {
+    this.#now = options.now ?? Date.now
+    this.#cooldownMs = options.rateLimitCooldownMs ?? RATE_LIMIT_COOLDOWN_MS
+  }
 
   rankOf(id: string): number {
     return this.#rank.get(id) ?? 0
@@ -116,6 +133,19 @@ export class DiscoveryRun {
     return created
   }
 
+  #resting(label: string): boolean {
+    const until = this.#restingUntil.get(label)
+    if (until === undefined) return false
+    if (this.#now() < until) return true
+    this.#restingUntil.delete(label)
+    return false
+  }
+
+  #rest(label: string, error: PaperSourceError): void {
+    const hinted = (error.retryAfterSeconds ?? 0) * 1_000
+    this.#restingUntil.set(label, this.#now() + Math.max(this.#cooldownMs, hinted))
+  }
+
   async #runLookups(
     stepBase: Omit<AgentStep, "status">,
     lookups: readonly Lookup[],
@@ -127,7 +157,7 @@ export class DiscoveryRun {
       lookups.map((lookup) =>
         this.#queue(lookup.label)(async (): Promise<LookupOutcome> => {
           const skipped = { label: lookup.label, found: null, added: 0 }
-          if (this.#blocked.has(lookup.label)) return { ...skipped, note: skippedNote }
+          if (this.#resting(lookup.label)) return { ...skipped, note: skippedNote }
           try {
             const found = await lookup.run()
             const added = this.#addRanked(found, weight, window)
@@ -135,7 +165,7 @@ export class DiscoveryRun {
           } catch (error) {
             if (this.signal?.aborted) throw error
             if (error instanceof PaperSourceError && error.kind === "rate_limited") {
-              this.#blocked.add(lookup.label)
+              this.#rest(lookup.label, error)
             }
             return { ...skipped, note: failureLabel(error) }
           }
@@ -143,13 +173,14 @@ export class DiscoveryRun {
       ),
     )
     const added = outcomes.reduce((sum, outcome) => sum + outcome.added, 0)
+    const allSkipped = outcomes.every((outcome) => outcome.note === skippedNote)
     this.onStep({
       ...stepBase,
       status: outcomes.every((outcome) => outcome.found === null) ? "failed" : "done",
       found: added,
-      // A source already reported as rate-limited is not repeated on every later row.
+      // A resting source is only listed when nothing else ran on this row.
       detail: outcomes
-        .filter((outcome, _index, all) => outcome.note !== skippedNote || all.length === 1)
+        .filter((outcome) => outcome.note !== skippedNote || allSkipped)
         .map((outcome) => `${outcome.label} ${outcome.found ?? outcome.note ?? ""}`)
         .join(" · ")
         .slice(0, 500),
@@ -193,6 +224,17 @@ export class DiscoveryRun {
     )
     const counts = await Promise.all([...semantic, ...keyword])
     return counts.reduce((sum, count) => sum + count, 0)
+  }
+
+  /** One web search for the whole request, ranked like semantic hits; nothing when unconfigured. */
+  fallback(round: number, query: string, window: SearchWindow, limit: number): Promise<number> {
+    const source = this.sources.fallback
+    if (!source) return Promise.resolve(0)
+    return this.#runLookups(
+      { id: `fallback:${round}`, kind: "fallback", query: query.slice(0, 300) },
+      [{ label: source.label, run: () => source.search({ ...window, query, limit }, this.signal) }],
+      1.2,
+    )
   }
 
   /** Follows recommendations, references and citing papers of the best papers so far. */

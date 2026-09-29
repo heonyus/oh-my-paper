@@ -14,6 +14,8 @@ export class PaperSourceError extends Error {
   constructor(
     readonly kind: PaperSourceErrorKind,
     readonly httpStatus: number | null = null,
+    /** Seconds the provider asked callers to wait, when its 429 said so. */
+    readonly retryAfterSeconds: number | null = null,
   ) {
     super(`paper_source_${kind}${httpStatus === null ? "" : `_${httpStatus}`}`)
   }
@@ -86,8 +88,12 @@ export class RequestPacer {
 /** Shared per-host pacing so concurrent searches never exceed each provider's published limits. */
 export const sourcePacers = {
   arxiv: new RequestPacer(3_100, true),
+  /** arxiv.org abstract pages, paced like the API but not queued behind it. */
+  arxivSite: new RequestPacer(3_100, true),
   openalex: new RequestPacer(1_100),
   semanticscholar: new RequestPacer(1_100),
+  datacite: new RequestPacer(1_100),
+  web: new RequestPacer(1_100),
 } as const
 
 export type SourceRequest = {
@@ -131,6 +137,7 @@ export async function requestSource(request: SourceRequest): Promise<string> {
       throw new PaperSourceError(
         response.statusCode === 429 ? "rate_limited" : "http_error",
         response.statusCode,
+        response.retryAfterSeconds,
       )
     }
     await sleep(retryDelayMs(response, attempt), request.signal)
