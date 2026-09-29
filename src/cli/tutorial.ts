@@ -15,7 +15,10 @@ export function quickstart(url: string, dataDir: string): string {
     `${" ".repeat(10)}${key("T")} 번역  ${key("E")} 설명  ${key("C")} 노트에  ${key("H")} 하이라이트`,
     row("노트", "툴바의 노트 — 내 말로 쓰면 근거가 된 문단을 옆에 보여줍니다"),
     "",
-    row("데이터", `${dataDir.replace(homedir(), "~")} ${gray("(PDF·노트·캐시 모두 이 Mac에만)")}`),
+    row(
+      "데이터",
+      `${dataDir.replace(homedir(), "~")} ${gray("(PDF·노트·캐시 모두 이 컴퓨터에만)")}`,
+    ),
     row("명령어", `oh-my-paper ${dim("start · onboard · doctor · update · help")}`),
   ].join("\n")
 }

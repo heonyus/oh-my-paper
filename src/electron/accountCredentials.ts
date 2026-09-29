@@ -1,7 +1,8 @@
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { safeStorage } from "electron"
 import { type AccountCredentialVault, accountCredentialVaultSchema } from "../shared/accountSchemas"
+import { replaceFile } from "./fileReplace"
 
 export class AccountCredentialError extends Error {
   readonly name = "AccountCredentialError"
@@ -72,7 +73,7 @@ export class AccountCredentialStore implements AccountCredentialPersistence {
     const temporaryFile = `${this.#file}.${crypto.randomUUID()}.tmp`
     try {
       await writeFile(temporaryFile, encrypted, { mode: 0o600, flag: "wx" })
-      await rename(temporaryFile, this.#file)
+      await replaceFile(temporaryFile, this.#file)
     } catch (error) {
       await rm(temporaryFile, { force: true })
       throw error

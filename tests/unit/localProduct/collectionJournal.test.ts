@@ -119,39 +119,43 @@ describe("collection journal", () => {
     await service.close()
   })
 
-  it("preserves the last committed bytes when the note directory is read-only", async () => {
-    const collection = await root()
-    const noteId = randomUUID()
-    const path = `notes/${noteId}.md`
-    const oldBytes = createCanonicalNoteBytes(noteId, "old bytes\n")
-    const files = await CollectionFiles.open(collection)
-    const saved = await files.saveNote({
-      relativePath: path,
-      bytes: oldBytes,
-      expectedRevision: null,
-      reason: "explicit_save",
-    })
-    if (saved.kind !== "saved") throw new Error("fixture save did not complete")
-    await chmod(join(collection, "notes"), 0o500)
+  // Windows ignores the read-only mode on a directory, so the write would succeed there.
+  it.skipIf(process.platform === "win32")(
+    "preserves the last committed bytes when the note directory is read-only",
+    async () => {
+      const collection = await root()
+      const noteId = randomUUID()
+      const path = `notes/${noteId}.md`
+      const oldBytes = createCanonicalNoteBytes(noteId, "old bytes\n")
+      const files = await CollectionFiles.open(collection)
+      const saved = await files.saveNote({
+        relativePath: path,
+        bytes: oldBytes,
+        expectedRevision: null,
+        reason: "explicit_save",
+      })
+      if (saved.kind !== "saved") throw new Error("fixture save did not complete")
+      await chmod(join(collection, "notes"), 0o500)
 
-    try {
-      await expect(
-        files.saveNote({
-          relativePath: path,
-          bytes: createCanonicalNoteBytes(noteId, "must not replace\n"),
-          expectedRevision: saved.note.revision,
-          reason: "explicit_save",
-        }),
-      ).rejects.toMatchObject({ name: "CollectionFileError", kind: "write_failed" })
-      expect(await readFile(join(collection, path))).toEqual(Buffer.from(oldBytes))
-      expect(Buffer.from((await files.history.readRecoveryDraft(noteId)) ?? [])).toEqual(
-        Buffer.from(createCanonicalNoteBytes(noteId, "must not replace\n")),
-      )
-    } finally {
-      await chmod(join(collection, "notes"), 0o700)
-      await files.close()
-    }
-  })
+      try {
+        await expect(
+          files.saveNote({
+            relativePath: path,
+            bytes: createCanonicalNoteBytes(noteId, "must not replace\n"),
+            expectedRevision: saved.note.revision,
+            reason: "explicit_save",
+          }),
+        ).rejects.toMatchObject({ name: "CollectionFileError", kind: "write_failed" })
+        expect(await readFile(join(collection, path))).toEqual(Buffer.from(oldBytes))
+        expect(Buffer.from((await files.history.readRecoveryDraft(noteId)) ?? [])).toEqual(
+          Buffer.from(createCanonicalNoteBytes(noteId, "must not replace\n")),
+        )
+      } finally {
+        await chmod(join(collection, "notes"), 0o700)
+        await files.close()
+      }
+    },
+  )
 
   it("rejects a second app writer", async () => {
     const collection = await root()

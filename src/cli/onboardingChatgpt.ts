@@ -1,4 +1,3 @@
-import { execFile } from "node:child_process"
 import { confirm, isCancel, log, note, select, spinner } from "@clack/prompts"
 import type { CodexSubscriptionAdapter } from "../electron/codexSubscriptionAdapter"
 import {
@@ -9,21 +8,10 @@ import {
   defaultCodexModel,
 } from "../shared/codexTypes"
 import { type CodexReasoningEffort, codexReasoningEffortSchema } from "../shared/ipc"
+import { openBrowser } from "./openBrowser"
 import { bold, dim, link } from "./style"
 
 const DEFAULT_EFFORT: CodexReasoningEffort = "medium"
-
-function openBrowser(url: string): void {
-  const command =
-    process.platform === "darwin" ? "open" : process.platform === "win32" ? "cmd" : "xdg-open"
-  const args =
-    process.platform === "darwin"
-      ? [url]
-      : process.platform === "win32"
-        ? ["/c", "start", "", url]
-        : [url]
-  execFile(command, args, () => undefined)
-}
 
 async function waitForLogin(
   subscription: CodexSubscriptionAdapter,
@@ -102,7 +90,7 @@ export async function runChatgptOnboarding(
         {
           value: "chatgpt",
           label: "브라우저로 로그인",
-          hint: "이 Mac의 브라우저가 열립니다 · 권장",
+          hint: "이 컴퓨터의 브라우저가 열립니다 · 권장",
         },
         {
           value: "chatgptDeviceCode",

@@ -119,7 +119,9 @@ def main(
     with pdf_path.open("rb") as source:
         if file_digest(source, "sha256").hexdigest() != source_hash:
             raise ParserInputError("source_hash_mismatch")
-    with TemporaryDirectory(prefix="ohmypaper-paddle-page-") as temporary:
+    with TemporaryDirectory(
+        prefix="ohmypaper-paddle-page-", ignore_cleanup_errors=True
+    ) as temporary:
         image_path = Path(temporary) / f"page-{page_number}.png"
         width, height = render_page(pdf_path, page_number, image_path)
         pipeline = (

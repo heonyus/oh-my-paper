@@ -107,7 +107,7 @@ async function reportEnvironment(
   codexAvailable: boolean,
   claudeAvailable: boolean,
 ): Promise<Awaited<ReturnType<typeof checkEnvironment>>> {
-  stepTitle(1, "실행 환경", "필요한 것들이 이 Mac에 준비돼 있는지 확인합니다.")
+  stepTitle(1, "실행 환경", "필요한 것들이 이 컴퓨터에 준비돼 있는지 확인합니다.")
   const report = await checkEnvironment(config, codexAvailable)
 
   const [major = 0] = process.versions.node.split(".").map(Number)
@@ -225,7 +225,7 @@ export async function runOnboarding(
           value: "claude" as const,
           label: "Claude 구독 (Anthropic)",
           hint: claude.isAvailable
-            ? `이 Mac의 Claude Code 로그인 · ${modelLabel(CLAUDE_MODEL_OPTIONS, DEFAULT_CLAUDE_MODEL)}`
+            ? `이 컴퓨터의 Claude Code 로그인 · ${modelLabel(CLAUDE_MODEL_OPTIONS, DEFAULT_CLAUDE_MODEL)}`
             : "Claude Code CLI 설치가 필요합니다",
         },
         {

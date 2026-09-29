@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto"
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { z } from "zod"
 import { type DocumentId, documentIdSchema } from "../shared/schemas"
+import { replaceFile } from "./fileReplace"
 
 const storedStateSchema = z.discriminatedUnion("version", [
   z.object({
@@ -69,7 +70,7 @@ export class DocumentAnalysisStateStore {
         await mkdir(this.root, { recursive: true })
         const temporaryFile = `${this.#file}.${randomUUID()}.tmp`
         await writeFile(temporaryFile, JSON.stringify(parsed), { encoding: "utf8", mode: 0o600 })
-        await rename(temporaryFile, this.#file)
+        await replaceFile(temporaryFile, this.#file)
       })
     this.#writeQueue = operation
     await operation

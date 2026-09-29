@@ -1,7 +1,8 @@
-import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises"
+import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { type DocumentId, documentIdSchema } from "../shared/ids"
 import { mergeReaderNotes, type ReaderNote, readerNoteSchema } from "../shared/readerNote"
+import { replaceFile } from "./fileReplace"
 
 /** Each paper's note is a plain Markdown file the reader can open outside the app. */
 function notesDirectory(root: string): string {
@@ -42,7 +43,7 @@ async function writeNote(root: string, note: ReaderNote): Promise<void> {
   const target = notePath(root, note.documentId)
   const temporary = `${target}.tmp`
   await writeFile(temporary, note.markdown, { encoding: "utf8", mode: 0o600 })
-  await rename(temporary, target)
+  await replaceFile(temporary, target)
 }
 
 /**

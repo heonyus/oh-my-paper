@@ -93,11 +93,11 @@ describe("selective local document enrichment", () => {
 
 describe("local enrichment adapter", () => {
   it("resolves dev and packaged scripts without changing the fast pass", () => {
-    expect(localEnrichmentRuntimePython("/Users/test", "darwin")).toContain(
-      ".ohmypaper/layout-runtime/bin/python",
+    expect(localEnrichmentRuntimePython("/Users/test", "darwin")).toBe(
+      join("/Users/test", ".ohmypaper", "layout-runtime", "bin", "python"),
     )
     expect(localEnrichmentScriptPath("/repo", "/App/Resources", true)).toBe(
-      "/App/Resources/layout/pp_structure_enrichment.py",
+      join("/App/Resources", "layout", "pp_structure_enrichment.py"),
     )
   })
 

@@ -37,7 +37,7 @@ export function ClaudeSettings({
         <div className="codex-card-titles">
           <h4>Claude 구독 연결</h4>
           <p className="settings-help">
-            이 Mac의 Claude Code 로그인으로 구독 사용량을 이용합니다. API 키는 쓰지 않습니다.
+            이 컴퓨터의 Claude Code 로그인으로 구독 사용량을 이용합니다. API 키는 쓰지 않습니다.
           </p>
         </div>
         <span className="settings-badge" data-status={badgeStatus} role="status">

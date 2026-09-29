@@ -17,20 +17,20 @@ describe("document layout service paths", () => {
 
   it("resolves the managed macOS runtime", () => {
     expect(layoutRuntimePython("/Users/test", "darwin")).toBe(
-      "/Users/test/.ohmypaper/layout-runtime/bin/python",
+      join("/Users/test", ".ohmypaper", "layout-runtime", "bin", "python"),
     )
   })
 
   it("resolves the managed Windows runtime", () => {
-    expect(layoutRuntimePython("C:\\Users\\test", "win32")).toContain(
-      ".ohmypaper/layout-runtime/Scripts/python.exe",
+    expect(layoutRuntimePython("C:\\Users\\test", "win32")).toBe(
+      join("C:\\Users\\test", ".ohmypaper", "layout-runtime", "Scripts", "python.exe"),
     )
   })
 
   it("honors an explicit runtime and packaged script path", () => {
     expect(layoutRuntimePython("/home/test", "linux", "/custom/python")).toBe("/custom/python")
     expect(layoutScriptPath("/repo", "/Applications/App/Resources", true)).toBe(
-      "/Applications/App/Resources/layout/pp_structure_layout.py",
+      join("/Applications/App/Resources", "layout", "pp_structure_layout.py"),
     )
   })
 

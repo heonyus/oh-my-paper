@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process"
 import { access } from "node:fs/promises"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { findOnPath } from "../electron/executableLookup"
 import { PaddlePageParserService } from "../electron/paddlePageParserService"
 import type { WebServerConfig } from "../server/config"
 
@@ -13,11 +14,6 @@ export type EnvironmentReport = {
 }
 
 const sourceRoot = fileURLToPath(new URL("../..", import.meta.url))
-
-function commandAvailable(command: string): boolean {
-  const result = spawnSync("which", [command], { stdio: "ignore" })
-  return result.status === 0
-}
 
 export async function checkEnvironment(
   _config: WebServerConfig,
@@ -47,7 +43,7 @@ export async function checkEnvironment(
   return {
     codexRuntime: codexAvailable,
     ocrReady,
-    uvAvailable: commandAvailable("uv"),
+    uvAvailable: findOnPath("uv") !== null,
     nodeModules,
   }
 }

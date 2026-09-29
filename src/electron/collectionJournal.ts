@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto"
 import type { FileHandle } from "node:fs/promises"
-import { mkdir, open, readdir, readFile, rename, rm } from "node:fs/promises"
+import { mkdir, open, readdir, readFile, rm } from "node:fs/promises"
 import { basename, dirname, join } from "node:path"
 import { z } from "zod"
 import {
@@ -10,6 +10,7 @@ import {
   collectionRevisionSchema,
   type NoteId,
 } from "../shared/collectionSchemas"
+import { replaceFile } from "./fileReplace"
 
 export type JournalStageInput = {
   readonly kind: "note" | "asset"
@@ -51,7 +52,7 @@ export async function replaceDurably(path: string, bytes: Uint8Array): Promise<v
   const temporary = join(dirname(path), `.${basename(path)}.${randomUUID()}.tmp`)
   try {
     await writeNewFlushed(temporary, bytes)
-    await rename(temporary, path)
+    await replaceFile(temporary, path)
     await syncDirectory(dirname(path))
   } catch (error) {
     await rm(temporary, { force: true })
@@ -123,7 +124,7 @@ export class CollectionJournal {
     if (currentRevision !== entry.previousRevision) {
       throw new CollectionJournalError("target_changed")
     }
-    await rename(join(this.root, entry.temporaryRelativePath), target)
+    await replaceFile(join(this.root, entry.temporaryRelativePath), target)
     await syncDirectory(dirname(target))
     return await this.update(entry, "file_committed")
   }

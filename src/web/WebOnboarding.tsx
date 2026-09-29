@@ -162,7 +162,7 @@ function ApiKeyStep({
   return (
     <form className="web-onboarding-step" onSubmit={(event) => void submit(event)}>
       <h2>API 키로 연결</h2>
-      <p className="web-onboarding-hint">키는 이 Mac의 로컬 저장소에만 보관됩니다.</p>
+      <p className="web-onboarding-hint">키는 이 컴퓨터의 로컬 저장소에만 보관됩니다.</p>
       <span className="web-onboarding-field-label">프로바이더</span>
       <div className="web-onboarding-chips">
         {API_PROVIDERS.map((option) => (
@@ -322,8 +322,8 @@ export function WebOnboarding({
           <span>다시 찾을 수 있게.</span>
         </p>
         <p className="web-onboarding-lede">
-          PDF는 그대로 두고, 번역·설명·노트를 원문 자리에 붙여 둡니다. 문서는 이 Mac 밖으로 나가지
-          않습니다.
+          PDF는 그대로 두고, 번역·설명·노트를 원문 자리에 붙여 둡니다. 문서는 이 컴퓨터 밖으로
+          나가지 않습니다.
         </p>
         <ReaderVignette />
       </section>
@@ -351,7 +351,7 @@ export function WebOnboarding({
                   icon={<Sparkles size={18} />}
                   title="Claude 구독"
                   badge="API 키 불필요"
-                  hint={`이 Mac의 Claude Code 로그인 · ${CLAUDE_DEFAULT_LABEL}`}
+                  hint={`이 컴퓨터의 Claude Code 로그인 · ${CLAUDE_DEFAULT_LABEL}`}
                   onClick={() => setStep("claude")}
                 />
               ) : null}

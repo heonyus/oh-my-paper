@@ -1,10 +1,11 @@
-import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises"
+import { access, mkdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { ZodError } from "zod"
 import { type ClaudeEffort, claudeEffortSchema } from "../shared/claudeTypes"
 import { CODEX_DEFAULT_MODEL } from "../shared/codexTypes"
 import { type CodexReasoningEffort, codexReasoningEffortSchema } from "../shared/ipc"
 import { type AiMode, aiModeSchema } from "../shared/providerModels"
+import { replaceFile } from "./fileReplace"
 
 export class AiModeConfigurationError extends Error {
   constructor(message: string) {
@@ -95,7 +96,7 @@ export class AiModeStore {
       encoding: "utf8",
       mode: 0o600,
     })
-    await rename(temporaryPath, this.filePath)
+    await replaceFile(temporaryPath, this.filePath)
   }
 }
 
