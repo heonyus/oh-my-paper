@@ -40,6 +40,7 @@ import {
   scholarlySearchResultSchema,
   scholarlySearchStreamEventSchema,
 } from "../shared/scholarlySearchSchemas"
+import { workspacePatchRequestSchema, workspacePatchSavedSchema } from "../shared/workspacePatch"
 import { createClaudeRoutes } from "./claudeRoutes"
 import type { WebServerConfig } from "./config"
 import { streamParsedPage } from "./pageParseStream"
@@ -219,6 +220,15 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
         const body = await readJson(req, workspaceSchema)
         const saved = await services.store.save(body)
         sendJson(res, 200, saved)
+        return
+      }
+
+      if (pathname === "/api/workspace/patch" && req.method === "POST") {
+        const result = await services.store.savePatch(
+          await readJson(req, workspacePatchRequestSchema),
+        )
+        if (result.status === "saved") sendJson(res, 200, workspacePatchSavedSchema.parse(result))
+        else sendError(res, 409, "workspace_conflict")
         return
       }
 

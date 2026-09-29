@@ -111,6 +111,7 @@ import {
   workspaceSchema,
 } from "./schemas"
 import type { ScholarlyGraphApi } from "./scholarlyGraphIpc"
+import type { WorkspacePatchRequest, WorkspacePatchResult } from "./workspacePatch"
 
 export const preparationSteps = [
   "pdf_check",
@@ -301,6 +302,8 @@ export type OhMyPaperApi = {
   readonly collection?: CollectionApi
   readonly readWorkspace: () => Promise<Workspace>
   readonly saveWorkspace: (workspace: Workspace) => Promise<Workspace>
+  /** Saves edits since an acknowledged snapshot; absent where the backend keeps no snapshots. */
+  readonly saveWorkspacePatch?: (request: WorkspacePatchRequest) => Promise<WorkspacePatchResult>
   readonly importDocument: () => Promise<ImportResult>
   readonly importDocumentPath: (path: string) => Promise<ImportResult>
   readonly importDocumentPaths: (paths: readonly string[]) => Promise<readonly ImportResult[]>

@@ -28,6 +28,7 @@ const publicChannels: ReadonlySet<string> = new Set([
 ])
 const dirtySaveChannels: ReadonlySet<string> = new Set([
   ipcChannels.workspaceSave,
+  ipcChannels.workspaceSavePatch,
   ipcChannels.workspaceFlush,
   accountRecoverySaveChannel,
 ])

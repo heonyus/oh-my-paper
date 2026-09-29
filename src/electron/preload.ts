@@ -50,6 +50,7 @@ import {
   pageTranslationCacheWriteRequestSchema,
 } from "../shared/pageTranslationCache"
 import { unavailableWebFeature } from "../shared/unavailableWebFeatures"
+import { workspacePatchRequestSchema, workspacePatchResultSchema } from "../shared/workspacePatch"
 import { createPreloadAccount } from "./preloadAccount"
 import { createPreloadBackup } from "./preloadBackup"
 import { createBibliographyPreload } from "./preloadBibliography"
@@ -91,6 +92,13 @@ const api: OhMyPaperApi = {
       await ipcRenderer.invoke(ipcChannels.workspaceSave, value),
     )
   },
+  saveWorkspacePatch: async (request) =>
+    workspacePatchResultSchema.parse(
+      await ipcRenderer.invoke(
+        ipcChannels.workspaceSavePatch,
+        workspacePatchRequestSchema.parse(request),
+      ),
+    ),
   importDocument: async () =>
     importResultSchema.parse(await ipcRenderer.invoke(ipcChannels.documentImport)),
   importDocumentPath: async (path) => {
