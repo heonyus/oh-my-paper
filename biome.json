@@ -23,7 +23,10 @@
       "!.omo/evidence",
       "!test-results",
       "!playwright-report",
-      "!recording-review-*"
+      "!recording-review-*",
+      "!promo/out",
+      "!promo/public/frames",
+      "!promo/public/timeline-*.json"
     ]
   },
   "formatter": {

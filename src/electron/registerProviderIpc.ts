@@ -1,4 +1,5 @@
 import { ipcMain } from "electron"
+import { CODEX_DEFAULT_MODEL } from "../shared/codexTypes"
 import {
   aiJobCancelRequestSchema,
   aiJobEventSchema,
@@ -83,9 +84,9 @@ export function registerProviderIpc(
       return providerStatusSchema.parse({
         configured: codexStatus.authenticated,
         provider: "openai",
-        model: settings.codexModel ?? "gpt-5.6-sol",
+        model: settings.codexModel ?? CODEX_DEFAULT_MODEL,
         mode: settings.mode,
-        codexModel: settings.codexModel ?? "gpt-5.6-sol",
+        codexModel: settings.codexModel ?? CODEX_DEFAULT_MODEL,
         codexReasoningEffort: settings.codexReasoningEffort ?? "medium",
       })
     }
@@ -106,10 +107,10 @@ export function registerProviderIpc(
       const text = await codexAdapter.runCompletion({
         prompt,
         imageDataUrl: request.imageDataUrl,
-        model: settings.codexModel ?? "gpt-5.6-sol",
+        model: settings.codexModel ?? CODEX_DEFAULT_MODEL,
         reasoningEffort: settings.codexReasoningEffort ?? "medium",
       })
-      return aiResultSchema.parse({ text, model: settings.codexModel ?? "gpt-5.6-sol" })
+      return aiResultSchema.parse({ text, model: settings.codexModel ?? CODEX_DEFAULT_MODEL })
     }
     return aiResultSchema.parse(await provider.run(request))
   })
@@ -123,7 +124,7 @@ export function registerProviderIpc(
       const text = await codexAdapter.runCompletion({
         prompt,
         imageDataUrl: streamRequest.request.imageDataUrl,
-        model: settings.codexModel ?? "gpt-5.6-sol",
+        model: settings.codexModel ?? CODEX_DEFAULT_MODEL,
         reasoningEffort: settings.codexReasoningEffort ?? "medium",
         onDelta: (delta) => {
           if (!event.sender.isDestroyed()) {
@@ -134,7 +135,7 @@ export function registerProviderIpc(
           }
         },
       })
-      return aiResultSchema.parse({ text, model: settings.codexModel ?? "gpt-5.6-sol" })
+      return aiResultSchema.parse({ text, model: settings.codexModel ?? CODEX_DEFAULT_MODEL })
     }
     return aiResultSchema.parse(
       await provider.runStream(streamRequest.request, (delta) => {
@@ -163,14 +164,14 @@ export function registerProviderIpc(
           const text = await codexAdapter.runCompletion({
             prompt,
             imageDataUrl: request.request.imageDataUrl,
-            model: settings.codexModel ?? "gpt-5.6-sol",
+            model: settings.codexModel ?? CODEX_DEFAULT_MODEL,
             reasoningEffort: settings.codexReasoningEffort ?? "medium",
             onDelta,
             signal,
           })
           return {
             text,
-            model: settings.codexModel ?? "gpt-5.6-sol",
+            model: settings.codexModel ?? CODEX_DEFAULT_MODEL,
             inputTokens: null,
             outputTokens: null,
             estimatedCostUsd: null,

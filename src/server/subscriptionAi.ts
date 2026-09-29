@@ -5,6 +5,7 @@ import type { ClaudeSubscriptionAdapter } from "../electron/claudeSubscriptionAd
 import type { CodexSubscriptionAdapter } from "../electron/codexSubscriptionAdapter"
 import { ProviderConfigurationError } from "../electron/providerConfigStore"
 import { DEFAULT_CLAUDE_EFFORT, DEFAULT_CLAUDE_MODEL } from "../shared/claudeTypes"
+import { CODEX_DEFAULT_MODEL } from "../shared/codexTypes"
 import { type aiRequestSchema, aiResultSchema } from "../shared/ipc"
 import { pageStructureResponseFormat } from "../shared/pageStructure"
 import { pageTranslationResponseFormat } from "../shared/pageTranslationProtocol"
@@ -23,7 +24,7 @@ type StreamOptions = {
   readonly signal?: AbortSignal | undefined
 }
 
-export const DEFAULT_CODEX_MODEL = "gpt-5.6-sol"
+export const DEFAULT_CODEX_MODEL = CODEX_DEFAULT_MODEL
 
 export function codexModelOf(settings: AiModeSettings): string {
   return settings.codexModel ?? DEFAULT_CODEX_MODEL

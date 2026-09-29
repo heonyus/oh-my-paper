@@ -1,5 +1,31 @@
 # oh-my-paper interaction and visual contract
 
+## 2026-09-29 First run: connect screen, terminal wizard and feature tips (current)
+
+The owner asked for OpenAI subscription login on equal footing with Claude, the latest models,
+a terminal install that explains itself, and short per-feature tutorials.
+
+- Connect screen (browser, first run): one screen, no separate welcome step. Left: the product
+  line `읽은 것은 남고, 필요한 것은 다시 찾을 수 있게.` and a looping picture of the reader (a
+  sentence lights up, its translation card and a note appear beside it). Right: ChatGPT 구독,
+  Claude 구독 (when the local Claude Code CLI exists) and API 키 as equal choices; neither
+  subscription is labelled recommended. Choice hints name the default model from the shared
+  constants. The finish step lists three first steps (가져오기, `T E C` keys, 내 노트). The
+  screen uses the app's canvas/ink/action tokens, follows the system light/dark scheme, hides the
+  picture below 960px and keeps the choices above the fold at 375px.
+- ChatGPT models come from the bundled Codex runtime (`model/list`) for the signed-in account;
+  a first connection saves the runtime's default model. The bundled list is only a fallback.
+- Terminal: `scripts/install.sh` (curl one-liner) clones, installs, builds, links
+  `oh-my-paper` and starts the wizard. The wizard has four explained steps (runtime, AI
+  connection, optional OCR, usage tour) and never installs OCR by default.
+- Feature tips: the first time a screen shows a feature's control, one small anchored tip
+  explains it with a muted looping clip recorded from the real app (`/tutorials/<id>.mp4`), a
+  one-line description and its keys. At most one tip per visit to a screen, shown after the
+  screen settles, never over the PDF selection itself, dismissed with `알겠어요`, Escape or
+  `팁 끄기` (all tips). Seen tips are a per-browser convenience in localStorage; losing it only
+  means a tip shows again. The header `?` (사용법) lists every tip with its clip and can show them
+  again. Recordings for tips and the README video hide tips and use the quiet note companion.
+
 ## 2026-09-28 Learning core: reading that stays with the reader (current)
 
 This section supersedes the 2026-09-15 reference-family parity and its "context-aware AI

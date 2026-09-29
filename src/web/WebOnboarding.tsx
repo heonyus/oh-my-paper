@@ -1,8 +1,18 @@
-import { ArrowLeft, CheckCircle2, ExternalLink, KeyRound, Loader2, Sparkles } from "lucide-react"
+import {
+  ArrowLeft,
+  Check,
+  ChevronRight,
+  ExternalLink,
+  KeyRound,
+  Loader2,
+  MessageSquareText,
+  Sparkles,
+} from "lucide-react"
 import { type FormEvent, type JSX, useCallback, useEffect, useRef, useState } from "react"
 import leafMarkUrl from "../../assets/branding/ohmypaper-leaf-mark.png"
-import sceneUrl from "../../assets/branding/ohmypaper-onboarding-golden-leaves-v1.jpg"
 import { useCodexSettings } from "../renderer/components/useCodexSettings"
+import { CLAUDE_MODEL_OPTIONS, DEFAULT_CLAUDE_MODEL } from "../shared/claudeTypes"
+import { CODEX_DEFAULT_MODEL, CODEX_MODEL_OPTIONS, defaultCodexModel } from "../shared/codexTypes"
 import type { ProviderConfig, ProviderStatus } from "../shared/ipc"
 import {
   DEFAULT_OPENROUTER_MODEL,
@@ -14,7 +24,7 @@ import {
 } from "../shared/providerModels"
 import { ClaudeOnboardingStep } from "./ClaudeOnboardingStep"
 
-type Step = "welcome" | "choose" | "claude" | "chatgpt" | "api" | "done"
+type Step = "choose" | "claude" | "chatgpt" | "api" | "done"
 
 const API_PROVIDERS: ReadonlyArray<{
   id: ProviderConfig["provider"]
@@ -40,16 +50,62 @@ const DEFAULT_API_PROVIDER = API_PROVIDERS[0] ?? {
   keyPlaceholder: "sk-or-…",
 }
 
-const DEFAULT_CODEX_MODEL = "gpt-5.6-sol"
 const DEFAULT_CODEX_EFFORT = "medium"
 
-function StepDots({ step }: { readonly step: Step }): JSX.Element {
-  const index = step === "welcome" ? 0 : step === "done" ? 2 : 1
+/** "Claude Haiku 4.5 (기본)" → "Haiku 4.5", so the choice names the model it will use. */
+const CLAUDE_DEFAULT_LABEL = (
+  CLAUDE_MODEL_OPTIONS.find((option) => option.id === DEFAULT_CLAUDE_MODEL)?.label ??
+  DEFAULT_CLAUDE_MODEL
+)
+  .replace(/^Claude /, "")
+  .replace(/\s*\(.*\)$/, "")
+
+const CODEX_DEFAULT_LABEL =
+  CODEX_MODEL_OPTIONS.find((option) => option.id === CODEX_DEFAULT_MODEL)?.label ??
+  CODEX_DEFAULT_MODEL
+
+const FIRST_STEPS: ReadonlyArray<{ title: string; detail: string; keys?: readonly string[] }> = [
+  { title: "PDF 가져오기", detail: "라이브러리에 끌어다 놓으면 페이지 구조를 먼저 분석합니다." },
+  {
+    title: "문장을 고르고 한 키로",
+    detail: "번역, 설명, 노트에 담기. 카드는 원문 옆에 붙습니다.",
+    keys: ["T", "E", "C"],
+  },
+  { title: "내 말로 남기기", detail: "노트에 쓰면 근거가 된 문단을 찾아 옆에 보여줍니다." },
+]
+
+/** A looping picture of the reader: a sentence lights up, its card and note appear beside it. */
+function ReaderVignette(): JSX.Element {
   return (
-    <div className="web-onboarding-dots" aria-hidden="true">
-      {[0, 1, 2].map((dot) => (
-        <i key={dot} data-active={dot <= index || undefined} />
-      ))}
+    <div className="onboarding-vignette" aria-hidden="true">
+      <div className="onboarding-page">
+        <span className="onboarding-page-title">3.2 Scaled Dot-Product Attention</span>
+        <span className="onboarding-page-line" style={{ width: "94%" }} />
+        <span className="onboarding-page-line" style={{ width: "88%" }} />
+        <span className="onboarding-page-sentence">
+          Attention lets every token look at every other token in a single step.
+        </span>
+        <span className="onboarding-page-line" style={{ width: "91%" }} />
+        <span className="onboarding-page-line" style={{ width: "72%" }} />
+        <span className="onboarding-page-figure">
+          <i />
+          <i />
+          <i />
+          <i />
+        </span>
+        <span className="onboarding-page-line" style={{ width: "86%" }} />
+        <span className="onboarding-page-line" style={{ width: "64%" }} />
+      </div>
+      <div className="onboarding-card onboarding-card-translation">
+        <small>번역</small>
+        <p>어텐션은 모든 토큰이 한 번에 다른 모든 토큰을 보게 합니다.</p>
+      </div>
+      <div className="onboarding-card onboarding-card-note">
+        <small>내 노트</small>
+        <p>
+          순서대로 읽지 않아도 된다 — 그래서 병렬화가 쉽다 <b>p.3</b>
+        </p>
+      </div>
     </div>
   )
 }
@@ -93,7 +149,7 @@ function ApiKeyStep({
       await window.ohmypaper.saveProviderConfig(config)
       await window.ohmypaper.saveAiMode({
         mode: "api",
-        codexModel: DEFAULT_CODEX_MODEL,
+        codexModel: CODEX_DEFAULT_MODEL,
         codexReasoningEffort: DEFAULT_CODEX_EFFORT,
       })
       await onConnected()
@@ -160,6 +216,43 @@ function ApiKeyStep({
   )
 }
 
+function Choice({
+  icon,
+  title,
+  badge,
+  hint,
+  onClick,
+}: {
+  readonly icon: JSX.Element
+  readonly title: string
+  readonly badge?: string | undefined
+  readonly hint: string
+  readonly onClick: () => void
+}): JSX.Element {
+  return (
+    <button type="button" className="web-onboarding-choice" onClick={onClick}>
+      <span className="web-onboarding-choice-icon" aria-hidden="true">
+        {icon}
+      </span>
+      <span className="web-onboarding-choice-text">
+        <span className="web-onboarding-choice-title">
+          {title}
+          {badge ? <em>{badge}</em> : null}
+        </span>
+        <span className="web-onboarding-choice-hint">
+          {hint.split(" · ").map((part, index) => (
+            <span key={part}>
+              {index > 0 ? " · " : null}
+              {part}
+            </span>
+          ))}
+        </span>
+      </span>
+      <ChevronRight size={16} className="web-onboarding-choice-chevron" aria-hidden="true" />
+    </button>
+  )
+}
+
 export function WebOnboarding({
   status,
   onDone,
@@ -167,7 +260,7 @@ export function WebOnboarding({
   readonly status: ProviderStatus
   readonly onDone: (next: ProviderStatus) => void
 }): JSX.Element {
-  const [step, setStep] = useState<Step>("welcome")
+  const [step, setStep] = useState<Step>("choose")
   const [summary, setSummary] = useState("")
   const [doneStatus, setDoneStatus] = useState<ProviderStatus | null>(null)
   const [chatgptError, setChatgptError] = useState("")
@@ -179,16 +272,20 @@ export function WebOnboarding({
     setStep("done")
   }, [])
 
-  const codex = useCodexSettings({
-    onConnectionChange: async () => {
-      await window.ohmypaper.saveAiMode({
-        mode: "chatgpt",
-        codexModel: status.codexModel ?? DEFAULT_CODEX_MODEL,
-        codexReasoningEffort: status.codexReasoningEffort ?? DEFAULT_CODEX_EFFORT,
-      })
-      await finish("ChatGPT 구독")
-    },
-  })
+  /** A first connection starts on the newest model the runtime offers this account. */
+  const connectChatgpt = useCallback(async (): Promise<void> => {
+    // The settings hook reports every finished login, including failed or cancelled ones.
+    if (!(await window.ohmypaper.codex.getStatus()).authenticated) return
+    const models = await window.ohmypaper.codex.listModels().catch(() => [])
+    await window.ohmypaper.saveAiMode({
+      mode: "chatgpt",
+      codexModel: defaultCodexModel(models),
+      codexReasoningEffort: status.codexReasoningEffort ?? DEFAULT_CODEX_EFFORT,
+    })
+    await finish("ChatGPT 구독")
+  }, [status, finish])
+
+  const codex = useCodexSettings({ onConnectionChange: connectChatgpt })
 
   const beginChatgpt = (): void => {
     setChatgptError("")
@@ -199,97 +296,73 @@ export function WebOnboarding({
     if (step !== "chatgpt" || loginStarted.current || codex.status === null) return
     loginStarted.current = true
     if (codex.isConnected) {
-      void window.ohmypaper
-        .saveAiMode({
-          mode: "chatgpt",
-          codexModel: status.codexModel ?? DEFAULT_CODEX_MODEL,
-          codexReasoningEffort: status.codexReasoningEffort ?? DEFAULT_CODEX_EFFORT,
-        })
-        .then(() => finish("ChatGPT 구독"))
-        .catch((cause: unknown) =>
-          setChatgptError(cause instanceof Error ? cause.message : "저장에 실패했습니다"),
-        )
+      void connectChatgpt().catch((cause: unknown) =>
+        setChatgptError(cause instanceof Error ? cause.message : "저장에 실패했습니다"),
+      )
       return
     }
     void codex.startLogin("chatgpt").catch((cause: unknown) => {
       setChatgptError(cause instanceof Error ? cause.message : "로그인을 시작하지 못했습니다")
     })
-  }, [step, codex, status, finish])
+  }, [step, codex, connectChatgpt])
 
   return (
     <main className="web-onboarding">
-      <div className="web-onboarding-scene" aria-hidden="true">
-        <img src={sceneUrl} alt="" decoding="async" fetchPriority="high" />
-      </div>
-      <section className="web-onboarding-card" aria-live="polite">
+      <div className="web-onboarding-wash" aria-hidden="true" />
+      <section className="web-onboarding-hero">
         <header className="web-onboarding-brand">
-          <img src={leafMarkUrl} alt="" width={44} height={44} />
-          <div>
-            <h1>oh-my-paper</h1>
-            <p>번역·메모·인용을 원문 위치와 함께 정리합니다.</p>
-          </div>
+          <img src={leafMarkUrl} alt="" width={32} height={32} />
+          <h1>oh-my-paper</h1>
         </header>
+        <p className="web-onboarding-headline">
+          읽은 것은 남고,
+          <br />
+          필요한 것은
+          <br />
+          <span>다시 찾을 수 있게.</span>
+        </p>
+        <p className="web-onboarding-lede">
+          PDF는 그대로 두고, 번역·설명·노트를 원문 자리에 붙여 둡니다. 문서는 이 컴퓨터 밖으로
+          나가지 않습니다.
+        </p>
+        <ReaderVignette />
+      </section>
 
-        {step === "welcome" ? (
-          <div className="web-onboarding-step">
-            <h2>처음 한 번만 연결하면 바로 시작할 수 있습니다</h2>
-            <ul className="web-onboarding-features">
-              <li>원문 위치와 함께 보는 페이지 번역</li>
-              <li>그림·표·수식을 곁들인 AI 설명</li>
-              <li>메모·인용이 소스로 돌아가는 라이브러리</li>
-            </ul>
-            <button
-              type="button"
-              className="web-onboarding-primary"
-              onClick={() => setStep("choose")}
-            >
-              시작하기
-            </button>
-          </div>
-        ) : null}
-
+      <section className="web-onboarding-card" aria-live="polite">
         {step === "choose" ? (
           <div className="web-onboarding-step">
-            <h2>AI 연결 방식을 선택하세요</h2>
-            <div className="web-onboarding-choices">
-              {window.ohmypaper.claude ? (
-                <button
-                  type="button"
-                  className="web-onboarding-choice"
-                  onClick={() => setStep("claude")}
-                >
-                  <span className="web-onboarding-choice-title">
-                    <Sparkles size={15} aria-hidden="true" /> Claude 구독
-                    <em>권장</em>
-                  </span>
-                  <span className="web-onboarding-choice-hint">
-                    이 컴퓨터의 Claude Code 로그인으로 · 기본 모델 Haiku 4.5
-                  </span>
-                </button>
-              ) : null}
-              <button type="button" className="web-onboarding-choice" onClick={beginChatgpt}>
-                <span className="web-onboarding-choice-title">
-                  <Sparkles size={15} aria-hidden="true" /> ChatGPT 구독
-                  {window.ohmypaper.claude ? null : <em>권장</em>}
-                </span>
-                <span className="web-onboarding-choice-hint">
-                  API 키 없이 내 구독 사용량으로 바로 시작
-                </span>
-              </button>
-              <button
-                type="button"
-                className="web-onboarding-choice"
-                onClick={() => setStep("api")}
-              >
-                <span className="web-onboarding-choice-title">
-                  <KeyRound size={15} aria-hidden="true" /> API 키
-                </span>
-                <span className="web-onboarding-choice-hint">
-                  OpenRouter · OpenAI · Gemini · Groq
-                </span>
-              </button>
+            <div className="web-onboarding-step-head">
+              <span className="web-onboarding-eyebrow">시작하기</span>
+              <h2>AI를 연결하세요</h2>
+              <p className="web-onboarding-hint">
+                가진 구독으로 바로 쓰거나, API 키를 넣으세요. 한 번이면 됩니다.
+              </p>
             </div>
-            <p className="web-onboarding-hint">나중에 앱 설정에서 언제든 변경할 수 있습니다.</p>
+            <div className="web-onboarding-choices">
+              <Choice
+                icon={<MessageSquareText size={18} />}
+                title="ChatGPT 구독"
+                badge="API 키 불필요"
+                hint={`ChatGPT 계정으로 로그인 · ${CODEX_DEFAULT_LABEL}`}
+                onClick={beginChatgpt}
+              />
+              {window.ohmypaper.claude ? (
+                <Choice
+                  icon={<Sparkles size={18} />}
+                  title="Claude 구독"
+                  badge="API 키 불필요"
+                  hint={`이 컴퓨터의 Claude Code 로그인 · ${CLAUDE_DEFAULT_LABEL}`}
+                  onClick={() => setStep("claude")}
+                />
+              ) : null}
+              <Choice
+                icon={<KeyRound size={18} />}
+                title="API 키"
+                hint="OpenRouter · OpenAI · Gemini · Groq"
+                onClick={() => setStep("api")}
+              />
+            </div>
+            <p className="web-onboarding-foot">설정 › AI에서 언제든 바꿀 수 있습니다.</p>
           </div>
         ) : null}
 
@@ -325,7 +398,11 @@ export function WebOnboarding({
                   <button
                     type="button"
                     className="web-onboarding-ghost"
-                    onClick={() => void codex.cancelLogin()}
+                    onClick={() => {
+                      void codex.cancelLogin()
+                      loginStarted.current = false
+                      setStep("choose")
+                    }}
                   >
                     취소
                   </button>
@@ -344,7 +421,10 @@ export function WebOnboarding({
                     <button
                       type="button"
                       className="web-onboarding-ghost"
-                      onClick={() => setStep("choose")}
+                      onClick={() => {
+                        loginStarted.current = false
+                        setStep("choose")
+                      }}
                     >
                       <ArrowLeft size={14} /> 뒤로
                     </button>
@@ -379,9 +459,30 @@ export function WebOnboarding({
 
         {step === "done" ? (
           <div className="web-onboarding-step web-onboarding-done">
-            <CheckCircle2 size={34} aria-hidden="true" />
-            <h2>준비가 끝났습니다</h2>
-            <p className="web-onboarding-hint">{summary} 연결됨 — PDF를 열어 시작하세요.</p>
+            <span className="web-onboarding-done-mark" aria-hidden="true">
+              <Check size={20} strokeWidth={2.6} />
+            </span>
+            <div className="web-onboarding-step-head">
+              <h2>준비됐습니다</h2>
+              <p className="web-onboarding-hint">{summary} 연결됨 — 이렇게 시작하세요.</p>
+            </div>
+            <ol className="web-onboarding-tour">
+              {FIRST_STEPS.map((item) => (
+                <li key={item.title}>
+                  <strong>
+                    {item.title}
+                    {item.keys ? (
+                      <span className="web-onboarding-keys">
+                        {item.keys.map((key) => (
+                          <kbd key={key}>{key}</kbd>
+                        ))}
+                      </span>
+                    ) : null}
+                  </strong>
+                  <span>{item.detail}</span>
+                </li>
+              ))}
+            </ol>
             <button
               type="button"
               className="web-onboarding-primary"
@@ -391,8 +492,6 @@ export function WebOnboarding({
             </button>
           </div>
         ) : null}
-
-        <StepDots step={step} />
       </section>
     </main>
   )

@@ -4,6 +4,7 @@ import {
   codexLoginCompletedEventSchema,
   codexLoginStartResultSchema,
   codexLoginTypeSchema,
+  codexModelListSchema,
 } from "./codexTypes"
 
 export const codexLoginStartRequestSchema = z.object({
@@ -14,4 +15,9 @@ export const codexLoginCancelRequestSchema = z.object({
   loginId: z.string().min(1),
 })
 
-export { codexAccountStatusSchema, codexLoginCompletedEventSchema, codexLoginStartResultSchema }
+export {
+  codexAccountStatusSchema,
+  codexLoginCompletedEventSchema,
+  codexLoginStartResultSchema,
+  codexModelListSchema,
+}

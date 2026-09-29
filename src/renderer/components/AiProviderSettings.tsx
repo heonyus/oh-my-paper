@@ -33,14 +33,10 @@ function initialModel(provider: ProviderConfig["provider"], model: string): stri
 
 function nextProviderModel(provider: ProviderConfig["provider"]): string {
   switch (provider) {
-    case "openai":
-      return "gpt-5"
     case "openrouter":
       return DEFAULT_OPENROUTER_MODEL
-    case "gemini":
-      return "gemini-3.5-flash-lite"
-    case "groq":
-      return "openai/gpt-oss-20b"
+    default:
+      return providerModelOptions(provider)[0] ?? ""
   }
 }
 

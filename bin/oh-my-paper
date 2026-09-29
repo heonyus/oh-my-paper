@@ -1,0 +1,14 @@
+#!/bin/sh
+# oh-my-paper launcher: runs the CLI from its own checkout, wherever it is called from.
+set -e
+self="$0"
+while [ -L "$self" ]; do
+  target=$(readlink "$self")
+  case "$target" in
+    /*) self="$target" ;;
+    *) self="$(dirname "$self")/$target" ;;
+  esac
+done
+root=$(cd "$(dirname "$self")/.." && pwd)
+cd "$root"
+exec "$root/node_modules/.bin/tsx" "$root/src/cli/main.ts" "$@"

@@ -3,6 +3,7 @@ import {
   codexAccountStatusSchema,
   codexLoginCompletedEventSchema,
   codexLoginStartResultSchema,
+  codexModelListSchema,
 } from "../shared/codexTypes"
 import type { OhMyPaperApi } from "../shared/ipc"
 import { localRpc } from "./localTransport"
@@ -12,6 +13,7 @@ const okSchema = z.object({ ok: z.literal(true) })
 export function createLocalCodexApi(): OhMyPaperApi["codex"] {
   return {
     getStatus: () => localRpc("codexGetStatus", {}, codexAccountStatusSchema),
+    listModels: () => localRpc("codexListModels", {}, codexModelListSchema),
     startLogin: (type = "chatgpt") =>
       localRpc("codexStartLogin", { type }, codexLoginStartResultSchema),
     cancelLogin: async (loginId) => {

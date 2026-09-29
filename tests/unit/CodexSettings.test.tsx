@@ -40,7 +40,7 @@ function installApi() {
     providerStatus: vi.fn(async () => ({
       configured: false,
       provider: "openrouter" as const,
-      model: "google/gemini-2.5-flash-lite",
+      model: "google/gemini-3.1-flash-lite",
       mode: "chatgpt" as const,
       codexModel: "gpt-5.6-sol",
       codexReasoningEffort: "medium" as const,

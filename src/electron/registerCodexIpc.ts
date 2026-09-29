@@ -5,6 +5,7 @@ import {
   codexLoginCompletedEventSchema,
   codexLoginStartRequestSchema,
   codexLoginStartResultSchema,
+  codexModelListSchema,
 } from "../shared/codexIpc"
 import { ipcChannels } from "../shared/ipcChannels"
 import type { CodexSubscriptionAdapter } from "./codexSubscriptionAdapter"
@@ -14,6 +15,10 @@ export function registerCodexIpc(adapter: CodexSubscriptionAdapter): () => void 
     const status = await adapter.getStatus()
     return codexAccountStatusSchema.parse(status)
   })
+
+  ipcMain.handle(ipcChannels.codexListModels, async () =>
+    codexModelListSchema.parse(await adapter.listModels()),
+  )
 
   ipcMain.handle(ipcChannels.codexLoginStart, async (_event, value: unknown) => {
     const { type } = codexLoginStartRequestSchema.parse(value ?? {})
@@ -41,6 +46,7 @@ export function registerCodexIpc(adapter: CodexSubscriptionAdapter): () => void 
 
   return () => {
     ipcMain.removeHandler(ipcChannels.codexStatus)
+    ipcMain.removeHandler(ipcChannels.codexListModels)
     ipcMain.removeHandler(ipcChannels.codexLoginStart)
     ipcMain.removeHandler(ipcChannels.codexLoginCancel)
     ipcMain.removeHandler(ipcChannels.codexLogout)

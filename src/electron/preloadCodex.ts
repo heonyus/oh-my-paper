@@ -5,6 +5,7 @@ import {
   codexLoginCompletedEventSchema,
   codexLoginStartRequestSchema,
   codexLoginStartResultSchema,
+  codexModelListSchema,
 } from "../shared/codexIpc"
 import type { OhMyPaperApi } from "../shared/ipc"
 import { ipcChannels } from "../shared/ipcChannels"
@@ -13,6 +14,8 @@ export function createPreloadCodex(): OhMyPaperApi["codex"] {
   return {
     getStatus: async () =>
       codexAccountStatusSchema.parse(await ipcRenderer.invoke(ipcChannels.codexStatus)),
+    listModels: async () =>
+      codexModelListSchema.parse(await ipcRenderer.invoke(ipcChannels.codexListModels)),
     startLogin: async (type) =>
       codexLoginStartResultSchema.parse(
         await ipcRenderer.invoke(

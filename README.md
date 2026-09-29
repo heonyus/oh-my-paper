@@ -15,6 +15,14 @@
   <a href="https://github.com/heonyus/oh-my-paper/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/heonyus/oh-my-paper?style=social"></a>
 </p>
 
+<p align="center">
+  <img src="docs/media/oh-my-paper-demo.gif" width="880" alt="Selecting a sentence in a paper, pressing T to get a Korean translation card beside it, then E for an explanation">
+</p>
+<p align="center">
+  <a href="docs/media/oh-my-paper-demo.mp4">▶ Full demo (75 s, mp4)</a> — install, import, translate, explain, notes and the AI overview, recorded from the real app.<br>
+  <sub>Demo paper: Wei et al., “Chain-of-Thought Prompting Elicits Reasoning in Large Language Models”, <a href="https://arxiv.org/abs/2201.11903">arXiv:2201.11903</a>, CC BY 4.0.</sub>
+</p>
+
 oh-my-paper keeps the PDF in place and lets translations, explanations, notes, figures, and
 citations stay connected to the exact page that produced them. Documents stay on your computer,
 but the official app requires Google sign-in through a separate account-only backend.
@@ -32,6 +40,8 @@ compatibility remain unverified; see [release readiness](docs/release-readiness.
 - Stores the library, notes, highlights, caches, and provider configuration locally.
 - Provides keyword, three-line, full-paper, citation, and follow-up discussion tools.
 - Supports light/dark appearance, scalable UI text, selectable fonts, search, and a minimap.
+- Shows a short looping clip beside each feature the first time you reach it (import, translate,
+  explain, notes, AI overview); the header **?** (사용법) replays them all.
 
 ## Install
 
@@ -40,7 +50,37 @@ artifacts, not evidence that the current 2.0 checkout is ready to install or dis
 Current packaging targets macOS arm64 only. The oldest supported macOS version has not been
 validated. See [Mac packaging](docs/mac-release.md) for local commands and distribution prerequisites.
 
-### Run from source (local browser app)
+### One-line install (local browser app)
+
+Requirements: an Apple Silicon Mac, git, and Node.js 22+ (`brew install node`).
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.sh | bash
+```
+
+The installer clones the app into `~/.oh-my-paper/app`, installs dependencies, builds the web
+app, links an `oh-my-paper` command into `~/.local/bin` (adding it to `PATH` for zsh/bash),
+and starts the setup wizard. The wizard walks through four explained steps — runtime check,
+AI connection, the optional OCR engine, and a short usage tour — then offers to open the app.
+
+| Command | What it does |
+|---|---|
+| `oh-my-paper` | Start the app and open the browser (runs the wizard first if nothing is connected) |
+| `oh-my-paper onboard` | Setup wizard: AI connection, OCR engine, usage tour |
+| `oh-my-paper doctor` | Check the runtime, logins, models and data folder |
+| `oh-my-paper update` | Pull the latest version, reinstall and rebuild |
+| `oh-my-paper start --no-open` | Start without opening a browser |
+
+AI connection choices, all selectable with arrow keys and Enter:
+
+- **ChatGPT 구독 (OpenAI)** — sign in with your ChatGPT account in the browser, or with a
+  device code on another device; no API key. The model list comes from the bundled Codex
+  runtime for your account, so new models (currently GPT-6 Astra by default) appear
+  without an app update.
+- **Claude 구독 (Anthropic)** — reuses the local Claude Code login (default Claude Haiku 4.5).
+- **API 키** — OpenRouter, OpenAI, Gemini or Groq.
+
+### Run from source
 
 Requirements: Node.js 22+ and npm, on macOS or Windows. The optional OCR runtime needs
 [`uv`](https://docs.astral.sh/uv/) on `PATH`; on Windows with an NVIDIA GPU it can also recognize
@@ -52,17 +92,12 @@ git clone https://github.com/heonyus/oh-my-paper.git
 cd oh-my-paper
 npm ci
 npm run build:web
-npm run start:web
+npm run cli          # same as the oh-my-paper command
 ```
 
-The first `npm run start:web` checks the local runtime step by step — dependencies, the
-bundled ChatGPT login runtime, and the PaddleOCR-VL engine — and opens a terminal
-onboarding picker when no AI connection exists. Choose Claude 구독 (the local Claude Code
-login, default model Claude Haiku 4.5), ChatGPT 구독 (browser or device-code login, no API
-key) or an API-key provider with arrow keys and Enter. When
-the OCR engine is missing, the picker offers to download it; you can also install it
-later with `npm run setup:paddle-vl`. Re-run setup anytime with `npm run setup`.
-Non-interactive shells skip the picker and start the server directly.
+`npm run start:web` still starts the app (running the wizard first when nothing is connected)
+and `npm run setup` reruns the wizard. Non-interactive shells skip the wizard and start the
+server directly.
 
 Open `http://127.0.0.1:8788`. If AI is not connected yet, the browser shows a short
 guided connect screen (Claude 구독, ChatGPT 로그인 or API 키) instead of the library.
