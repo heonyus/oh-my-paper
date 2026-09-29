@@ -191,8 +191,8 @@ export function registerApplicationIpc(
   })
   ipcMain.handle(ipcChannels.documentBytes, async (_event, value: unknown) => {
     const request = documentBytesRequestSchema.parse(value)
-    const bytes = await readDocumentBytes(request.id, store)
-    return documentBytesResultSchema.parse(bytes.toString("base64"))
+    // Structured clone sends the Buffer to the renderer as a Uint8Array, not as base64 text.
+    return documentBytesResultSchema.parse(await readDocumentBytes(request.id, store))
   })
   ipcMain.handle(ipcChannels.documentLayout, async (_event, value: unknown) => {
     const request = documentLayoutRequestSchema.parse(value)

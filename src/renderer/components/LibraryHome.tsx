@@ -13,7 +13,8 @@ import {
   type LibraryCollection,
   loadLibraryCollections,
 } from "./library-collections"
-import { documentSearchText, normalizedReadingPage } from "./library-home-formatting"
+import { normalizedReadingPage } from "./library-home-formatting"
+import { useVisibleLibraryDocuments } from "./useVisibleLibraryDocuments"
 
 type LibraryHomeProps = {
   readonly documents: readonly DocumentRecord[]
@@ -129,25 +130,16 @@ export function LibraryHome({
   const selectedCollection = collections.find(
     (collection) => collection.board.id === selectedCollectionId,
   )
-  const selectedCollectionDocumentIds = collectionDocumentIds(selectedCollection)
-  const visibleDocuments = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase()
-    return [...documents]
-      .sort((left, right) => right.importedAt.localeCompare(left.importedAt))
-      .filter((document) => {
-        if (filter === "recent" && document.id !== recentDocumentId) return false
-        if (filter !== "all" && filter !== "recent" && document.kind !== filter) return false
-        if (selectedCollectionId && !selectedCollectionDocumentIds.has(document.id)) return false
-        return !needle || documentSearchText(document).includes(needle)
-      })
-  }, [
-    documents,
-    filter,
+  const collectionMembers = useMemo(
+    () => (selectedCollectionId ? collectionDocumentIds(selectedCollection) : null),
+    [selectedCollection, selectedCollectionId],
+  )
+  const visibleDocuments = useVisibleLibraryDocuments(documents, {
     query,
+    filter,
     recentDocumentId,
-    selectedCollectionDocumentIds,
-    selectedCollectionId,
-  ])
+    collectionMembers,
+  })
   useEffect(() => {
     if (selectedId && visibleDocuments.some((document) => document.id === selectedId)) return
     setSelectedId(visibleDocuments[0]?.id ?? documents[0]?.id ?? null)

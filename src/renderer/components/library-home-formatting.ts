@@ -19,8 +19,11 @@ export function documentSearchText(document: DocumentRecord): string {
     .toLocaleLowerCase()
 }
 
+/** Built once: constructing a formatter per row dominated rendering a large library. */
+const importedAtFormat = new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium" })
+
 export function formatImportedAt(value: string): string {
-  return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium" }).format(new Date(value))
+  return importedAtFormat.format(new Date(value))
 }
 
 export function formatFileSize(bytes: number): string {

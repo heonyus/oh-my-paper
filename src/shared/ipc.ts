@@ -155,7 +155,9 @@ export const importProgressSchema = z.object({
 })
 
 export const documentBytesRequestSchema = z.object({ id: documentIdSchema })
-export const documentBytesResultSchema = z.string().min(1)
+export const documentBytesResultSchema = z
+  .instanceof(Uint8Array)
+  .refine((bytes) => bytes.byteLength > 0, "empty_document")
 
 export const workspaceReadResultSchema = workspaceSchema
 export const workspaceSaveRequestSchema = workspaceSchema
@@ -309,7 +311,8 @@ export type OhMyPaperApi = {
   readonly deleteDocument?: (id: DocumentId) => Promise<void>
   readonly getDroppedFilePath: (file: File) => string
   readonly onImportProgress: (listener: (progress: ImportProgress) => void) => () => void
-  readonly readDocument: (id: DocumentId) => Promise<string>
+  /** Returns the stored PDF bytes; aborting stops a download the caller no longer needs. */
+  readonly readDocument: (id: DocumentId, signal?: AbortSignal) => Promise<Uint8Array>
   readonly readDocumentLayout: (id: DocumentId) => Promise<DocumentLayoutResult>
   readonly parseDocumentPage: (
     request: DocumentPageParseRequest,
