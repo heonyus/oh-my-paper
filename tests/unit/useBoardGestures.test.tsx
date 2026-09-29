@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react"
-import { type JSX, useRef, useState } from "react"
+import { type JSX, type ReactNode, useRef, useState } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { useBoardGestures } from "../../src/renderer/lib/useBoardGestures"
 import type { Viewport } from "../../src/shared/schemas"
@@ -36,10 +36,12 @@ function PreviewHarness({
   onPreview,
   onCommit,
   rerenderOnPreview = false,
+  children,
 }: {
   readonly onPreview: (viewport: Viewport) => void
   readonly onCommit: (viewport: Viewport) => void
   readonly rerenderOnPreview?: boolean
+  readonly children?: ReactNode
 }): JSX.Element {
   const boardRef = useRef<HTMLDivElement>(null)
   const [viewport, setViewport] = useState(initialViewport)
@@ -75,8 +77,29 @@ function PreviewHarness({
       onPointerDown={gestures.startPan}
       onPointerMove={gestures.movePan}
       onPointerUp={gestures.endPan}
-    />
+    >
+      {children}
+    </div>
   )
+}
+
+function TranslationPane(): JSX.Element {
+  return (
+    <section className="page-translation-pane">
+      <div data-testid="translation-body" className="page-translation-body">
+        번역
+      </div>
+    </section>
+  )
+}
+
+function scrollableBody(scrollTop: number, overflowY = "auto"): HTMLElement {
+  const body = screen.getByTestId("translation-body")
+  body.style.overflowY = overflowY
+  Object.defineProperty(body, "scrollHeight", { value: 800, configurable: true })
+  Object.defineProperty(body, "clientHeight", { value: 400, configurable: true })
+  body.scrollTop = scrollTop
+  return body
 }
 
 describe("board pan gestures", () => {
@@ -256,5 +279,74 @@ describe("board pan gestures", () => {
     await act(async () => vi.advanceTimersByTimeAsync(180))
 
     expect(onCommit).toHaveBeenLastCalledWith({ x: 0, y: -30, zoom: 1 })
+  })
+
+  it("keeps a sideways swipe moving the board over a page translation", () => {
+    const frames: FrameRequestCallback[] = []
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      frames.push(callback)
+      return frames.length
+    })
+    const onPreview = vi.fn()
+    render(
+      <PreviewHarness onPreview={onPreview} onCommit={vi.fn()}>
+        <TranslationPane />
+      </PreviewHarness>,
+    )
+    const body = scrollableBody(0, "hidden")
+
+    expect(fireEvent.wheel(body, { deltaX: 60, deltaY: 2 })).toBe(false)
+    expect(fireEvent.wheel(body, { deltaX: 0, deltaY: 40 })).toBe(false)
+    act(() => frames.shift()?.(0))
+
+    expect(onPreview).toHaveBeenLastCalledWith({ x: -60, y: -40, zoom: 1 })
+  })
+
+  it("lets a page translation scroll its own text until it runs out", async () => {
+    vi.useFakeTimers()
+    const frames: FrameRequestCallback[] = []
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      frames.push(callback)
+      return frames.length
+    })
+    const onPreview = vi.fn()
+    render(
+      <PreviewHarness onPreview={onPreview} onCommit={vi.fn()}>
+        <TranslationPane />
+      </PreviewHarness>,
+    )
+    const body = scrollableBody(0)
+
+    expect(fireEvent.wheel(body, { deltaX: 0, deltaY: 40 })).toBe(true)
+    body.scrollTop = 400
+    // The rest of the burst stays with the text, even with nothing left to scroll.
+    expect(fireEvent.wheel(body, { deltaX: 0, deltaY: 40 })).toBe(true)
+    expect(onPreview).not.toHaveBeenCalled()
+
+    await act(async () => vi.advanceTimersByTimeAsync(180))
+    expect(fireEvent.wheel(body, { deltaX: 0, deltaY: 40 })).toBe(false)
+    act(() => frames.shift()?.(0))
+    expect(onPreview).toHaveBeenLastCalledWith({ x: 0, y: -40, zoom: 1 })
+  })
+
+  it("keeps a board pan going when a scrollable translation slides under the cursor", () => {
+    const frames: FrameRequestCallback[] = []
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      frames.push(callback)
+      return frames.length
+    })
+    const onPreview = vi.fn()
+    render(
+      <PreviewHarness onPreview={onPreview} onCommit={vi.fn()}>
+        <TranslationPane />
+      </PreviewHarness>,
+    )
+    const body = scrollableBody(0)
+
+    fireEvent.wheel(screen.getByTestId("preview-board"), { deltaX: 0, deltaY: 30 })
+    expect(fireEvent.wheel(body, { deltaX: 0, deltaY: 40 })).toBe(false)
+    act(() => frames.shift()?.(0))
+
+    expect(onPreview).toHaveBeenLastCalledWith({ x: 0, y: -70, zoom: 1 })
   })
 })

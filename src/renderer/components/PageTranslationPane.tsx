@@ -181,7 +181,6 @@ export function PageTranslationPane({
             : undefined
         }
         onPointerDown={(event) => event.stopPropagation()}
-        onWheel={(event) => event.stopPropagation()}
       >
         <header className="page-translation-head">
           <div className="page-translation-title">
