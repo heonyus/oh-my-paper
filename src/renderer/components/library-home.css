@@ -620,6 +620,9 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-panel, 12px);
   background: var(--surface);
+  /* Rows far from the viewport skip layout and paint; `auto` keeps each row's measured height. */
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 340px;
 }
 
 .library-grid > li.is-selected {
@@ -707,6 +710,7 @@
   border-color: color-mix(in srgb, var(--line) 82%, transparent);
   border-radius: 0;
   background: transparent;
+  contain-intrinsic-block-size: auto 88px;
 }
 
 .library-grid[data-view="list"] > li + li {
