@@ -101,6 +101,6 @@ describe("DELETE /api/documents/:id", () => {
 
     expect((await remove("cccccccccccccccc")).status).toBe(404)
     expect((await remove("url")).status).toBe(400)
-    expect((await remove("aaaaaaaaaaaaaaaa/base64")).status).toBe(400)
+    expect((await remove("aaaaaaaaaaaaaaaa/file")).status).toBe(400)
   })
 })

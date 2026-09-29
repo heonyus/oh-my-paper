@@ -42,9 +42,10 @@ import {
 } from "../shared/scholarlySearchSchemas"
 import { createClaudeRoutes } from "./claudeRoutes"
 import type { WebServerConfig } from "./config"
+import { createDocumentFileRoute } from "./documentFileRoute"
 import { streamParsedPage } from "./pageParseStream"
 import type { WebServices } from "./services"
-import { importPdfBytes, importPdfFromUrl, readDocumentBase64, readWorkspace } from "./services"
+import { importPdfBytes, importPdfFromUrl, readWorkspace } from "./services"
 import { createSubscriptionRoutes } from "./subscriptionRoutes"
 
 function sendJson(res: ServerResponse, status: number, data: unknown): void {
@@ -147,6 +148,7 @@ async function serveStatic(
 export function createLocalWebServer(config: WebServerConfig, services: WebServices) {
   const subscriptionRoutes = createSubscriptionRoutes(services)
   const claudeRoutes = createClaudeRoutes(services)
+  const documentFiles = createDocumentFileRoute(services)
   const server = createServer(async (req, res) => {
     try {
       const hostname = new URL(`http://${req.headers.host ?? config.host}`).hostname
@@ -194,6 +196,7 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
 
       if (await subscriptionRoutes.handle(pathname, req, res)) return
       if (await claudeRoutes.handle(pathname, req, res)) return
+      if (await documentFiles.handle(pathname, req, res)) return
 
       if (!pathname.startsWith("/api/")) {
         const served = await serveStatic(req, res, config.staticDir)
@@ -265,18 +268,6 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
           return
         }
         sendJson(res, 200, { ok: true })
-        return
-      }
-
-      if (
-        pathname.startsWith("/api/documents/") &&
-        pathname.endsWith("/base64") &&
-        req.method === "GET"
-      ) {
-        const parts = pathname.split("/")
-        const id = documentIdSchema.parse(parts[3])
-        const base64 = await readDocumentBase64(id, services)
-        sendJson(res, 200, base64)
         return
       }
 

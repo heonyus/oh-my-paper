@@ -45,6 +45,7 @@ import { agentAskStream } from "./localAgentStream"
 import { createLocalAiJobs } from "./localAiJobs"
 import { createLocalClaudeApi } from "./localClaudeApi"
 import { createLocalCodexApi } from "./localCodexApi"
+import { fetchLocalDocumentBytes } from "./localDocumentFile"
 import { createLocalImporter } from "./localImport"
 import { createLocalPageParser } from "./localPageParser"
 import { localRpc, readLocalResponse } from "./localTransport"
@@ -121,12 +122,9 @@ export function installLocalReaderApi(): void {
     },
     getDroppedFilePath: importer.getDroppedFilePath,
     onImportProgress: importer.onImportProgress,
-    readDocument: async (id: DocumentId): Promise<string> => {
+    readDocument: async (id: DocumentId, signal?: AbortSignal): Promise<Uint8Array> => {
       _activeDocumentId = id
-      const response = await fetch(`/api/documents/${id}/base64`, {
-        signal: AbortSignal.timeout(60_000),
-      })
-      return readLocalResponse(response, z.string())
+      return fetchLocalDocumentBytes(id, signal)
     },
     readDocumentLayout: async () => ({ status: "unavailable", reason: "runtime_missing" }),
     parseDocumentPage: async (

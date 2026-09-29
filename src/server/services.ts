@@ -6,7 +6,7 @@ import { createClaudeWebSearchEngine } from "../electron/claudeWebSearch"
 import { DocumentAnalysisService } from "../electron/documentAnalysisService"
 import { DocumentAstService } from "../electron/documentAstService"
 import { createDocumentPageParser } from "../electron/documentPageParser"
-import { importDocument, readDocumentBytes } from "../electron/documentService"
+import { importDocument } from "../electron/documentService"
 import { PaddlePageParserService } from "../electron/paddlePageParserService"
 import { PageTranslationCacheService } from "../electron/pageTranslationCacheService"
 import { createPaperDiscoverySources } from "../electron/paperDiscoverySources"
@@ -216,10 +216,6 @@ export async function importPdfFromUrl(
   const { downloadRemotePdf } = await import("../shared/remotePdf")
   const { bytes, fileName } = await downloadRemotePdf(url)
   return importPdfBytes(bytes, fileName, services)
-}
-
-export async function readDocumentBase64(id: DocumentId, services: WebServices): Promise<string> {
-  return (await readDocumentBytes(id, services.store)).toString("base64")
 }
 
 export async function readWorkspace(services: WebServices): Promise<Workspace> {

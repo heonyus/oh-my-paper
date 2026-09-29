@@ -2,7 +2,6 @@ import { FileText } from "lucide-react"
 import { GlobalWorkerOptions, getDocument } from "pdfjs-dist/legacy/build/pdf.mjs"
 import workerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url"
 import { type JSX, useEffect, useRef, useState } from "react"
-import { decodeBase64 } from "../lib/base64"
 import type { DocumentRecord } from "../types"
 import { getCachedThumbnail, storeCachedThumbnail } from "./documentThumbnailCache"
 
@@ -60,9 +59,9 @@ export function DocumentThumbnail({
 
     void (async () => {
       try {
-        const encoded = await window.ohmypaper.readDocument(document.id)
+        const bytes = await window.ohmypaper.readDocument(document.id)
         if (!active) return
-        const task = getDocument({ data: decodeBase64(encoded) })
+        const task = getDocument({ data: bytes })
         activeLoadingTask = task
         try {
           const pdf = await task.promise

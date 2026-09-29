@@ -77,13 +77,6 @@ function pdfPicker(): Promise<File | null> {
   })
 }
 
-function base64(bytes: Uint8Array<ArrayBuffer>): string {
-  let binary = ""
-  for (let offset = 0; offset < bytes.length; offset += 32_768)
-    binary += String.fromCharCode(...bytes.subarray(offset, offset + 32_768))
-  return btoa(binary)
-}
-
 export class WebWorkspaceBridge {
   readonly #storageKey: string
   readonly #remoteIds = new Map<DocumentId, string>()
@@ -166,8 +159,8 @@ export class WebWorkspaceBridge {
     return resolved
   }
 
-  async readDocument(id: DocumentId): Promise<string> {
-    return base64(await fetchDocumentBytes(await this.#remoteId(id)))
+  async readDocument(id: DocumentId): Promise<Uint8Array> {
+    return fetchDocumentBytes(await this.#remoteId(id))
   }
 
   async page(id: DocumentId, pageNumber: number): Promise<ParsedDocumentPage> {

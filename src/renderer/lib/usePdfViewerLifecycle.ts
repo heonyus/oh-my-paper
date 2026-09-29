@@ -3,7 +3,6 @@ import { EventBus, PDFLinkService, PDFViewer } from "pdfjs-dist/legacy/web/pdf_v
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react"
 import "./pdfWorker"
 import type { DocumentRecord } from "../types"
-import { decodeBase64 } from "./base64"
 import { clearParsedDocumentPages } from "./documentPageRuntime"
 import { PdfAstRuntimeSession } from "./pdfAstRuntimeSession"
 import type { ViewerSession } from "./pdfColumnSupport"
@@ -153,10 +152,11 @@ export function usePdfViewerLifecycle({
     const releaseExternalLinks = Pdf.bindPdfExternalLinks(container, window.ohmypaper.openExternal)
     overlayRefreshRef.current = bridge.scheduleOverlayRefresh
 
+    const download = new AbortController()
     void window.ohmypaper
-      .readDocument(resourceDocument.id)
-      .then(async (encoded) => {
-        const loadingTask = getDocument({ data: decodeBase64(encoded) })
+      .readDocument(resourceDocument.id, download.signal)
+      .then(async (bytes) => {
+        const loadingTask = getDocument({ data: bytes })
         const pdf = await loadingTask.promise
         if (disposed) {
           await loadingTask.destroy()
@@ -205,6 +205,7 @@ export function usePdfViewerLifecycle({
 
     return () => {
       disposed = true
+      download.abort()
       unregisterPdf?.()
       astRuntime.dispose()
       clearParsedDocumentPages(resourceDocument.id)
