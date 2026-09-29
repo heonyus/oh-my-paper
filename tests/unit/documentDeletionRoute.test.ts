@@ -74,13 +74,14 @@ describe("DELETE /api/documents/:id", () => {
     const deleted = record("a", "Deleted paper")
     const kept = record("b", "Kept paper")
     await services.store.save({ ...defaultWorkspace(), documents: [deleted, kept] })
-    const files = (hash: string) => [
+    const files = ({ id, hash }: { readonly id: string; readonly hash: string }) => [
       join(root, "documents", `${hash}.pdf`),
       join(root, "parsed-pages", hash, "page-1.json"),
       join(root, "document-ast", hash, "source.json"),
       join(root, "page-translations", hash, "config", "page-1.json"),
+      join(root, "layout", `${id}.json`),
     ]
-    for (const path of [...files(deleted.hash), ...files(kept.hash)]) {
+    for (const path of [...files(deleted), ...files(kept)]) {
       await mkdir(join(path, ".."), { recursive: true })
       await writeFile(path, "{}")
     }
@@ -92,8 +93,8 @@ describe("DELETE /api/documents/:id", () => {
     expect((await services.store.read()).documents.map((document) => document.id)).toEqual([
       kept.id,
     ])
-    for (const path of files(deleted.hash)) expect(await exists(path)).toBe(false)
-    for (const path of files(kept.hash)) expect(await exists(path)).toBe(true)
+    for (const path of files(deleted)) expect(await exists(path)).toBe(false)
+    for (const path of files(kept)) expect(await exists(path)).toBe(true)
   })
 
   it("answers 404 for an unknown document and 400 for a malformed id", async () => {

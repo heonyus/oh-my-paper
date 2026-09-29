@@ -1,5 +1,8 @@
 import { type JSX, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type { DocumentAnalysisJob } from "../../shared/documentAnalysis"
+import {
+  type DocumentAnalysisSnapshot,
+  emptyDocumentAnalysisSnapshot,
+} from "../../shared/documentAnalysis"
 import type { ImportProgress } from "../../shared/ipc"
 import type { KnowledgeNodeId } from "../../shared/knowledgeSchemas"
 import type { KnowledgeClientOps } from "../lib/knowledgeTypes"
@@ -32,7 +35,7 @@ type LibraryHomeProps = {
   readonly onFileDrop: (files: readonly File[]) => void
   readonly importLabel?: string | undefined
   readonly importProgress?: readonly ImportProgress[]
-  readonly analysisJobs?: readonly DocumentAnalysisJob[]
+  readonly analysisJobs?: DocumentAnalysisSnapshot
   readonly onRetryAnalysis?: ((id: DocumentId) => void) | undefined
   readonly recentDocumentId?: DocumentId | null | undefined
   readonly recentPage?: number | null | undefined
@@ -62,7 +65,7 @@ export function LibraryHome({
   onFileDrop,
   importLabel = "PDF 가져오기",
   importProgress = [],
-  analysisJobs = [],
+  analysisJobs = emptyDocumentAnalysisSnapshot,
   onRetryAnalysis,
   recentDocumentId,
   recentPage,

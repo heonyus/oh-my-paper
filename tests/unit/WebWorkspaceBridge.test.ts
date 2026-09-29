@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { emptyDocumentAnalysisSnapshot } from "../../src/shared/documentAnalysis"
 import { WebWorkspaceBridge } from "../../src/web/webWorkspace"
 
 const sourceHash = "a".repeat(64)
@@ -56,6 +57,6 @@ describe("WebWorkspaceBridge", () => {
   it("does not reconstruct ready documents as completed analysis tasks", async () => {
     const bridge = new WebWorkspaceBridge("user-1")
 
-    expect(await bridge.analysis()).toEqual([])
+    expect(await bridge.analysis()).toEqual(emptyDocumentAnalysisSnapshot)
   })
 })

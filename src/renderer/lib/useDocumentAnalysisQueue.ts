@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react"
-import type { DocumentAnalysisSnapshot } from "../../shared/documentAnalysis"
+import {
+  type DocumentAnalysisSnapshot,
+  emptyDocumentAnalysisSnapshot,
+} from "../../shared/documentAnalysis"
 
 export function useDocumentAnalysisQueue(): DocumentAnalysisSnapshot {
-  const [jobs, setJobs] = useState<DocumentAnalysisSnapshot>([])
+  const [jobs, setJobs] = useState<DocumentAnalysisSnapshot>(emptyDocumentAnalysisSnapshot)
 
   useEffect(() => {
     let cancelled = false
