@@ -88,6 +88,61 @@ describe("reference extraction", () => {
     expect(references["19"]?.title).toBe("Structured attention networks")
   })
 
+  it("collects every numbered list of a Nature-style paper and stops at the back matter", () => {
+    const references = extractReferencesFromText(
+      [
+        "Online content Any methods, additional references and statements are available online.",
+        "References 1. Ehrenfeld, J. M. & Cannesson, M. (eds) Monitoring Technologies in Acute Care Environments (Springer Science & Business Media, 2013).",
+        "7. Wallace, D. J., Angus, D. C. & Kahn, J. M. Nighttime intensivist staffing and mortality among critically ill patients. N. Engl. J. Med. 366 , 2093–2101 (2012). quiz 35.",
+        "18. Dietterich, T. G. in Joint IAPR International Workshops on Statistical Techniques in Pattern Recognition vol. 2396 15–30 (Springer, 2002).",
+        "Publisher’s note Springer Nature remains neutral with regard to jurisdictional claims.",
+        "Methods Study design and setting. Patients admitted before 2008 were excluded from the analysis due to frequent changes in variable identifiers.",
+        "References 59. Ye, L. & Keogh, E. in Proceedings of the 15th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining 947–956 (ACM, 2009).",
+        "60. Bock, C. et al. Association mapping in biomedical time series via statistically significant shapelet mining. Bioinformatics 34 , i438–i446 (2018).",
+        "a cknowledgements Funding for this work was provided by the Swiss National Science Foundation. S.L.H. and T.G. with input from all authors created Fig. 1. Competing interests The authors declare no competing interests.",
+        "Extended Data Fig. 1 | Example patient stay. Data from 2008 were excluded from the analysis due to frequent changes in variable identifiers.",
+      ].join(" "),
+    )
+
+    expect(Object.keys(references).sort()).toEqual(["1", "18", "59", "60", "7"])
+    expect(references["1"]).toMatchObject({
+      authors: "Ehrenfeld, J. M. & Cannesson, M",
+      title: "Monitoring Technologies in Acute Care Environments",
+      year: 2013,
+    })
+    expect(references["7"]).toMatchObject({
+      authors: "Wallace, D. J., Angus, D. C. & Kahn, J. M",
+      title: "Nighttime intensivist staffing and mortality among critically ill patients",
+      venue: "N. Engl. J. Med. 366 , 2093–2101",
+      year: 2012,
+    })
+    expect(references["18"]).toMatchObject({
+      authors: "Dietterich, T. G",
+      title: "Joint IAPR International Workshops on Statistical Techniques in Pattern Recognition",
+      year: 2002,
+    })
+    expect(references["59"]).toMatchObject({
+      authors: "Ye, L. & Keogh, E",
+      title:
+        "Proceedings of the 15th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining",
+      year: 2009,
+    })
+    expect(references["60"]).toMatchObject({ authors: "Bock, C. et al", year: 2018 })
+    expect(references["60"]?.title).toBe(
+      "Association mapping in biomedical time series via statistically significant shapelet mining",
+    )
+  })
+
+  it("keeps every numbered entry shorter than a page of prose", () => {
+    const prose = "This sentence is prose that follows the final reference of the list. ".repeat(40)
+    const references = extractReferencesFromText(
+      `References 1. Author, A. A stable paper title. Journal 1 , 1–2 (2019). ${prose}`,
+    )
+
+    expect(references["1"]?.rawText.length).toBeLessThan(1_000)
+    expect(references["1"]?.authors.length).toBeLessThan(200)
+  })
+
   it("leaves an unresolved citation without fabricated paper metadata", () => {
     const structures = detectPageStructures(4, [
       {

@@ -2,6 +2,7 @@ import type { PDFDocumentProxy } from "pdfjs-dist/legacy/build/pdf.mjs"
 import { z } from "zod"
 import { detectDocumentKind } from "../../shared/documentKind"
 import type { DocumentKind } from "../../shared/schemas"
+import { withoutPageFurniture } from "./pageFurniture"
 import { buildCitationIndex, type CitationIndexEntry } from "./pdfCitationIndex"
 import type { PdfFeature, PdfTextSpan } from "./pdfFeatureDetection"
 import {
@@ -105,7 +106,7 @@ export async function analyzePdfDocument(
     }),
   )
   const fullText = pageTexts.join("\n")
-  const bibliography = extractReferencesFromText(fullText)
+  const bibliography = extractReferencesFromText(withoutPageFurniture(pageTexts).join("\n"))
   const textCharacters = pageTexts.reduce((total, text) => total + text.length, 0)
   const anchorCount = pageTexts.reduce(
     (total, text) => total + (text.match(/[^.!?]+(?:[.!?]+|$)/gu)?.length ?? 0),

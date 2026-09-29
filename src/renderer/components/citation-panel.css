@@ -55,6 +55,34 @@
   font-size: var(--type-compact-size);
   white-space: normal;
 }
+.citation-heading {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.citation-heading[data-clamped="true"] {
+  max-height: calc(5 * 1.45em);
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+}
+.citation-heading-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+  cursor: pointer;
+}
+.citation-heading-toggle:hover {
+  color: var(--ink);
+}
+.citation-heading-toggle[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
 .reading-tier {
   padding: 3px 6px;
   border-radius: 5px;
