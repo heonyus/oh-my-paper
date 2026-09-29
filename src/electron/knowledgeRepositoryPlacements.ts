@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
 import type { DatabaseSync } from "node:sqlite"
+import { z } from "zod"
 import {
   type BoardId,
   type BoardRecord,
@@ -9,6 +10,7 @@ import {
   externalMappingIdSchema,
   externalMappingSchema,
   type KnowledgeNodeId,
+  knowledgeNodeIdSchema,
   type PlacementId,
   type PlacementRecord,
   placementIdSchema,
@@ -24,6 +26,28 @@ import {
   rowToPlacement,
 } from "./knowledgeRepositoryRows"
 import { cachedStatement } from "./knowledgeStatements"
+
+export type CardPlacement = {
+  readonly id: PlacementId
+  readonly nodeId: KnowledgeNodeId
+  readonly cardId: string | null
+  readonly x: number
+  readonly y: number
+  readonly width: number
+  readonly height: number | null
+  readonly minimized: boolean
+}
+
+const cardPlacementRowSchema = z.object({
+  id: placementIdSchema,
+  node_id: knowledgeNodeIdSchema,
+  card_id: z.string().nullable(),
+  x: z.number(),
+  y: z.number(),
+  width: z.number(),
+  height: z.number().nullable(),
+  minimized: z.number(),
+})
 
 export class KnowledgePlacementOperations {
   constructor(private readonly db: DatabaseSync) {}
@@ -156,6 +180,28 @@ export class KnowledgePlacementOperations {
       "SELECT * FROM placements WHERE board_id = ? ORDER BY z_index ASC",
     ).all(boardId)
     return rawRows.map((r) => rowToPlacement(placementRowSchema.parse(r)))
+  }
+
+  /** The board's placements in `findPlacementsForBoard` order, with only what a save compares. */
+  findCardPlacements(boardId: BoardId): readonly CardPlacement[] {
+    const rawRows = cachedStatement(
+      this.db,
+      `SELECT id, node_id, card_id, x, y, width, height, minimized
+       FROM placements WHERE board_id = ? ORDER BY z_index ASC`,
+    ).all(boardId)
+    return rawRows.map((raw) => {
+      const row = cardPlacementRowSchema.parse(raw)
+      return {
+        id: row.id,
+        nodeId: row.node_id,
+        cardId: row.card_id,
+        x: row.x,
+        y: row.y,
+        width: row.width,
+        height: row.height,
+        minimized: Boolean(row.minimized),
+      }
+    })
   }
 
   findPlacementsForNode(nodeId: KnowledgeNodeId): readonly PlacementRecord[] {

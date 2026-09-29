@@ -1,30 +1,27 @@
-import { mkdir, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
-import { z } from "zod"
 import type { DocumentId, DocumentRecord, Workspace } from "../shared/schemas"
 import { workspaceSchema } from "../shared/schemas"
 import { CollectionService } from "./collectionService"
-import { replaceFile } from "./fileReplace"
 import {
   closeKnowledgeDatabase,
   openKnowledgeDatabase,
   optimizeKnowledgeDatabase,
 } from "./knowledgeDatabase"
-import { markProjectionSource, migrateLegacyWorkspaceIfPresent } from "./knowledgeLegacyMigration"
+import { migrateLegacyWorkspaceIfPresent } from "./knowledgeLegacyMigration"
 import { KnowledgeRepository } from "./knowledgeRepository"
 import { mergeWorkspaceForSave } from "./knowledgeWorkspaceMerge"
 import { syncWorkspaceToRepository } from "./knowledgeWorkspaceSync"
 import { forgetLearningFiles, saveLearningFiles } from "./learningFiles"
 import { removeDocumentFromRepository } from "./workspaceDocumentDeletion"
+import { importLibraryDocument, type LibraryImport } from "./workspaceDocumentImport"
 import { readLibraryDocument, readLibraryDocuments } from "./workspaceDocuments"
 import { WorkspaceFiles } from "./workspaceFiles"
 import { WorkspaceProjectionCache } from "./workspaceProjectionCache"
+import { writeWorkspaceProjectionFile } from "./workspaceProjectionFile"
 import { WorkspaceSnapshots } from "./workspaceSnapshots"
 
 export { defaultWorkspace } from "./workspaceDefaults"
-
-const persistedWorkspaceSchema = workspaceSchema.extend({ layoutVersion: z.literal(2) })
 
 export class WorkspaceStore {
   readonly workspaceFile: string
@@ -34,6 +31,7 @@ export class WorkspaceStore {
   readonly repository: KnowledgeRepository
   private saveQueue: Promise<void> = Promise.resolve()
   private migrated = false
+  private projectionFileStale = false
   private readonly snapshots = new WorkspaceSnapshots()
   private readonly projections: WorkspaceProjectionCache
   private readonly files: WorkspaceFiles
@@ -77,13 +75,18 @@ export class WorkspaceStore {
   }
 
   async close(): Promise<void> {
-    await this.flush()
-    if (this.collectionService) {
-      optimizeKnowledgeDatabase(this.db)
-      await this.collectionService.close()
-      return
+    try {
+      await this.enqueue(async () => {
+        if (this.projectionFileStale) await this.acknowledgeRepository()
+      })
+    } finally {
+      if (this.collectionService) {
+        optimizeKnowledgeDatabase(this.db)
+        await this.collectionService.close()
+      } else {
+        closeKnowledgeDatabase(this.db)
+      }
     }
-    closeKnowledgeDatabase(this.db)
   }
 
   private async ensureMigrated(): Promise<void> {
@@ -136,7 +139,7 @@ export class WorkspaceStore {
         (parsed.baseRevision ?? parsed.revision) !== undefined
       const effective = mergeWorkspaceForSave(base, current, parsed)
       this.repository.withCanonicalNoteWrite(() =>
-        syncWorkspaceToRepository(this.repository, this.db, parsed, base, false),
+        syncWorkspaceToRepository(this.repository, this.db, effective, undefined, false, current),
       )
       await this.collectionService?.syncWorkspaceNotes(
         effective.cards,
@@ -154,30 +157,16 @@ export class WorkspaceStore {
     await this.saveQueue
   }
 
-  async addDocument(
-    document: DocumentRecord,
-  ): Promise<{ readonly document: DocumentRecord; readonly duplicate: boolean }> {
+  /**
+   * Imports one document record without reprojecting the library, so bulk imports stay linear.
+   * The server-mode JSON mirror catches up at the next save or on close.
+   */
+  async addDocument(document: DocumentRecord): Promise<LibraryImport> {
     return this.enqueue(async () => {
       await this.ensureMigrated()
-      const existingVersions = this.repository.findDocumentVersionsByHash(document.hash)
-      if (existingVersions.length > 0) {
-        const workspace = await this.read()
-        const existing = workspace.documents.find((d) => d.hash === document.hash)
-        if (existing) return { document: existing, duplicate: true }
-      }
-
-      const workspace = await this.read()
-      const updated: Workspace = {
-        ...workspace,
-        documents: [...workspace.documents, document],
-        activeDocumentId: document.id,
-      }
-      this.repository.withCanonicalNoteWrite(() =>
-        syncWorkspaceToRepository(this.repository, this.db, updated, undefined, false),
-      )
-      await this.collectionService?.syncWorkspaceNotes(updated.cards, workspace.cards)
-      await this.acknowledgeRepository()
-      return { document, duplicate: false }
+      const imported = importLibraryDocument(this.repository, this.db, document)
+      if (!imported.duplicate && !this.collectionService) this.projectionFileStale = true
+      return imported
     })
   }
 
@@ -219,20 +208,10 @@ export class WorkspaceStore {
       await this.files.readerNotes(),
     )
     this.snapshots.remember(savedWs)
-    if (!this.collectionService) await this.writeProjection(savedWs)
+    if (!this.collectionService) {
+      await writeWorkspaceProjectionFile(this.db, this.workspaceFile, savedWs)
+      this.projectionFileStale = false
+    }
     return savedWs
-  }
-
-  private async writeProjection(workspace: Workspace): Promise<void> {
-    const parsed = workspaceSchema.parse(workspace)
-    const persisted = persistedWorkspaceSchema.parse({ ...parsed, layoutVersion: 2 })
-    markProjectionSource(this.db, this.workspaceFile, parsed.documents.length + parsed.cards.length)
-    const temporaryFile = `${this.workspaceFile}.tmp`
-    await mkdir(this.root, { recursive: true })
-    await writeFile(temporaryFile, JSON.stringify(persisted), {
-      encoding: "utf8",
-      mode: 0o600,
-    })
-    await replaceFile(temporaryFile, this.workspaceFile)
   }
 }

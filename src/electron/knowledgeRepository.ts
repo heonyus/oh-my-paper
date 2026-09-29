@@ -31,7 +31,7 @@ import type {
 } from "../shared/knowledgeTypes"
 import { KnowledgeEvidenceOperations } from "./knowledgeRepositoryEvidence"
 import { type CanonicalNoteProjection, KnowledgeNodeOperations } from "./knowledgeRepositoryNodes"
-import { KnowledgePlacementOperations } from "./knowledgeRepositoryPlacements"
+import { type CardPlacement, KnowledgePlacementOperations } from "./knowledgeRepositoryPlacements"
 import { KnowledgeRelationOperations } from "./knowledgeRepositoryRelations"
 
 export class KnowledgeRepository {
@@ -189,6 +189,10 @@ export class KnowledgeRepository {
 
   findPlacementsForBoard(boardId: BoardId): readonly PlacementRecord[] {
     return this.placements.findPlacementsForBoard(boardId)
+  }
+
+  findCardPlacements(boardId: BoardId): readonly CardPlacement[] {
+    return this.placements.findCardPlacements(boardId)
   }
 
   findPlacementsForNode(nodeId: KnowledgeNodeId): readonly PlacementRecord[] {
