@@ -9,6 +9,22 @@ import type { Viewport } from "../../shared/schemas"
 import type { BoardTool } from "../types"
 import { nextWheelAxis, panViewport, zoomViewportAt } from "./viewport"
 
+/**
+ * An upright wheel over a page translation's own scrolling text scrolls that text while it has
+ * room to go that way. Every other wheel over the pane — sideways, zoom, or a translation set on
+ * its page copy with nothing to scroll — moves the board the pane sits on.
+ */
+function scrollsTranslationText(event: WheelEvent): boolean {
+  if (!(event.target instanceof Element)) return false
+  const body = event.target.closest<HTMLElement>(".page-translation-body")
+  if (!body || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return false
+  const overflow = getComputedStyle(body).overflowY
+  if (overflow !== "auto" && overflow !== "scroll") return false
+  return event.deltaY < 0
+    ? body.scrollTop > 0
+    : body.scrollTop + body.clientHeight < body.scrollHeight - 1
+}
+
 type UseBoardGesturesProps = {
   readonly wheelTargetRef: RefObject<HTMLElement | null>
   readonly viewport: Viewport
@@ -41,6 +57,7 @@ export function useBoardGestures({
   const wheelPanActive = useRef(false)
   const wheelAxis = useRef<"x" | "y" | null>(null)
   const wheelAxisTimer = useRef<number | null>(null)
+  const nativeWheelTimer = useRef<number | null>(null)
   const pendingViewport = useRef(viewport)
   const wheelHandlerRef = useRef<(event: WheelEvent, target: HTMLElement) => void>(() => undefined)
   const [panning, setPanning] = useState(false)
@@ -69,9 +86,18 @@ export function useBoardGestures({
       if (panSettleFrame.current !== null) cancelAnimationFrame(panSettleFrame.current)
       if (wheelAxisTimer.current !== null) window.clearTimeout(wheelAxisTimer.current)
       if (wheelPanCommitTimer.current !== null) window.clearTimeout(wheelPanCommitTimer.current)
+      if (nativeWheelTimer.current !== null) window.clearTimeout(nativeWheelTimer.current)
     },
     [],
   )
+
+  /** A burst that began scrolling text stays with it, like a browser's own scroll latching. */
+  function latchNativeWheel(): void {
+    if (nativeWheelTimer.current !== null) window.clearTimeout(nativeWheelTimer.current)
+    nativeWheelTimer.current = window.setTimeout(() => {
+      nativeWheelTimer.current = null
+    }, 160)
+  }
 
   function resetWheelAxisAfterIdle(): void {
     if (wheelAxisTimer.current !== null) window.clearTimeout(wheelAxisTimer.current)
@@ -210,6 +236,16 @@ export function useBoardGestures({
 
   function handleWheel(event: WheelEvent, currentTarget: HTMLElement): void {
     if (event.target instanceof Element && event.target.closest(".board-card")) return
+    // A pan already under way keeps moving the board when a translation slides under the cursor.
+    if (
+      !event.ctrlKey &&
+      !event.metaKey &&
+      (nativeWheelTimer.current !== null ||
+        (!wheelPanActive.current && scrollsTranslationText(event)))
+    ) {
+      latchNativeWheel()
+      return
+    }
     event.preventDefault()
     if (event.ctrlKey || event.metaKey) {
       finishWheelPan()
