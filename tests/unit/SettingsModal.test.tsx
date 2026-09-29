@@ -64,8 +64,8 @@ describe("SettingsModal", () => {
 
     const model = screen.getByLabelText("모델 ID")
     expect(model).toHaveValue("deepseek/deepseek-v4.1-flash")
-    await userEvent.selectOptions(model, "google/gemini-2.5-flash-lite")
-    expect(model).toHaveValue("google/gemini-2.5-flash-lite")
+    await userEvent.selectOptions(model, "google/gemini-3.1-flash-lite")
+    expect(model).toHaveValue("google/gemini-3.1-flash-lite")
   })
 
   it("saves the selected page-translation model", async () => {

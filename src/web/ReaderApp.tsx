@@ -1,4 +1,4 @@
-import { BookOpen, Library, Settings, Sparkles } from "lucide-react"
+import { BookOpen, CircleHelp, Library, Settings, Sparkles } from "lucide-react"
 import { type JSX, lazy, Suspense, useEffect, useRef, useState } from "react"
 import leafMarkUrl from "../../assets/branding/ohmypaper-leaf-mark.png"
 import { Topbar } from "../renderer/components/AppChrome"
@@ -7,6 +7,7 @@ import { LibraryHome } from "../renderer/components/LibraryHome"
 import { appShellStyle } from "../renderer/lib/uiFontScale"
 import { useAppWorkspace } from "../renderer/lib/useAppWorkspace"
 import { type DocumentId, documentIdSchema } from "../shared/schemas"
+import { FeatureTips, TipsGallery } from "./tips/FeatureTips"
 import { WebOnboarding } from "./WebOnboarding"
 
 const ReaderWorkspace = lazy(() =>
@@ -29,6 +30,7 @@ export function ReaderApp(): JSX.Element {
   const app = useAppWorkspace()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [researchOpen, setResearchOpen] = useState(false)
+  const [tipsOpen, setTipsOpen] = useState(false)
   const [openImportUrl] = useState(() => {
     const current = new URL(window.location.href)
     return current.pathname === "/open" ? current.searchParams.get("url") : null
@@ -192,14 +194,25 @@ export function ReaderApp(): JSX.Element {
             리서치
           </button>
         </nav>
-        <button
-          type="button"
-          className="web-reader-settings"
-          aria-label="설정"
-          onClick={() => setSettingsOpen(true)}
-        >
-          <Settings size={18} aria-hidden="true" />
-        </button>
+        <div className="web-reader-header-actions">
+          <button
+            type="button"
+            className="web-reader-help"
+            aria-label="사용법"
+            title="사용법"
+            onClick={() => setTipsOpen(true)}
+          >
+            <CircleHelp size={18} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="web-reader-settings"
+            aria-label="설정"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <Settings size={18} aria-hidden="true" />
+          </button>
+        </div>
       </header>
       <div className="web-reader-main-area">
         {researchOpen ? (
@@ -299,6 +312,15 @@ export function ReaderApp(): JSX.Element {
         bootstrapError={app.bootstrapError}
         onPreparationClose={() => app.setPreparation([])}
       />
+      {tipsOpen ? (
+        <TipsGallery onClose={() => setTipsOpen(false)} />
+      ) : (
+        <FeatureTips
+          view={researchOpen ? "research" : libraryVisible ? "library" : "reader"}
+          hasDocument={Boolean(app.activeDocument)}
+          visitKey={`${researchOpen}:${libraryVisible}:${app.activeDocument?.id ?? ""}:${app.noteOpen}`}
+        />
+      )}
       {settingsOpen ? (
         <Suspense fallback={<p role="status">설정을 여는 중…</p>}>
           <AppSettingsDialog

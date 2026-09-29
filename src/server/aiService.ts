@@ -11,6 +11,7 @@ import type { CodexSubscriptionAdapter } from "../electron/codexSubscriptionAdap
 import { providerClient, providerFailure } from "../electron/providerClient"
 import { completeChat, streamChat } from "../electron/providerCompletion"
 import { ProviderConfigurationError } from "../electron/providerConfigStore"
+import { CODEX_DEFAULT_MODEL } from "../shared/codexTypes"
 import {
   aiRequestSchema,
   aiResultSchema,
@@ -47,7 +48,7 @@ export class WebAiService {
     subscription: CodexSubscriptionAdapter | null = null,
     modeSettings: AiModeSettings = {
       mode: "chatgpt",
-      codexModel: "gpt-5.6-sol",
+      codexModel: CODEX_DEFAULT_MODEL,
       codexReasoningEffort: "medium",
     },
     claude: ClaudeSubscriptionAdapter | null = null,

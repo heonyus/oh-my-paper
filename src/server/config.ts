@@ -44,7 +44,7 @@ function defaultModel(provider: z.infer<typeof providerSchema> | null): string |
   if (provider === "gemini") return "gemini-3.5-flash-lite"
   if (provider === "groq") return "openai/gpt-oss-20b"
   if (provider === "openrouter") return DEFAULT_OPENROUTER_MODEL
-  if (provider === "openai") return "gpt-4.1-mini"
+  if (provider === "openai") return "gpt-6-luna"
   return null
 }
 

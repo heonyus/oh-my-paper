@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
+  CODEX_DEFAULT_MODEL,
+  CODEX_MODEL_OPTIONS,
   CODEX_REASONING_EFFORT_OPTIONS,
   type CodexAccountStatus,
   type CodexLoginStartResult,
   type CodexLoginType,
+  type CodexModel,
 } from "../../shared/codexTypes"
 import type { CodexReasoningEffort } from "../../shared/ipc"
 
@@ -21,6 +24,8 @@ export type CodexSettingsOptions = {
 
 export type CodexSettingsState = {
   readonly status: CodexAccountStatus | null
+  /** The account's models from the runtime; the bundled list until it answers. */
+  readonly models: readonly CodexModel[]
   readonly pendingLogin: PendingLogin | null
   readonly message: string
   readonly busy: boolean
@@ -64,7 +69,8 @@ export function useCodexSettings({ onConnectionChange }: CodexSettingsOptions): 
   const [pendingLogin, setPendingLogin] = useState<PendingLogin | null>(null)
   const [message, setMessage] = useState("")
   const [busy, setBusy] = useState(false)
-  const [selectedModel, setSelectedModel] = useState("gpt-5.6-sol")
+  const [models, setModels] = useState<readonly CodexModel[]>(CODEX_MODEL_OPTIONS)
+  const [selectedModel, setSelectedModel] = useState<string>(CODEX_DEFAULT_MODEL)
   const [selectedEffort, setSelectedEffort] = useState<CodexReasoningEffort>("medium")
   const changed = useRef(onConnectionChange)
   const pendingLoginRef = useRef<PendingLogin | null>(null)
@@ -75,7 +81,11 @@ export function useCodexSettings({ onConnectionChange }: CodexSettingsOptions): 
 
   const refresh = useCallback(async (): Promise<void> => {
     try {
-      setStatus(await window.ohmypaper.codex.getStatus())
+      const nextStatus = await window.ohmypaper.codex.getStatus()
+      setStatus(nextStatus)
+      if (nextStatus.authenticated) {
+        setModels(await window.ohmypaper.codex.listModels().catch(() => CODEX_MODEL_OPTIONS))
+      }
       const providerStatus = await window.ohmypaper.providerStatus()
       if (providerStatus.codexModel) setSelectedModel(providerStatus.codexModel)
       if (providerStatus.codexReasoningEffort)
@@ -202,6 +212,7 @@ export function useCodexSettings({ onConnectionChange }: CodexSettingsOptions): 
           : "needed"
   return {
     status,
+    models,
     pendingLogin,
     message,
     busy,

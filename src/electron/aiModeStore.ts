@@ -2,6 +2,7 @@ import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { ZodError } from "zod"
 import { type ClaudeEffort, claudeEffortSchema } from "../shared/claudeTypes"
+import { CODEX_DEFAULT_MODEL } from "../shared/codexTypes"
 import { type CodexReasoningEffort, codexReasoningEffortSchema } from "../shared/ipc"
 import { type AiMode, aiModeSchema } from "../shared/providerModels"
 
@@ -35,13 +36,13 @@ export class AiModeStore {
       if (typeof parsed === "string") {
         return {
           mode: aiModeSchema.parse(parsed),
-          codexModel: "gpt-5.6-sol",
+          codexModel: CODEX_DEFAULT_MODEL,
           codexReasoningEffort: "medium",
         }
       }
       return {
         mode: aiModeSchema.parse(parsed.mode),
-        codexModel: typeof parsed.codexModel === "string" ? parsed.codexModel : "gpt-5.6-sol",
+        codexModel: typeof parsed.codexModel === "string" ? parsed.codexModel : CODEX_DEFAULT_MODEL,
         codexReasoningEffort:
           typeof parsed.codexReasoningEffort === "string"
             ? codexReasoningEffortSchema.parse(parsed.codexReasoningEffort)
@@ -54,7 +55,7 @@ export class AiModeStore {
       }
     } catch (error) {
       if (isMissingFile(error)) {
-        return { mode: "chatgpt", codexModel: "gpt-5.6-sol", codexReasoningEffort: "medium" }
+        return { mode: "chatgpt", codexModel: CODEX_DEFAULT_MODEL, codexReasoningEffort: "medium" }
       }
       if (error instanceof ZodError || error instanceof SyntaxError) {
         throw new AiModeConfigurationError("Saved AI access mode is invalid")
@@ -72,7 +73,7 @@ export class AiModeStore {
       typeof settings === "string"
         ? {
             mode: aiModeSchema.parse(settings),
-            codexModel: "gpt-5.6-sol",
+            codexModel: CODEX_DEFAULT_MODEL,
             codexReasoningEffort: "medium",
           }
         : {

@@ -46,17 +46,9 @@ export class CodexSession {
       {
         threadId: options.threadId,
         approvalPolicy: "never",
-        sandboxPolicy: {
-          type: "readOnly",
-          access: {
-            type: "restricted",
-            includePlatformDefaults: false,
-            readableRoots: [options.cwd ?? this.readableRoot ?? ""].filter(
-              (root) => root.length > 0,
-            ),
-          },
-          networkAccess: false,
-        },
+        // Codex 0.155 dropped `readOnly.access`; reads are already confined because the
+        // app-owned config disables the shell tool and the client declines every tool call.
+        sandboxPolicy: { type: "readOnly", networkAccess: false },
         input: [
           { type: "text", text: options.prompt },
           ...(options.imageDataUrl ? [{ type: "image", url: options.imageDataUrl }] : []),

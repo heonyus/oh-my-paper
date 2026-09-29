@@ -7,7 +7,7 @@ import {
 
 describe("provider defaults", () => {
   it("contains only non-secret model defaults", () => {
-    expect(DEFAULT_OPENAI_MODEL).toBe("gpt-5")
+    expect(DEFAULT_OPENAI_MODEL).toBe("gpt-6-sol")
     expect(DEFAULT_GEMINI_MODEL).toBe("gemini-3.5-flash-lite")
     expect(DEFAULT_GROQ_MODEL).toBe("openai/gpt-oss-20b")
   })
