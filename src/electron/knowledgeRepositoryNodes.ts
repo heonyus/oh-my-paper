@@ -94,6 +94,11 @@ export class KnowledgeNodeOperations {
   getNode(id: KnowledgeNodeId): KnowledgeNode | null {
     const raw = cachedStatement(this.db, "SELECT * FROM knowledge_nodes WHERE id = ?").get(id)
     if (!raw) return null
+    return this.nodeFromRow(raw)
+  }
+
+  /** The node a `knowledge_nodes` row describes, with a canonical note body when one applies. */
+  nodeFromRow(raw: unknown): KnowledgeNode {
     return this.withProjectedBody(rowToNode(raw))
   }
 
@@ -187,6 +192,12 @@ export class KnowledgeNodeOperations {
       .filter((node) => !filter.kind || node.kind === filter.kind)
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
       .slice(offset, offset + limit)
+  }
+
+  /** The canonical file body a note row is shown with, or null when the row's own body is. */
+  canonicalNoteBody(id: string, kind: string): string | null {
+    if (kind !== "note" || !this.noteProjection) return null
+    return this.noteProjection.get(id)?.body ?? null
   }
 
   private withProjectedBody(node: KnowledgeNode): KnowledgeNode {

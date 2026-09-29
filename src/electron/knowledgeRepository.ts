@@ -62,6 +62,14 @@ export class KnowledgeRepository {
     return this.nodes.getNode(id)
   }
 
+  nodeFromRow(raw: unknown): KnowledgeNode {
+    return this.nodes.nodeFromRow(raw)
+  }
+
+  canonicalNoteBody(id: string, kind: string): string | null {
+    return this.nodes.canonicalNoteBody(id, kind)
+  }
+
   updateNode(input: UpdateNodeInput): KnowledgeNode {
     return this.nodes.updateNode(input)
   }

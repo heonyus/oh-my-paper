@@ -7,6 +7,7 @@ import {
   type Sha256,
 } from "../shared/schemas"
 import { rowToNode } from "./knowledgeRepositoryRows"
+import { deepFrozen, type RowMemo, rowKey } from "./knowledgeRowMemo"
 import { cachedStatement } from "./knowledgeStatements"
 
 const titleSchema = documentRecordSchema.shape.title
@@ -46,13 +47,27 @@ function newestNodesFirst(rows: readonly unknown[]): readonly KnowledgeNode[] {
     )
 }
 
-/** Every library record, most recently updated first, in one query. */
-export function readLibraryDocuments(db: DatabaseSync): readonly DocumentRecord[] {
+/**
+ * Every library record, most recently updated first, in one query. With a memo carried
+ * between calls, unchanged papers keep their previous (frozen) record without a JSON parse.
+ */
+export function readLibraryDocuments(
+  db: DatabaseSync,
+  memo?: RowMemo<DocumentRecord | null>,
+): readonly DocumentRecord[] {
   const rows = cachedStatement(
     db,
     "SELECT * FROM knowledge_nodes WHERE kind = 'paper' ORDER BY updated_at DESC",
   ).all()
-  return documentsOfNodes(rows.map((row) => rowToNode(row)))
+  const derive = (row: unknown): DocumentRecord | null => documentOfPaperNode(rowToNode(row))
+  const documents = memo
+    ? memo.map(
+        rows,
+        (row) => rowKey(row, "id"),
+        (row) => deepFrozen(derive(row)),
+      )
+    : rows.map(derive)
+  return documents.flatMap((document) => (document ? [document] : []))
 }
 
 /**

@@ -1,8 +1,10 @@
+import type { Stats } from "node:fs"
 import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { type DocumentId, documentIdSchema } from "../shared/ids"
 import { mergeReaderNotes, type ReaderNote, readerNoteSchema } from "../shared/readerNote"
 import { replaceFile } from "./fileReplace"
+import { deepFrozen } from "./knowledgeRowMemo"
 
 /** Each paper's note is a plain Markdown file the reader can open outside the app. */
 function notesDirectory(root: string): string {
@@ -13,29 +15,69 @@ function notePath(root: string, documentId: DocumentId): string {
   return join(notesDirectory(root), `${documentId}.md`)
 }
 
-export async function readReaderNotes(root: string): Promise<ReaderNote[]> {
-  let names: string[]
-  try {
-    names = await readdir(notesDirectory(root))
-  } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") return []
-    throw error
+/** Changes whenever a file is replaced or rewritten, including edits made outside the app. */
+export function fileVersionOf(info: Stats): string {
+  return `${info.ino}:${info.size}:${info.mtimeMs}`
+}
+
+type NoteFileEntry = {
+  readonly documentId: DocumentId
+  readonly version: string
+  readonly note: ReaderNote | null
+}
+
+/**
+ * The reader notes on disk, re-reading only the files whose version changed since the last
+ * read. It returns the previous array itself when no file changed.
+ */
+export class ReaderNotesCache {
+  private entries: readonly NoteFileEntry[] = []
+  private notes: readonly ReaderNote[] = []
+
+  constructor(private readonly root: string) {}
+
+  async read(): Promise<readonly ReaderNote[]> {
+    let names: string[]
+    try {
+      names = await readdir(notesDirectory(this.root))
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "ENOENT") names = []
+      else throw error
+    }
+    const documentIds = names.flatMap((name) => {
+      if (!name.endsWith(".md")) return []
+      const documentId = documentIdSchema.safeParse(name.slice(0, -3))
+      return documentId.success ? [documentId.data] : []
+    })
+    const previous = new Map(this.entries.map((entry) => [entry.documentId, entry]))
+    const entries = await Promise.all(
+      documentIds.map((documentId) => this.entryFor(documentId, previous.get(documentId))),
+    )
+    const unchanged =
+      entries.length === this.entries.length &&
+      entries.every((entry, index) => entry === this.entries[index])
+    if (unchanged) return this.notes
+    this.entries = entries
+    this.notes = entries.flatMap((entry) => (entry.note ? [entry.note] : []))
+    return this.notes
   }
-  const notes: ReaderNote[] = []
-  for (const name of names) {
-    if (!name.endsWith(".md")) continue
-    const documentId = documentIdSchema.safeParse(name.slice(0, -3))
-    if (!documentId.success) continue
-    const path = notePath(root, documentId.data)
-    const [markdown, info] = await Promise.all([readFile(path, "utf8"), stat(path)])
+
+  /** Stats before reading, so a write racing the read shows up as a new version next time. */
+  private async entryFor(
+    documentId: DocumentId,
+    cached: NoteFileEntry | undefined,
+  ): Promise<NoteFileEntry> {
+    const path = notePath(this.root, documentId)
+    const info = await stat(path)
+    const version = fileVersionOf(info)
+    if (cached?.version === version) return cached
     const note = readerNoteSchema.safeParse({
-      documentId: documentId.data,
-      markdown,
+      documentId,
+      markdown: await readFile(path, "utf8"),
       updatedAt: info.mtime.toISOString(),
     })
-    if (note.success) notes.push(note.data)
+    return { documentId, version, note: note.success ? deepFrozen(note.data) : null }
   }
-  return notes
 }
 
 async function writeNote(root: string, note: ReaderNote): Promise<void> {
@@ -47,15 +89,16 @@ async function writeNote(root: string, note: ReaderNote): Promise<void> {
 }
 
 /**
- * Merges a save into the stored notes and rewrites only the files whose text changed. Without
- * a baseline nothing counts as deleted, so a stale writer cannot remove a note.
+ * Merges a save into the notes just read from disk (`stored`) and rewrites only the files whose
+ * text changed. Without a baseline nothing counts as deleted, so a stale writer cannot remove
+ * a note.
  */
 export async function saveReaderNotes(
   root: string,
   base: readonly ReaderNote[] | undefined,
   incoming: readonly ReaderNote[],
+  stored: readonly ReaderNote[],
 ): Promise<void> {
-  const stored = await readReaderNotes(root)
   const storedById = new Map(stored.map((note) => [note.documentId, note]))
   const merged = mergeReaderNotes(base ?? [], stored, incoming)
   const mergedIds = new Set(merged.map((note) => note.documentId))

@@ -4,8 +4,6 @@ import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
 import type { DocumentId, DocumentRecord, Workspace } from "../shared/schemas"
 import { workspaceSchema } from "../shared/schemas"
-import { researchSidebarLayout } from "../shared/uiLayout"
-import { readAgentThreads, writeAgentThreads } from "./agentThreadsFile"
 import { CollectionService } from "./collectionService"
 import { replaceFile } from "./fileReplace"
 import {
@@ -15,35 +13,18 @@ import {
 } from "./knowledgeDatabase"
 import { markProjectionSource, migrateLegacyWorkspaceIfPresent } from "./knowledgeLegacyMigration"
 import { KnowledgeRepository } from "./knowledgeRepository"
-import { countRowSchema } from "./knowledgeRepositoryRows"
-import { mergeWorkspaceForSave, WorkspaceConflictError } from "./knowledgeWorkspaceMerge"
-import { projectRepositoryToWorkspace } from "./knowledgeWorkspaceProjection"
+import { mergeWorkspaceForSave } from "./knowledgeWorkspaceMerge"
 import { syncWorkspaceToRepository } from "./knowledgeWorkspaceSync"
-import { forgetLearningFiles, readLearningFiles, saveLearningFiles } from "./learningFiles"
+import { forgetLearningFiles, saveLearningFiles } from "./learningFiles"
 import { removeDocumentFromRepository } from "./workspaceDocumentDeletion"
 import { readLibraryDocument, readLibraryDocuments } from "./workspaceDocuments"
-import { acknowledgedWorkspace } from "./workspaceSnapshot"
+import { WorkspaceFiles } from "./workspaceFiles"
+import { WorkspaceProjectionCache } from "./workspaceProjectionCache"
+import { WorkspaceSnapshots } from "./workspaceSnapshots"
+
+export { defaultWorkspace } from "./workspaceDefaults"
 
 const persistedWorkspaceSchema = workspaceSchema.extend({ layoutVersion: z.literal(2) })
-
-export function defaultWorkspace(): Workspace {
-  return {
-    documents: [],
-    cards: [],
-    agentThreads: [],
-    insights: [],
-    readerNotes: [],
-    sidebarOpen: true,
-    outlineWidth: 240,
-    researchSidebarWidth: researchSidebarLayout.contentDefault,
-    uiFontFamily: "wanted",
-    uiFontScale: 1,
-    theme: "system",
-    minimapVisible: true,
-    viewport: { x: 88, y: 36, zoom: 0.9 },
-    activeDocumentId: null,
-  }
-}
 
 export class WorkspaceStore {
   readonly workspaceFile: string
@@ -53,7 +34,9 @@ export class WorkspaceStore {
   readonly repository: KnowledgeRepository
   private saveQueue: Promise<void> = Promise.resolve()
   private migrated = false
-  private readonly snapshots = new Map<string, Workspace>()
+  private readonly snapshots = new WorkspaceSnapshots()
+  private readonly projections: WorkspaceProjectionCache
+  private readonly files: WorkspaceFiles
   readonly collectionService: CollectionService | null
 
   constructor(
@@ -71,6 +54,10 @@ export class WorkspaceStore {
     this.db = collectionService?.repository.db ?? openKnowledgeDatabase(this.databaseFile)
     this.repository = collectionService?.repository ?? new KnowledgeRepository(this.db)
     this.migrated = collectionService !== null
+    // Collection note bodies are read from the note index, a separate database.
+    const databases = collectionService ? [this.db, collectionService.index.db] : [this.db]
+    this.projections = new WorkspaceProjectionCache(this.repository, databases)
+    this.files = new WorkspaceFiles(root)
   }
 
   static async openCollection(collectionRoot: string, indexFile: string): Promise<WorkspaceStore> {
@@ -105,28 +92,19 @@ export class WorkspaceStore {
     this.migrated = true
   }
 
+  /** The acknowledged workspace; unchanged databases and files return the same frozen object. */
   async read(): Promise<Workspace> {
     await this.ensureMigrated()
     await this.collectionService?.rescan()
-    const agentThreads = await readAgentThreads(this.root)
-    const learning = await readLearningFiles(this.root)
-    const rawSettings = this.db.prepare("SELECT COUNT(*) as count FROM workspace_settings").get()
-    const rawNodes = this.db.prepare("SELECT COUNT(*) as count FROM knowledge_nodes").get()
-    const settingsCount = countRowSchema.parse(rawSettings).count
-    const nodeCount = countRowSchema.parse(rawNodes).count
-
-    if (settingsCount === 0 && nodeCount === 0) {
-      const def = acknowledgedWorkspace({ ...defaultWorkspace(), agentThreads, ...learning })
-      this.rememberSnapshot(def)
-      return def
-    }
-    const ws = acknowledgedWorkspace({
-      ...projectRepositoryToWorkspace(this.repository, this.db),
+    const agentThreads = await this.files.agentThreads()
+    const readerNotes = await this.files.readerNotes()
+    const workspace = this.projections.acknowledge(
+      this.projections.readable(),
       agentThreads,
-      ...learning,
-    })
-    this.rememberSnapshot(ws)
-    return ws
+      readerNotes,
+    )
+    this.snapshots.remember(workspace)
+    return workspace
   }
 
   /** The library record for `id` without projecting the whole workspace; null when absent. */
@@ -143,51 +121,30 @@ export class WorkspaceStore {
     return readLibraryDocuments(this.db)
   }
 
-  private rememberSnapshot(workspace: Workspace): void {
-    const snapshot = acknowledgedWorkspace(workspace)
-    const token = snapshot.snapshotToken
-    if (!token) throw new Error("Workspace snapshot token missing")
-    if (!this.snapshots.has(token)) this.snapshots.set(token, snapshot)
-    while (this.snapshots.size > 8) {
-      const oldest = this.snapshots.keys().next().value
-      if (oldest === undefined) break
-      this.snapshots.delete(oldest)
-    }
-  }
-
   async save(workspace: Workspace): Promise<Workspace> {
     const parsed = workspaceSchema.parse(workspace)
     return this.enqueue(async () => {
       await this.ensureMigrated()
       await this.collectionService?.rescan()
-      const current = acknowledgedWorkspace(projectRepositoryToWorkspace(this.repository, this.db))
-      this.rememberSnapshot(current)
-      const baseRevision = parsed.baseRevision ?? parsed.revision
-      const baseToken = parsed.baseSnapshotToken ?? parsed.snapshotToken
-      const hasRendererBaseline = baseToken !== undefined || baseRevision !== undefined
-      const base = baseToken
-        ? this.snapshots.get(baseToken)
-        : baseRevision === undefined
-          ? current
-          : [...this.snapshots.values()].filter((snapshot) => snapshot.revision === baseRevision)
-                .length === 1
-            ? [...this.snapshots.values()].find((snapshot) => snapshot.revision === baseRevision)
-            : undefined
-      if ((baseToken !== undefined || baseRevision !== undefined) && !base) {
-        throw new WorkspaceConflictError(
-          baseToken ? `baseSnapshotToken:${baseToken}` : `baseRevision:${baseRevision}`,
-        )
-      }
-      const effective = base ? mergeWorkspaceForSave(base, current, parsed) : parsed
+      const current = this.projections.current()
+      this.snapshots.remember(
+        this.projections.acknowledge(current, current.agentThreads, current.readerNotes),
+      )
+      const base = this.snapshots.baseFor(parsed, current)
+      const hasRendererBaseline =
+        (parsed.baseSnapshotToken ?? parsed.snapshotToken) !== undefined ||
+        (parsed.baseRevision ?? parsed.revision) !== undefined
+      const effective = mergeWorkspaceForSave(base, current, parsed)
       this.repository.withCanonicalNoteWrite(() =>
         syncWorkspaceToRepository(this.repository, this.db, parsed, base, false),
       )
       await this.collectionService?.syncWorkspaceNotes(
         effective.cards,
-        hasRendererBaseline ? base?.cards : undefined,
+        hasRendererBaseline ? base.cards : undefined,
       )
-      await writeAgentThreads(this.root, parsed.agentThreads)
-      await saveLearningFiles(this.root, base, parsed)
+      await this.files.saveAgentThreads(parsed.agentThreads)
+      const readerNotes = await this.files.readerNotes()
+      await saveLearningFiles(this.root, base, parsed, { readerNotes })
       const savedWs = await this.acknowledgeRepository()
       return { ...savedWs, agentThreads: parsed.agentThreads }
     })
@@ -231,7 +188,7 @@ export class WorkspaceStore {
     }
     return this.enqueue(async () => {
       await this.ensureMigrated()
-      const current = projectRepositoryToWorkspace(this.repository, this.db)
+      const current = this.projections.current()
       const removed = this.repository.withCanonicalNoteWrite(() =>
         removeDocumentFromRepository(this.repository, this.db, current, id),
       )
@@ -255,11 +212,13 @@ export class WorkspaceStore {
 
   /** Projects the committed repository, remembers it as a save base, and mirrors it to disk. */
   private async acknowledgeRepository(): Promise<Workspace> {
-    const savedWs = acknowledgedWorkspace({
-      ...projectRepositoryToWorkspace(this.repository, this.db),
-      ...(await readLearningFiles(this.root)),
-    })
-    this.rememberSnapshot(savedWs)
+    const projection = this.projections.current()
+    const savedWs = this.projections.acknowledge(
+      projection,
+      projection.agentThreads,
+      await this.files.readerNotes(),
+    )
+    this.snapshots.remember(savedWs)
     if (!this.collectionService) await this.writeProjection(savedWs)
     return savedWs
   }
