@@ -1,11 +1,12 @@
 import { createHash, randomUUID } from "node:crypto"
 import type { FileHandle } from "node:fs/promises"
-import { mkdir, open, readFile, rename, rm } from "node:fs/promises"
+import { mkdir, open, readFile, rm } from "node:fs/promises"
 import { join } from "node:path"
 import { z } from "zod"
 import { type SourceDocumentAst, sourceDocumentAstSchema } from "../shared/documentAst"
 import { astFingerprintSchema } from "../shared/documentAstIpc"
 import { sha256Schema } from "../shared/schemas"
+import { replaceFile } from "./fileReplace"
 
 const sidecarSchema = z.object({
   schemaVersion: z.literal("1.0.0"),
@@ -95,7 +96,7 @@ export class DocumentAstStore {
       await handle.close()
       handle = undefined
       await this.#options.beforeRename?.()
-      await rename(temporaryPath, path)
+      await replaceFile(temporaryPath, path)
     } catch (error) {
       if (handle) await handle.close()
       await rm(temporaryPath, { force: true })

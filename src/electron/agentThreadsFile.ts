@@ -1,7 +1,8 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { z } from "zod"
 import { type AgentThread, agentThreadSchema } from "../shared/agentChat"
+import { replaceFile } from "./fileReplace"
 
 const AGENT_THREADS_MAX = 100
 
@@ -32,5 +33,5 @@ export async function writeAgentThreads(
   const target = threadsPath(root)
   const temporary = `${target}.tmp`
   await writeFile(temporary, JSON.stringify(parsed), { mode: 0o600 })
-  await rename(temporary, target)
+  await replaceFile(temporary, target)
 }

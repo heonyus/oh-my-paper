@@ -1,6 +1,7 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { z } from "zod"
+import { replaceFile } from "../electron/fileReplace"
 import { documentOcrKeySchema } from "../shared/documentOcr"
 import { apiKeySchema, type ProviderConfig } from "../shared/ipc"
 import { OPENROUTER_MODEL_OPTIONS } from "../shared/providerModels"
@@ -190,7 +191,7 @@ export class LocalCredentialStore {
       await mkdir(this.root, { recursive: true, mode: 0o700 })
       const temporary = `${this.#file}.next`
       await writeFile(temporary, `${JSON.stringify(parsed)}\n`, { mode: 0o600 })
-      await rename(temporary, this.#file)
+      await replaceFile(temporary, this.#file)
       this.#saved = parsed
     })
     this.#writeQueue = operation.catch(() => undefined)

@@ -1,4 +1,4 @@
-import { mkdir, rename, writeFile } from "node:fs/promises"
+import { mkdir, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
@@ -7,6 +7,7 @@ import { workspaceSchema } from "../shared/schemas"
 import { researchSidebarLayout } from "../shared/uiLayout"
 import { readAgentThreads, writeAgentThreads } from "./agentThreadsFile"
 import { CollectionService } from "./collectionService"
+import { replaceFile } from "./fileReplace"
 import { openKnowledgeDatabase } from "./knowledgeDatabase"
 import { migrateLegacyWorkspaceIfPresent } from "./knowledgeLegacyMigration"
 import { KnowledgeRepository } from "./knowledgeRepository"
@@ -266,6 +267,6 @@ export class WorkspaceStore {
       encoding: "utf8",
       mode: 0o600,
     })
-    await rename(temporaryFile, this.workspaceFile)
+    await replaceFile(temporaryFile, this.workspaceFile)
   }
 }

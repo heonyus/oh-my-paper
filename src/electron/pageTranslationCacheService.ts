@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto"
-import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises"
+import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import { z } from "zod"
 import { parsedPageParserSchema } from "../shared/documentPageModel"
@@ -10,6 +10,7 @@ import {
   pageTranslationCacheResultSchema,
   pageTranslationCacheWriteRequestSchema,
 } from "../shared/pageTranslationCache"
+import { replaceFile } from "./fileReplace"
 import type { WorkspaceStore } from "./workspaceStore"
 
 const cacheParserSchema = parsedPageParserSchema.or(z.literal("unknown"))
@@ -114,7 +115,7 @@ export class PageTranslationCacheService {
     await mkdir(dirname(resolved.file), { recursive: true })
     const temporaryFile = `${resolved.file}.${randomUUID()}.tmp`
     await writeFile(temporaryFile, JSON.stringify(entry), { encoding: "utf8", mode: 0o600 })
-    await rename(temporaryFile, resolved.file)
+    await replaceFile(temporaryFile, resolved.file)
   }
 
   async clear(request: PageTranslationCacheReadRequest): Promise<void> {

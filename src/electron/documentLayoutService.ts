@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process"
-import { access, mkdir, readFile, rename, rm } from "node:fs/promises"
+import { access, mkdir, readFile, rm } from "node:fs/promises"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import { promisify } from "node:util"
@@ -10,6 +10,7 @@ import {
 } from "../shared/documentLayout"
 import type { DocumentId } from "../shared/schemas"
 import { resolveDocumentPath } from "./documentService"
+import { replaceFile } from "./fileReplace"
 import { buildOfflineSubprocessEnv } from "./offlineSubprocessEnvironment"
 import type { WorkspaceStore } from "./workspaceStore"
 
@@ -118,7 +119,7 @@ export class DocumentLayoutService {
         await rm(temporaryFile, { force: true })
         return { status: "unavailable", reason: "analysis_failed" }
       }
-      await rename(temporaryFile, cacheFile)
+      await replaceFile(temporaryFile, cacheFile)
       return documentLayoutResultSchema.parse({ status: "ready", layout })
     } catch (error) {
       await rm(temporaryFile, { force: true })

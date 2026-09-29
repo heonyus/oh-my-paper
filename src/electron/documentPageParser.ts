@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import { z } from "zod"
 import {
@@ -11,6 +11,7 @@ import {
 } from "../shared/documentPageModel"
 import type { DocumentId, DocumentRecord, Sha256 } from "../shared/schemas"
 import { DocumentAstService } from "./documentAstService"
+import { replaceFile } from "./fileReplace"
 import { mergePdfJsAndPaddlePage } from "./hybridPageParser"
 import { buildNativeParsedPage } from "./nativeTextPageParser"
 import type { PaddlePageParserService } from "./paddlePageParserService"
@@ -273,7 +274,7 @@ export class DocumentPageParser {
     const tmp = `${file}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`
     try {
       await writeFile(tmp, JSON.stringify(page), { encoding: "utf8", mode: 0o600 })
-      await rename(tmp, file)
+      await replaceFile(tmp, file)
     } catch (error) {
       await rm(tmp, { force: true }).catch(() => undefined)
       throw error

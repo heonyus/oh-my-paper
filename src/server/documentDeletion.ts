@@ -33,8 +33,13 @@ export async function deleteLibraryDocument(
   const hash = sha256Schema.parse(removed.hash)
   await Promise.all([
     rm(join(services.store.documentsDirectory, `${hash}.pdf`), { force: true }),
+    // Windows refuses to remove a folder while the OCR worker is still writing a page into it.
     ...HASH_CACHE_DIRECTORIES.map((directory) =>
-      rm(join(services.store.root, directory, hash), { recursive: true, force: true }),
+      rm(join(services.store.root, directory, hash), {
+        recursive: true,
+        force: true,
+        maxRetries: 5,
+      }),
     ),
   ])
   return true

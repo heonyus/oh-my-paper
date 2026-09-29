@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { mkdir, open, readFile, rename, rm } from "node:fs/promises"
+import { mkdir, open, readFile, rm } from "node:fs/promises"
 import { basename, dirname, join } from "node:path"
 import { z } from "zod"
 import {
@@ -14,6 +14,7 @@ import type { DocumentLayout, DocumentLayoutResult } from "../shared/documentLay
 import type { DocumentId } from "../shared/schemas"
 import { sha256Schema } from "../shared/schemas"
 import { createAstFingerprint, DocumentAstStore } from "./documentAstStore"
+import { replaceFile } from "./fileReplace"
 import type { WorkspaceStore } from "./workspaceStore"
 
 const sidecarSchema = z.object({
@@ -94,7 +95,7 @@ export class SemanticDocumentAstStore {
       await handle.sync()
       await handle.close()
       handle = undefined
-      await rename(temporaryPath, path)
+      await replaceFile(temporaryPath, path)
     } catch (error) {
       if (handle) await handle.close()
       await rm(temporaryPath, { force: true })

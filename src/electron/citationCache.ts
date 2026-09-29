@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto"
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { z } from "zod"
 import type { CitationLookupRequest, CitationLookupResult } from "../shared/ipc"
 import { citationLookupRequestSchema, citationLookupResultSchema } from "../shared/ipc"
 import { lookupCitation, type Transport } from "./citationService"
+import { replaceFile } from "./fileReplace"
 
 const negativeCacheLifetimeMs = 6 * 60 * 60 * 1_000
 const cacheRecordSchema = z.object({
@@ -60,7 +61,7 @@ export class CitationLookupCache {
       JSON.stringify({ version: 1, savedAt: this.now().toISOString(), result }),
       { encoding: "utf8", mode: 0o600 },
     )
-    await rename(temporaryPath, path)
+    await replaceFile(temporaryPath, path)
     return result
   }
 }
