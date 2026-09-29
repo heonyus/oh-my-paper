@@ -4,6 +4,14 @@ import {
   type ParsedPageBlock,
 } from "../shared/documentPageModel"
 
+/**
+ * The version of hybrid pages. Raising it parses every page again, including the pages of
+ * documents already analysed; v13 reads prose from the PDF's text layer instead of the VLM.
+ */
+export const HYBRID_PAGE_CONFIG_VERSION = "hybrid-v13"
+/** The cache directory hybrid pages of this version are kept in. */
+export const HYBRID_PAGE_CACHE_VERSION = `pdfjs-paddleocr-vl-1.6-${HYBRID_PAGE_CONFIG_VERSION}`
+
 const structuralLabels: ReadonlySet<ParsedPageBlock["label"]> = new Set([
   "image",
   "table",
@@ -296,7 +304,7 @@ export function mergePdfJsAndPaddlePage(
     schemaVersion: "1.0.0",
     sourceHash: nativePage.sourceHash,
     parser: "PDF.js+PaddleOCR-VL-1.6",
-    configVersion: "hybrid-v12",
+    configVersion: HYBRID_PAGE_CONFIG_VERSION,
     pageNumber: nativePage.pageNumber,
     width: paddlePage.width,
     height: paddlePage.height,

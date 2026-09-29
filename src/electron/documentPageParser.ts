@@ -11,7 +11,7 @@ import {
 } from "../shared/documentPageModel"
 import type { DocumentId, DocumentRecord, Sha256 } from "../shared/schemas"
 import { DocumentAstService } from "./documentAstService"
-import { mergePdfJsAndPaddlePage } from "./hybridPageParser"
+import { HYBRID_PAGE_CACHE_VERSION, mergePdfJsAndPaddlePage } from "./hybridPageParser"
 import { buildNativeParsedPage } from "./nativeTextPageParser"
 import type { PaddlePageParserService } from "./paddlePageParserService"
 import type { WorkspaceStore } from "./workspaceStore"
@@ -242,7 +242,7 @@ export class DocumentPageParser {
     hash: Sha256,
     pageNumber: number,
   ): Promise<ParsedDocumentPage | null> {
-    for (const cacheVersion of ["pdfjs-paddleocr-vl-1.6-hybrid-v12", "mistral-ocr-4-1-blocks-v2"]) {
+    for (const cacheVersion of [HYBRID_PAGE_CACHE_VERSION, "mistral-ocr-4-1-blocks-v2"]) {
       const file = join(store.root, "parsed-pages", hash, cacheVersion, `page-${pageNumber}.json`)
       try {
         const raw = JSON.parse(await readFile(file, "utf8"))
@@ -266,7 +266,7 @@ export class DocumentPageParser {
       store.root,
       "parsed-pages",
       page.sourceHash,
-      "pdfjs-paddleocr-vl-1.6-hybrid-v12",
+      HYBRID_PAGE_CACHE_VERSION,
       `page-${page.pageNumber}.json`,
     )
     await mkdir(dirname(file), { recursive: true })

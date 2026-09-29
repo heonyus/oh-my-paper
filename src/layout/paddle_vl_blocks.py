@@ -124,7 +124,7 @@ class ParsedPage(BaseModel):
     schemaVersion: Literal["1.0.0"] = "1.0.0"
     sourceHash: str = Field(pattern=r"^[a-f0-9]{64}$")
     parser: Literal["PaddleOCR-VL-1.6"] = "PaddleOCR-VL-1.6"
-    configVersion: Literal["page-v2"] = "page-v2"
+    configVersion: Literal["page-v3"] = "page-v3"
     pageNumber: int = Field(gt=0)
     width: int = Field(gt=0)
     height: int = Field(gt=0)

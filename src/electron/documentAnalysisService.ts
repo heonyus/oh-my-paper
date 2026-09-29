@@ -13,6 +13,7 @@ import {
 } from "./documentAnalysisJobs"
 import { type DocumentAnalysisPageParser, parseAnalysisPage } from "./documentAnalysisPageRunner"
 import { DocumentAnalysisStateStore } from "./documentAnalysisStateStore"
+import { HYBRID_PAGE_CACHE_VERSION } from "./hybridPageParser"
 import type { WorkspaceStore } from "./workspaceStore"
 
 export class DocumentAnalysisService {
@@ -39,13 +40,18 @@ export class DocumentAnalysisService {
     options: {
       readonly maxConcurrency?: number
       readonly pageConcurrency?: number
+      /** Documents analysed under another parser version are analysed again. */
+      readonly parserVersion?: string
     } = {},
   ) {
     const positiveInt = (value: number | undefined, fallback: number): number =>
       typeof value === "number" && Number.isInteger(value) && value > 0 ? value : fallback
     this.#maxConcurrency = positiveInt(options.maxConcurrency, 2)
     this.#pageConcurrency = positiveInt(options.pageConcurrency, 4)
-    this.#stateStore = new DocumentAnalysisStateStore(store.root)
+    this.#stateStore = new DocumentAnalysisStateStore(
+      store.root,
+      options.parserVersion ?? HYBRID_PAGE_CACHE_VERSION,
+    )
     this.#ready = this.#loadState()
   }
 

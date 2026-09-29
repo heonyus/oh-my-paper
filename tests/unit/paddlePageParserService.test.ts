@@ -39,7 +39,7 @@ readline.createInterface({ input: process.stdin }).on("line", (line) => {
   for (const page of request.pages) {
     fs.writeFileSync(path.join(request.outputDir, "page-" + page + ".json"), JSON.stringify({
       schemaVersion: "1.0.0", sourceHash: request.sourceHash, parser: "PaddleOCR-VL-1.6",
-      configVersion: "page-v2", pageNumber: page, width: 1000, height: 1000,
+      configVersion: "page-v3", pageNumber: page, width: 1000, height: 1000,
       blocks: [{ id: "page:" + page + ":block:0", label: "text", order: 0,
         bounds: { x: 50, y: 80, width: 400, height: 100 }, content: "Parsed paragraph.",
         contentFormat: "markdown", translationPolicy: "include" }],

@@ -7,6 +7,10 @@ import { buildStructuredPdf } from "../../scripts/document-fixtures/structured-p
 import { DocumentAnalysisService } from "../../src/electron/documentAnalysisService"
 import { importPaths } from "../../src/electron/documentImportIpc"
 import { createDocumentPageParser } from "../../src/electron/documentPageParser"
+import {
+  HYBRID_PAGE_CACHE_VERSION,
+  HYBRID_PAGE_CONFIG_VERSION,
+} from "../../src/electron/hybridPageParser"
 import { defaultWorkspace, WorkspaceStore } from "../../src/electron/workspaceStore"
 import { parsedDocumentPageSchema } from "../../src/shared/documentPageModel"
 import type { DocumentRecord } from "../../src/shared/schemas"
@@ -16,7 +20,7 @@ function paddlePage(document: DocumentRecord, pageNumber = 1) {
     schemaVersion: "1.0.0",
     sourceHash: document.hash,
     parser: "PaddleOCR-VL-1.6",
-    configVersion: "page-v2",
+    configVersion: "page-v3",
     pageNumber,
     width: 1_200,
     height: 1_600,
@@ -222,7 +226,7 @@ describe("local document workflow", () => {
         root,
         "parsed-pages",
         document.hash,
-        "pdfjs-paddleocr-vl-1.6-hybrid-v12",
+        HYBRID_PAGE_CACHE_VERSION,
         "page-1.json",
       )
       const { layout: _layout, ...withoutLayout } = JSON.parse(await readFile(cacheFile, "utf8"))
@@ -236,7 +240,7 @@ describe("local document workflow", () => {
 
       expect(reopened.status).toBe("ready")
       if (reopened.status === "ready") {
-        expect(reopened.page.configVersion).toBe("hybrid-v12")
+        expect(reopened.page.configVersion).toBe(HYBRID_PAGE_CONFIG_VERSION)
         expect(reopened.page.layout).toEqual([
           {
             label: "table",
@@ -278,7 +282,9 @@ describe("local document workflow", () => {
       })
 
       expect(first.status === "ready" && first.page.parser).toBe("PDF.js+PaddleOCR-VL-1.6")
-      expect(prepared.status === "ready" && prepared.page.configVersion).toBe("hybrid-v12")
+      expect(prepared.status === "ready" && prepared.page.configVersion).toBe(
+        HYBRID_PAGE_CONFIG_VERSION,
+      )
       expect(paddleParse).not.toHaveBeenCalled()
     } finally {
       await rm(root, { recursive: true, force: true })

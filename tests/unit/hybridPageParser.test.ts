@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { mergePdfJsAndPaddlePage } from "../../src/electron/hybridPageParser"
+import {
+  HYBRID_PAGE_CONFIG_VERSION,
+  mergePdfJsAndPaddlePage,
+} from "../../src/electron/hybridPageParser"
 import { parsedDocumentPageSchema } from "../../src/shared/documentPageModel"
 
 const sourceHash = "a".repeat(64)
@@ -66,7 +69,7 @@ describe("hybridPageParser", () => {
       schemaVersion: "1.0.0",
       sourceHash,
       parser: "PaddleOCR-VL-1.6",
-      configVersion: "page-v2",
+      configVersion: "page-v3",
       pageNumber: 1,
       width: 1_200,
       height: 1_600,
@@ -194,7 +197,7 @@ describe("hybridPageParser", () => {
       schemaVersion: "1.0.0",
       sourceHash,
       parser: "PaddleOCR-VL-1.6",
-      configVersion: "page-v2",
+      configVersion: "page-v3",
       pageNumber: 2,
       width: 1_000,
       height: 1_000,
@@ -270,7 +273,7 @@ describe("hybridPageParser", () => {
 
     const merged = mergePdfJsAndPaddlePage(native, paddle)
 
-    expect(merged.configVersion).toBe("hybrid-v12")
+    expect(merged.configVersion).toBe(HYBRID_PAGE_CONFIG_VERSION)
     expect(merged.blocks.map((item) => [item.label, item.content])).toEqual([
       ["text", "the end of the introduction."],
       ["paragraph_title", "## Results"],
