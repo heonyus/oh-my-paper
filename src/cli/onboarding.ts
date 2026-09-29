@@ -21,6 +21,7 @@ import { checkEnvironment, installOcrRuntime } from "./environment"
 import { runApiKeyOnboarding } from "./onboardingApi"
 import { runChatgptOnboarding } from "./onboardingChatgpt"
 import { runClaudeOnboarding } from "./onboardingClaude"
+import { offerGithubStar } from "./onboardingStar"
 import { banner, bold, dim, gray, inverse } from "./style"
 import { appUrl, quickstart } from "./tutorial"
 import { packageVersion } from "./version"
@@ -170,7 +171,8 @@ export type OnboardingOutcome = {
 }
 
 /**
- * The terminal setup wizard: environment, AI connection, optional OCR, then a short tour.
+ * The terminal setup wizard: environment, AI connection, optional OCR, a short tour, then one
+ * optional GitHub star invitation.
  * `launchNext` is set when the caller starts the app anyway, so the last question is skipped.
  */
 export async function runOnboarding(
@@ -290,6 +292,7 @@ export async function runOnboarding(
 
     stepTitle(4, "사용법", "이것만 알면 됩니다.")
     note(quickstart(appUrl(config.host, config.port), config.dataDir), "이렇게 쓰세요")
+    await offerGithubStar(config.dataDir)
 
     if (options.launchNext) {
       outro(`준비 완료 — ${bold("oh-my-paper")}를 시작합니다`)
