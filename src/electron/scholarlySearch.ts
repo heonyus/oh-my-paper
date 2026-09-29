@@ -4,6 +4,7 @@ import {
   type ScholarlySearchItem,
   type ScholarlySearchRequest,
   type ScholarlySearchResult,
+  type ScholarlySearchStep,
   scholarlySearchRequestSchema,
   scholarlySearchResultSchema,
 } from "../shared/scholarlySearchSchemas"
@@ -15,6 +16,25 @@ export type { ScholarlyTransport } from "./scholarlySearchTransport"
 type ScholarlySearchOptions = {
   readonly transport?: ScholarlyTransport
   readonly signal?: AbortSignal
+  /** Called as each provider starts and finishes, then once when pages are merged. */
+  readonly onStep?: (step: ScholarlySearchStep) => void
+}
+
+function providerStep(state: ScholarlyProviderState): ScholarlySearchStep {
+  const base = {
+    id: `provider-${state.provider}`,
+    kind: "provider",
+    provider: state.provider,
+  } as const
+  if (state.status === "success") {
+    return {
+      ...base,
+      status: "done",
+      found: state.resultCount,
+      detail: state.freshness === "cached" ? "cached" : undefined,
+    }
+  }
+  return { ...base, status: "failed", detail: state.error.kind }
 }
 
 function cancelledOutcome(provider: ScholarlyProvider): ProviderSearchOutcome {
@@ -74,28 +94,43 @@ export async function searchScholarly(
 ): Promise<ScholarlySearchResult> {
   const request = scholarlySearchRequestSchema.parse(input)
   const transport = options.transport ?? defaultScholarlyTransport
+  const report = options.onStep ?? (() => {})
   const outcomes: ProviderSearchOutcome[] = []
   for (let index = 0; index < request.providers.length; index += 2) {
     const batch = request.providers.slice(index, index + 2)
     if (options.signal?.aborted) {
-      outcomes.push(...request.providers.slice(index).map(cancelledOutcome))
+      const cancelled = request.providers.slice(index).map(cancelledOutcome)
+      for (const outcome of cancelled) report(providerStep(outcome.state))
+      outcomes.push(...cancelled)
       break
+    }
+    for (const provider of batch) {
+      report({ id: `provider-${provider}`, kind: "provider", provider, status: "running" })
     }
     outcomes.push(
       ...(await Promise.all(
-        batch.map((provider) =>
-          searchProvider({ provider, request, transport, signal: options.signal }),
-        ),
+        batch.map(async (provider) => {
+          const outcome = await searchProvider({
+            provider,
+            request,
+            transport,
+            signal: options.signal,
+          })
+          report(providerStep(outcome.state))
+          return outcome
+        }),
       )),
     )
   }
   const states = outcomes.map(({ state }) => state)
+  const results = mergeProviderPages(outcomes, request.pageSize)
+  report({ id: "merge", kind: "merge", status: "done", found: results.length })
   return scholarlySearchResultSchema.parse({
     status: resultStatus(states),
     query: request.query,
     page: request.page,
     pageSize: request.pageSize,
-    results: mergeProviderPages(outcomes, request.pageSize),
+    results,
     providers: states,
   })
 }
