@@ -83,9 +83,9 @@ describe("local document workflow", () => {
 
       expect(imported).toHaveLength(1)
       await vi.waitFor(() =>
-        expect(analysis.snapshot().find((job) => job.id === imported[0]?.document.id)?.state).toBe(
-          "failed",
-        ),
+        expect(
+          analysis.snapshot().jobs.find((job) => job.id === imported[0]?.document.id)?.state,
+        ).toBe("failed"),
       )
       await analysis.dispose()
       expect(paddleParse).toHaveBeenCalledTimes(2)

@@ -1,6 +1,6 @@
 import type { AiJobEvent } from "../shared/aiIpc"
 import { CODEX_MODEL_OPTIONS } from "../shared/codexTypes"
-import type { DocumentAnalysisSnapshot } from "../shared/documentAnalysis"
+import { type DocumentAnalysisSnapshot, hasActiveAnalysis } from "../shared/documentAnalysis"
 import type { DocumentPageParseProgress } from "../shared/documentPageModel"
 import {
   clipboardWriteTextRequestSchema,
@@ -30,9 +30,6 @@ export function installWebOhMyPaperApi(userId: string): void {
   let activeDocumentId: DocumentId | null = null
   let analysisTimer: number | null = null
 
-  function hasActiveAnalysis(snapshot: DocumentAnalysisSnapshot): boolean {
-    return snapshot.some((job) => job.state === "queued" || job.state === "running")
-  }
   function stopAnalysisPolling(): void {
     if (analysisTimer === null) return
     window.clearInterval(analysisTimer)

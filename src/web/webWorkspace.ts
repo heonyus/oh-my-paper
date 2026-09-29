@@ -1,7 +1,8 @@
 import type { AiRequest } from "../shared/aiIpc"
 import {
   type DocumentAnalysisSnapshot,
-  documentAnalysisSnapshotSchema,
+  documentAnalysisJobSchema,
+  snapshotOfAnalysisJobs,
 } from "../shared/documentAnalysis"
 import type { ParsedDocumentPage } from "../shared/documentPageModel"
 import type { CitationLookupRequest, CitationLookupResult, ImportResult } from "../shared/ipc"
@@ -193,7 +194,7 @@ export class WebWorkspaceBridge {
   async analysis(): Promise<DocumentAnalysisSnapshot> {
     const documents = await fetchDocuments()
     this.#remember(documents)
-    return documentAnalysisSnapshotSchema.parse(
+    return snapshotOfAnalysisJobs(
       documents
         .filter((document) => document.status !== "ready")
         .map((document) => {
@@ -203,9 +204,10 @@ export class WebWorkspaceBridge {
             pageCount: Math.max(1, document.pageCount),
             completedPages: 0,
           }
-          if (document.status === "queued") return { ...base, state: "queued" }
+          if (document.status === "queued")
+            return documentAnalysisJobSchema.parse({ ...base, state: "queued" })
           if (document.status === "analyzing")
-            return {
+            return documentAnalysisJobSchema.parse({
               ...base,
               state: "running",
               currentPage: 1,
@@ -213,8 +215,12 @@ export class WebWorkspaceBridge {
               engine: "local",
               attempt: 1,
               maxAttempts: 2,
-            }
-          return { ...base, state: "failed", message: "문서 구조 분석에 실패했습니다." }
+            })
+          return documentAnalysisJobSchema.parse({
+            ...base,
+            state: "failed",
+            message: "문서 구조 분석에 실패했습니다.",
+          })
         }),
     )
   }

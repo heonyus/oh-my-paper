@@ -4,7 +4,10 @@ import {
   bindViewerEventBridge,
   type EventBridgeParams,
 } from "../../src/renderer/lib/pdfViewerEventBridge"
-import type { DocumentAnalysisSnapshot } from "../../src/shared/documentAnalysis"
+import {
+  type DocumentAnalysisSnapshot,
+  snapshotOfAnalysisJobs,
+} from "../../src/shared/documentAnalysis"
 import { documentRecordSchema } from "../../src/shared/schemas"
 
 afterEach(() => vi.restoreAllMocks())
@@ -106,9 +109,9 @@ describe("PDF viewer event bridge", () => {
       maxAttempts: 2,
     } as const
 
-    publish?.([{ ...running, completedPages: 1 }])
+    publish?.(snapshotOfAnalysisJobs([{ ...running, completedPages: 1 }]))
     expect(parsePage).not.toHaveBeenCalled()
-    publish?.([{ ...running, completedPages: 2 }])
+    publish?.(snapshotOfAnalysisJobs([{ ...running, completedPages: 2 }]))
     expect(parsePage).toHaveBeenCalledExactlyOnceWith("aabbccddeeff0011", 2, {
       preparedOnly: true,
     })
