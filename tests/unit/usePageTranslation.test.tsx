@@ -1,6 +1,7 @@
-import { renderHook, waitFor } from "@testing-library/react"
+import { act, renderHook, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { usePageTranslation } from "../../src/renderer/lib/usePageTranslation"
+import { PaperAiJobError } from "../../src/renderer/lib/usePaperAiRequest"
 import type { DocumentRecord } from "../../src/renderer/types"
 import { parsedDocumentPageSchema } from "../../src/shared/documentPageModel"
 import { providerStatusSchema } from "../../src/shared/ipc"
@@ -136,6 +137,43 @@ describe("usePageTranslation partial results and cancellation", () => {
       },
       expect.any(AbortSignal),
     )
+  })
+
+  it("tells the reader why the page failed and clears the reason on retry", async () => {
+    const onAiRequest = vi.fn(
+      async (_request: unknown, _onDelta: unknown, _signal?: AbortSignal): Promise<string> => {
+        throw new PaperAiJobError("timeout")
+      },
+    )
+
+    const { result, unmount } = renderHook(() =>
+      usePageTranslation({
+        document: testDoc,
+        currentPage: 1,
+        citations: emptyCitations,
+        provider: configuredProvider,
+        onAiRequest,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("failed")
+    })
+    expect(result.current.failure).toBe("AI 응답이 제한 시간 안에 오지 않았습니다.")
+
+    // Pending until the hook aborts it, as a real request is, so no translation slot is kept.
+    const pending = (_request: unknown, _onDelta: unknown, signal?: AbortSignal) =>
+      new Promise<string>((_resolve, reject) =>
+        signal?.addEventListener("abort", () => reject(new PaperAiJobError("cancelled"))),
+      )
+    onAiRequest.mockImplementation(pending)
+    await act(() => result.current.regenerate())
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("streaming")
+    })
+    expect(result.current.failure).toBeNull()
+    unmount()
   })
 
   it("aborts in-flight translation and prevents stale updates on unmount", async () => {

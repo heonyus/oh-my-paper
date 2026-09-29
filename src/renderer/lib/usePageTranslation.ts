@@ -12,6 +12,7 @@ import {
 import { withPageTranslationCitationLinks } from "./pageTranslationCitations"
 import {
   mergePageTranslations,
+  pageTranslationFailureMessage,
   pause,
   reusablePageTranslations,
   type TranslationStatus,
@@ -45,6 +46,7 @@ export function usePageTranslation({
 }) {
   const [blocks, setBlocks] = useState<readonly PageTranslationBlock[]>([])
   const [status, setStatus] = useState<TranslationStatus>("waiting")
+  const [failure, setFailure] = useState<string | null>(null)
   const [revision, setRevision] = useState(0)
   const [progress, setProgress] = useState(0)
   const [totalChunks, setTotalChunks] = useState(0)
@@ -73,6 +75,7 @@ export function usePageTranslation({
     if (revision > 0) setProgress(0)
     setBlocks([])
     setStatus("waiting")
+    setFailure(null)
     async function translatePage(): Promise<void> {
       try {
         await pause(0)
@@ -201,13 +204,15 @@ export function usePageTranslation({
           await storeCachedPageTranslation(documentId, currentPage, provider, finished)
           setBlocks(finished)
           setStatus("complete")
-        } catch {
+        } catch (error) {
           if (cancelled || abortController.signal.aborted) return
           setBlocks((current) => mergePageTranslations(current, completed))
+          setFailure(pageTranslationFailureMessage(error))
           setStatus("failed")
         }
-      } catch {
+      } catch (error) {
         if (cancelled || abortController.signal.aborted) return
+        setFailure(pageTranslationFailureMessage(error))
         setStatus("failed")
       }
     }
@@ -243,6 +248,7 @@ export function usePageTranslation({
   return {
     blocks,
     status,
+    failure,
     progress,
     totalChunks,
     parserStage,

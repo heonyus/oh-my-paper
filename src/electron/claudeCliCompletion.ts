@@ -15,6 +15,8 @@ export type ClaudeCompletionOptions = {
   readonly imageDataUrl?: string | undefined
   readonly model: string
   readonly effort?: ClaudeEffort | undefined
+  /** False runs the turn without extended thinking (and so without an effort level). */
+  readonly thinking?: boolean | undefined
   readonly jsonSchema?: Readonly<Record<string, unknown>> | undefined
   readonly tools?: readonly string[] | undefined
   readonly maxTurns?: number | undefined
@@ -122,7 +124,7 @@ export async function runClaudeCompletion(
   const input = claudeUserMessageLine(options.prompt, options.imageDataUrl)
   const child = spawn(executablePath, buildClaudeCompletionArgs(options), {
     cwd: workdir,
-    env: buildClaudeEnv(),
+    env: buildClaudeEnv(process.env, { thinking: options.thinking }),
     stdio: ["pipe", "pipe", "pipe"],
   })
 

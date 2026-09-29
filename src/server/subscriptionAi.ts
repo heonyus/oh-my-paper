@@ -92,6 +92,16 @@ function claudeOutputSchema(
   return undefined
 }
 
+/**
+ * A page-wide translation is long and literal, and thinking only delays it: Haiku 4.5, which
+ * takes no effort level, thought for 80 s over two sentences, so a full page ran past the job
+ * timeout and was never translated. API mode keeps reasoning at its lowest for these turns;
+ * the CLI's lowest is no thinking.
+ */
+function claudeThinks(action: AiRequest["action"]): boolean {
+  return action !== "page_translation" && action !== "page_structure"
+}
+
 /** System messages become the CLI system prompt; the rest is sent as one user turn. */
 function claudeTurn(messages: readonly Message[]): {
   readonly systemPrompt: string
@@ -139,6 +149,7 @@ export async function runWithClaude(
     imageDataUrl: request.imageDataUrl,
     model,
     effort: settings.claudeEffort ?? DEFAULT_CLAUDE_EFFORT,
+    thinking: claudeThinks(request.action),
     jsonSchema: claudeOutputSchema(request.action),
     ...(options.onDelta ? { onDelta: options.onDelta } : {}),
     ...(options.signal ? { signal: options.signal } : {}),
