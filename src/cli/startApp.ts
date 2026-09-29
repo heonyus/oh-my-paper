@@ -1,17 +1,11 @@
-import { execFile } from "node:child_process"
 import { connect } from "node:net"
 import type { WebServerConfig } from "../server/config"
 import { readOnboardingState, runOnboarding } from "./onboarding"
+import { openBrowser } from "./openBrowser"
 import { bold, dim, gray, link } from "./style"
 import { appUrl } from "./tutorial"
 
 const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY)
-
-export function openBrowser(url: string): void {
-  if (process.platform === "darwin") execFile("open", [url], () => undefined)
-  else if (process.platform === "win32") execFile("cmd", ["/c", "start", "", url], () => undefined)
-  else execFile("xdg-open", [url], () => undefined)
-}
 
 export function portOpen(host: string, port: number): Promise<boolean> {
   return new Promise((resolve) => {

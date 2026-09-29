@@ -83,7 +83,15 @@ function update(): void {
   for (const step of steps) {
     const task = spinner()
     task.start(`${step.title}…`)
-    const result = spawnSync(step.command, step.args, { cwd: appRoot, encoding: "utf8" })
+    // npm is a .cmd script on Windows, which only a shell can start; the arguments are fixed.
+    const result =
+      process.platform === "win32" && step.command === "npm"
+        ? spawnSync(["npm", ...step.args].join(" "), {
+            cwd: appRoot,
+            encoding: "utf8",
+            shell: true,
+          })
+        : spawnSync(step.command, step.args, { cwd: appRoot, encoding: "utf8" })
     if (result.status !== 0) {
       task.error(`${step.title} 실패`)
       log.error(`${result.stderr || result.stdout}`.trim().split("\n").slice(-8).join("\n"))
