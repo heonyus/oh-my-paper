@@ -1,13 +1,24 @@
 import { z } from "zod"
 
-export const DEFAULT_CLAUDE_MODEL = "claude-sonnet-5"
+export const DEFAULT_CLAUDE_MODEL = "claude-sonnet-5-5"
 
 export const CLAUDE_MODEL_OPTIONS = [
-  { id: "claude-sonnet-5", label: "Claude Sonnet 5 (기본)" },
-  { id: "claude-opus-5", label: "Claude Opus 5" },
+  { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5 (기본)" },
+  { id: "claude-opus-5-5", label: "Claude Opus 5.5" },
   { id: "claude-fable-5-1", label: "Claude Fable 5.1" },
+  { id: "claude-sonnet-5", label: "Claude Sonnet 5" },
+  { id: "claude-opus-5", label: "Claude Opus 5" },
   { id: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
 ] as const
+
+/** The model choices, keeping a saved model that is no longer listed so the select shows it. */
+export function claudeModelChoices(
+  selected: string,
+): ReadonlyArray<{ readonly id: string; readonly label: string }> {
+  return CLAUDE_MODEL_OPTIONS.some((option) => option.id === selected)
+    ? CLAUDE_MODEL_OPTIONS
+    : [...CLAUDE_MODEL_OPTIONS, { id: selected, label: `${selected} (저장된 모델)` }]
+}
 
 export const claudeEffortSchema = z.enum(["low", "medium", "high", "xhigh", "max"])
 export type ClaudeEffort = z.infer<typeof claudeEffortSchema>

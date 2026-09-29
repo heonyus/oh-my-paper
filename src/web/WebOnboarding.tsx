@@ -263,7 +263,7 @@ export function WebOnboarding({
                     <em>권장</em>
                   </span>
                   <span className="web-onboarding-choice-hint">
-                    이 Mac의 Claude Code 로그인으로 · 기본 모델 Sonnet 5
+                    이 Mac의 Claude Code 로그인으로 · 기본 모델 Sonnet 5.5
                   </span>
                 </button>
               ) : null}

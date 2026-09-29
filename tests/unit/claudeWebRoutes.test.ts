@@ -59,7 +59,7 @@ async function setup() {
 }
 
 describe("browser Claude subscription routes", () => {
-  it("defaults a fresh install to Claude with Sonnet 5", async () => {
+  it("defaults a fresh install to Claude with Sonnet 5.5", async () => {
     const { services } = await setup()
     vi.spyOn(services.claude, "getStatus").mockResolvedValue(loggedIn)
 
@@ -67,8 +67,8 @@ describe("browser Claude subscription routes", () => {
       configured: true,
       provider: "anthropic",
       mode: "claude",
-      model: "claude-sonnet-5",
-      claudeModel: "claude-sonnet-5",
+      model: "claude-sonnet-5-5",
+      claudeModel: "claude-sonnet-5-5",
       claudeEffort: "medium",
     })
   })
