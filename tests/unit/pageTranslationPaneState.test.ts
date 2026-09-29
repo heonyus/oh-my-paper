@@ -71,6 +71,22 @@ describe("reusablePageTranslations", () => {
     expect(reused.complete).toBe(false)
   })
 
+  it("keeps the preferred of several earlier translations of the same sentence", () => {
+    const current = [{ id: "b:3:sentence:1", source: "The score improved." }]
+    const preferred = { ...cached[0], translation: "점수가 향상되었다." } as PageTranslationBlock
+    const older = { ...cached[0], id: "b:9:sentence:1" } as PageTranslationBlock
+
+    expect(
+      reusablePageTranslations([preferred, cached[0] as PageTranslationBlock], current)
+        .translations,
+    ).toEqual(new Map([["b:3:sentence:1", "점수가 향상되었다."]]))
+    // Matched by its source text alone, the first translation listed still wins.
+    expect(
+      reusablePageTranslations([{ ...preferred, id: "b:8:sentence:1" }, older], current)
+        .translations,
+    ).toEqual(new Map([["b:3:sentence:1", "점수가 향상되었다."]]))
+  })
+
   it("treats a model's note that there was nothing to translate as no translation", () => {
     expect(
       isPlaceholderPageTranslation("제공된 입력에 번역할 원문 텍스트가 포함되어 있지 않습니다."),

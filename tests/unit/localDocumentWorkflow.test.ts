@@ -284,4 +284,51 @@ describe("local document workflow", () => {
       await rm(root, { recursive: true, force: true })
     }
   })
+
+  it("gives a translation the structured page even while a prepared-only look runs", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ohmypaper-await-structure-"))
+    try {
+      const store = new WorkspaceStore(root)
+      await store.save(defaultWorkspace())
+      const document = await importFixture(
+        root,
+        store,
+        "structured.pdf",
+        await buildStructuredPdf(),
+      )
+      let finishOcr: () => void = () => {}
+      const ocrDone = new Promise<void>((resolve) => {
+        finishOcr = resolve
+      })
+      const paddleParse = vi.fn(async () => {
+        await ocrDone
+        return { status: "ready" as const, page: paddlePage(document) }
+      })
+      const parser = createDocumentPageParser({
+        store,
+        paddlePageParser: { parse: paddleParse, readCached: vi.fn().mockResolvedValue(null) },
+      })
+
+      // The viewer's look at what is already parsed, as the translation pane opens.
+      const prepared = parser.parse({ documentId: document.id, pageNumber: 1, preparedOnly: true })
+      const translation = parser.parse({
+        documentId: document.id,
+        pageNumber: 1,
+        awaitStructure: true,
+      })
+      const reader = await parser.parse({ documentId: document.id, pageNumber: 1 })
+      finishOcr()
+
+      expect(await prepared).toEqual({ status: "unavailable", reason: "needs_ocr" })
+      // A reader may start from the PDF.js text; the translation waits for the structure.
+      expect(reader.status === "ready" && reader.page.parser).toBe("NativeText-1.0")
+      const translated = await translation
+      expect(translated.status === "ready" && translated.page.parser).toBe(
+        "PDF.js+PaddleOCR-VL-1.6",
+      )
+      expect(paddleParse).toHaveBeenCalledTimes(1)
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
 })

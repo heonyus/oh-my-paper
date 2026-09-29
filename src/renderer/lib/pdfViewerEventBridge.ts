@@ -3,6 +3,7 @@ import type { DocumentAnalysisSnapshot } from "../../shared/documentAnalysis"
 import type { ParsedDocumentPage } from "../../shared/documentPageModel"
 import type { DocumentRecord } from "../types"
 import {
+  awaitingStructuredPage,
   loadParsedDocumentPage,
   parsedDocumentPage,
   subscribeParsedDocumentPages,
@@ -166,11 +167,13 @@ export function bindViewerEventBridge(params: EventBridgeParams): {
     const completed = job.state === "complete" ? job.pageCount : job.completedPages
     if (completed <= analyzedPages) return
     analyzedPages = completed
-    // Pages rendered before their analysis finished have no overlay yet.
+    // Pages rendered before their analysis finished have no overlay yet, or one from PDF.js
+    // text alone.
     for (const pageDiv of params.container.querySelectorAll<HTMLElement>(".page[data-loaded]")) {
       const pageNumber = Number(pageDiv.getAttribute("data-page-number"))
       if (!Number.isInteger(pageNumber) || pageNumber < 1 || pageNumber > completed) continue
-      if (!parsedDocumentPage(params.document.id, pageNumber)) loadPreparedPage(pageNumber, pageDiv)
+      if (awaitingStructuredPage(params.document.id, pageNumber))
+        loadPreparedPage(pageNumber, pageDiv)
     }
   })
 

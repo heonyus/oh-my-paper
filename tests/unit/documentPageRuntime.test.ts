@@ -161,4 +161,82 @@ describe("parsed document page runtime", () => {
     const result = await loadParsedDocumentPage(documentId, 1, { forceOcr: true })
     expect(result).toEqual(ocrPage)
   })
+
+  it("replaces a PDF.js page with the structured one a translation waits for, never the reverse", async () => {
+    const text = parsedDocumentPageSchema.parse({
+      ...page,
+      parser: "NativeText-1.0",
+      configVersion: "page-native-v1",
+    })
+    let answerSlowRead: (result: DocumentPageParseResult) => void = () => {}
+    const slowRead = new Promise<DocumentPageParseResult>((resolve) => {
+      answerSlowRead = resolve
+    })
+    const parseDocumentPage = vi
+      .fn<(request: { readonly awaitStructure?: boolean }) => Promise<DocumentPageParseResult>>()
+      .mockResolvedValueOnce({ status: "ready", page: text })
+      .mockResolvedValueOnce({ status: "ready", page })
+      .mockReturnValueOnce(slowRead)
+    Object.defineProperty(window, "ohmypaper", {
+      configurable: true,
+      value: { parseDocumentPage },
+    })
+
+    // A quick read, as the paper chat's context does, keeps the PDF.js text first.
+    expect(await loadParsedDocumentPage(documentId, 1)).toEqual(text)
+    expect(await loadParsedDocumentPage(documentId, 1, { awaitStructure: true })).toEqual(page)
+    expect(parsedDocumentPage(documentId, 1)).toEqual(page)
+
+    // A quick read of page 2 answered only after its structured parse is kept.
+    const quick = loadParsedDocumentPage(documentId, 2)
+    const structured = parsedDocumentPageSchema.parse({ ...page, pageNumber: 2 })
+    parseDocumentPage.mockResolvedValueOnce({ status: "ready", page: structured })
+    expect(await loadParsedDocumentPage(documentId, 2, { awaitStructure: true })).toEqual(
+      structured,
+    )
+    answerSlowRead({
+      status: "ready",
+      page: parsedDocumentPageSchema.parse({ ...text, pageNumber: 2 }),
+    })
+    expect((await quick)?.parser).toBe("PaddleOCR-VL-1.6")
+    expect(parsedDocumentPage(documentId, 2)?.parser).toBe("PaddleOCR-VL-1.6")
+  })
+
+  it("keeps PDF.js text once the server says no structured parse can be made", async () => {
+    const text = parsedDocumentPageSchema.parse({
+      ...page,
+      parser: "NativeText-1.0",
+      configVersion: "page-native-v1",
+    })
+    const parseDocumentPage = vi.fn(async () => ({ status: "ready", page: text }) as const)
+    Object.defineProperty(window, "ohmypaper", {
+      configurable: true,
+      value: { parseDocumentPage },
+    })
+
+    expect(await loadParsedDocumentPage(documentId, 1, { awaitStructure: true })).toEqual(text)
+    expect(await loadParsedDocumentPage(documentId, 1, { awaitStructure: true })).toEqual(text)
+    expect(parseDocumentPage).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not answer a translation's request with a prepared-only look in flight", async () => {
+    const parseDocumentPage = vi.fn(async (request: { readonly preparedOnly?: boolean }) =>
+      request.preparedOnly
+        ? ({ status: "unavailable", reason: "needs_ocr" } as const)
+        : ({ status: "ready", page } as const),
+    )
+    Object.defineProperty(window, "ohmypaper", {
+      configurable: true,
+      value: { parseDocumentPage },
+    })
+
+    const [prepared, structured] = await Promise.all([
+      loadParsedDocumentPage(documentId, 1, { preparedOnly: true }),
+      loadParsedDocumentPage(documentId, 1, { awaitStructure: true }),
+    ])
+
+    expect(prepared).toBeNull()
+    expect(structured).toEqual(page)
+    expect(parseDocumentPage).toHaveBeenCalledTimes(2)
+  })
 })

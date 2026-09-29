@@ -65,8 +65,12 @@ export class DocumentPageParser {
     readonly forceOcr?: boolean
     readonly requireStructuredOcr?: boolean
     readonly preparedOnly?: boolean
+    readonly awaitStructure?: boolean
     readonly signal?: AbortSignal | undefined
   }): Promise<DocumentPageParseResult> {
+    // Only a look at what is already parsed: it must not become the run a full request joins,
+    // which would then end without parsing anything.
+    if (input.preparedOnly) return this.#runParse(input)
     const key = `${input.documentId}:${input.pageNumber}`
     let active = this.#active.get(key)
     if (!active) {
@@ -87,7 +91,7 @@ export class DocumentPageParser {
     }
     active.consumers += 1
     const waitsForStructure = Boolean(
-      input.requireStructuredOcr || input.forceOcr || input.preparedOnly,
+      input.requireStructuredOcr || input.forceOcr || input.awaitStructure,
     )
     try {
       if (!waitsForStructure) {

@@ -99,6 +99,12 @@ export const documentPageParseRequestSchema = z.object({
   pageNumber: z.number().int().positive(),
   forceOcr: z.boolean().optional(),
   preparedOnly: z.boolean().optional(),
+  /**
+   * Wait for the page's structured parse rather than take the PDF.js text first; the PDF.js
+   * page still comes back when no structured parse can be made. A translation cached from a
+   * page is keyed by its parser, so it must be made from the page later opens will get.
+   */
+  awaitStructure: z.boolean().optional(),
 })
 
 export const documentPageParseStageSchema = z.enum([

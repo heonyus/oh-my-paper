@@ -118,6 +118,7 @@ export async function translateDocumentPages(input: DocumentTranslationRunnerInp
   const preparePage = async (page: number) => {
     const parsedPage = await runStage(page, "parse", () =>
       loadParsedDocumentPage(input.document.id, page, {
+        awaitStructure: true,
         signal: input.signal,
       }),
     )
@@ -164,7 +165,8 @@ export async function translateDocumentPages(input: DocumentTranslationRunnerInp
         input.citations,
       )
       const plan = planParsedPageTranslations(source)
-      // A page translated under an earlier parser keeps every sentence it cut the same way.
+      // A page translated under an earlier parser or by another model keeps every sentence
+      // whose source is unchanged.
       const earlier = await readCachedPageTranslation(input.document.id, page, input.provider)
       const reused = earlier
         ? reusablePageTranslations(earlier, source).translations

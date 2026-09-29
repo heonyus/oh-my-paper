@@ -206,6 +206,8 @@ export function registerApplicationIpc(
         pageNumber: request.pageNumber,
         store,
         ...(request.forceOcr ? { forceOcr: true } : {}),
+        ...(request.preparedOnly ? { preparedOnly: true } : {}),
+        ...(request.awaitStructure ? { awaitStructure: true } : {}),
         onProgress: (progress) => {
           if (_event.sender.isDestroyed()) return
           _event.sender.send(
