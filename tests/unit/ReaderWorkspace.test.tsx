@@ -59,8 +59,6 @@ function readerProps(document: DocumentRecord): Parameters<typeof ReaderWorkspac
     citations: [],
     insights: [],
     updateInsight: vi.fn(),
-    ownSummary: undefined,
-    updateOwnSummary: vi.fn(),
     noteOpen: false,
     openNote: vi.fn(),
     closeNote: vi.fn(),

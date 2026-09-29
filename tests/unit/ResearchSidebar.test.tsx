@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { type ComponentProps, useState } from "react"
+import { useState } from "react"
 import { describe, expect, it, vi } from "vitest"
 import { ResearchSidebar } from "../../src/renderer/components/ResearchSidebar"
 import type { AiRequest } from "../../src/shared/ipc"
@@ -72,8 +72,6 @@ function SidebarHarness({ expanded = false }: { readonly expanded?: boolean }) {
       onCardsChange={vi.fn()}
       onAiRequest={vi.fn(async () => "answer")}
       tool="select"
-      ownSummary={undefined}
-      onOwnSummaryChange={vi.fn()}
       onToolChange={vi.fn()}
     />
   )
@@ -165,8 +163,6 @@ describe("ResearchSidebar", () => {
           onCardsChange={vi.fn()}
           onAiRequest={vi.fn(async () => "answer")}
           tool="select"
-          ownSummary={undefined}
-          onOwnSummaryChange={vi.fn()}
           onToolChange={onToolChange}
         />
       </>,
@@ -226,8 +222,6 @@ describe("ResearchSidebar", () => {
         onCardsChange={vi.fn()}
         onAiRequest={vi.fn(async () => "answer")}
         tool="select"
-        ownSummary={undefined}
-        onOwnSummaryChange={vi.fn()}
         onToolChange={vi.fn()}
       />,
     )
@@ -239,39 +233,23 @@ describe("ResearchSidebar", () => {
     expect(screen.queryByRole("button", { name: "Jev로 후보 선택" })).not.toBeInTheDocument()
   })
 
-  it("starts overview generation only after the reader writes or skips their three lines", async () => {
+  it("starts overview generation when the document is ready", async () => {
     const onAiRequest = vi.fn(async (_request: Omit<AiRequest, "documentId">) => "cached result")
-    const props = {
-      document: documentFixture,
-      documentReady: true,
-      currentPage: 1,
-      cards: [],
-      citations: [],
-      expanded: true,
-      provider: { configured: true, provider: "openrouter", model: "z-ai/glm-5.3-flash" },
-      onToggle: vi.fn(),
-      onJumpToCard: vi.fn(),
-      onCardsChange: vi.fn(),
-      onAiRequest,
-      tool: "select",
-      onOwnSummaryChange: vi.fn(),
-      onToolChange: vi.fn(),
-    } satisfies Omit<ComponentProps<typeof ResearchSidebar>, "ownSummary">
-    const { rerender } = render(<ResearchSidebar {...props} ownSummary={undefined} />)
-
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    expect(onAiRequest).not.toHaveBeenCalled()
-
-    rerender(
+    render(
       <ResearchSidebar
-        {...props}
-        ownSummary={{
-          documentId: documentFixture.id,
-          status: "skipped",
-          afterReveal: false,
-          lines: { problem: "", method: "", result: "" },
-          updatedAt: "2026-09-28T00:00:00.000Z",
-        }}
+        document={documentFixture}
+        documentReady
+        currentPage={1}
+        cards={[]}
+        citations={[]}
+        expanded
+        provider={{ configured: true, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
+        onToggle={vi.fn()}
+        onJumpToCard={vi.fn()}
+        onCardsChange={vi.fn()}
+        onAiRequest={onAiRequest}
+        tool="select"
+        onToolChange={vi.fn()}
       />,
     )
 

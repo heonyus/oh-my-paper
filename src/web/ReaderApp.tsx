@@ -267,13 +267,11 @@ export function ReaderApp(): JSX.Element {
                 citations={app.citations}
                 insights={app.activeInsights}
                 updateInsight={app.updateInsight}
-                ownSummary={app.ownSummary}
                 noteOpen={app.noteOpen}
                 openNote={() => app.setNoteOpen(true)}
                 closeNote={() => app.setNoteOpen(false)}
                 readerNote={app.readerNote}
                 updateReaderNote={app.updateReaderNote}
-                updateOwnSummary={app.updateOwnSummary}
                 provider={app.provider}
                 documentReady={app.documentReady}
                 jumpToCard={app.jumpToCard}

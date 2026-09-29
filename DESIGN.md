@@ -58,13 +58,10 @@ opens a note column between the PDF and the research sidebar.
     `조용히` is available.
 
 **Existing features, repositioned.**
-- Summary: never generated before the reader writes three lines (문제/방법/결과) or skips.
-  Submitting reveals the AI overview (keywords, three lines, summary) and checks each written
-  line against the paper; a verdict whose quote is not found on its page is shown as
-  `확인 불가`. Blank lines read `떠올리지 못함`. Once revealed for a document, missing overview
-  sections load when the panel opens. Lines written after the reveal carry an
-  `AI 요약을 본 뒤 작성` tag. The reader's lines live in `own-summaries.json` beside the
-  knowledge database, never in the insight table an older build would reject.
+- Summary: the AI overview (keywords, three-line summary, summary) loads when the panel opens.
+  The owner removed the `내 3줄` step on 2026-09-29: writing three lines before the overview
+  got in the way. Lines written earlier stay untouched in `own-summaries.json`; nothing reads
+  them now.
 - Annotation (`C`): sends the passage to the note (above). Memo cards made earlier stay on the
   board as editable `메모` cards (old fixed-text bodies open empty) with no grading.
 - Translation, explanation and chat keep their current behavior for now; attempt-first
@@ -73,8 +70,8 @@ opens a note column between the PDF and the research sidebar.
 - Auto Highlight: not a product goal.
 
 **States and tone.** Writing surfaces never nag: no confetti, streaks, badges, scores, review
-queues or guilt copy. Failures are shown where they happen (the margin switch, the three-line
-check) and never block writing or reading.
+queues or guilt copy. Failures are shown where they happen (the margin switch, the tutor) and
+never block writing or reading.
 
 **Later, not yet built.** Lines for confirmed evidence chips on hover, a map of the reader's own
 sentences across papers, and a way to attach a chosen PDF passage to an existing sentence.

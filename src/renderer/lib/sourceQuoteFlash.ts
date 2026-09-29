@@ -4,6 +4,8 @@ const RETRY_MS = 150
 const RETRIES = 20
 /** Long quotes are matched on their opening, which is enough to locate the passage. */
 const MATCH_CHARACTERS = 80
+/** Shorter quotes match too many places to count as evidence. */
+const MIN_QUOTE_CHARACTERS = 16
 
 /** Letters and digits only, so line breaks, hyphenation and spacing never break a match. */
 export function normalizedQuoteText(text: string): string {
@@ -13,6 +15,20 @@ export function normalizedQuoteText(text: string): string {
 /** The normalized opening of a quote that locates it in source text. */
 export function quoteMatchTarget(quote: string): string {
   return normalizedQuoteText(quote).slice(0, MATCH_CHARACTERS)
+}
+
+/**
+ * True when the quote's opening appears in the source text. A quote shorter than the minimum
+ * counts only when the whole source is that short, since it would match too many places.
+ */
+export function sourceContainsQuote(source: string, quote: string): boolean {
+  const text = normalizedQuoteText(source)
+  const target = quoteMatchTarget(quote)
+  return (
+    target.length >= Math.min(MIN_QUOTE_CHARACTERS, text.length) &&
+    target.length > 0 &&
+    text.includes(target)
+  )
 }
 
 /** Text-layer spans of one page whose characters cover the quote, in reading order. */

@@ -145,7 +145,6 @@ export function useAppWorkspace() {
   const learning = useReaderLearning(
     history.workspace,
     activeDocument?.id,
-    history.setWorkspace,
     history.setWorkspaceTransient,
   )
   const runAi = usePaperAiRequest(activeDocument, activeInsights, provider)
