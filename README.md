@@ -15,6 +15,14 @@
   <a href="https://github.com/heonyus/oh-my-paper/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/heonyus/oh-my-paper?style=social"></a>
 </p>
 
+<p align="center">
+  <img src="docs/media/oh-my-paper-demo.gif" width="880" alt="Selecting a sentence in a paper, pressing T to get a Korean translation card beside it, then E for an explanation">
+</p>
+<p align="center">
+  <a href="docs/media/oh-my-paper-demo.mp4">▶ Full demo (75 s, mp4)</a> — install, import, translate, explain, notes and the AI overview, recorded from the real app.<br>
+  <sub>Demo paper: Wei et al., “Chain-of-Thought Prompting Elicits Reasoning in Large Language Models”, <a href="https://arxiv.org/abs/2201.11903">arXiv:2201.11903</a>, CC BY 4.0.</sub>
+</p>
+
 oh-my-paper keeps the PDF in place and lets translations, explanations, notes, figures, and
 citations stay connected to the exact page that produced them. Documents stay on your computer,
 but the official app requires Google sign-in through a separate account-only backend.
