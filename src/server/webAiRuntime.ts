@@ -42,7 +42,7 @@ export async function createWebAiRuntime(config: WebServerConfig): Promise<WebAi
       ? {
           provider: "openai" as const,
           apiKey: config.apiKeys.openai,
-          model: config.model ?? "gpt-4.1-mini",
+          model: config.model ?? "gpt-6-luna",
         }
       : null
   const environmentGemini =

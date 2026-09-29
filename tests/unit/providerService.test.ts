@@ -81,7 +81,7 @@ describe("ProviderService saved configuration", () => {
     expect(await new ProviderService(root).status()).toEqual({
       configured: true,
       provider: "openai",
-      model: "gpt-5",
+      model: "gpt-6-sol",
     })
     expect(await readFile(join(root, "openai-key.bin"), "utf8")).toBe(
       "sk-legacy-saved-key-at-least-twenty-characters",

@@ -139,7 +139,7 @@ describe("AI completion budget", () => {
     // enable a thinking budget that starves small completion caps.
     // When / Then
     expect(
-      completionLimitParameters("openrouter", "google/gemini-2.5-flash-lite", request),
+      completionLimitParameters("openrouter", "google/gemini-3.1-flash-lite", request),
     ).toEqual({
       max_tokens: 64,
       temperature: 0,
