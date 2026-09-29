@@ -65,8 +65,6 @@ export function App({
     previewCards,
     activeInsights,
     updateInsight,
-    ownSummary,
-    updateOwnSummary,
     noteOpen,
     setNoteOpen,
     readerNote,
@@ -232,13 +230,11 @@ export function App({
               citations={citations}
               insights={activeInsights}
               updateInsight={updateInsight}
-              ownSummary={ownSummary}
               noteOpen={noteOpen}
               openNote={() => setNoteOpen(true)}
               closeNote={() => setNoteOpen(false)}
               readerNote={readerNote}
               updateReaderNote={updateReaderNote}
-              updateOwnSummary={updateOwnSummary}
               provider={provider}
               documentReady={documentReady}
               jumpToCard={jumpToCard}

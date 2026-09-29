@@ -1,7 +1,7 @@
 import type { AiRequest } from "../../shared/ipc"
 import type { ReaderNote } from "../../shared/readerNote"
 import type { DocumentId } from "../../shared/schemas"
-import { sourceContainsQuote } from "./ownSummaryCheck"
+import { sourceContainsQuote } from "./sourceQuoteFlash"
 
 export type TutorPassage = { readonly page: number; readonly text: string }
 export type EarlierNote = { readonly id: string; readonly title: string; readonly text: string }

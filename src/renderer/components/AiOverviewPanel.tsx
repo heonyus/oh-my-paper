@@ -1,12 +1,9 @@
 import { type JSX, useCallback, useEffect, useRef, useState } from "react"
 import type { AiAction, AiHistoryMessage, ProviderStatus } from "../../shared/ipc"
-import { type OwnSummary, ownSummaryRevealed } from "../../shared/ownSummary"
 import type { DocumentInsight, DocumentInsightKind } from "../../shared/schemas"
 import type { SourceCitation } from "../lib/chatCitations"
 import { paperOverviewContext, preparePaperContextForQuestion } from "../lib/pdfSearch"
-import type { OwnSummaryUpdate } from "../lib/useOwnSummary"
 import type { AiDeltaHandler, AiRequestRunner, DocumentRecord } from "../types"
-import { OwnSummaryPanel } from "./OwnSummaryPanel"
 import { PaperDiscussion } from "./PaperDiscussion"
 import { SidebarInsightSection } from "./SidebarInsightSection"
 
@@ -65,8 +62,6 @@ export function AiOverviewPanel({
   onSave,
   cachedInsights = emptyCachedInsights,
   onInsightChange,
-  ownSummary,
-  onOwnSummaryChange,
   onNavigateToSource,
 }: {
   readonly document: DocumentRecord
@@ -76,13 +71,10 @@ export function AiOverviewPanel({
   readonly onSave: (title: string, body: string) => void
   readonly cachedInsights?: readonly DocumentInsight[] | undefined
   readonly onInsightChange?: ((kind: DocumentInsightKind, value: string) => void) | undefined
-  readonly ownSummary: OwnSummary | undefined
-  readonly onOwnSummaryChange: (next: OwnSummaryUpdate) => void
   readonly activationToken?: number | undefined
   readonly onNavigateToSource?: ((citation: SourceCitation) => void) | undefined
 }): JSX.Element {
   const running = useRef(new Set<InsightKey>())
-  const revealed = ownSummaryRevealed(ownSummary)
   const [insights, setInsights] = useState(() => mergeCachedInsights(initialState, cachedInsights))
   const insightsRef = useRef(insights)
   useEffect(() => {
@@ -156,14 +148,13 @@ export function AiOverviewPanel({
       provider.configured,
     ],
   )
-  // The overview stays closed until the reader writes their own three lines or skips them.
   useEffect(() => {
-    if (!provider.configured || !revealed) return
+    if (!provider.configured) return
     for (const key of overviewInsightKeys) {
       const insight = insightsRef.current[key]
       if (!insight.value && !insight.loading) void generate(key)
     }
-  }, [generate, provider.configured, revealed])
+  }, [generate, provider.configured])
   async function ask(
     question: string,
     history: readonly AiHistoryMessage[],
@@ -200,38 +191,26 @@ export function AiOverviewPanel({
   return (
     <section className="sidebar-mode-panel ai-overview-panel" aria-label="AI 논문 개요">
       <div className="ai-overview-scroll">
-        <OwnSummaryPanel
-          document={document}
-          provider={provider}
-          summary={ownSummary}
-          onChange={onOwnSummaryChange}
-          onAiRequest={onAiRequest}
-          onNavigateToSource={onNavigateToSource}
-        />
-        {revealed
-          ? leadingInsightKeys.map((key) => (
-              <SidebarInsightSection
-                key={key}
-                title={config[key].title}
-                value={insights[key].value}
-                loading={insights[key].loading}
-                error={insights[key].error}
-                onGenerate={() => void generate(key)}
-                onSave={() => onSave(config[key].title, insights[key].value)}
-              />
-            ))
-          : null}
+        {leadingInsightKeys.map((key) => (
+          <SidebarInsightSection
+            key={key}
+            title={config[key].title}
+            value={insights[key].value}
+            loading={insights[key].loading}
+            error={insights[key].error}
+            onGenerate={() => void generate(key)}
+            onSave={() => onSave(config[key].title, insights[key].value)}
+          />
+        ))}
         <div className="summary-discussion-flow">
-          {revealed ? (
-            <SidebarInsightSection
-              title={config.summary.title}
-              value={insights.summary.value}
-              loading={insights.summary.loading}
-              error={insights.summary.error}
-              onGenerate={() => void generate("summary")}
-              onSave={() => onSave(config.summary.title, insights.summary.value)}
-            />
-          ) : null}
+          <SidebarInsightSection
+            title={config.summary.title}
+            value={insights.summary.value}
+            loading={insights.summary.loading}
+            error={insights.summary.error}
+            onGenerate={() => void generate("summary")}
+            onSave={() => onSave(config.summary.title, insights.summary.value)}
+          />
           <PaperDiscussion
             provider={provider}
             documentId={document.id}

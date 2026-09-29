@@ -15,14 +15,12 @@ import {
 } from "lucide-react"
 import { type JSX, useState } from "react"
 import type { ProviderStatus } from "../../shared/ipc"
-import type { OwnSummary } from "../../shared/ownSummary"
 import type { DocumentInsight, DocumentInsightKind } from "../../shared/schemas"
 import { researchSidebarLayout } from "../../shared/uiLayout"
 import type { SourceCitation } from "../lib/chatCitations"
 import { togglePageTranslation } from "../lib/pageTranslationToggle"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
 import { saveCitationAssessment, saveSidebarInsight } from "../lib/sidebarCards"
-import type { OwnSummaryUpdate } from "../lib/useOwnSummary"
 import type { AiRequestRunner, BoardCard, BoardTool, CardId, DocumentRecord } from "../types"
 import { AiOverviewPanel } from "./AiOverviewPanel"
 import { BoardIndexPanel } from "./BoardIndexPanel"
@@ -61,8 +59,6 @@ export function ResearchSidebar({
   onWidthChange,
   insights = [],
   onInsightChange,
-  ownSummary,
-  onOwnSummaryChange,
   onNavigateToSource,
   tool,
   onToolChange,
@@ -82,8 +78,6 @@ export function ResearchSidebar({
   readonly onWidthChange?: ((width: number) => void) | undefined
   readonly insights?: readonly DocumentInsight[] | undefined
   readonly onInsightChange?: ((kind: DocumentInsightKind, value: string) => void) | undefined
-  readonly ownSummary: OwnSummary | undefined
-  readonly onOwnSummaryChange: (next: OwnSummaryUpdate) => void
   readonly onNavigateToSource?: ((citation: SourceCitation) => void) | undefined
   readonly tool: BoardTool
   readonly onToolChange: (tool: BoardTool) => void
@@ -205,8 +199,6 @@ export function ResearchSidebar({
                 onAiRequest={onAiRequest}
                 cachedInsights={insights}
                 onInsightChange={onInsightChange}
-                ownSummary={ownSummary}
-                onOwnSummaryChange={onOwnSummaryChange}
                 onNavigateToSource={onNavigateToSource}
                 onSave={(title, body) =>
                   onCardsChange(saveSidebarInsight(cards, document, title, body))

@@ -26,7 +26,6 @@ export function defaultWorkspace(): Workspace {
     cards: [],
     agentThreads: [],
     insights: [],
-    ownSummaries: [],
     readerNotes: [],
     sidebarOpen: true,
     outlineWidth: 240,
