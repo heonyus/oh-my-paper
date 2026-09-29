@@ -38,6 +38,7 @@ import { createAiJobStreams } from "./aiJobStreams"
 import { createAiModeServices } from "./aiModeServices"
 import type { WebServerConfig } from "./config"
 import { JevDecisionService } from "./decisionService"
+import { scheduleDerivedCacheCleanup } from "./derivedCacheCleanupTask"
 import { deleteLibraryDocument } from "./documentDeletion"
 import { MeaningSearchService } from "./meaningSearchService"
 import { claudeModelOf } from "./subscriptionAi"
@@ -96,6 +97,7 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
   const resuming = analysis.resumePending().catch((error: unknown) => {
     console.warn("[document-analysis] could not resume the analysis queue", error)
   })
+  const cacheCleanup = scheduleDerivedCacheCleanup(store)
   let decisions =
     initialProvider?.provider === "openrouter"
       ? new JevDecisionService(initialProvider.apiKey)
@@ -183,6 +185,7 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
     listSavedScholarlyMetadata: () => listScholarlyMetadata(store.repository),
     close: async () => {
       jobs.dispose()
+      await cacheCleanup.stop()
       await analysis.dispose()
       await resuming
       paddle.dispose()
