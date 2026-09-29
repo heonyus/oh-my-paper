@@ -2,7 +2,9 @@ import { spawn } from "node:child_process"
 import net from "node:net"
 
 const children = []
-const vite = spawn(process.execPath, ["node_modules/vite/bin/vite.js"], {
+// A fixed IPv4 address: `localhost` can resolve to ::1 first (commonly on Windows), and
+// then Vite would listen where the port check below never looks.
+const vite = spawn(process.execPath, ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1"], {
   stdio: "inherit",
   env: process.env,
 })
@@ -10,7 +12,7 @@ children.push(vite)
 
 await waitForPort("127.0.0.1", 5173)
 
-const electronEnv = { ...process.env, VITE_DEV_SERVER_URL: "http://localhost:5173" }
+const electronEnv = { ...process.env, VITE_DEV_SERVER_URL: "http://127.0.0.1:5173" }
 delete electronEnv.ELECTRON_RUN_AS_NODE
 const electron = spawn(process.execPath, ["node_modules/electron/cli.js", "."], {
   stdio: "inherit",

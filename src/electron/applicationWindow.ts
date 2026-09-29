@@ -25,8 +25,10 @@ export function createApplicationWindow(directory: string): BrowserWindow {
     height: 1024,
     minWidth: 920,
     minHeight: 640,
-    titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 12, y: 24 },
+    // Elsewhere a hidden title bar leaves a frameless window without minimize or close buttons.
+    ...(process.platform === "darwin"
+      ? { titleBarStyle: "hiddenInset" as const, trafficLightPosition: { x: 12, y: 24 } }
+      : {}),
     backgroundColor: "#f3f5f1",
     webPreferences: {
       preload: join(directory, "preload.js"),
