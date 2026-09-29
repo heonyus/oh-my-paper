@@ -253,8 +253,8 @@ describe("CodexAppServerClient Protocol Fake", () => {
   it("reads the app-server web-search capability instead of inferring it from auth", async () => {
     const pending = client.readProviderCapabilities()
 
-    await vi.waitFor(() => expect(hasRequest(fake, "model/providerCapabilities/read")).toBe(true))
-    const request = findRequest(fake, "model/providerCapabilities/read")
+    await vi.waitFor(() => expect(hasRequest(fake, "modelProvider/capabilities/read")).toBe(true))
+    const request = findRequest(fake, "modelProvider/capabilities/read")
     expect(request.params).toEqual({})
     fake.emitLine({
       id: request.id,
@@ -262,6 +262,45 @@ describe("CodexAppServerClient Protocol Fake", () => {
     })
 
     await expect(pending).resolves.toEqual({ webSearch: true })
+  })
+
+  it("lists the account's visible models with their supported efforts", async () => {
+    const pending = client.listModels()
+
+    await vi.waitFor(() => expect(hasRequest(fake, "model/list")).toBe(true))
+    const request = findRequest(fake, "model/list")
+    fake.emitLine({
+      id: request.id,
+      result: {
+        data: [
+          {
+            id: "gpt-6-astra",
+            displayName: "GPT-6-Astra",
+            description: "Frontier intelligence for the most demanding work.",
+            hidden: false,
+            isDefault: true,
+            supportedReasoningEfforts: [
+              { reasoningEffort: "low", description: "" },
+              { reasoningEffort: "ultra", description: "" },
+            ],
+          },
+          { id: "gpt-reserve", displayName: "GPT-Reserve", hidden: true, isDefault: false },
+          { id: "gpt-7-nova", displayName: "GPT-7-Nova", description: "New.", isDefault: false },
+        ],
+        nextCursor: null,
+      },
+    })
+
+    await expect(pending).resolves.toEqual([
+      {
+        id: "gpt-6-astra",
+        label: "GPT-6 Astra",
+        description: "최신 · 가장 깊은 추론과 리서치",
+        isDefault: true,
+        efforts: ["low", "ultra"],
+      },
+      { id: "gpt-7-nova", label: "GPT-7 Nova", description: "New.", isDefault: false, efforts: [] },
+    ])
   })
 
   it("streams deltas and completes turn via session with read-only sandbox", async () => {
@@ -286,15 +325,7 @@ describe("CodexAppServerClient Protocol Fake", () => {
 
     const turnMsg = findRequest(fake, "turn/start")
     expect(turnMsg.params).toMatchObject({
-      sandboxPolicy: {
-        type: "readOnly",
-        access: {
-          type: "restricted",
-          includePlatformDefaults: false,
-          readableRoots: [],
-        },
-        networkAccess: false,
-      },
+      sandboxPolicy: { type: "readOnly", networkAccess: false },
       input: [{ type: "text", text: "Translate this passage" }],
       effort: "high",
     })

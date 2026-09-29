@@ -1,9 +1,11 @@
 import { join } from "node:path"
 import {
+  CODEX_MODEL_OPTIONS,
   type CodexAccountRateLimits,
   type CodexAccountStatus,
   type CodexLoginCompletedEvent,
   type CodexLoginStartResult,
+  type CodexModel,
   codexAccountStatusSchema,
   codexLoginTypeSchema,
 } from "../shared/codexTypes"
@@ -15,6 +17,8 @@ import { findCodexExecutable } from "./codexSubprocess"
 import { createCodexWebSearchPort } from "./codexWebSearch"
 import { ProviderConfigurationError } from "./providerConfigStore"
 import type { OfficialWebSearchPort } from "./webDiscovery"
+
+const MODEL_LIST_TTL_MS = 10 * 60_000
 
 export type CodexSubscriptionAdapterOptions = {
   readonly appRoot: string
@@ -28,6 +32,7 @@ export class CodexSubscriptionAdapter {
   readonly #executablePath: string | null
   #activeOperations = 0
   #loginPending = false
+  #models: { readonly list: readonly CodexModel[]; readonly at: number } | null = null
 
   constructor(options: CodexSubscriptionAdapterOptions) {
     const codexHome = join(options.appRoot, "codex-home")
@@ -46,6 +51,7 @@ export class CodexSubscriptionAdapter {
     })
     this.#client.onLoginCompleted(() => {
       this.#loginPending = false
+      this.#models = null
     })
   }
 
@@ -113,6 +119,27 @@ export class CodexSubscriptionAdapter {
     }
   }
 
+  /** The account's model list from the runtime, or the bundled list when it cannot answer. */
+  async listModels(): Promise<readonly CodexModel[]> {
+    if (!this.#executablePath) return CODEX_MODEL_OPTIONS
+    if (this.#models && Date.now() - this.#models.at < MODEL_LIST_TTL_MS) return this.#models.list
+    const wasRunning = this.#client.isRunning
+    this.#activeOperations++
+    try {
+      const list = await this.#client.listModels()
+      if (list.length === 0) return CODEX_MODEL_OPTIONS
+      this.#models = { list, at: Date.now() }
+      return list
+    } catch {
+      return CODEX_MODEL_OPTIONS
+    } finally {
+      this.#activeOperations--
+      if (!wasRunning && this.#activeOperations === 0 && !this.#loginPending) {
+        this.#client.stop()
+      }
+    }
+  }
+
   async assertAuthenticated(): Promise<void> {
     const status = await this.getStatus()
     if (!status.authenticated) throw new ProviderConfigurationError("auth")
@@ -145,6 +172,7 @@ export class CodexSubscriptionAdapter {
     if (!this.#executablePath) return
     await this.#client.logout()
     this.#loginPending = false
+    this.#models = null
   }
 
   onLoginCompleted(listener: (event: CodexLoginCompletedEvent) => void): () => void {

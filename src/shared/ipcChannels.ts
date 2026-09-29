@@ -60,6 +60,7 @@ export const ipcChannels = {
   knowledgePlacementUpdate: "knowledge:placement-update",
   knowledgePlacementDelete: "knowledge:placement-delete",
   codexStatus: "codex:status",
+  codexListModels: "codex:list-models",
   codexLoginStart: "codex:login-start",
   codexLoginCancel: "codex:login-cancel",
   codexLogout: "codex:logout",

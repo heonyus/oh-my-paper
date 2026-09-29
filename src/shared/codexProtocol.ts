@@ -73,6 +73,21 @@ export type CodexProviderCapabilitiesReadResult = z.infer<
   typeof codexProviderCapabilitiesReadResultSchema
 >
 
+export const codexModelListResultSchema = z.object({
+  data: z.array(
+    z.object({
+      id: z.string().min(1),
+      displayName: z.string().optional(),
+      description: z.string().optional(),
+      hidden: z.boolean().optional(),
+      isDefault: z.boolean().optional(),
+      supportedReasoningEfforts: z
+        .array(z.object({ reasoningEffort: z.string().min(1) }))
+        .optional(),
+    }),
+  ),
+})
+
 export const codexConfigReadResultSchema = z
   .object({
     config: z.record(z.string(), z.unknown()),

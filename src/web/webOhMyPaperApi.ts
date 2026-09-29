@@ -1,4 +1,5 @@
 import type { AiJobEvent } from "../shared/aiIpc"
+import { CODEX_MODEL_OPTIONS } from "../shared/codexTypes"
 import type { DocumentAnalysisSnapshot } from "../shared/documentAnalysis"
 import type { DocumentPageParseProgress } from "../shared/documentPageModel"
 import {
@@ -272,6 +273,7 @@ export function installWebOhMyPaperApi(userId: string): void {
         account: null,
         requiresOpenaiAuth: false,
       }),
+      listModels: async () => CODEX_MODEL_OPTIONS,
       startLogin: unavailableWebFeature("codex.startLogin"),
       cancelLogin: async () => {},
       logout: async () => {},

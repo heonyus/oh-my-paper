@@ -9,9 +9,16 @@ import {
   codexGetAccountResultSchema,
   codexGetRateLimitsResultSchema,
   codexLoginStartResultSchema,
+  codexModelListResultSchema,
   codexProviderCapabilitiesReadResultSchema,
 } from "../shared/codexProtocol"
-import type { CodexAccount, CodexAccountRateLimits, CodexLoginType } from "../shared/codexTypes"
+import {
+  type CodexAccount,
+  type CodexAccountRateLimits,
+  type CodexLoginType,
+  type CodexModel,
+  codexModelFromRuntime,
+} from "../shared/codexTypes"
 import {
   handleCodexIncomingMessage,
   handleCodexSubprocessError,
@@ -232,11 +239,18 @@ export class CodexAppServerClient {
   async readProviderCapabilities(): Promise<{ readonly webSearch: boolean }> {
     await this.ensureStarted()
     const capabilities = await this.request(
-      "model/providerCapabilities/read",
+      "modelProvider/capabilities/read",
       {},
       codexProviderCapabilitiesReadResultSchema,
     )
     return { webSearch: capabilities.webSearch }
+  }
+
+  /** The models this account can pick, in the runtime's own order. */
+  async listModels(): Promise<readonly CodexModel[]> {
+    await this.ensureStarted()
+    const result = await this.request("model/list", { limit: 50 }, codexModelListResultSchema)
+    return result.data.filter((model) => !model.hidden).map(codexModelFromRuntime)
   }
 
   async readEffectiveConfig(): Promise<CodexConfigReadResult> {

@@ -2,6 +2,7 @@ import { type AiModeSettings, AiModeStore } from "../electron/aiModeStore"
 import { ClaudeSubscriptionAdapter } from "../electron/claudeSubscriptionAdapter"
 import { CodexSubscriptionAdapter } from "../electron/codexSubscriptionAdapter"
 import { DEFAULT_CLAUDE_EFFORT, DEFAULT_CLAUDE_MODEL } from "../shared/claudeTypes"
+import { CODEX_DEFAULT_MODEL } from "../shared/codexTypes"
 import type { ProviderConfig } from "../shared/ipc"
 import { isOpenRouterModel } from "../shared/providerModels"
 import { WebAiService } from "./aiService"
@@ -21,7 +22,7 @@ export type WebAiRuntime = {
 function initialMode(provider: ProviderConfig | null, claudeInstalled: boolean): AiModeSettings {
   return {
     mode: claudeInstalled ? "claude" : provider ? "api" : "chatgpt",
-    codexModel: "gpt-5.6-sol",
+    codexModel: CODEX_DEFAULT_MODEL,
     codexReasoningEffort: "medium",
     claudeModel: DEFAULT_CLAUDE_MODEL,
     claudeEffort: DEFAULT_CLAUDE_EFFORT,

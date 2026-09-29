@@ -6,6 +6,7 @@ import {
   codexAccountStatusSchema,
   codexLoginCompletedEventSchema,
   codexLoginStartResultSchema,
+  codexModelListSchema,
 } from "../shared/codexTypes"
 import { aiModeRequestSchema, providerStatusSchema } from "../shared/ipc"
 import type { WebServices } from "./services"
@@ -39,7 +40,7 @@ export function reply(response: ServerResponse, value: unknown): void {
 type SubscriptionRouteServices = Pick<WebServices, "saveAiMode" | "providerStatus"> & {
   readonly subscription: Pick<
     WebServices["subscription"],
-    "getStatus" | "startLogin" | "cancelLogin" | "logout" | "onLoginCompleted"
+    "getStatus" | "listModels" | "startLogin" | "cancelLogin" | "logout" | "onLoginCompleted"
   >
 }
 
@@ -82,6 +83,11 @@ export function createSubscriptionRoutes(services: SubscriptionRouteServices) {
           await readInput(request, emptyRequestSchema)
           const status = codexAccountStatusSchema.parse(await services.subscription.getStatus())
           reply(response, { ...status, executablePath: undefined })
+          return true
+        }
+        case "/api/rpc/codexListModels": {
+          await readInput(request, emptyRequestSchema)
+          reply(response, codexModelListSchema.parse(await services.subscription.listModels()))
           return true
         }
         case "/api/rpc/codexStartLogin": {

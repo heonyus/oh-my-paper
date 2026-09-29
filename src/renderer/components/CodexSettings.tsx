@@ -1,6 +1,6 @@
 import { AlertCircle, CheckCircle2, Info, Loader2 } from "lucide-react"
 import type { JSX } from "react"
-import { CODEX_MODEL_OPTIONS, CODEX_REASONING_EFFORT_OPTIONS } from "../../shared/codexTypes"
+import { codexModelChoices, codexReasoningEffortOptions } from "../../shared/codexTypes"
 import { SubscriptionUsage } from "./SubscriptionUsage"
 import { isCodexReasoningEffort, useCodexSettings } from "./useCodexSettings"
 
@@ -11,6 +11,7 @@ export function CodexSettings({
 }): JSX.Element {
   const {
     status,
+    models,
     pendingLogin,
     message,
     busy,
@@ -71,9 +72,9 @@ export function CodexSettings({
           value={selectedModel}
           onChange={(event) => void updateModel(event.currentTarget.value)}
         >
-          {CODEX_MODEL_OPTIONS.map((opt) => (
+          {codexModelChoices(models, selectedModel).map((opt) => (
             <option key={opt.id} value={opt.id}>
-              {opt.label}
+              {opt.description ? `${opt.label} — ${opt.description}` : opt.label}
             </option>
           ))}
         </select>
@@ -91,7 +92,7 @@ export function CodexSettings({
             if (isCodexReasoningEffort(next)) void updateEffort(next)
           }}
         >
-          {CODEX_REASONING_EFFORT_OPTIONS.map((opt) => (
+          {codexReasoningEffortOptions(selectedModel, models).map((opt) => (
             <option key={opt.id} value={opt.id}>
               {opt.label}
             </option>

@@ -117,39 +117,106 @@ export const codexAccountStatusSchema = z.object({
 
 export type CodexAccountStatus = z.infer<typeof codexAccountStatusSchema>
 
-export const CODEX_MODEL_OPTIONS = [
-  { id: "gpt-5.6-sol", label: "GPT-5.6 Sol (최고 성능 추론 및 리서치)" },
-  { id: "gpt-5.6-terra", label: "GPT-5.6 Terra (균형 잡힌 에이전트 작업)" },
-  { id: "gpt-5.6-luna", label: "GPT-5.6 Luna (빠르고 가벼운 속도)" },
-  { id: "gpt-6-astra", label: "GPT-6 Astra (복합 고급 연구)" },
-  { id: "gpt-5.5", label: "GPT-5.5 (호환 추론)" },
-] as const
+/** One entry of the runtime's `model/list`, reduced to what the pickers show. */
+export const codexModelSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  description: z.string(),
+  isDefault: z.boolean(),
+  efforts: z.array(z.string().min(1)),
+})
 
-export type CodexModelId = (typeof CODEX_MODEL_OPTIONS)[number]["id"]
+export type CodexModel = z.infer<typeof codexModelSchema>
 
-export const CODEX_DEFAULT_MODEL: CodexModelId = "gpt-5.6-sol"
+export const codexModelListSchema = z.array(codexModelSchema)
 
-export function isCodexModel(value: string): value is CodexModelId {
-  return CODEX_MODEL_OPTIONS.some((option) => option.id === value)
+const ALL_EFFORTS = ["low", "medium", "high", "xhigh", "max", "ultra"]
+
+/** Korean hints for models the runtime is known to list; others keep its English text. */
+const CODEX_MODEL_HINTS: Readonly<Record<string, string>> = {
+  "gpt-6-astra": "최신 · 가장 깊은 추론과 리서치",
+  "gpt-6-sol": "최신 · 복잡한 작업",
+  "gpt-6-luna": "최신 · 빠르고 가벼움",
+  "gpt-5.6-sol": "이전 세대 · 복잡한 작업",
+  "gpt-5.6-terra": "이전 세대 · 균형",
+  "gpt-5.6-luna": "이전 세대 · 빠르고 가벼움",
+  "gpt-5.5": "레거시",
 }
 
-const CODEX_STANDARD_REASONING_EFFORT_OPTIONS = [
+export const CODEX_DEFAULT_MODEL = "gpt-6-astra"
+
+/** Shown until the bundled runtime answers `model/list` (offline or an older runtime). */
+export const CODEX_MODEL_OPTIONS: readonly CodexModel[] = [
+  { id: "gpt-6-astra", label: "GPT-6 Astra", efforts: ALL_EFFORTS },
+  { id: "gpt-5.6-sol", label: "GPT-5.6 Sol", efforts: ALL_EFFORTS },
+  { id: "gpt-5.6-terra", label: "GPT-5.6 Terra", efforts: ALL_EFFORTS },
+  { id: "gpt-5.6-luna", label: "GPT-5.6 Luna", efforts: ALL_EFFORTS.slice(0, 5) },
+  { id: "gpt-5.5", label: "GPT-5.5", efforts: ALL_EFFORTS.slice(0, 4) },
+].map((model) => ({
+  ...model,
+  description: CODEX_MODEL_HINTS[model.id] ?? "",
+  isDefault: model.id === CODEX_DEFAULT_MODEL,
+}))
+
+/** Maps one raw `model/list` entry; the runtime's display names use hyphens (`GPT-6-Astra`). */
+export function codexModelFromRuntime(raw: {
+  readonly id: string
+  readonly displayName?: string | undefined
+  readonly description?: string | undefined
+  readonly isDefault?: boolean | undefined
+  readonly supportedReasoningEfforts?:
+    | ReadonlyArray<{ readonly reasoningEffort: string }>
+    | undefined
+}): CodexModel {
+  const label = (raw.displayName ?? raw.id).replace(/^(GPT-[\d.]+)-/i, "$1 ")
+  return {
+    id: raw.id,
+    label,
+    description: CODEX_MODEL_HINTS[raw.id] ?? raw.description ?? "",
+    isDefault: raw.isDefault ?? false,
+    efforts: (raw.supportedReasoningEfforts ?? []).map((option) => option.reasoningEffort),
+  }
+}
+
+/** The runtime's default model, falling back to the app default. */
+export function defaultCodexModel(models: readonly CodexModel[]): string {
+  return models.find((model) => model.isDefault)?.id ?? models[0]?.id ?? CODEX_DEFAULT_MODEL
+}
+
+/** The model choices, keeping a saved model that is no longer listed so the select shows it. */
+export function codexModelChoices(
+  models: readonly CodexModel[],
+  selected: string,
+): readonly CodexModel[] {
+  return models.some((model) => model.id === selected)
+    ? models
+    : [
+        ...models,
+        {
+          id: selected,
+          label: selected,
+          description: "저장된 모델",
+          isDefault: false,
+          efforts: [],
+        },
+      ]
+}
+
+export const CODEX_REASONING_EFFORT_OPTIONS = [
   { id: "low", label: "low (낮음)" },
   { id: "medium", label: "medium (중간 · 기본)" },
   { id: "high", label: "high (높음)" },
   { id: "xhigh", label: "xhigh (매우 높음)" },
-] as const
-
-export const CODEX_REASONING_EFFORT_OPTIONS = [
-  ...CODEX_STANDARD_REASONING_EFFORT_OPTIONS,
   { id: "max", label: "max (최대)" },
   { id: "ultra", label: "ultra (울트라)" },
 ] as const
 
+/** The efforts a model supports; an unknown model offers the four every model accepts. */
 export function codexReasoningEffortOptions(
   model: string,
+  models: readonly CodexModel[] = CODEX_MODEL_OPTIONS,
 ): readonly (typeof CODEX_REASONING_EFFORT_OPTIONS)[number][] {
-  if (model === "gpt-5.6-luna" || model === "gpt-5.5")
-    return CODEX_STANDARD_REASONING_EFFORT_OPTIONS
-  return CODEX_REASONING_EFFORT_OPTIONS
+  const supported = models.find((option) => option.id === model)?.efforts
+  const allowed = supported && supported.length > 0 ? supported : ALL_EFFORTS.slice(0, 4)
+  return CODEX_REASONING_EFFORT_OPTIONS.filter((option) => allowed.includes(option.id))
 }

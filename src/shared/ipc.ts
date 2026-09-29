@@ -31,6 +31,7 @@ import type {
   CodexAccountStatus,
   CodexLoginCompletedEvent,
   CodexLoginStartResult,
+  CodexModel,
 } from "./codexTypes"
 import type { CollectionApi } from "./collectionIpc"
 import type { DiscoveryApi } from "./discoveryIpc"
@@ -422,6 +423,7 @@ export type OhMyPaperApi = {
   }
   readonly codex: {
     readonly getStatus: () => Promise<CodexAccountStatus>
+    readonly listModels: () => Promise<readonly CodexModel[]>
     readonly startLogin: (type?: string) => Promise<CodexLoginStartResult>
     readonly cancelLogin: (loginId: string) => Promise<void>
     readonly logout: () => Promise<void>
