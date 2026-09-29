@@ -21,9 +21,20 @@ const mocks = vi.hoisted(() => ({
     loginId: "login-1",
     authUrl: "https://auth.openai.com/example",
   })),
+  listModels: vi.fn(async () => [
+    {
+      id: "gpt-7-nova",
+      label: "GPT-7 Nova",
+      description: "",
+      isDefault: true,
+      efforts: ["low", "medium"],
+    },
+  ]),
   cancelLogin: vi.fn(async () => {}),
   logout: vi.fn(async () => {}),
-  onLoginCompleted: vi.fn(() => () => {}),
+  onLoginCompleted: vi.fn(
+    (_listener: (event: { loginId: string; success: boolean; error: string }) => void) => () => {},
+  ),
   providerStatus: vi.fn(async () => ({ ...status })),
   saveProviderConfig: vi.fn(async () => ({ ...status })),
   saveAiMode: vi.fn(async () => ({ ...status })),
@@ -45,6 +56,7 @@ function installApi(): void {
     value: {
       codex: {
         getStatus: mocks.codexStatus,
+        listModels: mocks.listModels,
         startLogin: mocks.startLogin,
         cancelLogin: mocks.cancelLogin,
         logout: mocks.logout,
@@ -80,24 +92,28 @@ describe("WebOnboarding", () => {
   beforeEach(() => {
     installApi()
     vi.clearAllMocks()
+    mocks.codexStatus.mockResolvedValue({
+      available: true,
+      authenticated: false,
+      account: null,
+      requiresOpenaiAuth: false,
+    })
   })
 
-  it("walks from welcome to connect choices in two clicks", async () => {
+  it("shows the connect choices on the first screen", async () => {
     render(<WebOnboarding status={{ ...providerStatusProp }} onDone={vi.fn()} />)
 
     expect(screen.getByRole("heading", { name: "oh-my-paper" })).toBeVisible()
-    fireEvent.click(screen.getByRole("button", { name: "시작하기" }))
-
-    expect(screen.getByRole("button", { name: /ChatGPT 구독/ })).toBeVisible()
+    expect(screen.getByRole("button", { name: /ChatGPT 구독.*GPT-6 Astra/ })).toBeVisible()
     expect(screen.getByRole("button", { name: /^API 키 OpenRouter/ })).toBeVisible()
+    expect(screen.queryByRole("button", { name: /Claude 구독/ })).toBeNull()
   })
 
-  it("recommends Claude and connects an existing Claude Code login with Haiku 4.5", async () => {
+  it("connects an existing Claude Code login with Haiku 4.5", async () => {
     installClaudeApi()
     render(<WebOnboarding status={{ ...providerStatusProp }} onDone={vi.fn()} />)
 
-    fireEvent.click(screen.getByRole("button", { name: "시작하기" }))
-    fireEvent.click(screen.getByRole("button", { name: /Claude 구독 권장/ }))
+    fireEvent.click(screen.getByRole("button", { name: /Claude 구독.*Haiku 4\.5/ }))
 
     await waitFor(() =>
       expect(mocks.saveAiMode).toHaveBeenCalledWith({
@@ -107,6 +123,7 @@ describe("WebOnboarding", () => {
       }),
     )
     expect(await screen.findByText(/Claude 구독 연결됨/)).toBeVisible()
+    expect(screen.getByText("문장을 고르고 한 키로")).toBeVisible()
     expect(mocks.claudeStartLogin).not.toHaveBeenCalled()
   })
 
@@ -114,7 +131,6 @@ describe("WebOnboarding", () => {
     const onDone = vi.fn()
     render(<WebOnboarding status={{ ...providerStatusProp }} onDone={onDone} />)
 
-    fireEvent.click(screen.getByRole("button", { name: "시작하기" }))
     fireEvent.click(screen.getByRole("button", { name: /^API 키 OpenRouter/ }))
     fireEvent.change(screen.getByLabelText("OpenRouter API 키"), {
       target: { value: "sk-or-test-key-1234567890" },
@@ -139,12 +155,51 @@ describe("WebOnboarding", () => {
   it("starts ChatGPT login immediately when the subscription card is chosen", async () => {
     render(<WebOnboarding status={{ ...providerStatusProp }} onDone={vi.fn()} />)
 
-    fireEvent.click(screen.getByRole("button", { name: "시작하기" }))
     fireEvent.click(screen.getByRole("button", { name: /ChatGPT 구독/ }))
 
     await waitFor(() => expect(mocks.startLogin).toHaveBeenCalledWith("chatgpt"))
     await waitFor(() => expect(mocks.openExternal).toHaveBeenCalled())
     expect(await screen.findByText(/브라우저에서 ChatGPT 승인을 완료하세요/)).toBeVisible()
     expect(mocks.saveAiMode).not.toHaveBeenCalled()
+  })
+
+  it("starts an already signed-in ChatGPT account on the runtime's default model", async () => {
+    mocks.codexStatus.mockResolvedValue({
+      available: true,
+      authenticated: true,
+      account: null,
+      requiresOpenaiAuth: false,
+    })
+    render(<WebOnboarding status={{ ...providerStatusProp }} onDone={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole("button", { name: /ChatGPT 구독/ }))
+
+    await waitFor(() =>
+      expect(mocks.saveAiMode).toHaveBeenCalledWith({
+        mode: "chatgpt",
+        codexModel: "gpt-7-nova",
+        codexReasoningEffort: "medium",
+      }),
+    )
+    expect(await screen.findByText(/ChatGPT 구독 연결됨/)).toBeVisible()
+    expect(mocks.startLogin).not.toHaveBeenCalled()
+  })
+
+  it("stays on the login step when a ChatGPT sign-in fails", async () => {
+    let complete: (event: { loginId: string; success: boolean; error: string }) => void = () => {}
+    mocks.onLoginCompleted.mockImplementation((listener) => {
+      complete = listener
+      return () => {}
+    })
+    render(<WebOnboarding status={{ ...providerStatusProp }} onDone={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole("button", { name: /ChatGPT 구독/ }))
+    await waitFor(() => expect(mocks.startLogin).toHaveBeenCalled())
+    await screen.findByText(/브라우저에서 ChatGPT 승인을 완료하세요/)
+    complete({ loginId: "login-1", success: false, error: "access_denied" })
+
+    expect(await screen.findByText("access_denied")).toBeVisible()
+    expect(mocks.saveAiMode).not.toHaveBeenCalled()
+    expect(screen.queryByRole("button", { name: "라이브러리 열기" })).toBeNull()
   })
 })
