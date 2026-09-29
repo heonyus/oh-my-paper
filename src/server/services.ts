@@ -141,11 +141,11 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
           sources: await discoverySources(),
           complete: (messages, options) => ai.chat(messages, options),
           contextDocs: async (ids): Promise<readonly AgentContextDoc[]> => {
-            if (ids.length === 0) return []
-            const wanted = new Set<string>(ids)
-            const workspace = await store.read()
-            return workspace.documents
-              .filter((document) => wanted.has(document.id))
+            const documents = await Promise.all(
+              [...new Set(ids)].map((id) => store.findDocument(id)),
+            )
+            return documents
+              .filter((document) => document !== null)
               .map((document) => ({
                 documentId: document.id,
                 title: document.title,

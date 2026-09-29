@@ -71,8 +71,7 @@ export class DocumentAnalysisService {
   async resumePending(): Promise<void> {
     const [loaded] = await Promise.allSettled([this.#ready])
     if (loaded?.status !== "fulfilled") return
-    const workspace = await this.store.read()
-    for (const document of workspace.documents) {
+    for (const document of await this.store.listDocuments()) {
       if (this.#readyDocuments.has(document.id)) continue
       await Promise.allSettled([this.schedule(document.id)])
     }
@@ -91,9 +90,8 @@ export class DocumentAnalysisService {
     if (this.#disposed) return
     this.#forgotten.delete(documentId)
     if (this.#jobs.has(documentId)) return
-    const workspace = await this.store.read()
+    const document = await this.store.findDocument(documentId)
     if (this.#disposed) return
-    const document = workspace.documents.find((candidate) => candidate.id === documentId)
     if (!document) return
     if (this.#readyDocuments.has(documentId)) return
     this.#pending.add(documentId)
@@ -248,12 +246,8 @@ export class DocumentAnalysisService {
   async #loadState(): Promise<void> {
     const state = await this.#stateStore.load()
     for (const id of state.pendingIds) this.#pending.add(id)
-    const workspace = await this.store.read()
-    for (const id of state.readyIds) {
-      const document = workspace.documents.find((candidate) => candidate.id === id)
-      if (!document) continue
-      this.#readyDocuments.add(id)
-    }
+    const known = new Set((await this.store.listDocuments()).map((document) => document.id))
+    for (const id of state.readyIds) if (known.has(id)) this.#readyDocuments.add(id)
   }
 
   async #persistPending(): Promise<void> {

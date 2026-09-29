@@ -17,6 +17,7 @@ import { projectRepositoryToWorkspace } from "./knowledgeWorkspaceProjection"
 import { syncWorkspaceToRepository } from "./knowledgeWorkspaceSync"
 import { forgetLearningFiles, readLearningFiles, saveLearningFiles } from "./learningFiles"
 import { removeDocumentFromRepository } from "./workspaceDocumentDeletion"
+import { readLibraryDocument, readLibraryDocuments } from "./workspaceDocuments"
 import { acknowledgedWorkspace } from "./workspaceSnapshot"
 
 const persistedWorkspaceSchema = workspaceSchema.extend({ layoutVersion: z.literal(2) })
@@ -121,6 +122,20 @@ export class WorkspaceStore {
     })
     this.rememberSnapshot(ws)
     return ws
+  }
+
+  /** The library record for `id` without projecting the whole workspace; null when absent. */
+  async findDocument(id: DocumentId): Promise<DocumentRecord | null> {
+    await this.ensureMigrated()
+    await this.collectionService?.rescan()
+    return readLibraryDocument(this.db, id)
+  }
+
+  /** Every library record, without the cards, insights, notes and threads `read` projects. */
+  async listDocuments(): Promise<readonly DocumentRecord[]> {
+    await this.ensureMigrated()
+    await this.collectionService?.rescan()
+    return readLibraryDocuments(this.db)
   }
 
   private rememberSnapshot(workspace: Workspace): void {

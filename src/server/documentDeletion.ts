@@ -22,8 +22,7 @@ export async function deleteLibraryDocument(
   services: DocumentDeletionServices,
   id: DocumentId,
 ): Promise<boolean> {
-  const workspace = await services.store.read()
-  const document = workspace.documents.find((candidate) => candidate.id === id)
+  const document = await services.store.findDocument(id)
   if (!document) return false
   await services.analysis.forget(id)
   services.paddle.forget(document.hash)

@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises"
 import type { SourceDocumentAst } from "../shared/documentAst"
 import type { DocumentAstRequest, DocumentAstResult } from "../shared/documentAstIpc"
 import { documentAstResultSchema } from "../shared/documentAstIpc"
-import type { DocumentId, DocumentRecord } from "../shared/schemas"
+import type { DocumentRecord } from "../shared/schemas"
 import { createAstFingerprint, DocumentAstStore, DocumentAstStoreError } from "./documentAstStore"
 import { resolveDocumentPath } from "./documentService"
 import type { PreparedPdf } from "./preparePdf"
@@ -20,13 +20,6 @@ export type DocumentAstServiceOptions = {
   readonly store?: DocumentAstStore
 }
 
-function findDocument(
-  documents: readonly DocumentRecord[],
-  id: DocumentId,
-): DocumentRecord | undefined {
-  return documents.find((candidate) => candidate.id === id)
-}
-
 function safeFailure(
   reason: Extract<DocumentAstResult, { readonly status: "failed" }>["reason"],
 ): DocumentAstResult {
@@ -35,9 +28,8 @@ function safeFailure(
 
 function sourceDocument(
   document: DocumentRecord,
-  workspaceDocuments: readonly DocumentRecord[],
+  current: DocumentRecord | null,
 ): DocumentRecord | null {
-  const current = findDocument(workspaceDocuments, document.id)
   return current?.hash === document.hash ? current : null
 }
 
@@ -78,8 +70,7 @@ export class DocumentAstService {
   }
 
   async #loadDocument(request: DocumentAstRequest): Promise<DocumentAstResult> {
-    const workspace = await this.workspace.read()
-    const document = findDocument(workspace.documents, request.id)
+    const document = await this.workspace.findDocument(request.id)
     if (!document) return safeFailure("unknown_document")
     if (request.sourceHash && request.sourceHash !== document.hash)
       return safeFailure("stale_source")
@@ -150,7 +141,7 @@ export class DocumentAstService {
           reason: "sidecar_unavailable",
         })
       }
-      const current = sourceDocument(document, (await this.workspace.read()).documents)
+      const current = sourceDocument(document, await this.workspace.findDocument(document.id))
       return current
         ? this.#resultForCached(prepared.sourceAst, document.hash, fingerprint)
         : safeFailure("stale_source")

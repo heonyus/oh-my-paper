@@ -1,17 +1,16 @@
 import type { DatabaseSync } from "node:sqlite"
-import type { KnowledgeNode } from "../shared/knowledgeSchemas"
-import type { BoardCard, DocumentInsight, DocumentRecord, Workspace } from "../shared/schemas"
+import type { BoardCard, DocumentInsight, Workspace } from "../shared/schemas"
 import {
   boardCardSchema,
   documentIdSchema,
   documentInsightKindSchema,
   documentInsightSchema,
-  documentRecordSchema,
   sourceAnchorSchema,
   workspaceSchema,
 } from "../shared/schemas"
 import type { KnowledgeRepository } from "./knowledgeRepository"
 import { insightRowSchema, workspaceSettingsRowSchema } from "./knowledgeRepositoryRows"
+import { readLibraryDocuments } from "./workspaceDocuments"
 
 const cardMetaSchema = boardCardSchema
   .pick({
@@ -27,17 +26,6 @@ const cardMetaSchema = boardCardSchema
     cardKind: boardCardSchema.shape.kind.optional(),
     anchor: sourceAnchorSchema.optional(),
   })
-
-function findAllPaperNodes(repo: KnowledgeRepository): readonly KnowledgeNode[] {
-  const papers: KnowledgeNode[] = []
-  let offset = 0
-  while (true) {
-    const page = repo.findNodes({ kind: "paper", limit: 100, offset })
-    papers.push(...page)
-    if (page.length < 100) return papers
-    offset += page.length
-  }
-}
 
 export function projectRepositoryToWorkspace(
   repo: KnowledgeRepository,
@@ -84,28 +72,7 @@ export function projectRepositoryToWorkspace(
     )
   }
 
-  const paperNodes = findAllPaperNodes(repo)
-  const documents: DocumentRecord[] = []
-  for (const paper of paperNodes) {
-    const docRecordCandidate =
-      typeof paper.metadata === "object" &&
-      paper.metadata !== null &&
-      "documentRecord" in paper.metadata
-        ? Reflect.get(paper.metadata, "documentRecord")
-        : null
-    if (docRecordCandidate) {
-      const parsedDoc = documentRecordSchema.safeParse(docRecordCandidate)
-      if (parsedDoc.success) {
-        documents.push(
-          documentRecordSchema.parse({
-            ...parsedDoc.data,
-            title: paper.title,
-            overview: paper.body,
-          }),
-        )
-      }
-    }
-  }
+  const documents = readLibraryDocuments(db)
 
   const rawInsightRows = db.prepare("SELECT * FROM document_insights").all()
   const insights: DocumentInsight[] = rawInsightRows.map((raw) => {

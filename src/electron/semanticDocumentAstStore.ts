@@ -123,8 +123,7 @@ export async function composeSemanticDocumentForDocument(input: {
   readonly store: WorkspaceStore
   readonly layout?: DocumentLayout
 }): Promise<SemanticCompositionResult | null> {
-  const workspace = await input.store.read()
-  const document = workspace.documents.find((candidate) => candidate.id === input.documentId)
+  const document = await input.store.findDocument(input.documentId)
   if (!document) return null
   const fingerprint = createAstFingerprint({
     sourceHash: document.hash,

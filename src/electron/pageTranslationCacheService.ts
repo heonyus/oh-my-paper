@@ -134,8 +134,7 @@ export class PageTranslationCacheService {
   }
 
   async #resolveCandidates(request: PageTranslationCacheReadRequest) {
-    const workspace = await this.store.read()
-    const document = workspace.documents.find((candidate) => candidate.id === request.id)
+    const document = await this.store.findDocument(request.id)
     if (!document) return []
     const base = join(this.store.root, "page-translations", document.hash)
     const configuration = [
