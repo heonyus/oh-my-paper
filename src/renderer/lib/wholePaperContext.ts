@@ -1,3 +1,4 @@
+import { claudeModelHasLargeContext, DEFAULT_CLAUDE_MODEL } from "../../shared/claudeTypes"
 import type { AiRequest, ProviderStatus } from "../../shared/ipc"
 import type { DocumentId } from "../../shared/schemas"
 import { waitForDocumentAst } from "./documentAstRuntime"
@@ -19,14 +20,18 @@ export function usesWholePaper(action: AiRequest["action"]): boolean {
 }
 
 /**
- * Characters of paper text sent with each whole-paper request. Claude Sonnet 5 takes a
- * 1M-token context through the subscription; API keys are billed and rate-limited per
- * token, so they get a bounded excerpt of the paper in reading order.
+ * Characters of paper text sent with each whole-paper request. Claude Sonnet and Opus take
+ * a 1M-token context through the subscription, Haiku 200K; API keys are billed and
+ * rate-limited per token, so they get a bounded excerpt of the paper in reading order.
  */
-export function wholePaperCharacterBudget(provider: Pick<ProviderStatus, "mode">): number {
+export function wholePaperCharacterBudget(
+  provider: Pick<ProviderStatus, "mode" | "claudeModel">,
+): number {
   switch (provider.mode) {
     case "claude":
-      return 600_000
+      return claudeModelHasLargeContext(provider.claudeModel ?? DEFAULT_CLAUDE_MODEL)
+        ? 600_000
+        : 300_000
     case "chatgpt":
       return 200_000
     default:

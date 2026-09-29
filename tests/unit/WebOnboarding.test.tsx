@@ -92,7 +92,7 @@ describe("WebOnboarding", () => {
     expect(screen.getByRole("button", { name: /^API 키 OpenRouter/ })).toBeVisible()
   })
 
-  it("recommends Claude and connects an existing Claude Code login with Sonnet 5.5", async () => {
+  it("recommends Claude and connects an existing Claude Code login with Haiku 4.5", async () => {
     installClaudeApi()
     render(<WebOnboarding status={{ ...providerStatusProp }} onDone={vi.fn()} />)
 
@@ -102,7 +102,7 @@ describe("WebOnboarding", () => {
     await waitFor(() =>
       expect(mocks.saveAiMode).toHaveBeenCalledWith({
         mode: "claude",
-        claudeModel: "claude-sonnet-5-5",
+        claudeModel: "claude-haiku-4-5",
         claudeEffort: "medium",
       }),
     )

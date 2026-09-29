@@ -124,7 +124,7 @@ function frameEmitter(onDelta: AiDeltaHandler | undefined): {
 export function usePaperAiRequest(
   document: DocumentRecord | null,
   insights: readonly DocumentInsight[],
-  provider: Pick<ProviderStatus, "mode">,
+  provider: Pick<ProviderStatus, "mode" | "claudeModel">,
 ): AiRequestRunner {
   const wholePaperBudget = wholePaperCharacterBudget(provider)
   const activeJobs = useRef(new Set<AiJobId>())
