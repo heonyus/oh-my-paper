@@ -1,10 +1,11 @@
 // @vitest-environment node
 
-import { mkdtemp, readFile, rm } from "node:fs/promises"
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, it, vi } from "vitest"
 import { DocumentAnalysisService } from "../../src/electron/documentAnalysisService"
+import { HYBRID_PAGE_CACHE_VERSION } from "../../src/electron/hybridPageParser"
 import { defaultWorkspace, WorkspaceStore } from "../../src/electron/workspaceStore"
 import type { DocumentPageParseResult } from "../../src/shared/documentPageModel"
 import type { DocumentRecord } from "../../src/shared/schemas"
@@ -197,7 +198,8 @@ describe("DocumentAnalysisService", () => {
     expect(parser.parse).toHaveBeenCalledOnce()
     expect(service.snapshot().every((job) => job.state !== "complete")).toBe(true)
     expect(JSON.parse(await readFile(join(root, "document-analysis-queue.json"), "utf8"))).toEqual({
-      version: 2,
+      version: 3,
+      parserVersion: HYBRID_PAGE_CACHE_VERSION,
       pendingIds: expect.arrayContaining([first.id, second.id]),
       readyIds: [],
     })
@@ -296,7 +298,8 @@ describe("DocumentAnalysisService", () => {
         expect(
           JSON.parse(await readFile(join(root, "document-analysis-queue.json"), "utf8")),
         ).toEqual({
-          version: 2,
+          version: 3,
+          parserVersion: HYBRID_PAGE_CACHE_VERSION,
           pendingIds: [],
           readyIds: expect.arrayContaining([first.id, second.id]),
         }),
@@ -401,6 +404,67 @@ describe("DocumentAnalysisService", () => {
     await rm(root, { recursive: true, force: true })
   })
 
+  it("analyses documents again once the parser version changes", async () => {
+    const root = await mkdtemp(join(tmpdir(), "document-analysis-version-"))
+    const store = new WorkspaceStore(root)
+    const current = record("d", "Current paper")
+    const earlier = record("e", "Earlier paper")
+    await store.save({ ...defaultWorkspace(), documents: [current, earlier] })
+    const queueFile = join(root, "document-analysis-queue.json")
+    const parser = {
+      parse: vi.fn(async (input: { readonly documentId: string; readonly pageNumber: number }) =>
+        readyPage(input.documentId === current.id ? current.hash : earlier.hash, input.pageNumber),
+      ),
+    }
+    const analysedBy = (parserVersion: string, readyIds: readonly string[]) =>
+      writeFile(
+        queueFile,
+        JSON.stringify({ version: 3, parserVersion, pendingIds: [], readyIds }),
+        "utf8",
+      )
+
+    try {
+      await analysedBy("parser-v2", [current.id, earlier.id])
+      const unchanged = new DocumentAnalysisService(store, parser, { parserVersion: "parser-v2" })
+      await unchanged.resumePending()
+      await unchanged.dispose()
+      expect(parser.parse).not.toHaveBeenCalled()
+
+      const upgraded = new DocumentAnalysisService(store, parser, { parserVersion: "parser-v3" })
+      await upgraded.resumePending()
+      await vi.waitFor(() => {
+        expect(upgraded.isReady(current.id)).toBe(true)
+        expect(upgraded.isReady(earlier.id)).toBe(true)
+      })
+      await upgraded.dispose()
+      expect(parser.parse).toHaveBeenCalledTimes(4)
+      expect(JSON.parse(await readFile(queueFile, "utf8"))).toEqual({
+        version: 3,
+        parserVersion: "parser-v3",
+        pendingIds: [],
+        readyIds: expect.arrayContaining([current.id, earlier.id]),
+      })
+
+      // State written before parser versions were recorded counts as an earlier parser's.
+      await writeFile(
+        queueFile,
+        JSON.stringify({ version: 2, pendingIds: [], readyIds: [current.id] }),
+        "utf8",
+      )
+      const migrated = new DocumentAnalysisService(store, parser, { parserVersion: "parser-v3" })
+      await migrated.resumePending()
+      await vi.waitFor(() => {
+        expect(migrated.isReady(current.id)).toBe(true)
+        expect(migrated.isReady(earlier.id)).toBe(true)
+      })
+      await migrated.dispose()
+      expect(parser.parse).toHaveBeenCalledTimes(8)
+    } finally {
+      await store.close()
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
   it("forgets a deleted document without letting its in-flight run report back", async () => {
     const root = await mkdtemp(join(tmpdir(), "document-analysis-test-"))
     const store = new WorkspaceStore(root)
@@ -430,7 +494,12 @@ describe("DocumentAnalysisService", () => {
       expect(resolvers.has(2)).toBe(false)
       expect(
         JSON.parse(await readFile(join(root, "document-analysis-queue.json"), "utf8")),
-      ).toEqual({ version: 2, pendingIds: [], readyIds: [] })
+      ).toEqual({
+        version: 3,
+        parserVersion: HYBRID_PAGE_CACHE_VERSION,
+        pendingIds: [],
+        readyIds: [],
+      })
 
       await service.schedule(paper.id)
       expect(service.snapshot().map((job) => job.id)).toEqual([paper.id])

@@ -25,7 +25,7 @@ import {
 import { PaddleVlWorker, PaddleVlWorkerError, type PaddleVlWorkerLaunch } from "./paddleVlWorker"
 import type { WorkspaceStore } from "./workspaceStore"
 
-const parserConfigVersion = "page-v2"
+const parserConfigVersion = "page-v3"
 /** Pages per worker request; documents imported together take turns between requests. */
 const PAGES_PER_REQUEST = 8
 /** Without work for this long, stop the worker and the GPU server to free GPU memory. */

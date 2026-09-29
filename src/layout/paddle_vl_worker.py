@@ -24,6 +24,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Final, TextIO, get_args
 
+import paddle_vl_text_layer
 import pypdfium2 as pdfium
 import typer
 from paddle_vl_page_parser import (
@@ -63,22 +64,21 @@ def send(stream: TextIO, message: dict[str, Any]) -> None:
 
 
 def render_pages(
-    pdf_path: Path, pages: tuple[int, ...], directory: Path
+    document: pdfium.PdfDocument, pages: tuple[int, ...], directory: Path
 ) -> dict[str, tuple[int, int, int]]:
     """Render each page to a PNG, keyed by file name, with its page number and size."""
     rendered: dict[str, tuple[int, int, int]] = {}
-    with pdfium.PdfDocument(pdf_path) as document:
-        for page_number in pages:
-            if page_number > len(document):
-                raise ParserInputError("invalid_page")
-            target = directory / f"page-{page_number}.png"
-            with (
-                closing(document[page_number - 1]) as page,
-                closing(page.render(scale=RENDER_SCALE)) as bitmap,
-                bitmap.to_pil() as image,
-            ):
-                image.save(target, format="PNG")
-                rendered[target.name] = (page_number, image.width, image.height)
+    for page_number in pages:
+        if page_number > len(document):
+            raise ParserInputError("invalid_page")
+        target = directory / f"page-{page_number}.png"
+        with (
+            closing(document[page_number - 1]) as page,
+            closing(page.render(scale=RENDER_SCALE)) as bitmap,
+            bitmap.to_pil() as image,
+        ):
+            image.save(target, format="PNG")
+            rendered[target.name] = (page_number, image.width, image.height)
     return rendered
 
 
@@ -94,21 +94,27 @@ def parse_pages(pipeline: Any, request: ParseRequest, stream: TextIO) -> None:
     request.outputDir.mkdir(parents=True, exist_ok=True)
     # Windows refuses to delete a page image the pipeline still holds open; a leftover
     # temporary file must not turn pages that were already written into a failed batch.
-    with TemporaryDirectory(
-        prefix="ohmypaper-paddle-worker-", ignore_cleanup_errors=True
-    ) as temporary:
+    with (
+        TemporaryDirectory(
+            prefix="ohmypaper-paddle-worker-", ignore_cleanup_errors=True
+        ) as temporary,
+        pdfium.PdfDocument(request.pdfPath) as document,
+    ):
         directory = Path(temporary)
-        rendered = render_pages(request.pdfPath, request.pages, directory)
+        rendered = render_pages(document, request.pages, directory)
         images = [str(directory / name) for name in rendered]
-        # Queues let layout detection of later pages overlap recognition of earlier ones.
-        for result in pipeline.predict(images, use_queues=True, **PREDICT_OPTIONS):
-            page_number, width, height = rendered[input_name(result.json)]
-            page = parsed_page(result.json, request.sourceHash, page_number, width, height)
-            target = request.outputDir / f"page-{page_number}.json"
-            partial = request.outputDir / f"page-{page_number}.json.partial"
-            partial.write_text(page.model_dump_json(), encoding="utf-8")
-            partial.replace(target)
-            send(stream, {"event": "page", "id": request.id, "pageNumber": page_number})
+        text_layers = {name: page_number for name, (page_number, _, _) in rendered.items()}
+        with paddle_vl_text_layer.text_layers(document, text_layers, RENDER_SCALE):
+            # Queues let layout detection of later pages overlap recognition of earlier
+            # ones; predict_iter hands over each page when it is done, not all at the end.
+            for result in pipeline.predict_iter(images, use_queues=True, **PREDICT_OPTIONS):
+                page_number, width, height = rendered[input_name(result.json)]
+                page = parsed_page(result.json, request.sourceHash, page_number, width, height)
+                target = request.outputDir / f"page-{page_number}.json"
+                partial = request.outputDir / f"page-{page_number}.json.partial"
+                partial.write_text(page.model_dump_json(), encoding="utf-8")
+                partial.replace(target)
+                send(stream, {"event": "page", "id": request.id, "pageNumber": page_number})
 
 
 def main(vlm_backend: str = "native", vlm_server_url: str = "", vlm_model: str = "") -> None:
@@ -116,12 +122,16 @@ def main(vlm_backend: str = "native", vlm_server_url: str = "", vlm_model: str =
     if vlm_backend not in BACKENDS:
         raise typer.BadParameter(f"--vlm-backend must be one of {', '.join(BACKENDS)}")
     stream = protocol_stream()
+    paddle_vl_text_layer.install()
     pipeline = create_pipeline(
         vlm_backend,  # pyright: ignore[reportArgumentType]
         vlm_server_url,
         vlm_model,
         os.environ.get("OH_MY_PAPER_VLM_API_KEY", ""),
     )
+    # Layout detection runs page by page, so recognition of the first page starts after one
+    # page's layout rather than after the whole request's.
+    pipeline.paddlex_pipeline.layout_det_model.batch_sampler.batch_size = 1
     send(stream, {"event": "ready"})
     for raw in sys.stdin.buffer:
         line = raw.decode("utf-8").strip()

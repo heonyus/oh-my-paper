@@ -29,7 +29,7 @@ from paddle_vl_blocks import (
 
 SCHEMA_VERSION: Final = "1.0.0"
 PARSER: Final = "PaddleOCR-VL-1.6"
-CONFIG_VERSION: Final = "page-v2"
+CONFIG_VERSION: Final = "page-v3"
 RENDER_SCALE: Final = 2
 PREDICT_OPTIONS: Final[dict[str, Any]] = {
     "layout_shape_mode": "rect",
