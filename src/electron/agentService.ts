@@ -77,6 +77,17 @@ function semanticQueriesFor(brief: SearchBrief, config: ModeConfig): readonly st
 
 type Ranked = { readonly id: string; readonly judgment: Judgment }
 
+type Screened = { readonly newRelevant: number; readonly nextQueries: readonly string[] }
+
+/** Below this many relevant papers after the first round, the web fallback (if any) runs. */
+const FALLBACK_MIN_RELEVANT = 2
+
+/** The web search sees the request as written plus the keywords the indices were asked. */
+function fallbackQuery(question: string, brief: SearchBrief): string {
+  const keywords = brief.queries.slice(0, 4).join(" | ")
+  return keywords ? `${question} (keywords: ${keywords})` : question
+}
+
 function rankedJudgments(
   judgments: ReadonlyMap<string, Judgment>,
   run: DiscoveryRun,
@@ -104,13 +115,44 @@ async function discover(
 }> {
   const config = modeConfig[request.mode]
   const startedAt = Date.now()
-  const run = new DiscoveryRun(deps.sources, onStep, signal)
+  const run = new DiscoveryRun(deps.sources, onStep, signal, {
+    now: () => (deps.now?.() ?? new Date()).getTime(),
+  })
   const window = { yearFrom: brief.yearFrom, yearTo: brief.yearTo }
   const judgments = new Map<string, Judgment>()
   const expanded = new Set<string>()
   const ranQueries = new Set<string>()
   let byModel = true
   let queries = brief.queries.slice(0, config.keywordQueries)
+
+  /** Screens the unjudged pool; null when there was nothing new to screen. */
+  const screen = async (judgeId: string, wantsNextQueries: boolean): Promise<Screened | null> => {
+    const batch = run.unjudged(new Set(judgments.keys()), config.judgeBatch)
+    if (batch.length === 0) return null
+    onStep({ id: judgeId, kind: "judge", status: "running", found: batch.length })
+    const outcome = await judgeCandidates(
+      {
+        question: request.question,
+        brief: { ...brief, queries: [...ranQueries] },
+        candidates: batch,
+        wantsNextQueries,
+      },
+      deps.complete,
+      signal,
+    )
+    byModel &&= outcome.judgedByModel
+    for (const [id, judgment] of outcome.judgments) judgments.set(id, judgment)
+    const newRelevant = batch.filter(([id]) => (judgments.get(id)?.score ?? 0) >= 2).length
+    onStep({
+      id: judgeId,
+      kind: "judge",
+      status: "done",
+      found: newRelevant,
+      detail: `후보 ${batch.length}편 중 ${newRelevant}편 관련${outcome.judgedByModel ? "" : " · 키워드 일치로 판정"}`,
+    })
+    return { newRelevant, nextQueries: outcome.nextQueries }
+  }
+
   for (let round = 1; round <= config.rounds; round += 1) {
     if (round > 1) {
       const seeds = rankedJudgments(judgments, run, 2)
@@ -130,33 +172,31 @@ async function discover(
       window,
       config.limits,
     )
-    const batch = run.unjudged(new Set(judgments.keys()), config.judgeBatch)
-    if (batch.length === 0) break
-    const judgeId = `judge:${round}`
-    onStep({ id: judgeId, kind: "judge", status: "running", found: batch.length })
-    const outcome = await judgeCandidates(
-      {
-        question: request.question,
-        brief: { ...brief, queries: [...ranQueries] },
-        candidates: batch,
-        wantsNextQueries: round < config.rounds,
-      },
-      deps.complete,
-      signal,
-    )
-    byModel &&= outcome.judgedByModel
-    for (const [id, judgment] of outcome.judgments) judgments.set(id, judgment)
-    const newRelevant = batch.filter(([id]) => (judgments.get(id)?.score ?? 0) >= 2).length
-    onStep({
-      id: judgeId,
-      kind: "judge",
-      status: "done",
-      found: newRelevant,
-      detail: `후보 ${batch.length}편 중 ${newRelevant}편 관련${outcome.judgedByModel ? "" : " · 키워드 일치로 판정"}`,
-    })
-    queries = outcome.nextQueries.filter((query) => !ranQueries.has(queryKey(query))).slice(0, 3)
+    const wantsNextQueries = round < config.rounds
+    let screened = await screen(`judge:${round}`, wantsNextQueries)
+    if (
+      round === 1 &&
+      deps.sources.fallback &&
+      rankedJudgments(judgments, run, 2).length < FALLBACK_MIN_RELEVANT
+    ) {
+      const added = await run.fallback(
+        round,
+        fallbackQuery(request.question, brief),
+        window,
+        config.limits.keywordLimit,
+      )
+      const extra = added > 0 ? await screen(`judge:${round}:web`, wantsNextQueries) : null
+      if (extra) {
+        screened = {
+          newRelevant: (screened?.newRelevant ?? 0) + extra.newRelevant,
+          nextQueries: screened?.nextQueries.length ? screened.nextQueries : extra.nextQueries,
+        }
+      }
+    }
+    if (!screened) break
+    queries = screened.nextQueries.filter((query) => !ranQueries.has(queryKey(query))).slice(0, 3)
     if (Date.now() - startedAt > config.searchBudgetMs) break
-    if (round > 1 && newRelevant < 2 && queries.length === 0) break
+    if (round > 1 && screened.newRelevant < 2 && queries.length === 0) break
   }
   return { run, judgments, byModel }
 }

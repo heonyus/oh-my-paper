@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { abstractFromInvertedIndex } from "./citationProviderParsers"
 import {
+  arxivDoiFor,
   arxivIdFromDoi,
   normalizedArxivId,
   normalizedDoiValue,
@@ -142,6 +143,61 @@ export function searchOpenAlexSemantic(
       },
       options.apiKey,
     ),
+    options,
+  )
+}
+
+/**
+ * Keyword search over titles, abstracts and full text, ranked by OpenAlex relevance. Unlike
+ * embedding search it matches exact names, such as a new paper's acronym.
+ */
+export function searchOpenAlexKeyword(
+  input: {
+    readonly query: string
+    readonly limit: number
+    readonly yearFrom: number | null
+    readonly yearTo: number | null
+  },
+  options: OpenAlexOptions = {},
+): Promise<PaperCandidate[]> {
+  const filter = yearFilter(input.yearFrom, input.yearTo)
+  return fetchWorks(
+    worksUrl(
+      {
+        search: input.query.slice(0, 500),
+        per_page: String(Math.min(Math.max(input.limit, 1), 50)),
+        ...(filter ? { filter } : {}),
+      },
+      options.apiKey,
+    ),
+    options,
+  )
+}
+
+/** OpenAlex reads `|` and `,` inside a filter value as separators, so such DOIs cannot be asked for. */
+function filterableDoi(doi: string | null): doi is string {
+  return doi !== null && !/[|,]/u.test(doi)
+}
+
+/** Works for the given DOIs and arXiv ids in one request (at most 50 identifiers). */
+export function openAlexWorksByIds(
+  input: { readonly dois: readonly string[]; readonly arxivIds: readonly string[] },
+  options: OpenAlexOptions = {},
+): Promise<PaperCandidate[]> {
+  const dois = [
+    ...new Set(
+      [
+        ...input.dois.map((doi) => normalizedDoiValue(doi)),
+        ...input.arxivIds.map((id) => {
+          const arxivId = normalizedArxivId(id)
+          return arxivId ? arxivDoiFor(arxivId) : null
+        }),
+      ].filter(filterableDoi),
+    ),
+  ].slice(0, 50)
+  if (dois.length === 0) return Promise.resolve([])
+  return fetchWorks(
+    worksUrl({ filter: `doi:${dois.join("|")}`, per_page: String(dois.length) }, options.apiKey),
     options,
   )
 }

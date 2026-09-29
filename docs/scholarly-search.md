@@ -80,17 +80,45 @@ provider fails.
 The `리서치` agent (`src/electron/agentService.ts`) uses free sources only and never a paid search
 API:
 
-- Discovery: OpenAlex semantic search for the planner's English description, plus arXiv and
-  Semantic Scholar keyword search for each planned query (`src/electron/paperDiscoverySources.ts`).
+- Discovery: OpenAlex semantic search for the planner's English description, plus, for each
+  planned keyword query, arXiv, Semantic Scholar, OpenAlex keyword search (`search=`, which
+  matches an exact name such as a new paper's acronym where embedding search cannot) and
+  DataCite restricted to arXiv's registrant (`client-id=arxiv.content`), which indexes every
+  arXiv DOI with its title, authors and abstract within hours of submission and is not subject
+  to the arXiv API's rate limit (`src/electron/paperDiscoverySources.ts`).
+- Web search (optional, off by default): set `OH_MY_PAPER_SEARXNG_URL` to a SearXNG instance
+  (open-source metasearch) whose `search.formats` includes `json`; public instances mostly
+  disable that format or challenge automated clients, so this is meant for a self-hosted one
+  (`docker run -p 8080:8080 -v ./searxng:/etc/searxng searxng/searxng` with
+  `search: { formats: [html, json] }` in `searxng/settings.yml`, then
+  `OH_MY_PAPER_SEARXNG_URL=http://localhost:8080`). Each keyword query is also sent there
+  (`categories=general,science`) and its hits become paper records: arXiv ids and DOIs are
+  extracted from result URLs and resolved through one OpenAlex `filter=doi:` request, arXiv
+  papers OpenAlex has not indexed yet are read from their abstract page, and remaining page
+  titles are matched against OpenAlex keyword search. Hits that resolve to no record are
+  dropped. No keyless general web search survives automation (DuckDuckGo's HTML endpoints
+  answer automated clients with a bot challenge; Jina and Brave require keys), so nothing is
+  queried without this setting.
+- Web fallback (automatic in Claude subscription mode): when the first round's screening finds
+  fewer than two relevant papers, the request is searched once through the Claude Code CLI's
+  WebSearch tool (`--tools WebSearch --allowedTools WebSearch`, structured output, low effort,
+  at most eight turns) on the user's own login, and the hits are resolved to records exactly like
+  SearXNG hits. The trace shows it as 보조 검색 with the extra screening it triggers. One call is
+  an agentic turn of roughly half a minute, so it never runs when the indices already suffice.
+  Codex and API modes have no fallback unless SearXNG is configured.
 - Expansion (deep mode): Semantic Scholar recommendations, references and citations of the best
   papers so far; OpenAlex `cites:` when only an OpenAlex id is known.
-- Pacing is shared per host (`src/electron/paperSourceHttp.ts`): arXiv one request at a time at
-  least 3.1 s apart, OpenAlex and Semantic Scholar 1.1 s apart. A 429/502/503/504 is retried once (twice
-  with a key) after `Retry-After` (capped at 6 s); a source that stays rate-limited is skipped for
-  the rest of that turn and the trace shows it.
+- Pacing is shared per host (`src/electron/paperSourceHttp.ts`): the arXiv API one request at a
+  time at least 3.1 s apart (arxiv.org abstract pages have their own 3.1 s serial pacer),
+  OpenAlex, Semantic Scholar, DataCite and the web engine 1.1 s apart. A 429/502/503/504 is
+  retried once (twice with a key) after `Retry-After` (capped at 6 s). A source that stays
+  rate-limited rests for a 20 s cool-down (or its `Retry-After`, if longer) before the run tries
+  it again; the trace shows the rate limit, and a row on which every source was resting says so
+  instead of showing an empty failure.
 - Keyless Semantic Scholar keyword search shares a public pool that is often throttled; set
   `OH_MY_PAPER_S2_API_KEY` (a free key) to use it reliably. Recommendations and reference lookups
-  generally work without a key.
+  generally work without a key. The arXiv API also answers 429 for minutes at a time; the
+  OpenAlex keyword and DataCite sources keep exact-name lookups working while it does.
 - Quick mode: one round, about 30 screened candidates, up to 8 papers. Deep mode: up to three
   rounds within a four-minute search budget, up to 20 papers, then a structured report. Each turn
   makes one planner call, one screening call per round, and one answer call to the configured AI

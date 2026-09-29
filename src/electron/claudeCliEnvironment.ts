@@ -65,11 +65,16 @@ export type ClaudeCompletionArgsOptions = {
   readonly systemPrompt: string
   /** Enforced output schema; the CLI answers through its StructuredOutput tool. */
   readonly jsonSchema?: Readonly<Record<string, unknown>> | undefined
+  /** Built-in tools the turn may call; none by default, so a request stays a plain completion. */
+  readonly tools?: readonly string[] | undefined
+  /** Upper bound on agentic turns when tools are allowed. */
+  readonly maxTurns?: number | undefined
 }
 
 export function buildClaudeCompletionArgs(options: ClaudeCompletionArgsOptions): string[] {
   const effort =
     options.effort && claudeModelSupportsEffort(options.model) ? ["--effort", options.effort] : []
+  const tools = options.tools?.join(",") ?? ""
   return [
     "-p",
     "--input-format",
@@ -82,7 +87,9 @@ export function buildClaudeCompletionArgs(options: ClaudeCompletionArgsOptions):
     options.model,
     ...effort,
     "--tools",
-    "",
+    tools,
+    ...(tools ? ["--allowedTools", tools] : []),
+    ...(options.maxTurns ? ["--max-turns", String(options.maxTurns)] : []),
     "--safe-mode",
     "--no-session-persistence",
     "--strict-mcp-config",
