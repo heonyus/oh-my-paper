@@ -1,10 +1,6 @@
 import { AlertCircle, CheckCircle2, Info, Loader2 } from "lucide-react"
 import type { JSX } from "react"
-import {
-  CLAUDE_EFFORT_OPTIONS,
-  CLAUDE_MODEL_OPTIONS,
-  isClaudeEffort,
-} from "../../shared/claudeTypes"
+import { CLAUDE_EFFORT_OPTIONS, claudeModelChoices, isClaudeEffort } from "../../shared/claudeTypes"
 import { useClaudeSettings } from "./useClaudeSettings"
 
 export function ClaudeSettings({
@@ -80,7 +76,7 @@ export function ClaudeSettings({
           value={selectedModel}
           onChange={(event) => void updateModel(event.currentTarget.value)}
         >
-          {CLAUDE_MODEL_OPTIONS.map((option) => (
+          {claudeModelChoices(selectedModel).map((option) => (
             <option key={option.id} value={option.id}>
               {option.label}
             </option>
