@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { ScholarSearchPanel } from "../../src/renderer/components/ScholarSearchPanel"
 import { documentRecordSchema } from "../../src/shared/schemas"
+import type { ScholarlySearchResult } from "../../src/shared/scholarlySearchSchemas"
 
 const documentFixture = documentRecordSchema.parse({
   id: "aabbccddeeff0011",
@@ -58,17 +59,38 @@ const result = {
   ],
 } as const
 
+const providerSteps = [
+  { id: "provider-crossref", kind: "provider", provider: "crossref", status: "running" },
+  { id: "provider-arxiv", kind: "provider", provider: "arxiv", status: "running" },
+  { id: "provider-crossref", kind: "provider", provider: "crossref", status: "done", found: 0 },
+  {
+    id: "provider-arxiv",
+    kind: "provider",
+    provider: "arxiv",
+    status: "failed",
+    detail: "rate_limited",
+  },
+  { id: "provider-openalex", kind: "provider", provider: "openalex", status: "running" },
+  { id: "provider-openalex", kind: "provider", provider: "openalex", status: "done", found: 1 },
+  { id: "merge", kind: "merge", status: "done", found: 1 },
+] as const
+
+function sseResponse(payload: ScholarlySearchResult): Response {
+  const frames = [
+    ...providerSteps.map((step) => ({ type: "step", step })),
+    { type: "result", result: payload },
+  ]
+  return new Response(frames.map((frame) => `data: ${JSON.stringify(frame)}\n\n`).join(""), {
+    status: 200,
+    headers: { "content-type": "text/event-stream; charset=utf-8" },
+  })
+}
+
 describe("ScholarSearchPanel", () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it("waits for an explicit search and shows a grounded recommendation reason", async () => {
-    const fetchMock = vi.fn<typeof fetch>(
-      async () =>
-        new Response(JSON.stringify(result), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
-    )
+    const fetchMock = vi.fn<typeof fetch>(async () => sseResponse(result))
     vi.stubGlobal("fetch", fetchMock)
     render(<ScholarSearchPanel document={documentFixture} />)
 
@@ -76,11 +98,32 @@ describe("ScholarSearchPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: "검색 실행" }))
 
     expect(fetchMock).toHaveBeenCalledOnce()
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe("/api/rpc/scholarlySearchStream")
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({
       query: "Attention Is All You Need",
     })
     expect(await screen.findByText("Attention memory study")).toBeVisible()
     expect(screen.getByText(/추천 근거: 제목 핵심어 일치/u)).toBeVisible()
+  })
+
+  it("keeps the streamed search log so each provider's outcome stays visible", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => sseResponse(result))
+    vi.stubGlobal("fetch", fetchMock)
+    render(<ScholarSearchPanel document={documentFixture} />)
+
+    await userEvent.click(screen.getByRole("button", { name: "검색 실행" }))
+    await screen.findByText("Attention memory study")
+
+    const log = screen.getByRole("list", { name: "검색 진행 상황" })
+    const labels = Array.from(log.querySelectorAll("li")).map((item) => item.textContent)
+    expect(labels).toEqual([
+      "Crossref 0건",
+      "arXiv 실패 · 요청 한도 초과",
+      "OpenAlex 1건",
+      "출처별 결과 병합 · 후보 1편",
+      "관련도 순 정렬 · 1편 통과",
+    ])
+    expect(screen.getByText("검색 과정")).toBeVisible()
   })
 
   it("keeps results for a typed query even when they share no words with the open paper", async () => {
@@ -95,13 +138,7 @@ describe("ScholarSearchPanel", () => {
         },
       ],
     }
-    const fetchMock = vi.fn<typeof fetch>(
-      async () =>
-        new Response(JSON.stringify(unrelatedToDocument), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
-    )
+    const fetchMock = vi.fn<typeof fetch>(async () => sseResponse(unrelatedToDocument))
     vi.stubGlobal("fetch", fetchMock)
     render(<ScholarSearchPanel document={documentFixture} />)
 
@@ -137,13 +174,7 @@ describe("ScholarSearchPanel", () => {
   })
 
   it("saves metadata through the local discovery API", async () => {
-    const fetchMock = vi.fn<typeof fetch>(
-      async () =>
-        new Response(JSON.stringify(result), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
-    )
+    const fetchMock = vi.fn<typeof fetch>(async () => sseResponse(result))
     const saveMetadata = vi.fn(async () => ({ status: "saved", node: {} }))
     vi.stubGlobal("fetch", fetchMock)
     Object.defineProperty(window, "ohmypaper", {

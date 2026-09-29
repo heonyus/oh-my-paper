@@ -38,6 +38,7 @@ import { documentIdSchema, workspaceSchema } from "../shared/schemas"
 import {
   scholarlySearchRequestSchema,
   scholarlySearchResultSchema,
+  scholarlySearchStreamEventSchema,
 } from "../shared/scholarlySearchSchemas"
 import { createClaudeRoutes } from "./claudeRoutes"
 import type { WebServerConfig } from "./config"
@@ -431,6 +432,40 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
             const input = await readJson(req, scholarlySearchRequestSchema)
             const result = scholarlySearchResultSchema.parse(await services.searchScholarly(input))
             sendJson(res, 200, result)
+            return
+          }
+          case "scholarlySearchStream": {
+            const input = await readJson(req, scholarlySearchRequestSchema)
+            res.writeHead(200, {
+              "content-type": "text/event-stream; charset=utf-8",
+              "cache-control": "no-store",
+              connection: "keep-alive",
+            })
+            const send = (event: unknown): void => {
+              if (!res.destroyed)
+                res.write(
+                  `data: ${JSON.stringify(scholarlySearchStreamEventSchema.parse(event))}\n\n`,
+                )
+            }
+            const controller = new AbortController()
+            const abort = (): void => controller.abort()
+            res.on("close", abort)
+            try {
+              const result = await services.searchScholarly(input, {
+                signal: controller.signal,
+                onStep: (step) => send({ type: "step", step }),
+              })
+              send({ type: "result", result })
+            } catch (error) {
+              send({
+                type: "error",
+                error:
+                  error instanceof Error ? error.message.slice(0, 500) : "scholarly_search_failed",
+              })
+            } finally {
+              res.off("close", abort)
+            }
+            if (!res.destroyed) res.end()
             return
           }
           case "discoverySaveMetadata": {

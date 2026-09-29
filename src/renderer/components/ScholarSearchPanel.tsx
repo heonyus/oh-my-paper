@@ -4,8 +4,12 @@ import type {
   ScholarlyProviderState,
   ScholarlySearchItem,
   ScholarlySearchResult,
+  ScholarlySearchStep,
 } from "../../shared/scholarlySearchSchemas"
-import { scholarlySearchResultSchema } from "../../shared/scholarlySearchSchemas"
+import {
+  ScholarlySearchStreamError,
+  scholarlySearchStream,
+} from "../../web/localScholarlySearchStream"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
 import { rankForUserQuery } from "../lib/scholarlyQueryRanking"
 import {
@@ -14,6 +18,7 @@ import {
   scholarlySearchBasis,
 } from "../lib/scholarlySearchRelevance"
 import type { DocumentRecord } from "../types"
+import { ScholarSearchSteps, upsertStep } from "./ScholarSearchSteps"
 
 const providerLabels: Readonly<Record<ScholarlyProviderState["provider"], string>> = {
   crossref: "Crossref",
@@ -36,17 +41,6 @@ type SaveState =
   | { readonly status: "saving" }
   | { readonly status: "saved" | "duplicate" }
   | { readonly status: "error"; readonly message: string }
-
-class ScholarSearchRequestError extends Error {
-  readonly name = "ScholarSearchRequestError"
-
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(message)
-  }
-}
 
 function providerStateLabel(state: ScholarlyProviderState): string {
   const name = providerLabels[state.provider]
@@ -74,6 +68,7 @@ export function ScholarSearchPanel({
   const [decisionNote, setDecisionNote] = useState<string | null>(null)
   const [decisionChoice, setDecisionChoice] = useState<string | null>(null)
   const [saveStates, setSaveStates] = useState<Readonly<Record<string, SaveState>>>({})
+  const [steps, setSteps] = useState<readonly ScholarlySearchStep[]>([])
   const controllerRef = useRef<AbortController | null>(null)
   const query = scholarlyQueryForDocument(document, citations)
   const basis = scholarlySearchBasis(document, citations)
@@ -112,32 +107,25 @@ export function ScholarSearchPanel({
     setDecisionNote(null)
     setDecisionChoice(null)
     setResult(null)
+    setSteps([])
     const typed = activeQuery === (query ?? "").trim() ? null : activeQuery
     setCustomQuery(typed)
+    const pushStep = (step: ScholarlySearchStep): void => {
+      if (!controller.signal.aborted) setSteps((current) => upsertStep(current, step))
+    }
     try {
-      const response = await fetch("/api/rpc/scholarlySearch", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ query: activeQuery, pageSize: 25 }),
-        signal: controller.signal,
-      })
-      if (!response.ok) {
-        let message = `HTTP ${response.status}`
-        try {
-          const body: unknown = await response.json()
-          if (typeof body === "object" && body !== null && "error" in body) {
-            const value = body.error
-            if (typeof value === "string" && value.length > 0) message = value
-          }
-        } catch (cause) {
-          if (!(cause instanceof SyntaxError)) throw cause
-        }
-        throw new ScholarSearchRequestError(response.status, message)
-      }
-      const data = scholarlySearchResultSchema.parse(await response.json())
+      const data = await scholarlySearchStream(
+        { query: activeQuery, pageSize: 25 },
+        pushStep,
+        controller.signal,
+      )
+      pushStep({ id: "rank", kind: "rank", status: "running" })
       const ranked = rank(data.results, typed)
+      pushStep({ id: "rank", kind: "rank", status: "done", found: ranked.length })
       const decideAi = window.ohmypaper?.decideAi
       if (decideAi && ranked.length > 1) {
+        const candidateCount = Math.min(ranked.length, 8)
+        pushStep({ id: "judge", kind: "judge", status: "running", found: candidateCount })
         try {
           const decision = await decideAi(
             {
@@ -156,21 +144,43 @@ export function ScholarSearchPanel({
           )
           if (decision.choiceId === "none" || decision.choiceId === "unknown") {
             setDecisionNote("기본 규칙으로 추천을 정렬했습니다.")
+            pushStep({
+              id: "judge",
+              kind: "judge",
+              status: "done",
+              found: candidateCount,
+              detail: "Jev 판정: 뚜렷한 후보 없음 · 기본 규칙 순서 유지",
+            })
           } else {
             const index = Number.parseInt(decision.choiceId.replace("candidate-", ""), 10)
             const chosen = ranked[index]
             setDecisionChoice(chosen?.item.title ?? null)
-            setDecisionNote(
-              chosen ? `Jev 보조 판정: ${chosen.item.title}` : "기본 규칙으로 추천을 정렬했습니다.",
-            )
+            const note = chosen
+              ? `Jev 보조 판정: ${chosen.item.title}`
+              : "기본 규칙으로 추천을 정렬했습니다."
+            setDecisionNote(note)
+            pushStep({
+              id: "judge",
+              kind: "judge",
+              status: "done",
+              found: candidateCount,
+              detail: note.slice(0, 500),
+            })
           }
         } catch (cause) {
           if (controller.signal.aborted) throw cause
-          setDecisionNote(
+          const note =
             cause instanceof Error
               ? `Jev 보조 판정을 사용할 수 없어 기본 규칙을 적용했습니다: ${cause.message}`
-              : "Jev 보조 판정을 사용할 수 없어 기본 규칙을 적용했습니다.",
-          )
+              : "Jev 보조 판정을 사용할 수 없어 기본 규칙을 적용했습니다."
+          setDecisionNote(note)
+          pushStep({
+            id: "judge",
+            kind: "judge",
+            status: "failed",
+            found: candidateCount,
+            detail: note.slice(0, 500),
+          })
         }
       } else {
         setDecisionNote("규칙 기반 추천")
@@ -184,8 +194,12 @@ export function ScholarSearchPanel({
         setPhase("cancelled")
         return
       }
-      if (cause instanceof ScholarSearchRequestError) {
-        setError(`검색 요청에 실패했습니다 (${cause.status}): ${cause.message}`)
+      if (cause instanceof ScholarlySearchStreamError) {
+        setError(
+          cause.kind === "request_failed"
+            ? `검색 요청에 실패했습니다 (${cause.status ?? "연결 실패"}): ${cause.message}`
+            : `검색 중 오류가 발생했습니다: ${cause.message}`,
+        )
       } else if (cause instanceof Error) {
         setError(cause.message)
       } else {
@@ -276,6 +290,14 @@ export function ScholarSearchPanel({
           ) : null}
         </div>
       </header>
+      {phase === "loading" && steps.length > 0 ? (
+        <ScholarSearchSteps steps={steps} />
+      ) : steps.length > 0 ? (
+        <details className="scholar-search-log">
+          <summary>검색 과정</summary>
+          <ScholarSearchSteps steps={steps} />
+        </details>
+      ) : null}
       {error ? (
         <p className="scholar-search-error" role="alert">
           {error}

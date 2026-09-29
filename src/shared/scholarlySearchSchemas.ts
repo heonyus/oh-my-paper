@@ -131,3 +131,27 @@ export type ScholarlySearchItem = z.infer<typeof scholarlySearchItemSchema>
 export type ScholarlyProviderErrorKind = z.infer<typeof scholarlyProviderErrorKindSchema>
 export type ScholarlyProviderState = z.infer<typeof scholarlyProviderStateSchema>
 export type ScholarlySearchResult = z.infer<typeof scholarlySearchResultSchema>
+
+/**
+ * Progress of one related-paper search. The server reports provider and merge steps; the
+ * reader adds its own ranking and Jev judging steps so the panel shows the whole pipeline.
+ */
+export const scholarlySearchStepSchema = z
+  .object({
+    id: z.string().min(1).max(64),
+    kind: z.enum(["provider", "merge", "rank", "judge"]),
+    provider: scholarlyProviderSchema.optional(),
+    status: z.enum(["running", "done", "failed"]),
+    found: z.number().int().nonnegative().optional(),
+    detail: z.string().max(500).optional(),
+  })
+  .readonly()
+
+export const scholarlySearchStreamEventSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("step"), step: scholarlySearchStepSchema }).readonly(),
+  z.object({ type: z.literal("result"), result: scholarlySearchResultSchema }).readonly(),
+  z.object({ type: z.literal("error"), error: z.string().max(500) }).readonly(),
+])
+
+export type ScholarlySearchStep = z.infer<typeof scholarlySearchStepSchema>
+export type ScholarlySearchStreamEvent = z.infer<typeof scholarlySearchStreamEventSchema>

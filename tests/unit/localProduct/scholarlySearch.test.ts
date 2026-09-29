@@ -98,6 +98,47 @@ describe("scholarly search", () => {
     expect(urls.every((url) => !url.pathname.includes("/pdf"))).toBe(true)
   })
 
+  it("reports each provider as it starts and finishes, then the merged page", async () => {
+    // Given
+    const transport: ScholarlyTransport = async (url) => {
+      await Promise.resolve()
+      if (url.hostname === "api.crossref.org") {
+        return { statusCode: 200, body: crossrefBody, retryAfterSeconds: null }
+      }
+      if (url.hostname === "export.arxiv.org") {
+        return { statusCode: 429, body: "limited", retryAfterSeconds: 30 }
+      }
+      return { statusCode: 200, body: openAlexBody, retryAfterSeconds: null }
+    }
+    const steps: string[] = []
+
+    // When
+    const result = await searchScholarly(
+      { query: "progress" },
+      {
+        transport,
+        onStep: (step) =>
+          steps.push(
+            `${step.id}:${step.status}${step.found === undefined ? "" : `:${step.found}`}${
+              step.detail ? `:${step.detail}` : ""
+            }`,
+          ),
+      },
+    )
+
+    // Then
+    expect(result.status).toBe("partial")
+    expect(steps).toEqual([
+      "provider-crossref:running",
+      "provider-arxiv:running",
+      "provider-crossref:done:1",
+      "provider-arxiv:failed:rate_limited",
+      "provider-openalex:running",
+      "provider-openalex:done:1",
+      "merge:done:2",
+    ])
+  })
+
   it("reports timeout without turning it into zero results", async () => {
     // Given
     const transport: ScholarlyTransport = async () => {
