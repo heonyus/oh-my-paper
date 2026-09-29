@@ -1,5 +1,4 @@
 import { useSyncExternalStore } from "react"
-import { aiPolicy } from "../../shared/documentAiJobs"
 import type { DocumentId } from "../types"
 
 type PageTranslationSession = {
@@ -40,16 +39,6 @@ export function openPageTranslation(page: number): void {
   publish({
     ...session,
     openPages: [...session.openPages, page].sort((left, right) => left - right),
-  })
-}
-
-export function openAutomaticPageTranslation(page: number): void {
-  if (session.openPages.includes(page)) return
-  const retainCount = Math.min(Math.max(0, aiPolicy.concurrentTextJobs - 1), 2)
-  const retained = retainCount === 0 ? [] : session.openPages.slice(-retainCount)
-  publish({
-    ...session,
-    openPages: [...retained, page].sort((left, right) => left - right),
   })
 }
 

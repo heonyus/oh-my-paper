@@ -613,3 +613,87 @@ describe("a title page set as the source sets it", () => {
     expect(byId.get("layout:3")?.typography?.centered).toBeUndefined()
   })
 })
+
+describe("a note under a table in a two-column page", () => {
+  const twoColumns: ParsedDocumentPage = parsedDocumentPageSchema.parse({
+    schemaVersion: "1.0.0",
+    sourceHash: "b".repeat(64),
+    parser: "PDF.js+PaddleOCR-VL-1.6",
+    configVersion: "hybrid-v12",
+    pageNumber: 1,
+    width: 1_191,
+    height: 1_582,
+    blocks: [
+      // The running head spans both columns, above the note as much as anything is.
+      line(0, 84, 41, "Articles NATURE MEDICINE", 1_023),
+      line(1, 91, 118, "Table 1 | Top ranked variables", 403),
+      line(3, 91, 1_000, "The ranking was obtained by ranking all", 470),
+      line(4, 91, 1_016, "features of the model. The point estimate is", 470),
+      line(5, 91, 1_032, "the median rank across all splits.", 300),
+      line(6, 608, 990, "Inspection of model features. We list the top", 498),
+      line(7, 608, 1_007, "features by mean absolute value in the figure.", 498),
+    ],
+    layout: [
+      { label: "header", order: 9, bounds: bounds(80, 52, 212, 27), content: "NATURE MEDICINE" },
+      {
+        label: "figure_title",
+        order: 0,
+        bounds: bounds(87, 118, 411, 45),
+        content: "Table 1 | Top ranked variables",
+      },
+      { label: "table", order: 1, bounds: bounds(85, 168, 497, 818), content: "<table></table>" },
+      {
+        label: "footnote",
+        order: 2,
+        bounds: bounds(86, 997, 493, 55),
+        content:
+          "The ranking was obtained by ranking all features of the model. The point estimate is the median rank across all splits.",
+      },
+      {
+        label: "text",
+        order: 3,
+        bounds: bounds(601, 985, 510, 40),
+        content:
+          "Inspection of model features. We list the top features by mean absolute value in the figure.",
+      },
+    ],
+  })
+  const note = "page:1:block:3"
+  const beside = "page:1:block:6"
+  const place = (block: PageTranslationBlock): PageTranslationBlock => ({
+    ...block,
+    sourcePageWidth: 1_191,
+    sourcePageHeight: 1_582,
+  })
+  const regions = paragraphRegions(
+    [
+      sentence(
+        1,
+        note,
+        "The ranking was obtained by ranking all features of the model.",
+        "순위는 모델의 모든 특징에 순위를 매겨 얻었다.",
+      ),
+      sentence(
+        2,
+        note,
+        "The point estimate is the median rank across all splits.",
+        "점 추정치는 모든 분할에 걸친 순위의 중앙값이다.",
+      ),
+      sentence(1, beside, "Inspection of model features.", "모델 특징 검토."),
+      sentence(
+        2,
+        beside,
+        "We list the top features by mean absolute value in the figure.",
+        "그림에 평균 절댓값 기준 상위 특징을 나열한다.",
+      ),
+    ].map(place),
+    twoColumns,
+  )
+
+  it("keeps the note's translation in its own column", () => {
+    const rect = regions.find((region) => region.id === "layout:2")?.rect
+    expect(rect).toBeDefined()
+    expect((rect?.x ?? 1) + (rect?.width ?? 1)).toBeLessThanOrEqual(601 / 1_191)
+    expect((rect?.x ?? 0) + (rect?.width ?? 0)).toBeGreaterThanOrEqual(579 / 1_191)
+  })
+})

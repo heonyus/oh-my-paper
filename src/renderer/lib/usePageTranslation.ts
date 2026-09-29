@@ -82,7 +82,9 @@ export function usePageTranslation({
         }
         setStatus("parser-running")
         setParserStage("engine-starting")
+        // The page later opens will get, so the translation cached from it is found again.
         const parsedPage = await loadParsedDocumentPage(documentId, currentPage, {
+          awaitStructure: true,
           signal: abortController.signal,
         })
         if (cancelled || abortController.signal.aborted) return
@@ -99,7 +101,8 @@ export function usePageTranslation({
         )
         if (cancelled || abortController.signal.aborted) return
         const source = pageTranslationBlocksFromParsedPage(parsedPage)
-        // A page translated under an earlier parser keeps every sentence it cut the same way.
+        // A page translated under an earlier parser or by another model keeps every sentence
+        // whose source is unchanged.
         const earlier =
           cached ?? (await readCachedPageTranslation(documentId, currentPage, provider))
         if (cancelled || abortController.signal.aborted) return

@@ -329,6 +329,7 @@ function columnRightAbove(
   box: Bounds,
   lines: readonly ParsedPageBlock[],
   lineHeight: number,
+  content: readonly Bounds[],
 ): number {
   const above = lines
     .filter(
@@ -339,7 +340,18 @@ function columnRightAbove(
     )
     .sort((top, bottom) => bottom.bounds.y - top.bounds.y)
     .slice(0, 10)
-  return median(above.map((line) => line.bounds.x + line.bounds.width)) ?? box.x + box.width
+  const edge = median(above.map((line) => line.bounds.x + line.bounds.width)) ?? box.x + box.width
+  // A running head or a caption across both columns is above the note too; the note still
+  // stops short of the column beside it.
+  const beside = content
+    .filter(
+      (other) =>
+        other.x >= box.x + box.width - lineHeight &&
+        other.y < box.y + box.height &&
+        other.y + other.height > box.y,
+    )
+    .map((other) => other.x - lineHeight)
+  return Math.min(edge, ...beside)
 }
 
 /**
@@ -381,7 +393,12 @@ function paragraphGeometry(
   paragraph: ParsedPageLayoutBlock,
   lines: readonly ParsedPageBlock[],
   pageLineHeight: number,
-  page: { readonly width: number; readonly textLeft: number },
+  page: {
+    readonly width: number
+    readonly textLeft: number
+    /** The page's layout blocks other than its running heads and page numbers. */
+    readonly content: readonly Bounds[]
+  },
 ): ParagraphGeometry {
   const box = paragraph.bounds
   // A line unit PDF.js ran into the next line is twice as tall; it says nothing of the type.
@@ -423,7 +440,9 @@ function paragraphGeometry(
       (line) => centreInside(line.bounds, box, lineHeight * 0.2) && noteMarker.test(line.content),
     ).length >= 2
   const ragged = paragraph.label === "footnote" || box.height < lineHeight * 1.6
-  const right = ragged ? Math.max(ownRight, columnRightAbove(box, lines, lineHeight)) : ownRight
+  const right = ragged
+    ? Math.max(ownRight, columnRightAbove(box, lines, lineHeight, page.content))
+    : ownRight
   const gaps = inside
     .slice(1)
     .map((line, index) => line.bounds.y - (inside[index]?.bounds.y ?? line.bounds.y))
@@ -932,6 +951,7 @@ export function paragraphRegions(
     const geometry = paragraphGeometry(paragraph, lines, pageLineHeight, {
       width: page.width,
       textLeft,
+      content: content.map((block) => block.bounds),
     })
     // The type size the PDF sets the paragraph in; PDF.js line units run a little short of it.
     const sourceSize =

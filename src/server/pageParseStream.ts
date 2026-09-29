@@ -79,6 +79,8 @@ export async function streamParsedPage(
       documentId: request.id,
       pageNumber: request.pageNumber,
       forceOcr: request.forceOcr ?? false,
+      preparedOnly: request.preparedOnly ?? false,
+      awaitStructure: request.awaitStructure ?? false,
       onProgress,
       signal: controller.signal,
     })

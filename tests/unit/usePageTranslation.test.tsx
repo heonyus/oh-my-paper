@@ -132,6 +132,7 @@ describe("usePageTranslation partial results and cancellation", () => {
       {
         id: testDoc.id,
         pageNumber: 1,
+        awaitStructure: true,
       },
       expect.any(AbortSignal),
     )

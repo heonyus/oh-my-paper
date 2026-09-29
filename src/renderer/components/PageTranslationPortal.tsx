@@ -1,16 +1,18 @@
-import { type JSX, useEffect, useLayoutEffect, useState } from "react"
+import { type JSX, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import type { ProviderStatus } from "../../shared/ipc"
 import { researchSidebarLayout } from "../../shared/uiLayout"
 import {
   closePageTranslation,
-  openAutomaticPageTranslation,
+  openPageTranslation,
   setPageTranslationDocument,
   usePageTranslationSession,
 } from "../lib/pageTranslationToggle"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
 import type { AiRequestRunner, DocumentRecord } from "../types"
 import { PageTranslationPane } from "./PageTranslationPane"
+
+export const autoOpenDelayMs = 700
 
 export function visibleResearchSidebarWidth(
   flyout: string | undefined,
@@ -64,9 +66,23 @@ export function PageTranslationPortal({
 
   useEffect(() => setPageTranslationDocument(document.id), [document.id])
 
+  // Every page the reader stops on keeps its translation. The page on screen when automatic
+  // translation is turned on opens at once; later pages only once the reader rests on them,
+  // so pages scrolled past on the way elsewhere are not translated.
+  const autoPageRef = useRef<number | null>(null)
   useEffect(() => {
-    if (translation.documentId !== document.id || !translation.auto) return
-    openAutomaticPageTranslation(currentPage)
+    if (translation.documentId !== document.id || !translation.auto) {
+      autoPageRef.current = null
+      return
+    }
+    const turnedOn = autoPageRef.current === null
+    autoPageRef.current = currentPage
+    if (turnedOn) {
+      openPageTranslation(currentPage)
+      return
+    }
+    const timer = window.setTimeout(() => openPageTranslation(currentPage), autoOpenDelayMs)
+    return () => window.clearTimeout(timer)
   }, [currentPage, document.id, translation.auto, translation.documentId])
 
   const openPages = translation.documentId === document.id ? translation.openPages : []

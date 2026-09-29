@@ -317,6 +317,8 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
               documentId: input.id,
               pageNumber: input.pageNumber,
               forceOcr: input.forceOcr ?? false,
+              preparedOnly: input.preparedOnly ?? false,
+              awaitStructure: input.awaitStructure ?? false,
             })
             sendJson(res, 200, result)
             return

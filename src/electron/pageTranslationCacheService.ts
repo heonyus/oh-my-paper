@@ -29,6 +29,7 @@ export class PageTranslationCacheService {
 
   async read(request: PageTranslationCacheReadRequest): Promise<PageTranslationCacheResult> {
     const resolved = await this.#resolveCandidates(request)
+    if (!request.parser && !request.parserConfigVersion) return this.#readEarlier(request, resolved)
     for (const candidate of resolved) {
       try {
         const entry = cacheEntrySchema.parse(JSON.parse(await readFile(candidate.file, "utf8")))
@@ -52,6 +53,48 @@ export class PageTranslationCacheService {
       }
     }
     return { status: "missing" }
+  }
+
+  /**
+   * Every earlier translation of the page, whichever parser cut it and whichever model wrote
+   * it, so a change of parser or of model keeps what was already translated: the current
+   * model's first, then the most recent. The caller matches each unit by its source text.
+   */
+  async #readEarlier(
+    request: PageTranslationCacheReadRequest,
+    candidates: readonly { readonly sourceHash: string; readonly file: string }[],
+  ): Promise<PageTranslationCacheResult> {
+    const entries = await Promise.all(
+      candidates.map(async (candidate) => {
+        try {
+          const [text, info] = await Promise.all([
+            readFile(candidate.file, "utf8"),
+            stat(candidate.file),
+          ])
+          const entry = cacheEntrySchema.parse(JSON.parse(text))
+          if (
+            entry.sourceHash !== candidate.sourceHash ||
+            entry.pageNumber !== request.pageNumber ||
+            entry.targetLanguage !== request.targetLanguage
+          )
+            return []
+          return [{ entry, modified: info.mtimeMs }]
+        } catch (error) {
+          if (isMissingFile(error) || error instanceof SyntaxError || error instanceof z.ZodError)
+            return []
+          throw error
+        }
+      }),
+    )
+    const own = (entry: z.infer<typeof cacheEntrySchema>): number =>
+      Number(entry.provider === request.provider && entry.model === request.model)
+    const blocks = entries
+      .flat()
+      .sort((left, right) => own(right.entry) - own(left.entry) || right.modified - left.modified)
+      .flatMap(({ entry }) => entry.blocks)
+      .slice(0, 2_048)
+    if (blocks.length === 0) return { status: "missing" }
+    return pageTranslationCacheResultSchema.parse({ status: "ready", blocks })
   }
 
   async write(request: PageTranslationCacheWriteRequest): Promise<void> {

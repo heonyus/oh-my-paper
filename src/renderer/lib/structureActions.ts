@@ -10,7 +10,9 @@ import { featureRequestContext, sectionRequestContext } from "./sectionContext"
 import { rectsToElementSpace } from "./selectionGeometry"
 import { structureAiRequest } from "./structureAiRequest"
 import {
+  citationFailureBody,
   shouldRegenerateStructureCard,
+  structureFailureBody,
   structureSourceKey,
   upsertStructureCard,
 } from "./structureCardState"
@@ -105,15 +107,16 @@ export function createStructureActionHandler(
         ),
       )
 
-    const retryCitation =
+    const retry =
       upserted.reused && shouldRegenerateStructureCard(card, activeGenerations.has(card.id))
-    if (upserted.reused && !retryCitation) return
-    if (retryCitation) {
+    if (upserted.reused && !retry) return
+    if (retry) {
       input.commitCards(
         patchCard(input.getCards(), card.id, (item) => ({
           ...item,
           loading: true,
-          body: "인용 논문과 읽을 가치를 다시 확인하는 중입니다.",
+          body:
+            structure.kind === "citation" ? "인용 논문과 읽을 가치를 다시 확인하는 중입니다." : "",
         })),
       )
     }
@@ -145,10 +148,7 @@ export function createStructureActionHandler(
             patchCard(input.getCards(), card.id, (item) => ({
               ...item,
               loading: false,
-              body:
-                result.status === "assessed"
-                  ? result.body
-                  : "읽기 가치 판독을 완료하지 못했습니다. 인용 버튼을 다시 누르면 재시도합니다.",
+              body: result.status === "assessed" ? result.body : citationFailureBody,
               sourceUrl: source.sourceUrl,
               sourceMeta: {
                 ...source.sourceMeta,
@@ -237,10 +237,7 @@ export function createStructureActionHandler(
         patchCard(input.getCards(), card.id, (item) => ({
           ...item,
           loading: false,
-          body:
-            structure.kind === "citation" && item.sourceMeta
-              ? "읽기 가치 판독을 완료하지 못했습니다. 인용 버튼을 다시 누르면 재시도합니다."
-              : "AI 요청을 완료하지 못했습니다. 설정을 확인하고 다시 시도해주세요.",
+          body: structure.kind === "citation" ? citationFailureBody : structureFailureBody,
         })),
       )
     })

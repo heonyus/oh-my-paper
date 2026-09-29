@@ -4,6 +4,7 @@ import { type PreparationUpdate, type ProviderStatus, preparationSteps } from ".
 import { DEFAULT_OPENROUTER_MODEL } from "../../shared/providerModels"
 import type { Workspace } from "../../shared/schemas"
 import { normalizeWorkspaceTranslations } from "./cardPresentation"
+import { settleInterruptedCards } from "./structureCardState"
 
 export const initialProviderStatus: ProviderStatus = {
   mode: "chatgpt",
@@ -46,6 +47,8 @@ export function useAppBootstrap({
     void window.ohmypaper
       .readWorkspace()
       .then(normalizeWorkspaceTranslations)
+      // Only at start: a reload during a session may meet a card still being generated.
+      .then(settleInterruptedCards)
       .then(resetWorkspace)
       .catch(report)
     void Promise.all([

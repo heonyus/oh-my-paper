@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import {
-  openAutomaticPageTranslation,
+  closePageTranslation,
   openPageTranslation,
   setPageTranslationDocument,
   toggleAutomaticPageTranslation,
@@ -35,20 +35,15 @@ describe("page translation session", () => {
     act(() => setPageTranslationDocument(cleanupDocument))
   })
 
-  it("bounds auto-open panes while leaving explicit panes unbounded", () => {
+  it("keeps every opened pane until it is closed", () => {
     const { result, unmount } = renderHook(() => usePageTranslationSession())
     act(() => {
       setPageTranslationDocument(firstDocument)
-      openPageTranslation(1)
-      openPageTranslation(2)
-      openAutomaticPageTranslation(3)
+      for (const page of [3, 1, 5, 2, 4]) openPageTranslation(page)
     })
-    expect(result.current.openPages).toEqual([1, 2, 3])
-    act(() => {
-      openAutomaticPageTranslation(4)
-      openPageTranslation(5)
-    })
-    expect(result.current.openPages).toEqual([2, 3, 4, 5])
+    expect(result.current.openPages).toEqual([1, 2, 3, 4, 5])
+    act(() => closePageTranslation(3))
+    expect(result.current.openPages).toEqual([1, 2, 4, 5])
     unmount()
     act(() => setPageTranslationDocument(cleanupDocument))
   })
