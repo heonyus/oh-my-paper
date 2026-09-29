@@ -2,6 +2,7 @@ import { render, renderHook } from "@testing-library/react"
 import { act } from "react"
 import { describe, expect, it, vi } from "vitest"
 import {
+  autoOpenDelayMs,
   PageTranslationPortal,
   visibleResearchSidebarWidth,
 } from "../../src/renderer/components/PageTranslationPortal"
@@ -83,34 +84,43 @@ describe("PageTranslationPortal", () => {
     })
   })
 
-  it("keeps only the bounded recent auto panes during rapid page changes", () => {
-    document.body.innerHTML = '<div class="reader-workspace"></div>'
-    const { result } = renderHook(() => usePageTranslationSession())
-    act(() => {
-      setPageTranslationDocument(firstDocument.id)
-      toggleAutomaticPageTranslation()
-    })
-    const view = renderPortal(firstDocument, 1)
-    view.rerender(
-      <PageTranslationPortal
-        document={firstDocument}
-        currentPage={2}
-        citations={[]}
-        provider={provider}
-        onAiRequest={onAiRequest}
-      />,
-    )
-    view.rerender(
-      <PageTranslationPortal
-        document={firstDocument}
-        currentPage={3}
-        citations={[]}
-        provider={provider}
-        onAiRequest={onAiRequest}
-      />,
-    )
+  it("keeps the translation of every page the reader rests on, skipping pages scrolled past", () => {
+    vi.useFakeTimers()
+    try {
+      document.body.innerHTML = '<div class="reader-workspace"></div>'
+      const { result } = renderHook(() => usePageTranslationSession())
+      act(() => {
+        setPageTranslationDocument(firstDocument.id)
+        toggleAutomaticPageTranslation()
+      })
+      const view = renderPortal(firstDocument, 1)
+      // The page on screen when automatic translation is on opens at once.
+      expect(result.current.openPages).toEqual([1])
+      const goTo = (currentPage: number) =>
+        view.rerender(
+          <PageTranslationPortal
+            document={firstDocument}
+            currentPage={currentPage}
+            citations={[]}
+            provider={provider}
+            onAiRequest={onAiRequest}
+          />,
+        )
 
-    expect(result.current.openPages).toEqual([1, 2, 3])
+      goTo(2)
+      goTo(3)
+      act(() => vi.advanceTimersByTime(autoOpenDelayMs))
+      expect(result.current.openPages).toEqual([1, 3])
+
+      for (const page of [4, 5]) {
+        goTo(page)
+        act(() => vi.advanceTimersByTime(autoOpenDelayMs))
+      }
+      expect(result.current.openPages).toEqual([1, 3, 4, 5])
+      view.unmount()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("opens panes on the new board after another paper's reader is replaced", () => {
