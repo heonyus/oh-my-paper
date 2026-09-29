@@ -14,6 +14,12 @@ const storedStateSchema = z.discriminatedUnion("version", [
     pendingIds: z.array(documentIdSchema).max(64),
     readyIds: z.array(documentIdSchema).max(64),
   }),
+  z.object({
+    version: z.literal(3),
+    parserVersion: z.string().min(1).max(128),
+    pendingIds: z.array(documentIdSchema).max(64),
+    readyIds: z.array(documentIdSchema).max(64),
+  }),
 ])
 
 function missingFile(error: unknown): boolean {
@@ -29,16 +35,21 @@ export class DocumentAnalysisStateStore {
   readonly #file: string
   #writeQueue: Promise<void> = Promise.resolve()
 
-  constructor(readonly root: string) {
+  /** `parserVersion` names the page parser documents are analysed with now. */
+  constructor(
+    readonly root: string,
+    readonly parserVersion: string,
+  ) {
     this.#file = join(root, "document-analysis-queue.json")
   }
 
   async load(): Promise<DocumentAnalysisState> {
     try {
       const parsed = storedStateSchema.parse(JSON.parse(await readFile(this.#file, "utf8")))
-      return parsed.version === 1
-        ? { pendingIds: parsed.documentIds, readyIds: [] }
-        : { pendingIds: parsed.pendingIds, readyIds: parsed.readyIds }
+      if (parsed.version === 1) return { pendingIds: parsed.documentIds, readyIds: [] }
+      // Documents an earlier parser analysed are analysed again.
+      const current = parsed.version === 3 && parsed.parserVersion === this.parserVersion
+      return { pendingIds: parsed.pendingIds, readyIds: current ? parsed.readyIds : [] }
     } catch (error) {
       if (missingFile(error) || error instanceof SyntaxError || error instanceof z.ZodError)
         return { pendingIds: [], readyIds: [] }
@@ -47,7 +58,11 @@ export class DocumentAnalysisStateStore {
   }
 
   async save(state: DocumentAnalysisState): Promise<void> {
-    const parsed = storedStateSchema.parse({ version: 2, ...state })
+    const parsed = storedStateSchema.parse({
+      version: 3,
+      parserVersion: this.parserVersion,
+      ...state,
+    })
     const operation = this.#writeQueue
       .catch(() => undefined)
       .then(async () => {

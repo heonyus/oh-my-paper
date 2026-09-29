@@ -114,6 +114,10 @@
         "to": "layout/paddle_vl_blocks.py"
       },
       {
+        "from": "src/layout/paddle_vl_text_layer.py",
+        "to": "layout/paddle_vl_text_layer.py"
+      },
+      {
         "from": "src/layout/paddle_vl_worker.py",
         "to": "layout/paddle_vl_worker.py"
       }
