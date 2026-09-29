@@ -1,4 +1,4 @@
-import { type JSX, useEffect, useState } from "react"
+import { type JSX, useEffect, useLayoutEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import type { ProviderStatus } from "../../shared/ipc"
 import { researchSidebarLayout } from "../../shared/uiLayout"
@@ -40,21 +40,27 @@ export function PageTranslationPortal({
   readonly onAiRequest: AiRequestRunner
 }): JSX.Element | null {
   const translation = usePageTranslationSession()
-  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(() =>
-    globalThis.document.querySelector<HTMLElement>(".board-world"),
-  )
+  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null)
 
-  useEffect(() => {
-    if (portalRoot) return
+  // Looked up once the commit is done, never while rendering: when one paper's reader replaces
+  // another's, render still sees the outgoing board, which the same commit then removes.
+  useLayoutEffect(() => {
+    const board = (): HTMLElement | null =>
+      globalThis.document.querySelector<HTMLElement>(".board-world")
+    const found = board()
+    if (found) {
+      setPortalRoot(found)
+      return
+    }
     const observer = new MutationObserver(() => {
-      const next = globalThis.document.querySelector<HTMLElement>(".board-world")
+      const next = board()
       if (!next) return
       setPortalRoot(next)
       observer.disconnect()
     })
     observer.observe(globalThis.document.body, { childList: true, subtree: true })
     return () => observer.disconnect()
-  }, [portalRoot])
+  }, [])
 
   useEffect(() => setPageTranslationDocument(document.id), [document.id])
 

@@ -6,6 +6,7 @@ import {
   visibleResearchSidebarWidth,
 } from "../../src/renderer/components/PageTranslationPortal"
 import {
+  openPageTranslation,
   setPageTranslationDocument,
   toggleAutomaticPageTranslation,
   usePageTranslationSession,
@@ -110,5 +111,32 @@ describe("PageTranslationPortal", () => {
     )
 
     expect(result.current.openPages).toEqual([1, 2, 3])
+  })
+
+  it("opens panes on the new board after another paper's reader is replaced", () => {
+    document.body.innerHTML = ""
+    // The reader remounts per paper, so the outgoing board is still in the DOM while the new
+    // reader renders and is removed in the same commit.
+    function Reader({ paper }: { readonly paper: DocumentRecord }) {
+      return (
+        <>
+          <div className="board-world" data-paper={paper.id} />
+          <PageTranslationPortal
+            document={paper}
+            currentPage={1}
+            citations={[]}
+            provider={provider}
+            onAiRequest={onAiRequest}
+          />
+        </>
+      )
+    }
+    const view = render(<Reader key={firstDocument.id} paper={firstDocument} />)
+    view.rerender(<Reader key={secondDocument.id} paper={secondDocument} />)
+
+    act(() => openPageTranslation(1))
+
+    const pane = document.querySelector('.board-world [data-page="1"]')
+    expect(pane?.closest(".board-world")).toHaveAttribute("data-paper", secondDocument.id)
   })
 })
