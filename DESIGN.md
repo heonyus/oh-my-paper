@@ -386,6 +386,8 @@ Use short opacity/transform state transitions only; respect reduced motion. Do n
 
 Reuse PDF/thumbnail caches with bounded eviction and cancellation. Do not re-render every PDF on pointer samples or re-query document status when idle. Optimize measured work, not just bundle numbers.
 
+Library thumbnails are a rebuildable browser cache, not repository data: first pages are stored as compact WebP/JPEG images in IndexedDB keyed by the PDF's content hash, bounded to 600 entries with least-recently-used eviction, and silently fall back to rendering when storage is unavailable. At most two papers are downloaded and rendered for thumbnails at once; a thumbnail that leaves the viewport or unmounts cancels its queued work. PDFs travel to the renderer as bytes, never as base64 text.
+
 Verify the actual current Electron build with synthetic PDFs: library/import, complete reader controls, two PDFs to one concept and back, persistent edit/backlinks, graph filters, honest comparison, multi-board placement, reviewed import/export, failure/cancel states, settings at 50/100/200%, dark/light and narrow windows. The old Hotebook mockup remains a feature-continuity reference only; its old palette and historical screenshots are not the current design or acceptance evidence.
 
 ## 9. Document Preparation and Enrichment
