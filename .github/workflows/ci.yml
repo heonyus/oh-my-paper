@@ -1,20 +1,23 @@
 name: CI
 
+# Runs on Linux only. macOS minutes are billed at 10x and Windows at 2x,
+# and the three-OS matrix burned the whole free monthly allowance in one
+# weekend. Cross-platform builds still run from release.yml on tag pushes.
 on:
-  push:
-    branches: [main]
   pull_request:
+
+# A new push to the same PR cancels the run that is still in progress.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
   verify:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
