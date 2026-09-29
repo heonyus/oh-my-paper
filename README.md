@@ -32,6 +32,8 @@ compatibility remain unverified; see [release readiness](docs/release-readiness.
 - Stores the library, notes, highlights, caches, and provider configuration locally.
 - Provides keyword, three-line, full-paper, citation, and follow-up discussion tools.
 - Supports light/dark appearance, scalable UI text, selectable fonts, search, and a minimap.
+- Shows a short looping clip beside each feature the first time you reach it (import, translate,
+  explain, notes, AI overview); the header **?** (사용법) replays them all.
 
 ## Install
 

@@ -95,6 +95,8 @@ const mimeTypes: Record<string, string> = {
   ".jpeg": "image/jpeg",
   ".svg": "image/svg+xml",
   ".woff2": "font/woff2",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
 }
 
 async function serveStatic(
@@ -111,7 +113,30 @@ async function serveStatic(
     if (!s.isFile()) return false
     const mime = mimeTypes[extname(filePath)] ?? "application/octet-stream"
     const content = await readFile(filePath)
-    res.writeHead(200, { "content-type": mime })
+    // Safari only plays video that it can fetch by byte range.
+    const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? "")
+    if (range && mime.startsWith("video/")) {
+      const start = range[1] ? Number(range[1]) : Math.max(0, content.length - Number(range[2]))
+      const end =
+        range[1] && range[2] ? Math.min(Number(range[2]), content.length - 1) : content.length - 1
+      if (start > end || start >= content.length) {
+        res.writeHead(416, { "content-range": `bytes */${content.length}` })
+        res.end()
+        return true
+      }
+      res.writeHead(206, {
+        "content-type": mime,
+        "accept-ranges": "bytes",
+        "content-range": `bytes ${start}-${end}/${content.length}`,
+        "content-length": end - start + 1,
+      })
+      res.end(content.subarray(start, end + 1))
+      return true
+    }
+    res.writeHead(200, {
+      "content-type": mime,
+      ...(mime.startsWith("video/") ? { "accept-ranges": "bytes" } : {}),
+    })
     res.end(content)
     return true
   } catch {

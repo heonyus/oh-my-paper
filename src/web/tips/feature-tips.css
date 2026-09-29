@@ -1,0 +1,321 @@
+.feature-tip {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow:
+    0 1px 2px rgb(23 37 31 / 8%),
+    0 24px 56px -24px rgb(23 37 31 / 40%);
+  animation: feature-tip-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.feature-tip[data-side="above"] {
+  animation-name: feature-tip-in-above;
+}
+
+.feature-tip[data-side="below"]::before,
+.feature-tip[data-side="above"]::after {
+  position: absolute;
+  left: calc(var(--tip-arrow, 50%) - 6px);
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  content: "";
+  transform: rotate(45deg);
+}
+
+.feature-tip[data-side="below"]::before {
+  top: -7px;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.feature-tip[data-side="above"]::after {
+  bottom: -7px;
+  border-top: 0;
+  border-left: 0;
+}
+
+@keyframes feature-tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes feature-tip-in-above {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.feature-tip-clip {
+  display: block;
+  width: calc(100% - 16px);
+  aspect-ratio: 16 / 10;
+  margin: 8px 8px 0;
+  border-radius: 9px;
+  background: var(--surface-muted);
+  object-fit: cover;
+}
+
+.feature-tip-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px 12px;
+}
+
+.feature-tip-body h2 {
+  margin: 0;
+  padding-right: 20px;
+  font-size: var(--type-toolbar-size);
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.feature-tip-body p {
+  margin: 0;
+  font-size: var(--type-compact-size);
+  line-height: 1.55;
+  color: var(--ink-muted);
+  word-break: keep-all;
+}
+
+.feature-tip-keys,
+.tips-gallery .feature-tip-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.feature-tip-keys span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.feature-tip-keys kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.feature-tip-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.feature-tip-actions button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  font-size: var(--type-compact-size);
+  cursor: pointer;
+}
+
+.feature-tip-actions .feature-tip-off {
+  border-color: transparent;
+  color: var(--ink-muted);
+}
+
+.feature-tip-actions .feature-tip-ok {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--surface);
+  font-weight: 650;
+}
+
+.feature-tip-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(23 37 31 / 55%);
+  color: #fff;
+  cursor: pointer;
+}
+
+.feature-tip :focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* 사용법 gallery */
+
+.web-reader-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+.web-reader-help {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+
+.web-reader-help:hover {
+  background: var(--surface-muted);
+  color: var(--ink);
+}
+
+.tips-gallery-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(15 21 18 / 38%);
+  backdrop-filter: blur(3px);
+}
+
+.tips-gallery {
+  display: flex;
+  flex-direction: column;
+  width: min(920px, 100%);
+  max-height: min(760px, 100%);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 40px 100px -40px rgb(15 21 18 / 60%);
+  animation: feature-tip-in 240ms ease-out both;
+}
+
+.tips-gallery > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 22px 12px;
+}
+
+.tips-gallery h2 {
+  margin: 0;
+  font-size: var(--type-title-size);
+}
+
+.tips-gallery > header p {
+  margin: 4px 0 0;
+  font-size: var(--type-compact-size);
+  color: var(--ink-muted);
+}
+
+.tips-gallery > header button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.tips-gallery ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 8px 22px 16px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.tips-gallery li {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.tips-gallery li .feature-tip-clip {
+  width: calc(100% - 12px);
+  margin: 6px 6px 4px;
+}
+
+.tips-gallery li h3,
+.tips-gallery li p {
+  margin: 0 12px;
+}
+
+.tips-gallery li h3 {
+  font-size: var(--type-toolbar-size);
+}
+
+.tips-gallery li p {
+  font-size: var(--type-compact-size);
+  line-height: 1.55;
+  color: var(--ink-muted);
+  word-break: keep-all;
+}
+
+.tips-gallery > footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 22px 18px;
+  border-top: 1px solid var(--line);
+}
+
+.tips-gallery > footer button {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  font-size: var(--type-compact-size);
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feature-tip,
+  .tips-gallery {
+    animation: none;
+  }
+}
