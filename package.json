@@ -15,6 +15,9 @@
     "url": "https://github.com/heonyus/oh-my-paper.git"
   },
   "main": "dist-electron/electron/main.js",
+  "bin": {
+    "oh-my-paper": "bin/oh-my-paper"
+  },
   "scripts": {
     "dev": "node scripts/dev-electron.mjs",
     "dev:web": "concurrently \"tsx src/server/main.ts\" \"vite --config vite.web.config.ts --port 5173\"",
@@ -44,6 +47,7 @@
     "menubar:build": "mkdir -p menubar/bin && swiftc -O -o menubar/bin/oh-my-paper-menubar menubar/main.swift",
     "menubar": "npm run menubar:build && ./menubar/bin/oh-my-paper-menubar --repo \"$PWD\"",
     "setup": "tsx src/cli/setup.ts",
+    "cli": "tsx src/cli/main.ts",
     "start:web:raw": "tsx src/server/main.ts"
   },
   "build": {

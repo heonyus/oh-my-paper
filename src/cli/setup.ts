@@ -1,3 +1,4 @@
-import { runOnboardingFromEnvironment } from "./onboarding"
+import { readWebServerConfig } from "../server/config"
+import { runOnboarding } from "./onboarding"
 
-void runOnboardingFromEnvironment()
+void runOnboarding(readWebServerConfig())
