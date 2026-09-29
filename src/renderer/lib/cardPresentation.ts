@@ -1,5 +1,6 @@
 import { z } from "zod"
 import type { BoardCard, Workspace } from "../types"
+import { interruptedCardBody } from "./structureCardState"
 
 const genericSuffix = /\s*(?:해설|분석|카드)$/u
 const wordTranslationSchema = z.object({
@@ -115,7 +116,8 @@ export function normalizeWorkspaceTranslations(workspace: Workspace): Workspace 
       changed = true
       return { ...card, kind: "highlight" }
     }
-    if (card.kind !== "translation" || card.loading) return card
+    if (card.kind !== "translation" || card.loading || card.body === interruptedCardBody)
+      return card
     const parsed = parsedTranslationResponse(card.body, card.anchor.quote)
     if (parsed.title === card.title && parsed.body === card.body) return card
     changed = true
