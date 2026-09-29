@@ -1,10 +1,29 @@
 import { randomUUID } from "node:crypto"
 import type { DatabaseSync } from "node:sqlite"
 import { isDeepStrictEqual } from "node:util"
-import { documentVersionIdSchema } from "../shared/knowledgeSchemas"
+import { z } from "zod"
+import {
+  documentVersionIdSchema,
+  type KnowledgeNodeId,
+  knowledgeNodeIdSchema,
+} from "../shared/knowledgeSchemas"
 import type { BoardCard, DocumentInsight, DocumentRecord } from "../shared/schemas"
 import { cardIdSchema } from "../shared/schemas"
 import type { KnowledgeRepository } from "./knowledgeRepository"
+import type { CardPlacement } from "./knowledgeRepositoryPlacements"
+import { cachedStatement } from "./knowledgeStatements"
+import { storedValueEqual } from "./knowledgeStoredValue"
+
+const CARD_METADATA_KEYS = [
+  "cardKind",
+  "documentId",
+  "chat",
+  "loading",
+  "sourceKey",
+  "sourceUrl",
+  "sourceMeta",
+  "anchor",
+] as const
 
 function metadataForCard(card: BoardCard): Readonly<Record<string, unknown>> {
   return {
@@ -23,8 +42,19 @@ function cardNodeChanged(current: BoardCard, incoming: BoardCard): boolean {
   return (
     current.title !== incoming.title ||
     current.body !== incoming.body ||
-    !isDeepStrictEqual(metadataForCard(current), metadataForCard(incoming))
+    !storedValueEqual(metadataForCard(current), metadataForCard(incoming))
   )
+}
+
+const versionPaperRowSchema = z.object({ paper_node_id: knowledgeNodeIdSchema })
+
+/** The paper node of the hash's first version, as `findDocumentVersionsByHash` lists them. */
+function paperNodeOfHash(db: DatabaseSync, hash: string): KnowledgeNodeId | null {
+  const row = cachedStatement(
+    db,
+    "SELECT paper_node_id FROM document_versions WHERE hash = ? ORDER BY rowid LIMIT 1",
+  ).get(hash)
+  return row ? versionPaperRowSchema.parse(row).paper_node_id : null
 }
 
 export function applyDocuments(
@@ -35,8 +65,8 @@ export function applyDocuments(
 ): void {
   const currentById = new Map(currentDocuments.map((document) => [document.id, document]))
   for (const document of documents) {
-    const version = repo.findDocumentVersionsByHash(document.hash)[0]
-    if (!version) {
+    const paperNodeId = paperNodeOfHash(repo.db, document.hash)
+    if (!paperNodeId) {
       const paper = repo.createNode({
         kind: "paper",
         title: document.title,
@@ -53,14 +83,15 @@ export function applyDocuments(
       })
       continue
     }
-    const paper = repo.getNode(version.paperNodeId)
     const currentDocument = currentById.get(document.id)
-    if (!paper || !currentDocument || isDeepStrictEqual(currentDocument, document)) continue
+    if (!currentDocument || storedValueEqual(currentDocument, document)) continue
+    const paper = repo.getNode(paperNodeId)
+    if (!paper) continue
     const metadata = { ...paper.metadata, documentRecord: document, pageCount: document.pageCount }
     if (
       paper.title !== document.title ||
       paper.body !== document.overview ||
-      !isDeepStrictEqual(paper.metadata, metadata)
+      !storedValueEqual(paper.metadata, metadata)
     ) {
       repo.updateNode({ id: paper.id, title: document.title, body: document.overview, metadata })
     }
@@ -73,17 +104,19 @@ export function applyCards(
   currentCards: readonly BoardCard[],
 ): void {
   const board = repo.getOrCreateDefaultBoard()
-  const placements = repo.findPlacementsForBoard(board.id)
+  const placements = repo.findCardPlacements(board.id)
   const incomingIds = new Set(cards.map((card) => card.id))
   const currentById = new Map(currentCards.map((card) => [card.id, card]))
+  const placementByCardId = new Map<string, CardPlacement>()
   for (const placement of placements) {
     if (!placement.cardId) continue
+    if (!placementByCardId.has(placement.cardId)) placementByCardId.set(placement.cardId, placement)
     const cardId = cardIdSchema.safeParse(placement.cardId)
     if (cardId.success && !incomingIds.has(cardId.data)) repo.deletePlacement(placement.id)
   }
 
   for (const card of cards) {
-    const placement = placements.find((candidate) => candidate.cardId === card.id)
+    const placement = placementByCardId.get(card.id)
     if (!placement) {
       const node = repo.createNode({
         kind: "note",
@@ -124,24 +157,15 @@ export function applyCards(
       continue
     }
 
-    const node = repo.getNode(placement.nodeId)
+    // The projection lists a card only while its node exists, so this also skips missing nodes.
     const currentCard = currentById.get(card.id)
-    if (!node || !currentCard) continue
-    const metadata: Record<string, unknown> = { ...node.metadata }
-    for (const key of [
-      "cardKind",
-      "documentId",
-      "chat",
-      "loading",
-      "sourceKey",
-      "sourceUrl",
-      "sourceMeta",
-      "anchor",
-    ]) {
-      delete metadata[key]
-    }
-    Object.assign(metadata, metadataForCard(card))
+    if (!currentCard) continue
     if (cardNodeChanged(currentCard, card)) {
+      const node = repo.getNode(placement.nodeId)
+      if (!node) continue
+      const metadata: Record<string, unknown> = { ...node.metadata }
+      for (const key of CARD_METADATA_KEYS) delete metadata[key]
+      Object.assign(metadata, metadataForCard(card))
       repo.updateNode({ id: node.id, title: card.title, body: card.body, metadata })
     }
     if (
@@ -171,20 +195,22 @@ export function applyInsights(
   const key = (insight: DocumentInsight): string => `${insight.documentId}:${insight.kind}`
   const currentByKey = new Map(current.map((insight) => [key(insight), insight]))
   const incomingByKey = new Map(insights.map((insight) => [key(insight), insight]))
+  const upsert = cachedStatement(
+    db,
+    `INSERT INTO document_insights (document_id, kind, value, updated_at)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(document_id, kind) DO UPDATE SET
+       value = excluded.value, updated_at = excluded.updated_at`,
+  )
+  const remove = cachedStatement(
+    db,
+    "DELETE FROM document_insights WHERE document_id = ? AND kind = ?",
+  )
   for (const insight of insights) {
     if (isDeepStrictEqual(currentByKey.get(key(insight)), insight)) continue
-    db.prepare(`
-      INSERT INTO document_insights (document_id, kind, value, updated_at)
-      VALUES (?, ?, ?, ?)
-      ON CONFLICT(document_id, kind) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
-    `).run(insight.documentId, insight.kind, insight.value, insight.updatedAt)
+    upsert.run(insight.documentId, insight.kind, insight.value, insight.updatedAt)
   }
   for (const insight of current) {
-    if (!incomingByKey.has(key(insight))) {
-      db.prepare("DELETE FROM document_insights WHERE document_id = ? AND kind = ?").run(
-        insight.documentId,
-        insight.kind,
-      )
-    }
+    if (!incomingByKey.has(key(insight))) remove.run(insight.documentId, insight.kind)
   }
 }

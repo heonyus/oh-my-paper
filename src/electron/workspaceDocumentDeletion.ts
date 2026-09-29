@@ -27,7 +27,7 @@ export function removeDocumentFromRepository(
   }
   db.exec("BEGIN IMMEDIATE")
   try {
-    syncWorkspaceToRepository(repository, db, next, undefined, true)
+    syncWorkspaceToRepository(repository, db, next, undefined, true, current)
     const versions = repository.deleteDocumentVersionsForDocument(id)
     for (const paperNodeId of new Set(versions.map((version) => version.paperNodeId))) {
       repository.deleteNode(paperNodeId)
