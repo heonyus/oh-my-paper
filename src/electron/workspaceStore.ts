@@ -5,6 +5,7 @@ import { z } from "zod"
 import type { DocumentId, DocumentRecord, Workspace } from "../shared/schemas"
 import { workspaceSchema } from "../shared/schemas"
 import { researchSidebarLayout } from "../shared/uiLayout"
+import type { WorkspacePatchRequest, WorkspacePatchResult } from "../shared/workspacePatch"
 import { readAgentThreads, writeAgentThreads } from "./agentThreadsFile"
 import { CollectionService } from "./collectionService"
 import { replaceFile } from "./fileReplace"
@@ -18,6 +19,7 @@ import { syncWorkspaceToRepository } from "./knowledgeWorkspaceSync"
 import { forgetLearningFiles, readLearningFiles, saveLearningFiles } from "./learningFiles"
 import { removeDocumentFromRepository } from "./workspaceDocumentDeletion"
 import { readLibraryDocument, readLibraryDocuments } from "./workspaceDocuments"
+import { saveWorkspacePatch } from "./workspacePatchSave"
 import { acknowledgedWorkspace } from "./workspaceSnapshot"
 
 const persistedWorkspaceSchema = workspaceSchema.extend({ layoutVersion: z.literal(2) })
@@ -193,6 +195,18 @@ export class WorkspaceStore {
       const savedWs = await this.acknowledgeRepository()
       return { ...savedWs, agentThreads: parsed.agentThreads }
     })
+  }
+
+  /** Saves a renderer's edits since a remembered snapshot; see `saveWorkspacePatch`. */
+  savePatch(request: WorkspacePatchRequest): Promise<WorkspacePatchResult> {
+    return saveWorkspacePatch(
+      {
+        snapshot: (token) => this.snapshots.get(token),
+        agentThreads: () => readAgentThreads(this.root),
+        save: (workspace) => this.save(workspace),
+      },
+      request,
+    )
   }
 
   async flush(): Promise<void> {

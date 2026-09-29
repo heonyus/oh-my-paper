@@ -49,6 +49,7 @@ import { fetchLocalDocumentBytes } from "./localDocumentFile"
 import { createLocalImporter } from "./localImport"
 import { createLocalPageParser } from "./localPageParser"
 import { localRpc, readLocalResponse } from "./localTransport"
+import { saveLocalWorkspacePatch } from "./localWorkspacePatch"
 
 export function installLocalReaderApi(): void {
   const importer = createLocalImporter()
@@ -101,6 +102,7 @@ export function installLocalReaderApi(): void {
       })
       return readLocalResponse(response, workspaceSchema)
     },
+    saveWorkspacePatch: saveLocalWorkspacePatch,
     importDocument: importer.importDocument,
     importDocumentPath: importer.importDocumentPath,
     importDocumentPaths: importer.importDocumentPaths,

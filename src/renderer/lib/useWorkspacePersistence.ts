@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import type { Workspace } from "../../shared/schemas"
 import { mergeWorkspaceForSave } from "../../shared/workspaceMerge"
 import type { WorkspaceSetter } from "./useWorkspaceHistory"
+import { saveWorkspaceChanges } from "./workspaceSave"
 
 export function useWorkspacePersistence(
   workspace: Workspace | null,
@@ -10,6 +11,8 @@ export function useWorkspacePersistence(
   const [failed, setFailed] = useState(false)
   const latest = useRef<Workspace | null>(workspace)
   const saved = useRef<Workspace | null>(null)
+  // The workspace the backend last acknowledged, as the base for the next patch save.
+  const baseline = useRef<Workspace | null>(null)
   const inFlight = useRef<Promise<void> | null>(null)
   const [retryAttempt, setRetryAttempt] = useState(0)
 
@@ -19,10 +22,8 @@ export function useWorkspacePersistence(
       while (latest.current && latest.current !== saved.current) {
         const next = latest.current
         try {
-          const acknowledged = await window.ohmypaper.saveWorkspace({
-            ...next,
-            baseSnapshotToken: next.snapshotToken,
-          })
+          const acknowledged = await saveWorkspaceChanges(baseline.current, next)
+          baseline.current = acknowledged
           const pending = latest.current ?? next
           const merged =
             pending === next ? acknowledged : mergeWorkspaceForSave(next, acknowledged, pending)

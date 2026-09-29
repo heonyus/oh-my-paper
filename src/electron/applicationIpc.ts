@@ -60,6 +60,7 @@ import { registerPageTranslationCacheIpc } from "./registerPageTranslationCacheI
 import { registerProviderIpc } from "./registerProviderIpc"
 import { registerResearchIpc } from "./registerResearchIpc"
 import { registerScholarlyIpc } from "./registerScholarlyIpc"
+import { registerWorkspacePatchIpc } from "./registerWorkspacePatchIpc"
 import { ResearchJobStore } from "./researchJobStore"
 import { registerWorkspaceLifecycle } from "./workspaceLifecycle"
 import type { WorkspaceStore } from "./workspaceStore"
@@ -156,6 +157,7 @@ export function registerApplicationIpc(
       await store.save(workspaceSaveRequestSchema.parse(value)),
     )
   })
+  registerWorkspacePatchIpc(store)
   ipcMain.handle(ipcChannels.documentImport, (event) => chooseAndImport(event, analysis, store))
   ipcMain.handle(ipcChannels.documentImportPath, async (event, value: unknown) => {
     const { path } = documentImportPathRequestSchema.parse(value)
