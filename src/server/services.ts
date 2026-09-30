@@ -92,7 +92,11 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
     paddlePageParser: paddle,
     astService: ast,
   })
-  const analysis = new DocumentAnalysisService(store, pages, { maxConcurrency: 4 })
+  const analysis = new DocumentAnalysisService(store, pages, {
+    maxConcurrency: 4,
+    // Papers imported while the OCR engine downloads wait for it instead of failing.
+    engineInstalling: async () => (await paddle.status()).installing === true,
+  })
   // The server listens while the library's unanalysed papers are queued in the background.
   const resuming = analysis.resumePending().catch((error: unknown) => {
     console.warn("[document-analysis] could not resume the analysis queue", error)

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { GithubStarAnswer } from "../../src/shared/githubStar"
 import { StarInvite } from "../../src/web/star/StarInvite"
 import { readStarInviteState, STAR_INVITE_STORAGE_KEY } from "../../src/web/star/starInviteRules"
-import { TipsGallery } from "../../src/web/tips/FeatureTips"
+import { TipsGallery } from "../../src/web/tips/TipsGallery"
 
 const REPO = "https://github.com/heonyus/oh-my-paper"
 const TITLE = "oh-my-paper가 도움이 되고 있나요?"

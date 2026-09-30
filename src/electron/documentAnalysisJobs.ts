@@ -28,6 +28,20 @@ export function queuedAnalysisJob(document: DocumentRecord): DocumentAnalysisJob
   }
 }
 
+/** Shown while the OCR engine downloads; the document is analysed once it is ready. */
+export const ENGINE_WAIT_MESSAGE = "문서 분석 엔진을 받는 중 · 끝나면 자동으로 분석합니다"
+
+export function waitingAnalysisJob(document: DocumentRecord): DocumentAnalysisJob {
+  return {
+    id: document.id,
+    title: jobTitle(document),
+    pageCount: document.pageCount,
+    completedPages: 0,
+    state: "queued",
+    message: ENGINE_WAIT_MESSAGE,
+  }
+}
+
 export function runningAnalysisJob(input: {
   readonly document: DocumentRecord
   readonly completedPages: number

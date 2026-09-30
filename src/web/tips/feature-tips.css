@@ -296,6 +296,124 @@
   word-break: keep-all;
 }
 
+.tips-gallery-thumb {
+  position: relative;
+}
+
+.tips-gallery-enlarge {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: end end;
+  padding: 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.tips-gallery-enlarge span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgb(15 21 18 / 72%);
+  color: #fff;
+  font-size: var(--type-compact-size);
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.tips-gallery-enlarge:hover span,
+.tips-gallery-enlarge:focus-visible span {
+  opacity: 1;
+}
+
+.tips-gallery-enlarge:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.tips-gallery-focus {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  padding: 4px 22px 16px;
+  overflow-y: auto;
+}
+
+.tips-gallery-focus .feature-tip-clip {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: min(calc(100vh - 380px), 520px);
+  min-height: 220px;
+  margin: 0 auto;
+  aspect-ratio: 16 / 10;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  object-fit: contain;
+  background: var(--canvas);
+}
+
+.tips-gallery-focus-text {
+  display: grid;
+  gap: 4px;
+  max-width: 720px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.tips-gallery-focus-text h3 {
+  margin: 0;
+  font-size: var(--type-title-size);
+}
+
+.tips-gallery-focus-text p {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: var(--type-toolbar-size);
+  line-height: 1.55;
+  word-break: keep-all;
+}
+
+.tips-gallery-focus-text .feature-tip-keys {
+  justify-content: center;
+}
+
+.tips-gallery-focus-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: var(--type-compact-size);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.tips-gallery-focus-nav button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--type-compact-size);
+  cursor: pointer;
+}
+
+.tips-gallery-focus-nav button:first-child {
+  margin-right: auto;
+}
+
+.tips-gallery-focus-nav span {
+  margin-right: 4px;
+}
+
 .tips-gallery > footer {
   display: flex;
   flex-wrap: wrap;

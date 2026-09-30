@@ -9,7 +9,8 @@ import { useAppWorkspace } from "../renderer/lib/useAppWorkspace"
 import { type DocumentId, documentIdSchema } from "../shared/schemas"
 import { EngineSetupProgress } from "./EngineSetupProgress"
 import { StarInvite } from "./star/StarInvite"
-import { FeatureTips, TipsGallery } from "./tips/FeatureTips"
+import { FeatureTips } from "./tips/FeatureTips"
+import { TipsGallery } from "./tips/TipsGallery"
 import { useWelcome } from "./useWelcome"
 import { WebOnboarding } from "./WebOnboarding"
 
@@ -34,6 +35,8 @@ export function ReaderApp(): JSX.Element {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [researchOpen, setResearchOpen] = useState(false)
   const [tipsOpen, setTipsOpen] = useState(false)
+  // The first-run welcome plays the clips one by one; the header's 사용법 opens the overview.
+  const [tipsFromStart, setTipsFromStart] = useState(false)
   const welcome = useWelcome()
   const [openImportUrl] = useState(() => {
     const current = new URL(window.location.href)
@@ -125,7 +128,9 @@ export function ReaderApp(): JSX.Element {
           if (welcome.state !== "pending") return
           welcome.finish()
           // Clips already watched while the engine downloaded are not shown again.
-          if (!options?.watchedTips) setTipsOpen(true)
+          if (options?.watchedTips) return
+          setTipsFromStart(true)
+          setTipsOpen(true)
         }}
       />
     )
@@ -226,7 +231,10 @@ export function ReaderApp(): JSX.Element {
             className="web-reader-help"
             aria-label="사용법"
             title="사용법"
-            onClick={() => setTipsOpen(true)}
+            onClick={() => {
+              setTipsFromStart(false)
+              setTipsOpen(true)
+            }}
           >
             <CircleHelp size={18} aria-hidden="true" />
           </button>
@@ -340,6 +348,7 @@ export function ReaderApp(): JSX.Element {
       />
       {tipsOpen ? (
         <TipsGallery
+          {...(tipsFromStart ? { initialFocus: 0 } : {})}
           onClose={() => setTipsOpen(false)}
           status={<EngineSetupProgress status={app.ocrStatus} />}
         />

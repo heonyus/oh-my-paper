@@ -35,7 +35,7 @@ function analysisTask(job: DocumentAnalysisJob): LibraryTask {
     return {
       id: `analysis:${job.id}`,
       title: job.title,
-      detail: `0 / ${job.pageCount}페이지 · 분석 대기 중`,
+      detail: `0 / ${job.pageCount}페이지 · ${job.message ?? "분석 대기 중"}`,
       progress: 0,
       state: "active",
     }

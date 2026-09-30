@@ -25,7 +25,7 @@ import {
 } from "../shared/providerModels"
 import { ClaudeOnboardingStep } from "./ClaudeOnboardingStep"
 import { EngineSetupProgress } from "./EngineSetupProgress"
-import { TipsGallery } from "./tips/FeatureTips"
+import { TipsGallery } from "./tips/TipsGallery"
 
 type Step = "choose" | "claude" | "chatgpt" | "api" | "done"
 
@@ -539,6 +539,7 @@ export function WebOnboarding({
       </section>
       {watching ? (
         <TipsGallery
+          initialFocus={0}
           onClose={() => setWatching(false)}
           status={ocrStatus ? <EngineSetupProgress status={ocrStatus} /> : null}
           primary={engineInstalling ? undefined : { label: "시작하기", onClick: start }}

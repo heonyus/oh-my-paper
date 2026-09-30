@@ -59,3 +59,19 @@ it("counts analysis jobs beyond the listed ones so a whole library can queue", (
   expect(screen.getByText("외 8개 문서")).toBeVisible()
   expect(screen.getByText("8개 분석 대기 중")).toBeVisible()
 })
+
+it("says a paper waits for the OCR engine rather than showing it as failed", () => {
+  const waiting = documentAnalysisJobSchema.parse({
+    id: "00000000000000aa",
+    title: "Early prediction of circulatory failure",
+    pageCount: 28,
+    completedPages: 0,
+    state: "queued",
+    message: "문서 분석 엔진을 받는 중 · 끝나면 자동으로 분석합니다",
+  })
+  render(<LibraryTaskQueue imports={[]} analyses={snapshotOfAnalysisJobs([waiting])} />)
+  expect(
+    screen.getByText("0 / 28페이지 · 문서 분석 엔진을 받는 중 · 끝나면 자동으로 분석합니다"),
+  ).toBeVisible()
+  expect(screen.queryByText(/확인 필요/)).toBeNull()
+})

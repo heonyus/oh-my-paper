@@ -136,7 +136,7 @@ async function reportEnvironment(
 
 async function offerOcr(report: Awaited<ReturnType<typeof checkEnvironment>>): Promise<void> {
   stepTitle(
-    3,
+    2,
     "OCR 엔진 (선택)",
     "스캔 PDF와 그림·표·수식을 읽는 로컬 엔진입니다. 문서는 밖으로 나가지 않습니다.",
   )
@@ -155,7 +155,7 @@ async function offerOcr(report: Awaited<ReturnType<typeof checkEnvironment>>): P
     return
   }
   const install = await confirm({
-    message: `설치할까요? ${dim("약 3GB · 백그라운드에서 받으니 그동안에도 앱을 쓸 수 있어요")}`,
+    message: `설치할까요? ${dim("약 3GB · AI를 연결하는 동안 백그라운드로 받아 둡니다")}`,
     initialValue: true,
   })
   if (isCancel(install) || !install) {
@@ -189,8 +189,8 @@ export async function runOnboarding(
   note(
     [
       "네 단계면 끝납니다.",
-      `  ${bold("1")} 실행 환경 확인    ${bold("2")} AI 연결`,
-      `  ${bold("3")} OCR 엔진 (선택)   ${bold("4")} 사용법 둘러보기`,
+      `  ${bold("1")} 실행 환경 확인    ${bold("2")} OCR 엔진 (선택)`,
+      `  ${bold("3")} AI 연결           ${bold("4")} 사용법 둘러보기`,
       "",
       gray("화살표로 고르고 Enter. 언제든 Ctrl+C로 나가고,"),
       gray("다시 하려면 oh-my-paper onboard"),
@@ -205,9 +205,11 @@ export async function runOnboarding(
 
   try {
     const report = await reportEnvironment(config, subscription.isAvailable, claude.isAvailable)
+    // Asked before AI so the download runs while the person signs in and reads the tour.
+    await offerOcr(report)
 
     stepTitle(
-      2,
+      3,
       "AI 연결",
       "번역·설명·노트 튜터가 쓸 AI입니다. 구독이 있으면 API 키 없이 바로 됩니다.",
     )
@@ -288,8 +290,6 @@ export async function runOnboarding(
     } else if (!state.configured) {
       log.info(gray("건너뛰었습니다 — 앱을 열면 연결 화면이 먼저 나옵니다"))
     }
-
-    await offerOcr(report)
 
     stepTitle(4, "사용법", "이것만 알면 됩니다.")
     note(quickstart(appUrl(config.host, config.port), config.dataDir), "이렇게 쓰세요")

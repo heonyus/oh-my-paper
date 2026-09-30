@@ -513,4 +513,69 @@ describe("DocumentAnalysisService", () => {
       await rm(root, { recursive: true, force: true })
     }
   })
+  it("waits for the OCR engine download instead of failing, then analyses on its own", async () => {
+    const root = await mkdtemp(join(tmpdir(), "document-analysis-engine-wait-"))
+    const store = new WorkspaceStore(root)
+    const document = record("5", "Waiting paper")
+    await store.save({ ...defaultWorkspace(), documents: [document] })
+    let installing = true
+    const parser = {
+      parse: vi.fn(async (input: { readonly pageNumber: number }) =>
+        readyPage(document.hash, input.pageNumber),
+      ),
+    }
+    const service = new DocumentAnalysisService(store, parser, {
+      engineInstalling: async () => installing,
+      enginePollMs: 20,
+    })
+
+    try {
+      await service.schedule(document.id)
+      await vi.waitFor(() =>
+        expect(service.snapshot().jobs.find((job) => job.id === document.id)).toMatchObject({
+          state: "queued",
+          message: "문서 분석 엔진을 받는 중 · 끝나면 자동으로 분석합니다",
+        }),
+      )
+      await new Promise((resolve) => setTimeout(resolve, 80))
+      expect(parser.parse).not.toHaveBeenCalled()
+      expect(service.isReady(document.id)).toBe(false)
+
+      installing = false
+      await vi.waitFor(() => expect(service.isReady(document.id)).toBe(true))
+      expect(parser.parse).toHaveBeenCalledTimes(document.pageCount)
+      expect(service.snapshot().jobs.find((job) => job.id === document.id)).toBeUndefined()
+    } finally {
+      await service.dispose()
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it("drops a document deleted while it waits for the engine", async () => {
+    const root = await mkdtemp(join(tmpdir(), "document-analysis-engine-forget-"))
+    const store = new WorkspaceStore(root)
+    const document = record("4", "Deleted while waiting")
+    await store.save({ ...defaultWorkspace(), documents: [document] })
+    let installing = true
+    const parser = { parse: vi.fn(async () => readyPage(document.hash, 1)) }
+    const service = new DocumentAnalysisService(store, parser, {
+      engineInstalling: async () => installing,
+      enginePollMs: 20,
+    })
+
+    try {
+      await service.schedule(document.id)
+      await vi.waitFor(() =>
+        expect(service.snapshot().jobs.find((job) => job.id === document.id)?.state).toBe("queued"),
+      )
+      await service.forget(document.id)
+      installing = false
+      await new Promise((resolve) => setTimeout(resolve, 80))
+      expect(parser.parse).not.toHaveBeenCalled()
+      expect(service.snapshot().jobs).toEqual([])
+    } finally {
+      await service.dispose()
+      await rm(root, { recursive: true, force: true })
+    }
+  })
 })

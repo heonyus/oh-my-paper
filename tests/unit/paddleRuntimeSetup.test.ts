@@ -1,7 +1,10 @@
 // @vitest-environment node
 
 import { spawn } from "node:child_process"
+import { createHash } from "node:crypto"
+import { appendFileSync } from "node:fs"
 import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { createServer, type Server } from "node:http"
 import { tmpdir } from "node:os"
 import { delimiter, join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
@@ -23,6 +26,39 @@ echo "start $*" >> "$log"
 sleep 0.4
 echo "end $*" >> "$log"
 `
+
+const MODEL_REPO = "PaddlePaddle/PaddleOCR-VL-1.6"
+const MODEL_FILES: Record<string, Buffer> = {
+  "config.json": Buffer.from('{"model_type":"paddleocr_vl"}'),
+  "model.safetensors": Buffer.alloc(4096, 7),
+}
+
+/** Plays both model hosts for the setup, logging each file request into the stand-in uv's log. */
+async function fakeModelHosts(log: string): Promise<{ base: string; server: Server }> {
+  const server = createServer((req, res) => {
+    const url = new URL(req.url ?? "/", "http://local")
+    if (url.pathname === `/hf/api/models/${MODEL_REPO}`) {
+      const siblings = Object.entries(MODEL_FILES).map(([path, data]) => ({
+        rfilename: path,
+        size: data.length,
+        lfs: { sha256: createHash("sha256").update(data).digest("hex") },
+      }))
+      return void res.end(JSON.stringify({ siblings }))
+    }
+    const path = url.pathname.split(/\/resolve\/(?:main|master)\//)[1]
+    const data = path ? MODEL_FILES[decodeURIComponent(path)] : undefined
+    if (!data) return void res.writeHead(404).end()
+    appendFileSync(log, `request ${url.pathname}\n`)
+    const match = /bytes=(\d+)-(\d+)/.exec(req.headers.range ?? "")
+    const body = match ? data.subarray(Number(match[1]), Number(match[2]) + 1) : data
+    res.writeHead(match ? 206 : 200, { "content-length": body.length })
+    res.end(body)
+  })
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
+  const address = server.address()
+  if (!address || typeof address === "string") throw new Error("no address")
+  return { base: `http://127.0.0.1:${address.port}`, server }
+}
 
 function runSetup(env: NodeJS.ProcessEnv): Promise<{ code: number | null; output: string }> {
   return new Promise((resolve) => {
@@ -53,12 +89,13 @@ describe("PaddleOCR-VL runtime setup", () => {
     expect(setup).toContain('"jinja2==3.1.6"')
     expect(setup).toContain('".ready-mlx-v1.6"')
     expect(setup).toContain('"PaddlePaddle/PaddleOCR-VL-1.6"')
-    expect(setup).toContain('"huggingface_hub==2.0.0"')
+    expect(setup).toContain('from "./model-download.mjs"')
   })
 
   describe.skipIf(process.platform === "win32")("with a stand-in uv", () => {
     let root = ""
     let env: NodeJS.ProcessEnv = {}
+    let hosts: Server | null = null
 
     beforeEach(async () => {
       root = await mkdtemp(join(tmpdir(), "ohmypaper-paddle-setup-"))
@@ -67,18 +104,22 @@ describe("PaddleOCR-VL runtime setup", () => {
       await writeFile(join(bin, "uv"), fakeUv)
       await chmod(join(bin, "uv"), 0o755)
       const { PATH: inheritedPath = "" } = process.env
+      const model = await fakeModelHosts(join(root, "uv.log"))
+      hosts = model.server
       env = {
         ...process.env,
         PATH: `${bin}${delimiter}${inheritedPath}`,
         FAKE_UV_LOG: join(root, "uv.log"),
         FAKE_PROGRESS: join(root, "paddle-vl-install.progress.json"),
-        HF_HUB_OFFLINE: "1",
+        HF_ENDPOINT: `${model.base}/hf`,
+        MODELSCOPE_ENDPOINT: `${model.base}/ms`,
         OH_MY_PAPER_PADDLE_VL_RUNTIME: join(root, "paddle-vl-runtime"),
         OH_MY_PAPER_PADDLE_VL_MLX_RUNTIME: join(root, "paddle-vl-mlx-runtime"),
       }
     })
 
     afterEach(async () => {
+      await new Promise<void>((resolve) => (hosts ? hosts.close(() => resolve()) : resolve()))
       await rm(root, { recursive: true, force: true })
     })
 
@@ -109,7 +150,7 @@ describe("PaddleOCR-VL runtime setup", () => {
       expect(code, output).toBe(0)
 
       const calls = (await readFile(join(root, "uv.log"), "utf8")).trim().split("\n")
-      const modelStart = calls.findIndex((line) => line.startsWith("start tool run"))
+      const modelStart = calls.findIndex((line) => line.startsWith("request "))
       const paddleEnd = calls.findIndex(
         (line) => line.startsWith("end pip install") && line.includes("paddlepaddle==3.2.1"),
       )
@@ -118,6 +159,9 @@ describe("PaddleOCR-VL runtime setup", () => {
       await expect(
         readFile(join(root, "paddle-vl-mlx-runtime", ".ready-mlx-v1.6"), "utf8"),
       ).resolves.toContain("MLX-VLM")
+      await expect(
+        readFile(join(root, "paddle-vl-mlx-runtime", "models", "PaddleOCR-VL-1.6", "config.json")),
+      ).resolves.toEqual(MODEL_FILES["config.json"])
     })
 
     it("leaves a running install alone", async () => {

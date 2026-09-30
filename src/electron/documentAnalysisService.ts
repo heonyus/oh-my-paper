@@ -4,7 +4,12 @@ import {
   snapshotOfAnalysisJobs,
 } from "../shared/documentAnalysis"
 import type { DocumentId, DocumentRecord } from "../shared/schemas"
-import { failedAnalysisJob, queuedAnalysisJob, runningAnalysisJob } from "./documentAnalysisJobs"
+import {
+  failedAnalysisJob,
+  queuedAnalysisJob,
+  runningAnalysisJob,
+  waitingAnalysisJob,
+} from "./documentAnalysisJobs"
 import type { DocumentAnalysisPageParser } from "./documentAnalysisPageRunner"
 import { analyseDocumentPages } from "./documentAnalysisRun"
 import { DocumentAnalysisStateStore } from "./documentAnalysisStateStore"
@@ -19,6 +24,11 @@ export class DocumentAnalysisService {
   /** Deleted while queued or running; their in-flight work must not report back. */
   readonly #forgotten = new Set<DocumentId>()
   readonly #queue: DocumentRecord[] = []
+  /** Held while the OCR engine downloads, so they wait instead of failing without it. */
+  readonly #waitingForEngine: DocumentRecord[] = []
+  readonly #engineInstalling: () => Promise<boolean>
+  readonly #enginePollMs: number
+  #enginePoll: ReturnType<typeof setInterval> | null = null
   readonly #scheduling = new Map<DocumentId, Promise<void>>()
   readonly #running = new Set<Promise<void>>()
   readonly #abort = new AbortController()
@@ -38,8 +48,13 @@ export class DocumentAnalysisService {
       readonly pageConcurrency?: number
       /** Documents analysed under another parser version are analysed again. */
       readonly parserVersion?: string
+      /** True while the OCR engine is being installed and is not ready yet. */
+      readonly engineInstalling?: () => Promise<boolean>
+      readonly enginePollMs?: number
     } = {},
   ) {
+    this.#engineInstalling = options.engineInstalling ?? (async () => false)
+    this.#enginePollMs = options.enginePollMs ?? 5_000
     const positiveInt = (value: number | undefined, fallback: number): number =>
       typeof value === "number" && Number.isInteger(value) && value > 0 ? value : fallback
     this.#maxConcurrency = positiveInt(options.maxConcurrency, 2)
@@ -122,6 +137,8 @@ export class DocumentAnalysisService {
     this.#forgotten.add(documentId)
     const queued = this.#queue.findIndex((document) => document.id === documentId)
     if (queued !== -1) this.#queue.splice(queued, 1)
+    const waiting = this.#waitingForEngine.findIndex((document) => document.id === documentId)
+    if (waiting !== -1) this.#waitingForEngine.splice(waiting, 1)
     this.#pending.delete(documentId)
     this.#readyDocuments.delete(documentId)
     this.#jobs.delete(documentId)
@@ -135,6 +152,8 @@ export class DocumentAnalysisService {
     this.#abort.abort()
     this.#listeners.clear()
     this.#queue.length = 0
+    this.#waitingForEngine.length = 0
+    this.#stopEnginePoll()
     this.#disposePromise = Promise.allSettled([
       this.#ready,
       ...this.#scheduling.values(),
@@ -166,6 +185,14 @@ export class DocumentAnalysisService {
 
   async #run(document: DocumentRecord): Promise<void> {
     const cancelled = (): boolean => this.#disposed || this.#forgotten.has(document.id)
+    if (await this.#engineInstalling().catch(() => false)) {
+      if (cancelled()) return
+      this.#waitingForEngine.push(document)
+      this.#jobs.set(document.id, waitingAnalysisJob(document))
+      this.#emit()
+      this.#startEnginePoll()
+      return
+    }
     const outcome = await analyseDocumentPages({
       document,
       parser: this.parser,
@@ -190,6 +217,39 @@ export class DocumentAnalysisService {
     this.#jobs.delete(document.id)
     this.#emit()
     void this.#persist()
+  }
+
+  /** Checks the engine until its install ends, then queues the documents that waited for it. */
+  #startEnginePoll(): void {
+    if (this.#enginePoll || this.#disposed) return
+    let checking = false
+    this.#enginePoll = setInterval(() => {
+      if (checking) return
+      checking = true
+      void this.#engineInstalling()
+        .catch(() => false)
+        .then((installing) => {
+          if (installing || this.#disposed) return
+          this.#stopEnginePoll()
+          const waiting = this.#waitingForEngine.splice(0)
+          for (const document of waiting) {
+            if (this.#forgotten.has(document.id)) continue
+            this.#jobs.set(document.id, queuedAnalysisJob(document))
+            this.#queue.push(document)
+          }
+          this.#emit()
+          this.#drainQueue()
+        })
+        .finally(() => {
+          checking = false
+        })
+    }, this.#enginePollMs)
+    this.#enginePoll.unref?.()
+  }
+
+  #stopEnginePoll(): void {
+    if (this.#enginePoll) clearInterval(this.#enginePoll)
+    this.#enginePoll = null
   }
 
   /** Tells listeners; a snapshot or listener that throws is logged, never stops the analysis. */
