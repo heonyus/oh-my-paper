@@ -27,7 +27,10 @@ APP_URL=http://127.0.0.1:8805 OUT_NAME=main \
   SCENES=open,translate,explain,page-translation,note,overview npm run record
 ```
 
-`public/timelines.json` lists which recordings the video uses, in order. Each scene has a
+`public/timelines.json` lists which recordings the video uses, in order; recordings made only for
+a tip clip (such as `page-translation`, recorded with `OUT_NAME=page-translation
+SCENES=page-translation`) go in `public/tip-timelines.json` instead, so the README video stays as
+it is. Each scene has a
 caption, optional key caps and a `focus` rectangle the camera eases toward; edit the JSON to
 retime or reframe without recording again.
 
@@ -37,6 +40,7 @@ retime or reframe without recording again.
 npm run studio                 # preview and scrub
 npm run render                 # out/oh-my-paper.mp4 (1920×1080)
 npm run render:clips           # tip clips → ../src/web/public/tutorials/*.mp4
+npm run render:clips -- page-translation   # just the named tips
 ```
 
 Add `--browser-executable=<chrome-headless-shell>` (or `REMOTION_BROWSER` for the clips) to

@@ -30,7 +30,7 @@ a terminal install that explains itself, and short per-feature tutorials.
   screen settles, never over the PDF selection itself, dismissed with `알겠어요`, Escape or
   `팁 끄기` (all tips). Seen tips are a per-browser convenience in localStorage; losing it only
   means a tip shows again, and a fresh data folder's welcome clears it. A tip whose clip is
-  missing shows without one (`page-translation.mp4` has not been recorded yet). The header `?` (사용법) lists every tip with its clip and can show them
+  missing shows without one. The header `?` (사용법) lists every tip with its clip and can show them
   again. Recordings for tips and the README video hide tips and use the quiet note companion.
 - GitHub star invitation (owner request, 2026-09-29; direct star 2026-09-30): the app asks and never
   stars without that choice or with credentials of its own. The wizard asks once, after the usage

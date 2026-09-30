@@ -20,9 +20,14 @@ type TipProps = {
   readonly sceneIds: readonly string[]
 }
 
-/** Every scene of every recording listed in public/timelines.json; missing files are skipped. */
-async function loadCuts(): Promise<readonly Cut[]> {
-  const files = (await (await fetch(staticFile("timelines.json"))).json()) as string[]
+/**
+ * Every scene of every recording listed in a public list; missing files are skipped.
+ * `timelines.json` feeds the README video and the tips, `tip-timelines.json` only the tips.
+ */
+async function loadCuts(list = "timelines.json"): Promise<readonly Cut[]> {
+  const listed = await fetch(staticFile(list))
+  if (!listed.ok) return []
+  const files = (await listed.json()) as string[]
   const cuts: Cut[] = []
   for (const file of files) {
     const response = await fetch(staticFile(file))
@@ -101,7 +106,7 @@ export function Root(): JSX.Element {
         durationInFrames={150}
         defaultProps={{ cuts: [], sceneIds: ["translate", "translate-result"] } as TipProps}
         calculateMetadata={async ({ props }) => {
-          const cuts = await loadCuts()
+          const cuts = [...(await loadCuts()), ...(await loadCuts("tip-timelines.json"))]
           const shots = tipCuts({ ...props, cuts })
           const total = shots.reduce((sum, { scene }) => sum + frames(scene.end - scene.start), 0)
           return { props: { ...props, cuts }, durationInFrames: Math.max(1, total) }
