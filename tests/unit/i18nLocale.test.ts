@@ -4,30 +4,9 @@ import { detectCliLocale } from "../../src/cli/locale"
 import { cliMessages } from "../../src/cli/messages"
 import { settingsMessages } from "../../src/renderer/messages/settings"
 import { formatOcrInstallProgress } from "../../src/shared/documentOcr"
-import {
-  type Catalog,
-  formatMessage,
-  LOCALES,
-  localeFromTags,
-  translator,
-} from "../../src/shared/i18n/locale"
+import { formatMessage, localeFromTags, translator } from "../../src/shared/i18n/locale"
 import { webMessages } from "../../src/web/messages"
-
-const placeholders = (text: string): string[] =>
-  [...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1] ?? "").sort()
-
-/** Every language has every key, none empty, with the same placeholders as the source. */
-function expectComplete(catalog: Catalog<Readonly<Record<string, string>>>): void {
-  const source = catalog.ko
-  for (const locale of LOCALES) {
-    const messages = catalog[locale]
-    expect(Object.keys(messages).sort()).toEqual(Object.keys(source).sort())
-    for (const [key, text] of Object.entries(messages)) {
-      expect(text.trim(), `${locale} ${key}`).not.toBe("")
-      expect(placeholders(text), `${locale} ${key}`).toEqual(placeholders(source[key] ?? ""))
-    }
-  }
-}
+import { expectCompleteCatalog } from "../support/i18nCatalog"
 
 describe("locale", () => {
   it("reads browser and terminal tags, skipping ones without a language", () => {
@@ -56,9 +35,9 @@ describe("locale", () => {
 
 describe("CLI wording", () => {
   it("has every message in both languages with matching placeholders", () => {
-    expectComplete(cliMessages)
-    expectComplete(webMessages)
-    expectComplete(settingsMessages)
+    expectCompleteCatalog(cliMessages)
+    expectCompleteCatalog(webMessages)
+    expectCompleteCatalog(settingsMessages)
   })
 
   it("speaks English when asked", () => {
