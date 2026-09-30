@@ -7,12 +7,14 @@ import {
   type HostedCredentialSave,
   type HostedCredentialStatus,
 } from "../../shared/webCredentials"
+import { useTranslator } from "../lib/locale"
+import { settingsMessages } from "../messages/settings"
 
-function sourceLabel(source: "personal" | "shared" | "missing"): string {
-  if (source === "personal") return "내 키 연결됨"
-  if (source === "shared") return "공용 키 사용 중"
-  return "키 필요"
-}
+const sourceLabels = {
+  personal: "settings.hosted.personal",
+  shared: "settings.hosted.shared",
+  missing: "settings.hosted.missing",
+} as const satisfies Readonly<Record<"personal" | "shared" | "missing", string>>
 
 function CredentialForm({
   provider,
@@ -27,6 +29,7 @@ function CredentialForm({
   readonly preferred: boolean
   readonly onSave: (credential: HostedCredentialSave) => Promise<void>
 }): JSX.Element {
+  const t = useTranslator(settingsMessages)
   const [apiKey, setApiKey] = useState("")
   const [model, setModel] = useState(status.model)
   const [message, setMessage] = useState("")
@@ -42,10 +45,10 @@ function CredentialForm({
         await onSave({ provider, apiKey, model: selectedModel })
       }
       setApiKey("")
-      setMessage("저장됨")
+      setMessage(t("settings.ai.saved"))
     } catch (error) {
       if (!(error instanceof Error)) throw error
-      setMessage("저장 실패")
+      setMessage(t("settings.ai.saveFailed"))
     }
   }
 
@@ -54,24 +57,24 @@ function CredentialForm({
       <div className="hosted-credential-head">
         <strong>{label}</strong>
         <span data-source={status.source}>
-          {sourceLabel(status.source)}
-          {preferred ? " · 기본" : ""}
+          {t(sourceLabels[status.source])}
+          {preferred ? ` · ${t("settings.hosted.default")}` : ""}
         </span>
       </div>
       <label>
-        <span>API 키</span>
+        <span>{t("settings.ai.apiKey")}</span>
         <input
           type="password"
-          aria-label={`${label} API 키`}
+          aria-label={t("settings.hosted.apiKeyLabel", { provider: label })}
           autoComplete="off"
           value={apiKey}
-          placeholder="새 키 입력"
+          placeholder={t("settings.hosted.newKey")}
           onChange={(event) => setApiKey(event.currentTarget.value)}
         />
       </label>
       {provider === "groq" ? (
         <label>
-          <span>모델</span>
+          <span>{t("settings.ai.model")}</span>
           <select value={model} onChange={(event) => setModel(event.currentTarget.value)}>
             {GROQ_WEB_MODELS.map((option) => (
               <option key={option} value={option}>
@@ -92,7 +95,7 @@ function CredentialForm({
           ) : null}
         </span>
         <button type="submit" disabled={apiKey.trim().length < 20}>
-          {`${label} 저장하고 기본으로 사용`}
+          {t("settings.hosted.save", { provider: label })}
         </button>
       </footer>
     </form>

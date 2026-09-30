@@ -1,12 +1,19 @@
+import type { Locale } from "./i18n/locale"
 import type { UiFontFamily } from "./schemas"
 
 export const uiFontOptions = [
-  { value: "wanted", label: "Wanted Sans" },
-  { value: "pretendard", label: "Pretendard" },
-  { value: "suit", label: "SUIT" },
-  { value: "geist-wanted", label: "Geist 영문 + Wanted Sans 한글" },
-  { value: "system", label: "시스템 글꼴" },
-] as const satisfies readonly { readonly value: UiFontFamily; readonly label: string }[]
+  { value: "wanted", label: { ko: "Wanted Sans", en: "Wanted Sans" } },
+  { value: "pretendard", label: { ko: "Pretendard", en: "Pretendard" } },
+  { value: "suit", label: { ko: "SUIT", en: "SUIT" } },
+  {
+    value: "geist-wanted",
+    label: { ko: "Geist 영문 + Wanted Sans 한글", en: "Geist for Latin + Wanted Sans for Korean" },
+  },
+  { value: "system", label: { ko: "시스템 글꼴", en: "System font" } },
+] as const satisfies readonly {
+  readonly value: UiFontFamily
+  readonly label: Readonly<Record<Locale, string>>
+}[]
 
 export const uiFontScalePresets = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const
 
@@ -26,12 +33,18 @@ export function uiFontScalePercent(scale: number): number {
   return Math.round(scale * 100)
 }
 
-export function uiFontScaleLabel(scale: number): string {
+const fontScaleLabels = {
+  ko: ["매우 작게", "작게", "기본", "크게", "아주 크게", "최대로 크게"],
+  en: ["Very small", "Small", "Default", "Large", "Extra large", "Largest"],
+} as const satisfies Readonly<Record<Locale, readonly string[]>>
+
+export function uiFontScaleLabel(scale: number, locale: Locale = "ko"): string {
+  const [tiny, small, normal, large, huge, largest] = fontScaleLabels[locale]
   const percent = uiFontScalePercent(scale)
-  if (percent <= 85) return "매우 작게"
-  if (percent < 100) return "작게"
-  if (percent === 100) return "기본"
-  if (percent <= 125) return "크게"
-  if (percent <= 150) return "아주 크게"
-  return "최대로 크게"
+  if (percent <= 85) return tiny
+  if (percent < 100) return small
+  if (percent === 100) return normal
+  if (percent <= 125) return large
+  if (percent <= 150) return huge
+  return largest
 }

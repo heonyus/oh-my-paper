@@ -1,25 +1,36 @@
 import type { JSX } from "react"
 import { type DocumentOcrProviderStatus, formatOcrInstallProgress } from "../../shared/documentOcr"
+import type { Locale } from "../../shared/i18n/locale"
+import { useLocale, useTranslator } from "../lib/locale"
+import { settingsMessages } from "../messages/settings"
 
-const accelerationLabels: Readonly<
+type Translate = ReturnType<typeof useTranslator<(typeof settingsMessages)["ko"]>>
+
+const accelerationLabels = {
+  vllm: "settings.ocr.vllm",
+  mlx: "settings.ocr.mlx",
+} as const satisfies Readonly<
   Record<NonNullable<DocumentOcrProviderStatus["acceleration"]>, string>
-> = {
-  vllm: "GPU 가속 (vLLM)",
-  mlx: "Apple 칩 가속 (MLX)",
-}
+>
 
-function installProgress(status: DocumentOcrProviderStatus): string {
+function installProgress(status: DocumentOcrProviderStatus, t: Translate, locale: Locale): string {
   return status.installProgress
-    ? `설치 중 ${formatOcrInstallProgress(status.installProgress)}`
-    : "설치 중"
+    ? t("settings.ocr.installingProgress", {
+        progress: formatOcrInstallProgress(status.installProgress, locale),
+      })
+    : t("settings.ocr.installing")
 }
 
-function readiness(status: DocumentOcrProviderStatus): string {
+function readiness(status: DocumentOcrProviderStatus, t: Translate, locale: Locale): string {
   if (!status.configured) {
-    return status.installing ? installProgress(status) : "로컬 런타임 설치 필요"
+    return status.installing ? installProgress(status, t, locale) : t("settings.ocr.installNeeded")
   }
-  if (status.acceleration) return `${accelerationLabels[status.acceleration]} 준비됨`
-  return "로컬 런타임 준비됨 · 가속 없음"
+  if (status.acceleration) {
+    return t("settings.ocr.accelerated", {
+      acceleration: t(accelerationLabels[status.acceleration]),
+    })
+  }
+  return t("settings.ocr.noAcceleration")
 }
 
 /**
@@ -33,36 +44,36 @@ export function DocumentOcrSettings({
   readonly status: DocumentOcrProviderStatus
   readonly analysis?: { readonly analysed: number; readonly total: number } | undefined
 }): JSX.Element {
+  const t = useTranslator(settingsMessages)
+  const { locale } = useLocale()
   return (
     <fieldset className="settings-group">
-      <legend>로컬 PDF 분석</legend>
+      <legend>{t("settings.ocr.title")}</legend>
       <div className="settings-row">
         <span>
           <strong>{status.model}</strong>
           <small>
-            {status.installing
-              ? "설치가 끝나면 자동으로 켜집니다. 그동안에도 문서는 바로 읽을 수 있습니다."
-              : "가져온 문서를 이 컴퓨터에서 분석합니다. 분석 중에도 바로 읽을 수 있습니다."}
+            {status.installing ? t("settings.ocr.installingDetail") : t("settings.ocr.detail")}
           </small>
         </span>
-        <strong>{readiness(status)}</strong>
+        <strong>{readiness(status, t, locale)}</strong>
         {status.installing && status.installProgress ? (
           <progress
             className="ocr-install-progress"
             max={100}
             value={status.installProgress.percent}
-            aria-label="OCR 엔진 설치 진행률"
+            aria-label={t("settings.ocr.progress")}
           />
         ) : null}
       </div>
       {analysis && analysis.total > 0 ? (
         <div className="settings-row">
           <span>
-            <strong>정밀 분석</strong>
-            <small>그림·표·수식과 원본 배치를 뒤에서 채웁니다. 읽는 논문부터 합니다.</small>
+            <strong>{t("settings.ocr.analysis")}</strong>
+            <small>{t("settings.ocr.analysisDetail")}</small>
           </span>
           <strong>
-            논문 {analysis.total}편 중 {analysis.analysed}편 완료
+            {t("settings.ocr.analysed", { total: analysis.total, analysed: analysis.analysed })}
           </strong>
         </div>
       ) : null}

@@ -1,5 +1,6 @@
 import { Check } from "lucide-react"
 import { type Dispatch, type FormEvent, type JSX, type SetStateAction, useState } from "react"
+import { LOCALES } from "../../shared/i18n/locale"
 import type { ProviderConfig, ProviderStatus } from "../../shared/ipc"
 import type { AiMode } from "../../shared/providerModels"
 import {
@@ -13,6 +14,15 @@ import {
   OPENROUTER_PAGE_TRANSLATION_OPTIONS,
   PAGE_TRANSLATION_MAIN_MODEL,
 } from "../../shared/providerModels"
+import { useTranslator } from "../lib/locale"
+import { settingsMessages } from "../messages/settings"
+
+/** A failed save, in whichever language it was reported before the reader switched. */
+function isSaveFailure(message: string): boolean {
+  return LOCALES.some((locale) =>
+    message.startsWith(settingsMessages[locale]["settings.ai.saveFailed"]),
+  )
+}
 
 function providerModelOptions(provider: ProviderConfig["provider"]): readonly string[] {
   switch (provider) {
@@ -70,7 +80,10 @@ export function AiProviderSettings({
     message,
     setMessage,
   } = form
+  const t = useTranslator(settingsMessages)
   const [saving, setSaving] = useState(false)
+  const saveFailed = (error: unknown): string =>
+    `${t("settings.ai.saveFailed")}: ${errorMessage(error, t("settings.ai.saveError"))}`
 
   async function saveMode(nextMode: AiMode, previousMode: AiMode): Promise<void> {
     setSaving(true)
@@ -78,10 +91,10 @@ export function AiProviderSettings({
     setMode(nextMode)
     try {
       await onModeSave(nextMode)
-      setMessage("저장됨")
+      setMessage(t("settings.ai.saved"))
     } catch (error) {
       setMode(previousMode)
-      setMessage(`저장 실패: ${errorMessage(error)}`)
+      setMessage(saveFailed(error))
     } finally {
       setSaving(false)
     }
@@ -101,9 +114,9 @@ export function AiProviderSettings({
       }
       if (!hideChatgptMode) await onModeSave(mode)
       setKey("")
-      setMessage("저장됨")
+      setMessage(t("settings.ai.saved"))
     } catch (error) {
-      setMessage(`저장 실패: ${errorMessage(error)}`)
+      setMessage(saveFailed(error))
     } finally {
       setSaving(false)
     }
@@ -114,7 +127,7 @@ export function AiProviderSettings({
       <div className="settings-group">
         {!hideChatgptMode ? (
           <label className="settings-row" htmlFor="ai-mode">
-            <span>AI 접근 방식</span>
+            <span>{t("settings.ai.mode")}</span>
             <select
               id="ai-mode"
               value={mode}
@@ -130,9 +143,11 @@ export function AiProviderSettings({
               }}
               disabled={saving}
             >
-              {claudeAvailable ? <option value="claude">Claude 구독</option> : null}
-              <option value="chatgpt">ChatGPT 구독</option>
-              <option value="api">API 키·로컬 연결 (고급)</option>
+              {claudeAvailable ? (
+                <option value="claude">{t("settings.ai.mode.claude")}</option>
+              ) : null}
+              <option value="chatgpt">{t("settings.ai.mode.chatgpt")}</option>
+              <option value="api">{t("settings.ai.mode.api")}</option>
             </select>
           </label>
         ) : null}
@@ -168,10 +183,10 @@ export function AiProviderSettings({
               </select>
             </label>
             <label className="settings-row" htmlFor="provider-model">
-              <span>모델</span>
+              <span>{t("settings.ai.model")}</span>
               <select
                 id="provider-model"
-                aria-label="모델 ID"
+                aria-label={t("settings.ai.modelId")}
                 value={model}
                 onChange={(event) => setModel(event.currentTarget.value)}
               >
@@ -184,14 +199,16 @@ export function AiProviderSettings({
             </label>
             {provider === "openrouter" ? (
               <label className="settings-row" htmlFor="page-translation-model">
-                <span>페이지 번역</span>
+                <span>{t("settings.ai.pageTranslation")}</span>
                 <select
                   id="page-translation-model"
-                  aria-label="페이지 번역 모델"
+                  aria-label={t("settings.ai.pageTranslationModel")}
                   value={pageTranslationModel}
                   onChange={(event) => setPageTranslationModel(event.currentTarget.value)}
                 >
-                  <option value={PAGE_TRANSLATION_MAIN_MODEL}>메인 모델 사용</option>
+                  <option value={PAGE_TRANSLATION_MAIN_MODEL}>
+                    {t("settings.ai.useMainModel")}
+                  </option>
                   {OPENROUTER_PAGE_TRANSLATION_OPTIONS.map((option) => (
                     <option key={option} value={option}>
                       {option}
@@ -202,21 +219,27 @@ export function AiProviderSettings({
             ) : null}
             <label className="settings-row" htmlFor="provider-key">
               <span>
-                {openRouterOnly ? "OpenRouter API 키" : "API 키"}
+                {openRouterOnly ? t("settings.ai.openRouterKey") : t("settings.ai.apiKey")}
                 {keyConfigured ? (
                   <small className="settings-key-status">
-                    <Check size={12} aria-hidden /> 저장된 키 사용 중
+                    <Check size={12} aria-hidden /> {t("settings.ai.savedKey")}
                   </small>
                 ) : null}
               </span>
               <input
                 id="provider-key"
-                aria-label={openRouterOnly ? "OpenRouter API 키" : "API 키"}
+                aria-label={
+                  openRouterOnly ? t("settings.ai.openRouterKey") : t("settings.ai.apiKey")
+                }
                 type="password"
                 autoComplete="off"
                 value={key}
                 placeholder={
-                  keyConfigured ? "변경하려면 새 키 입력" : provider === "groq" ? "gsk_…" : "API 키"
+                  keyConfigured
+                    ? t("settings.ai.newKeyPlaceholder")
+                    : provider === "groq"
+                      ? "gsk_…"
+                      : t("settings.ai.apiKey")
                 }
                 onChange={(event) => setKey(event.currentTarget.value)}
                 disabled={saving}
@@ -226,9 +249,7 @@ export function AiProviderSettings({
         ) : (
           <div className="settings-row">
             <span className="settings-help">
-              {mode === "claude"
-                ? "아래에서 Claude 연결 상태를 확인하세요. 별도 API 키는 필요하지 않습니다."
-                : "아래에서 ChatGPT로 로그인하세요. 별도 API 키는 필요하지 않습니다."}
+              {mode === "claude" ? t("settings.ai.claudeHelp") : t("settings.ai.chatgptHelp")}
             </span>
           </div>
         )}
@@ -236,8 +257,8 @@ export function AiProviderSettings({
       {mode === "api" || message ? (
         <div className="settings-form-footer">
           {message ? (
-            <span role="status" data-error={message.startsWith("저장 실패") || undefined}>
-              {message.startsWith("저장 실패") ? null : <Check size={13} />} {message}
+            <span role="status" data-error={isSaveFailure(message) || undefined}>
+              {isSaveFailure(message) ? null : <Check size={13} />} {message}
             </span>
           ) : (
             <span />
@@ -248,7 +269,7 @@ export function AiProviderSettings({
               type="submit"
               disabled={saving || (openRouterOnly && key.trim().length < 20)}
             >
-              {openRouterOnly ? "OpenRouter 설정 저장" : "암호화하여 저장"}
+              {openRouterOnly ? t("settings.ai.saveOpenRouter") : t("settings.ai.saveEncrypted")}
             </button>
           ) : null}
         </div>
@@ -307,8 +328,6 @@ export function useAiProviderForm(
   }
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error && error.message.trim()
-    ? error.message
-    : "요청을 저장하지 못했습니다"
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message.trim() ? error.message : fallback
 }

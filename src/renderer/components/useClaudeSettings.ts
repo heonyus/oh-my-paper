@@ -5,6 +5,8 @@ import {
   DEFAULT_CLAUDE_EFFORT,
   DEFAULT_CLAUDE_MODEL,
 } from "../../shared/claudeTypes"
+import { useTranslator } from "../lib/locale"
+import { subscriptionMessages } from "../messages/subscription"
 
 export type ClaudeSettingsState = {
   readonly supported: boolean
@@ -29,6 +31,7 @@ export function useClaudeSettings({
   readonly onConnectionChange?: (() => Promise<void>) | undefined
 }): ClaudeSettingsState {
   const api = window.ohmypaper.claude
+  const t = useTranslator(subscriptionMessages)
   const [status, setStatus] = useState<ClaudeAccountStatus | null>(null)
   const [message, setMessage] = useState("")
   const [busy, setBusy] = useState(false)
@@ -36,10 +39,16 @@ export function useClaudeSettings({
   const [selectedEffort, setSelectedEffort] = useState<ClaudeEffort>(DEFAULT_CLAUDE_EFFORT)
   const changed = useRef(onConnectionChange)
   const wasPending = useRef(false)
+  // The latest wording, for callbacks that outlive a language switch.
+  const text = useRef(t)
 
   useEffect(() => {
     changed.current = onConnectionChange
   }, [onConnectionChange])
+
+  useEffect(() => {
+    text.current = t
+  }, [t])
 
   const refresh = useCallback(async (): Promise<void> => {
     if (!api) return
@@ -49,7 +58,7 @@ export function useClaudeSettings({
       if (providerStatus.claudeModel) setSelectedModel(providerStatus.claudeModel)
       if (providerStatus.claudeEffort) setSelectedEffort(providerStatus.claudeEffort)
     } catch (error) {
-      setMessage(errorMessage(error))
+      setMessage(errorMessage(error, text.current("sub.requestFailed")))
     }
   }, [api])
 
@@ -63,7 +72,9 @@ export function useClaudeSettings({
       void api
         .getStatus()
         .then(setStatus)
-        .catch((error: unknown) => setMessage(errorMessage(error)))
+        .catch((error: unknown) =>
+          setMessage(errorMessage(error, text.current("sub.requestFailed"))),
+        )
     }, LOGIN_POLL_MS)
     return () => clearInterval(timer)
   }, [api, status?.loginPending])
@@ -71,13 +82,23 @@ export function useClaudeSettings({
   useEffect(() => {
     if (!status) return
     if (wasPending.current && !status.loginPending) {
-      setMessage(status.authenticated ? "로그인 완료" : "로그인이 완료되지 않았습니다")
+      setMessage(
+        status.authenticated
+          ? text.current("sub.signedIn")
+          : text.current("sub.claude.notCompleted"),
+      )
       if (status.authenticated) {
-        void changed.current?.().catch((error: unknown) => setMessage(errorMessage(error)))
+        void changed
+          .current?.()
+          .catch((error: unknown) =>
+            setMessage(errorMessage(error, text.current("sub.requestFailed"))),
+          )
       }
     }
     wasPending.current = status.loginPending
   }, [status])
+
+  const failed = t("sub.requestFailed")
 
   async function startLogin(): Promise<void> {
     if (!api) return
@@ -86,9 +107,9 @@ export function useClaudeSettings({
     try {
       const next = await api.startLogin()
       setStatus(next)
-      if (next.loginPending) setMessage("열린 브라우저에서 Claude 로그인을 완료하세요.")
+      if (next.loginPending) setMessage(t("sub.claude.finishInBrowser"))
     } catch (error) {
-      setMessage(errorMessage(error))
+      setMessage(errorMessage(error, failed))
     } finally {
       setBusy(false)
     }
@@ -100,9 +121,9 @@ export function useClaudeSettings({
     try {
       wasPending.current = false
       setStatus(await api.cancelLogin())
-      setMessage("로그인 취소됨")
+      setMessage(t("sub.signInCancelled"))
     } catch (error) {
-      setMessage(errorMessage(error))
+      setMessage(errorMessage(error, failed))
     } finally {
       setBusy(false)
     }
@@ -120,7 +141,7 @@ export function useClaudeSettings({
       await save(nextModel, selectedEffort)
     } catch (error) {
       setSelectedModel(previous)
-      setMessage(errorMessage(error))
+      setMessage(errorMessage(error, failed))
     }
   }
 
@@ -131,7 +152,7 @@ export function useClaudeSettings({
       await save(selectedModel, nextEffort)
     } catch (error) {
       setSelectedEffort(previous)
-      setMessage(errorMessage(error))
+      setMessage(errorMessage(error, failed))
     }
   }
 
@@ -151,6 +172,6 @@ export function useClaudeSettings({
   }
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "요청 실패"
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback
 }
