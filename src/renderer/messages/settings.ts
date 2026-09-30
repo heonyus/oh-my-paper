@@ -2,7 +2,7 @@ import type { Catalog } from "../../shared/i18n/locale"
 
 const ko = {
   "settings.language": "언어",
-  "settings.languageAuto": "자동 (브라우저 언어)",
+  "settings.languageAuto": "자동 (컴퓨터 언어)",
 
   // Settings dialog
   "settings.title": "설정",
@@ -86,7 +86,7 @@ const ko = {
 
 const en: Readonly<Record<keyof typeof ko, string>> = {
   "settings.language": "Language",
-  "settings.languageAuto": "Automatic (browser language)",
+  "settings.languageAuto": "Automatic (your computer's language)",
 
   "settings.title": "Settings",
   "settings.sections": "Settings sections",

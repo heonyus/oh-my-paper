@@ -48,6 +48,13 @@ function defaultModel(provider: z.infer<typeof providerSchema> | null): string |
   return null
 }
 
+/** Where the app keeps papers and settings: OH_MY_PAPER_WEB_DATA_DIR, or ~/.ohmypaper/web. */
+export function webDataDir(
+  configured: string | undefined = process.env["OH_MY_PAPER_WEB_DATA_DIR"],
+): string {
+  return resolve(configured?.trim() || join(homedir(), ".ohmypaper", "web"))
+}
+
 export function readWebServerConfig(environment: NodeJS.ProcessEnv = process.env): WebServerConfig {
   loadDotenv()
   const parsed = environmentSchema.parse(environment)
@@ -55,7 +62,7 @@ export function readWebServerConfig(environment: NodeJS.ProcessEnv = process.env
   return {
     host: parsed.OH_MY_PAPER_WEB_HOST,
     port: parsed.OH_MY_PAPER_WEB_PORT,
-    dataDir: resolve(parsed.OH_MY_PAPER_WEB_DATA_DIR ?? join(homedir(), ".ohmypaper", "web")),
+    dataDir: webDataDir(parsed.OH_MY_PAPER_WEB_DATA_DIR),
     staticDir: resolve(parsed.OH_MY_PAPER_WEB_STATIC_DIR ?? join(process.cwd(), "dist-web")),
     provider,
     model: parsed.OH_MY_PAPER_WEB_MODEL ?? defaultModel(provider),

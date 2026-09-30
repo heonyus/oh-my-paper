@@ -219,6 +219,12 @@ const ko = {
   "help.noOpen": "브라우저를 열지 않고 시작합니다",
   "help.quickstart": "빠른 시작",
   "help.unknown": "알 수 없는 명령: {command}",
+  "help.language": "언어를 바꿉니다 (한국어 · English)",
+
+  "language.ask": "언어 · Language",
+  "language.saved": "이제 터미널과 앱이 한국어로 나옵니다",
+  "language.auto": "이제 컴퓨터 언어를 따라갑니다",
+  "language.unknown": "모르는 언어입니다: {value} — ko, en, auto 중에서 고르세요",
 } as const
 
 type Key = keyof typeof ko
@@ -436,6 +442,12 @@ const en: Readonly<Record<Key, string>> = {
   "help.noOpen": "Start without opening a browser",
   "help.quickstart": "Quick start",
   "help.unknown": "Unknown command: {command}",
+  "help.language": "Change the language (한국어 · English)",
+
+  "language.ask": "Language · 언어",
+  "language.saved": "The terminal and the app now use English",
+  "language.auto": "The language now follows your computer",
+  "language.unknown": "Unknown language: {value} — choose ko, en or auto",
 }
 
 export const cliMessages: Catalog<typeof ko> = { ko, en }

@@ -18,6 +18,7 @@ import {
   OPENROUTER_MODEL_OPTIONS,
 } from "../shared/providerModels"
 import { checkEnvironment, recordOcrDeclined, startOcrInstallInBackground } from "./environment"
+import { chooseLanguage } from "./language"
 import { t } from "./messages"
 import { runApiKeyOnboarding } from "./onboardingApi"
 import { runChatgptOnboarding } from "./onboardingChatgpt"
@@ -180,6 +181,11 @@ export async function runOnboarding(
 ): Promise<OnboardingOutcome> {
   process.stdout.write(`${banner(packageVersion())}\n`)
   intro(inverse(` ${t("wizard.title")} `))
+  // First, so the rest of setup, and the app after it, speak the language picked here.
+  if (!(await chooseLanguage(config))) {
+    cancel(t("wizard.cancelled"))
+    return { completed: false, launch: false }
+  }
   note(
     [
       t("wizard.intro"),
