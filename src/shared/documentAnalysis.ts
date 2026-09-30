@@ -12,6 +12,8 @@ export const documentAnalysisJobSchema = z.discriminatedUnion("state", [
   documentAnalysisBaseSchema.extend({
     state: z.literal("queued"),
     completedPages: z.number().int().nonnegative(),
+    /** Why it waits, when it is not just its turn (the OCR engine still downloading). */
+    message: z.string().trim().min(1).max(300).optional(),
   }),
   documentAnalysisBaseSchema.extend({
     state: z.literal("running"),
