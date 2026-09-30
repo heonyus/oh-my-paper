@@ -35,8 +35,7 @@ banner() {
   printf '\n'
   printf '  %s\n' "$(paint '127;209;160' '┌─┐┬ ┬   ┌┬┐┬ ┬   ┌─┐┌─┐┌─┐┌─┐┬─┐')"
   printf '  %s   %s\n' "$(paint '183;202;115' '│ │├─┤───│││└┬┘───├─┘├─┤├─┘├┤ ├┬┘')" "${DIM}installer${RESET}"
-  printf '  %s\n' "$(paint '239;194;69' '└─┘┴ ┴   ┴ ┴ ┴    ┴  ┴ ┴┴  └─┘┴└─')"
-  printf '  %s\n\n' "${DIM}읽은 것은 남고, 필요한 것은 다시 찾을 수 있게.${RESET}"
+  printf '  %s\n\n' "$(paint '239;194;69' '└─┘┴ ┴   ┴ ┴ ┴    ┴  ┴ ┴┴  └─┘┴└─')"
 }
 
 step() { printf '\n%s◆%s  %s%s%s\n' "$GREEN" "$RESET" "$BOLD" "$1" "$RESET"; }

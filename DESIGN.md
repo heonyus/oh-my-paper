@@ -6,7 +6,8 @@ The owner asked for OpenAI subscription login on equal footing with Claude, the 
 a terminal install that explains itself, and short per-feature tutorials.
 
 - Connect screen (browser, first run): one screen, no separate welcome step. Left: the product
-  line `읽은 것은 남고, 필요한 것은 다시 찾을 수 있게.` and a looping picture of the reader (a
+  line `PDF는 그대로, 번역·설명·노트는 원문 자리에.` (the earlier tagline was retired on
+  2026-09-30) and a looping picture of the reader (a
   sentence lights up, its translation card and a note appear beside it). Right: ChatGPT 구독,
   Claude 구독 (when the local Claude Code CLI exists) and API 키 as equal choices; neither
   subscription is labelled recommended. Choice hints name the default model from the shared
@@ -56,7 +57,7 @@ a terminal install that explains itself, and short per-feature tutorials.
 This section supersedes the 2026-09-15 reference-family parity and its "context-aware AI
 beside the source" framing. The browser shell, Library and Reader navigation, local
 preparation, tokens, accessibility and responsive rules below stay in force. The typography
-specimen already states the goal: `읽은 것은 남고, 필요한 것은 다시 찾을 수 있어야 합니다.`
+specimen is a paper sentence: `어텐션은 모든 토큰이 한 번에 다른 모든 토큰을 보게 합니다.`
 Evidence and code survey: `docs/learning-core-research.md`.
 
 Primary persona: a Korean researcher reading English papers who wants to understand and keep
@@ -324,7 +325,7 @@ Original photographic samples remain reference colors, not mandatory control col
 - Title 24px, section 16px, body 14px, metadata 12px at 100%; use the existing semantic scale for toolbar variants. Prefer restrained medium weights, no decorative serif UI.
 - User text scale 50–200%, 5% steps, presets 50/75/100/125/150/175/200. No duplicate “100% 초기화” button. Warn that values below 90% are small without blocking the preference.
 - Text scale does not scale PDF pages or shrink hit targets. Controls expand/wrap at 200%, never clip or hide actions. Minimum desktop target 32px; touch target 44px.
-- Specimens: `읽은 것은 남고, 필요한 것은 다시 찾을 수 있어야 합니다.` / `What we read should remain, and what we need should be easy to find again.`
+- Specimens: `어텐션은 모든 토큰이 한 번에 다른 모든 토큰을 보게 합니다.` / `Attention lets every token look at every other token in a single step.`
 - Gaps 4/8/12/16/24/32px; 1px hairlines. Radius tiers: 8px inset fields, 12px controls, 18px content cards, 24px floating panels/dialogs; inner radii follow outer radius minus padding. Use progressive `corner-shape: squircle` where supported, with ordinary rounded corners as a safe fallback. Do not round the PDF page itself. Keep content grouped by spacing rather than boxed everywhere.
 
 ### Glass chrome, 2026-09-06

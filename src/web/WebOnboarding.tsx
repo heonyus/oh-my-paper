@@ -346,15 +346,14 @@ export function WebOnboarding({
           <h1>oh-my-paper</h1>
         </header>
         <p className="web-onboarding-headline">
-          읽은 것은 남고,
+          PDF는 그대로,
           <br />
-          필요한 것은
+          번역·설명·노트는
           <br />
-          <span>다시 찾을 수 있게.</span>
+          <span>원문 자리에.</span>
         </p>
         <p className="web-onboarding-lede">
-          PDF는 그대로 두고, 번역·설명·노트를 원문 자리에 붙여 둡니다. 문서는 이 컴퓨터 밖으로
-          나가지 않습니다.
+          문장을 고르고 한 키로 번역·설명·노트를 붙입니다. 문서는 이 컴퓨터 밖으로 나가지 않습니다.
         </p>
         <ReaderVignette />
       </section>

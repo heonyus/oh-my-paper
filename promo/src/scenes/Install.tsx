@@ -35,7 +35,9 @@ const INSTALL: readonly Line[] = [
 ]
 
 const WIZARD: readonly Line[] = [
-  { at: 140, text: "◆  2/4  AI 연결", tone: "step" },
+  { at: 134, text: "◆  2/4  OCR 엔진 (선택)", tone: "step" },
+  { at: 136, text: "│  ✔ 백그라운드에서 받는 중 — AI를 연결하는 동안 받아 둡니다", tone: "ok" },
+  { at: 140, text: "◆  3/4  AI 연결", tone: "step" },
   {
     at: 142,
     text: "│  번역·설명·노트 튜터가 쓸 AI입니다. 구독이 있으면 API 키 없이 바로 됩니다.",
@@ -44,13 +46,13 @@ const WIZARD: readonly Line[] = [
   { at: 148, text: "◆  어떻게 연결할까요?", tone: "step" },
   {
     at: 150,
-    text: "│  ● ChatGPT 구독 (OpenAI)   ChatGPT 계정 로그인 · API 키 불필요 · GPT-6 Astra",
+    text: "│  ● ChatGPT 구독 (OpenAI)   ChatGPT 계정 로그인 · API 키 불필요 · GPT-6 Luna",
     tone: "pick",
   },
   { at: 150, text: "│  ○ Claude 구독 (Anthropic)" },
   { at: 150, text: "│  ○ API 키" },
   { at: 186, text: "│  ✔ 연결된 계정 · 브라우저 로그인 완료", tone: "ok" },
-  { at: 196, text: "│  ✔ ChatGPT 구독 연결 완료 · gpt-6-astra · 추론 medium", tone: "ok" },
+  { at: 196, text: "│  ✔ ChatGPT 구독 연결 완료 · gpt-6-luna · 추론 medium", tone: "ok" },
   { at: 206, text: "◆  4/4  사용법 — T 번역  E 설명  C 노트에  H 하이라이트", tone: "step" },
 ]
 
@@ -147,10 +149,6 @@ export function Install(): JSX.Element {
                     {row}
                   </div>
                 ))}
-                <div style={{ color: "#8a988e", fontStyle: "italic", marginTop: 6 }}>
-                  {" "}
-                  읽은 것은 남고, 필요한 것은 다시 찾을 수 있게.
-                </div>
               </div>
             ) : null}
             {lines.map((line) => (
