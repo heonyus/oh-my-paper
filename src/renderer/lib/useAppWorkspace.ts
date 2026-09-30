@@ -17,6 +17,7 @@ import { useDocumentImportFlow } from "./useDocumentImportFlow"
 import { useDocumentInsights } from "./useDocumentInsights"
 import { useEvidenceNavigation } from "./useEvidenceNavigation"
 import { useKnowledgeClientOps } from "./useKnowledgeClientOps"
+import { useOverviewPrefetch } from "./useOverviewPrefetch"
 import { usePaperAiRequest } from "./usePaperAiRequest"
 import { usePostItShortcut } from "./usePostItShortcut"
 import { useReaderLearning } from "./useReaderLearning"
@@ -167,6 +168,7 @@ export function useAppWorkspace() {
     history.setWorkspaceTransient,
   )
   const runAi = usePaperAiRequest(activeDocument, activeInsights, provider)
+  useOverviewPrefetch(history.workspace, provider, history.setWorkspaceTransient)
   const activeOverviewReady =
     Boolean(activeDocument?.overview) ||
     new Set(activeInsights.map((insight) => insight.kind)).size === 3
