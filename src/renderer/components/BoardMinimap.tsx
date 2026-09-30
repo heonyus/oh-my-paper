@@ -8,6 +8,8 @@ import {
   type WorldRect,
   worldRectToMinimap,
 } from "../lib/boardNavigation"
+import { useTranslator } from "../lib/locale"
+import { boardMessages } from "../messages/board"
 import type { Viewport } from "../types"
 
 type BoardMinimapProps = {
@@ -33,6 +35,7 @@ export function BoardMinimap({
   onHome,
   onClose = () => undefined,
 }: BoardMinimapProps): JSX.Element {
+  const t = useTranslator(boardMessages)
   const dragging = useRef(false)
   const navigate = (event: ReactPointerEvent<SVGSVGElement>): void => {
     const rect = event.currentTarget.getBoundingClientRect()
@@ -59,19 +62,29 @@ export function BoardMinimap({
   const minimapActivePage = activePage ? worldRectToMinimap(activePage, bounds) : null
   const minimapCards = cards.map((card) => worldRectToMinimap(card, bounds))
   return (
-    <aside className="board-minimap" aria-label="보드 미니맵">
+    <aside className="board-minimap" aria-label={t("minimap.label")}>
       <header>
-        <strong className="board-minimap-title">미니맵</strong>
+        <strong className="board-minimap-title">{t("minimap.title")}</strong>
         <span className="board-minimap-pages">{pages.length}p</span>
-        <button type="button" aria-label="첫 페이지로" title="첫 페이지로" onClick={onHome}>
+        <button
+          type="button"
+          aria-label={t("minimap.home")}
+          title={t("minimap.home")}
+          onClick={onHome}
+        >
           <RotateCcw size={13} aria-hidden="true" />
         </button>
-        <button type="button" aria-label="미니맵 숨기기" title="미니맵 숨기기" onClick={onClose}>
+        <button
+          type="button"
+          aria-label={t("minimap.hide")}
+          title={t("minimap.hide")}
+          onClick={onClose}
+        >
           <X size={13} aria-hidden="true" />
         </button>
       </header>
       <svg
-        aria-label="미니맵 탐색"
+        aria-label={t("minimap.navigate")}
         role="application"
         viewBox="0 0 100 100"
         preserveAspectRatio="none"
@@ -108,15 +121,15 @@ export function BoardMinimap({
       <div className="minimap-legend" aria-hidden="true">
         <span>
           <i data-kind="page" />
-          논문
+          {t("minimap.paper")}
         </span>
         <span>
           <i data-kind="card" />
-          카드
+          {t("minimap.cards")}
         </span>
         <span>
           <i data-kind="view" />
-          현재 화면
+          {t("minimap.view")}
         </span>
       </div>
     </aside>

@@ -1,6 +1,8 @@
 import { type FormEvent, type JSX, useState } from "react"
 import { withinCardChatLimits } from "../lib/cardChatLimits"
 import type { SourceCitation } from "../lib/chatCitations"
+import { useTranslator } from "../lib/locale"
+import { boardMessages } from "../messages/board"
 import type { AiDeltaHandler, BoardCard } from "../types"
 import { ChatComposer } from "./ChatComposer"
 import { MarkdownContent } from "./MarkdownContent"
@@ -21,6 +23,7 @@ export function BoardCardChat({
     onDelta?: AiDeltaHandler,
   ) => Promise<string>
 }): JSX.Element {
+  const t = useTranslator(boardMessages)
   const [input, setInput] = useState("")
   const [sending, setSending] = useState(false)
   const [streamedAnswer, setStreamedAnswer] = useState("")
@@ -42,10 +45,7 @@ export function BoardCardChat({
       setStreamedAnswer("")
     } catch {
       onChange(
-        withinCardChatLimits([
-          ...withQuestion,
-          { role: "assistant", content: "AI 설정을 확인한 뒤 다시 보내주세요." },
-        ]),
+        withinCardChatLimits([...withQuestion, { role: "assistant", content: t("chat.failed") }]),
       )
     } finally {
       setSending(false)
@@ -53,7 +53,7 @@ export function BoardCardChat({
   }
 
   return (
-    <section className="card-chat" aria-label="카드 후속 질문">
+    <section className="card-chat" aria-label={t("chat.section")}>
       {card.chat.length > 0 ? (
         <div className="card-chat-history" aria-live="polite">
           {card.chat.map((message) => (
@@ -74,8 +74,8 @@ export function BoardCardChat({
         </div>
       ) : null}
       <ChatComposer
-        label="카드에 후속 질문"
-        submitLabel="후속 질문 보내기"
+        label={t("chat.input")}
+        submitLabel={t("chat.submit")}
         value={input}
         sending={sending}
         responseStarted={streamedAnswer.length > 0}

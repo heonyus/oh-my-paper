@@ -5,11 +5,13 @@ import type { ReaderNote } from "../../shared/readerNote"
 import type { DocumentInsight } from "../../shared/schemas"
 import { researchSidebarLayout } from "../../shared/uiLayout"
 import type { SourceCitation } from "../lib/chatCitations"
+import { useTranslator } from "../lib/locale"
 import { earlierNoteParagraphs } from "../lib/noteTutor"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
 import type { PreparedSummary } from "../lib/pdfDocumentFeatures"
 import type { PdfOutlineEntry } from "../lib/pdfOutline"
 import { flashQuoteOnPage } from "../lib/sourceQuoteFlash"
+import { readerMessages } from "../messages/reader"
 import type {
   AiRequestRunner,
   BoardCard,
@@ -60,6 +62,7 @@ export function ReaderWorkspace(props: {
   readonly dismissEvidence: () => void
   readonly importPdf: () => void
 }): JSX.Element {
+  const t = useTranslator(readerMessages)
   const { document, workspace, updateWorkspace } = props
   const onViewportChange = props.updateViewport
   const documentId = document?.id
@@ -149,9 +152,9 @@ export function ReaderWorkspace(props: {
       ) : (
         <section className="empty-board">
           <div>
-            <h1>열린 논문이 없습니다</h1>
+            <h1>{t("workspace.empty")}</h1>
             <button type="button" className="primary-action" onClick={props.importPdf}>
-              PDF 가져오기
+              {t("workspace.import")}
             </button>
           </div>
         </section>

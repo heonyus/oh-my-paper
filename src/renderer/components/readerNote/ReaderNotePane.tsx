@@ -3,10 +3,12 @@ import { X } from "lucide-react"
 import { type JSX, useCallback, useEffect, useState } from "react"
 import type { ReaderNote } from "../../../shared/readerNote"
 import type { SourceCitation } from "../../lib/chatCitations"
+import { useTranslator } from "../../lib/locale"
 import type { ScoredSource } from "../../lib/noteSources"
 import type { EarlierNote } from "../../lib/noteTutor"
 import { useMeaningSearchReady } from "../../lib/useMeaningSearchReady"
 import { type CompanionDensity, useNoteCompanion } from "../../lib/useNoteCompanion"
+import { type NoteMessageKey, noteMessages } from "../../messages/note"
 import type { AiRequestRunner, DocumentRecord } from "../../types"
 import { evidenceQuote } from "./evidenceNode"
 import { MarginColumn } from "./MarginColumn"
@@ -15,10 +17,10 @@ import { ReaderNoteEditor } from "./ReaderNoteEditor"
 import { SourceLinkOverlay } from "./SourceLinkOverlay"
 
 const DENSITY_KEY = "ohmypaper:note-companion"
-const densities: readonly { readonly id: CompanionDensity; readonly label: string }[] = [
-  { id: "quiet", label: "조용히" },
-  { id: "normal", label: "보통" },
-  { id: "active", label: "적극적" },
+const densities: readonly { readonly id: CompanionDensity; readonly label: NoteMessageKey }[] = [
+  { id: "quiet", label: "density.quiet" },
+  { id: "normal", label: "density.normal" },
+  { id: "active", label: "density.active" },
 ]
 
 function storedDensity(): CompanionDensity {
@@ -66,6 +68,7 @@ export function ReaderNotePane({
   readonly pendingQuote: PendingNoteQuote | null
   readonly onPendingQuoteHandled: () => void
 }): JSX.Element {
+  const t = useTranslator(noteMessages)
   const [editor, setEditor] = useState<Editor | null>(null)
   const [density, setDensity] = useState(storedDensity)
   const rank = window.ohmypaper.rankByMeaning
@@ -117,22 +120,22 @@ export function ReaderNotePane({
     density === "quiet"
       ? null
       : searchState === "loading"
-        ? "준비 중"
+        ? t("pane.preparing")
         : searchState === "failed" || companion.failed
-          ? "오류"
+          ? t("pane.error")
           : null
 
   return (
-    <section className="note-pane" aria-label="내 노트">
+    <section className="note-pane" aria-label={t("pane.label")}>
       <header className="note-pane-head">
-        <h2>내 노트</h2>
+        <h2>{t("pane.label")}</h2>
         <div className="note-pane-actions">
           {status ? (
             <span className="note-pane-status" role="status">
               {status}
             </span>
           ) : null}
-          <fieldset className="note-density" aria-label="여백 반응">
+          <fieldset className="note-density" aria-label={t("density.label")}>
             {densities.map((item) => (
               <button
                 key={item.id}
@@ -144,14 +147,14 @@ export function ReaderNotePane({
                   setDensity(item.id)
                 }}
               >
-                {item.label}
+                {t(item.label)}
               </button>
             ))}
           </fieldset>
           <button
             type="button"
             className="note-pane-close"
-            aria-label="노트 닫기"
+            aria-label={t("pane.close")}
             onClick={onClose}
           >
             <X size={16} />

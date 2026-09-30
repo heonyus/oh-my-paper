@@ -1,4 +1,6 @@
 import type { DocumentPageParseProgress } from "../../shared/documentPageModel"
+import { type Locale, translator } from "../../shared/i18n/locale"
+import { readerMessages } from "../messages/reader"
 import { isPlaceholderPageTranslation } from "./pageTranslationJson"
 import type { PageTranslationBlock } from "./pageTranslationSource"
 import { PaperAiJobError } from "./usePaperAiRequest"
@@ -14,35 +16,43 @@ export type TranslationStatus =
 
 export type TextSize = "normal" | "large" | "largest"
 
-export function parserStageMessage(stage: DocumentPageParseProgress["stage"]): string {
+export function parserStageMessage(
+  stage: DocumentPageParseProgress["stage"],
+  locale: Locale = "ko",
+): string {
+  const t = translator(readerMessages, locale)
   switch (stage) {
     // The OCR engine works unseen, so its start reads like any other page read.
     case "engine-starting":
     case "page-rendering":
-      return "현재 페이지를 읽고 있습니다."
+      return t("translation.stage.reading")
     case "document-analyzing":
-      return "문단, 읽기 순서와 수식을 분석하고 있습니다."
+      return t("translation.stage.analyzing")
     case "finalizing":
-      return "번역할 문장들을 정리하고 있습니다."
+      return t("translation.stage.finalizing")
   }
   const unreachable: never = stage
   return unreachable
 }
 
 /** Why a page's translation failed, when an AI job says so; null adds nothing to the notice. */
-export function pageTranslationFailureMessage(error: unknown): string | null {
+export function pageTranslationFailureMessage(
+  error: unknown,
+  locale: Locale = "ko",
+): string | null {
   if (!(error instanceof PaperAiJobError)) return null
+  const t = translator(readerMessages, locale)
   switch (error.code) {
     case "timeout":
-      return "AI 응답이 제한 시간 안에 오지 않았습니다."
+      return t("translation.error.timeout")
     case "auth":
-      return "AI 연결이 끊겼습니다. 설정에서 로그인 상태를 확인해 주세요."
+      return t("translation.error.auth")
     case "rate_limited":
-      return "AI 사용 한도에 도달했습니다. 잠시 후 다시 시도해 주세요."
+      return t("translation.error.rateLimited")
     case "queue_full":
-      return "다른 AI 요청이 많아 시작하지 못했습니다. 잠시 후 다시 시도해 주세요."
+      return t("translation.error.queueFull")
     default:
-      return "AI 응답을 받지 못했습니다."
+      return t("translation.error.other")
   }
 }
 

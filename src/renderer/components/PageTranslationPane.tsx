@@ -2,6 +2,7 @@ import { FileDown, FileText, Languages, Printer, RefreshCw, Square, Type, X } fr
 import { type JSX, useEffect, useMemo, useRef, useState } from "react"
 import type { ProviderStatus } from "../../shared/ipc"
 import { parsedDocumentPage } from "../lib/documentPageRuntime"
+import { useLocale, useTranslator } from "../lib/locale"
 import { type PageTranslationMode, usePageTranslationMode } from "../lib/pageTranslationMode"
 import { nextTextSize, parserStageMessage, type TextSize } from "../lib/pageTranslationPaneState"
 import { paragraphRegions } from "../lib/pageTranslationParagraphs"
@@ -10,6 +11,7 @@ import { usePageSourceHover } from "../lib/usePageSourceHover"
 import { usePageTranslation } from "../lib/usePageTranslation"
 import { usePageTranslationPlacement } from "../lib/usePageTranslationPlacement"
 import { usePdfPage } from "../lib/usePdfPage"
+import { readerMessages } from "../messages/reader"
 import type { AiRequestRunner, DocumentRecord } from "../types"
 import { PageTranslationBlock } from "./PageTranslationBlock"
 import { PageTranslationLayout } from "./PageTranslationLayout"
@@ -30,6 +32,8 @@ export function PageTranslationPane({
   readonly onAiRequest: AiRequestRunner
   readonly onClose: () => void
 }): JSX.Element {
+  const { locale } = useLocale()
+  const t = useTranslator(readerMessages)
   const [textSize, setTextSize] = useState<TextSize>("normal")
   const [mode, setMode] = usePageTranslationMode(document.id)
   const [printPages, setPrintPages] = useState<Readonly<Record<number, string>> | null>(null)
@@ -156,17 +160,17 @@ export function PageTranslationPane({
   }, [printPages])
 
   const modes: readonly { readonly id: PageTranslationMode; readonly label: string }[] = [
-    { id: "layout", label: "원본 배치" },
-    { id: "source", label: "원문" },
-    { id: "parallel", label: "대조" },
-    { id: "bilingual", label: "함께 읽기" },
+    { id: "layout", label: t("translation.mode.layout") },
+    { id: "source", label: t("translation.mode.source") },
+    { id: "parallel", label: t("translation.mode.parallel") },
+    { id: "bilingual", label: t("translation.mode.bilingual") },
   ]
 
   return (
     <>
       <section
         className="page-translation-pane"
-        aria-label="페이지 번역"
+        aria-label={t("translation.title")}
         data-size={textSize}
         data-mode={mode}
         data-page-number={currentPage}
@@ -186,12 +190,16 @@ export function PageTranslationPane({
         <header className="page-translation-head">
           <div className="page-translation-title">
             <Languages size={17} />
-            <span>페이지 번역</span>
+            <span>{t("translation.title")}</span>
           </div>
           <span className="page-translation-count">
             p. {currentPage} / {document.pageCount}
           </span>
-          <div className="page-translation-modes" role="tablist" aria-label="번역 읽기 모드">
+          <div
+            className="page-translation-modes"
+            role="tablist"
+            aria-label={t("translation.modes")}
+          >
             {modes.map((candidate) => (
               <button
                 key={candidate.id}
@@ -208,7 +216,7 @@ export function PageTranslationPane({
           <div className="page-translation-actions">
             <button
               type="button"
-              aria-label="전체 문서 번역 시작"
+              aria-label={t("translation.translateAll")}
               disabled={
                 documentStatus === "running" ||
                 status === "parser-running" ||
@@ -220,16 +228,16 @@ export function PageTranslationPane({
               <FileText size={16} />
             </button>
             {documentStatus === "running" ? (
-              <button type="button" aria-label="전체 문서 번역 취소" onClick={cancelAll}>
+              <button type="button" aria-label={t("translation.cancelAll")} onClick={cancelAll}>
                 <Square size={15} />
               </button>
             ) : null}
-            <button type="button" aria-label="현재 번역 인쇄" onClick={printTranslation}>
+            <button type="button" aria-label={t("translation.print")} onClick={printTranslation}>
               <Printer size={16} />
             </button>
             <button
               type="button"
-              aria-label="전체 번역 PDF 저장"
+              aria-label={t("translation.savePdf")}
               disabled={
                 documentStatus !== "complete" ||
                 Object.keys(documentPages).length !== document.pageCount
@@ -240,19 +248,19 @@ export function PageTranslationPane({
             </button>
             <button
               type="button"
-              aria-label="현재 페이지 다시 번역"
+              aria-label={t("translation.retranslate")}
               onClick={() => void regenerate()}
             >
               <RefreshCw size={17} />
             </button>
             <button
               type="button"
-              aria-label="번역 글자 크기 변경"
+              aria-label={t("translation.textSize")}
               onClick={() => setTextSize((value) => nextTextSize(value))}
             >
               <Type size={17} />
             </button>
-            <button type="button" aria-label="페이지 번역 닫기" onClick={onClose}>
+            <button type="button" aria-label={t("translation.close")} onClick={onClose}>
               <X size={18} />
             </button>
           </div>
@@ -261,60 +269,63 @@ export function PageTranslationPane({
           <div className="page-translation-notices">
             {documentStatus === "running" && documentProgress ? (
               <p className="page-translation-document-progress" role="status">
-                전체 문서 번역 · {documentProgress.completedPages}/{documentProgress.pageCount}
-                페이지 · p. {documentProgress.page}
+                {t("translation.documentProgress", {
+                  completed: documentProgress.completedPages,
+                  total: documentProgress.pageCount,
+                  page: documentProgress.page,
+                })}
               </p>
             ) : null}
             {documentStatus === "complete" ? (
               <p className="page-translation-document-progress" role="status">
-                전체 문서 번역이 완료되었습니다. 저장된 페이지는 다시 요청하지 않습니다.
+                {t("translation.documentComplete")}
               </p>
             ) : null}
             {documentStatus === "cancelled" ? (
               <p className="page-translation-document-progress" role="status">
-                전체 문서 번역을 중단했습니다. 완료된 페이지는 저장되어 다시 이어갈 수 있습니다.
+                {t("translation.documentCancelled")}
               </p>
             ) : null}
             {documentStatus === "failed" ? (
               <div className="page-translation-document-progress" role="alert">
-                <p>전체 문서 번역 중 문제가 발생했습니다. 저장된 페이지는 유지됩니다.</p>
+                <p>{t("translation.documentFailed")}</p>
                 {documentError ? <code>{documentError}</code> : null}
               </div>
             ) : null}
             {status === "waiting" ? (
               <div className="page-translation-state" role="status">
                 <span className="page-translation-progress" />
-                <p>현재 페이지의 본문을 준비하고 있습니다.</p>
+                <p>{t("translation.waiting")}</p>
               </div>
             ) : null}
             {status === "parser-running" ? (
               <div className="page-translation-state" role="status">
                 <span className="page-translation-progress" />
-                <p>{parserStageMessage(parserStage)}</p>
+                <p>{parserStageMessage(parserStage, locale)}</p>
               </div>
             ) : null}
             {status === "streaming" ? (
               <p className="page-translation-stream" role="status">
-                번역하는 중 · {progress}/{totalChunks}
+                {t("translation.streaming", { progress, total: totalChunks })}
               </p>
             ) : null}
             {status === "setup" ? (
-              <p className="page-translation-message">AI 설정을 완료하면 이 페이지를 번역합니다.</p>
+              <p className="page-translation-message">{t("translation.setup")}</p>
             ) : null}
             {status === "parser-unavailable" ? (
               <div className="page-translation-message" role="alert">
-                <p>현재 페이지의 구조를 준비하지 못했습니다.</p>
+                <p>{t("translation.parserUnavailable")}</p>
                 <button type="button" onClick={() => void regenerate()}>
-                  다시 시도
+                  {t("translation.retry")}
                 </button>
               </div>
             ) : null}
             {status === "failed" ? (
               <div className="page-translation-message" role="alert">
-                <p>페이지 번역을 완료하지 못했습니다.</p>
+                <p>{t("translation.failed")}</p>
                 {failure ? <p>{failure}</p> : null}
                 <button type="button" onClick={() => void regenerate()}>
-                  다시 시도
+                  {t("translation.retry")}
                 </button>
               </div>
             ) : null}

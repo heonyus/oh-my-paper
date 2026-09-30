@@ -1,7 +1,9 @@
 import { GripVertical, Maximize2, Minus, RefreshCw, X } from "lucide-react"
 import { type JSX, useRef } from "react"
 import { conciseCardTitle } from "../lib/cardPresentation"
+import { useTranslator } from "../lib/locale"
 import { moveWorldPointByScreenDelta } from "../lib/viewport"
+import { boardMessages } from "../messages/board"
 import type { BoardCard, CardId } from "../types"
 
 export function BoardCardHeader({
@@ -21,6 +23,7 @@ export function BoardCardHeader({
   readonly onDelete: (id: CardId) => void
   readonly onRegenerateTitle?: ((id: CardId) => void) | undefined
 }): JSX.Element {
+  const t = useTranslator(boardMessages)
   const start = useRef<{ x: number; y: number; cardX: number; cardY: number } | null>(null)
   const latest = useRef<{ x: number; y: number } | null>(null)
   return (
@@ -62,8 +65,8 @@ export function BoardCardHeader({
       {onRegenerateTitle && !card.minimized ? (
         <button
           type="button"
-          aria-label="카드 제목 다시 생성"
-          title="제목 다시 생성"
+          aria-label={t("card.regenerateTitle")}
+          title={t("card.regenerateTitleHint")}
           disabled={card.loading}
           onClick={() => onRegenerateTitle(card.id)}
         >
@@ -72,12 +75,12 @@ export function BoardCardHeader({
       ) : null}
       <button
         type="button"
-        aria-label={card.minimized ? "카드 펼치기" : "카드 최소화"}
+        aria-label={card.minimized ? t("card.expand") : t("card.minimize")}
         onClick={() => onMinimize(card.id)}
       >
         {card.minimized ? <Maximize2 size={15} /> : <Minus size={16} />}
       </button>
-      <button type="button" aria-label="카드 닫기" onClick={() => onDelete(card.id)}>
+      <button type="button" aria-label={t("card.close")} onClick={() => onDelete(card.id)}>
         <X size={16} />
       </button>
     </header>

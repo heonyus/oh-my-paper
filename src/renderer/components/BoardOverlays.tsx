@@ -9,7 +9,9 @@ import {
 import type { CSSProperties, JSX } from "react"
 import { connectorPath } from "../lib/board"
 import type { HighlightFragment } from "../lib/boardHighlights"
+import { useTranslator } from "../lib/locale"
 import type { SelectionAction } from "../lib/selectionActions"
+import { boardMessages } from "../messages/board"
 import type { BoardCard } from "../types"
 
 export type { SelectionAction } from "../lib/selectionActions"
@@ -83,19 +85,20 @@ export function HighlightToolbar({
   readonly position: CSSProperties
   readonly onDelete: () => void
 }): JSX.Element {
+  const t = useTranslator(boardMessages)
   return (
     <div
       className="selection-menu highlight-menu"
       style={position}
       role="toolbar"
-      aria-label="하이라이트 작업"
+      aria-label={t("overlay.highlightActions")}
       onPointerDown={(event) => {
         event.preventDefault()
         event.stopPropagation()
       }}
     >
       <button type="button" aria-keyshortcuts="Delete" onClick={onDelete}>
-        <Trash2 size={14} /> 하이라이트 삭제
+        <Trash2 size={14} /> {t("overlay.deleteHighlight")}
       </button>
     </div>
   )
@@ -118,28 +121,29 @@ export function SelectionToolbar({
   readonly position: CSSProperties
   readonly onAction: (action: SelectionAction) => void
 }): JSX.Element {
+  const t = useTranslator(boardMessages)
   return (
     <div
       className="selection-menu"
       style={position}
       role="toolbar"
-      aria-label="선택 작업"
+      aria-label={t("overlay.selectionActions")}
       onPointerDown={(event) => event.preventDefault()}
     >
       <button type="button" aria-keyshortcuts="T" onClick={() => onAction("translation")}>
-        <Languages size={14} /> 번역
+        <Languages size={14} /> {t("overlay.translate")}
       </button>
       <button type="button" aria-keyshortcuts="E" onClick={() => onAction("explanation")}>
-        <MessageSquareText size={14} /> 설명
+        <MessageSquareText size={14} /> {t("overlay.explain")}
       </button>
       <button type="button" aria-keyshortcuts="I" onClick={() => onAction("infographic")}>
-        <Palette size={14} /> 인포그래픽
+        <Palette size={14} /> {t("overlay.infographic")}
       </button>
       <button type="button" aria-keyshortcuts="H" onClick={() => onAction("highlight")}>
-        <Highlighter size={14} /> 하이라이트
+        <Highlighter size={14} /> {t("overlay.highlight")}
       </button>
       <button type="button" aria-keyshortcuts="C" onClick={() => onAction("note")}>
-        <NotebookPen size={14} /> 노트에
+        <NotebookPen size={14} /> {t("overlay.toNote")}
       </button>
     </div>
   )

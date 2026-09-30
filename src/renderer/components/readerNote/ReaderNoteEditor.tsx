@@ -5,6 +5,8 @@ import { type Editor, EditorContent, useEditor } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import { GripVertical } from "lucide-react"
 import { type JSX, useCallback, useEffect, useMemo, useRef } from "react"
+import { useLocale, useTranslator } from "../../lib/locale"
+import { noteMessages } from "../../messages/note"
 import { EvidenceNode } from "./evidenceNode"
 import { SlashMenu } from "./SlashMenu"
 import { SlashMenuStore, slashCommandExtension } from "./slashCommands"
@@ -32,6 +34,11 @@ export function ReaderNoteEditor({
   const pending = useRef<string | null>(null)
   const callbacks = useRef({ onMarkdownChange, onOpenEvidence })
   callbacks.current = { onMarkdownChange, onOpenEvidence }
+  // The editor's extensions are made once; they read the reader's language through these refs.
+  const { locale } = useLocale()
+  const t = useTranslator(noteMessages)
+  const language = useRef({ locale, t })
+  language.current = { locale, t }
 
   const flush = useCallback((): void => {
     window.clearTimeout(saveTimer.current)
@@ -46,18 +53,18 @@ export function ReaderNoteEditor({
       Placeholder.configure({
         placeholder: ({ node }) =>
           node.type.name === "heading"
-            ? "제목"
-            : "내 말로 적어보세요. / 를 누르면 블록을 고를 수 있어요",
+            ? language.current.t("editor.headingPlaceholder")
+            : language.current.t("editor.placeholder"),
       }),
       Markdown,
       EvidenceNode,
-      slashCommandExtension(slashMenu),
+      slashCommandExtension(slashMenu, () => language.current.locale),
     ],
     content: initialMarkdown,
     contentType: "markdown",
     immediatelyRender: true,
     editorProps: {
-      attributes: { class: "note-prose", "aria-label": "내 노트 본문" },
+      attributes: { class: "note-prose", "aria-label": t("editor.body") },
       handleClickOn: (_view, _pos, node) => {
         if (node.type.name !== "evidence") return false
         callbacks.current.onOpenEvidence(

@@ -1,7 +1,9 @@
 import { type JSX, useEffect, useState } from "react"
+import { useTranslator } from "../lib/locale"
 import type { PageSourceBlock } from "../lib/pageTranslationSource"
 import { focusPageSource } from "../lib/pageTranslationSource"
 import { cropFeatureImage } from "../lib/pdfFeatureDom"
+import { readerMessages } from "../messages/reader"
 
 export function PageTranslationFigure({
   block,
@@ -10,6 +12,7 @@ export function PageTranslationFigure({
   readonly block: PageSourceBlock
   readonly page: number
 }): JSX.Element {
+  const t = useTranslator(readerMessages)
   const [image, setImage] = useState<string | null>(null)
 
   useEffect(() => {
@@ -48,9 +51,9 @@ export function PageTranslationFigure({
       type="button"
       className="page-translation-figure"
       onClick={() => focusPageSource(page, block.id)}
-      aria-label="원본 그림으로 이동"
+      aria-label={t("translation.toFigure")}
     >
-      {image ? <img src={image} alt={block.source} /> : <span>원본 그림으로 이동</span>}
+      {image ? <img src={image} alt={block.source} /> : <span>{t("translation.toFigure")}</span>}
     </button>
   )
 }

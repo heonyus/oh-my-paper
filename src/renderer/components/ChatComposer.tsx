@@ -1,6 +1,8 @@
 import { ArrowUp, ImagePlus, Square, X } from "lucide-react"
 import { type FormEvent, type JSX, type KeyboardEvent, useRef } from "react"
 import type { ChatImage } from "../lib/chatImage"
+import { useTranslator } from "../lib/locale"
+import { readerMessages } from "../messages/reader"
 
 type ChatComposerProps = {
   readonly label: string
@@ -36,8 +38,9 @@ export function ChatComposer({
   onImageSelect,
   onImageRemove,
 }: ChatComposerProps): JSX.Element {
+  const t = useTranslator(readerMessages)
   const fileInput = useRef<HTMLInputElement>(null)
-  const responseStatus = responseStarted ? "답변 작성 중…" : "논문 근거를 확인하는 중…"
+  const responseStatus = responseStarted ? t("composer.writing") : t("composer.checking")
 
   function submitOnEnter(event: KeyboardEvent<HTMLTextAreaElement>): void {
     if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return
@@ -84,8 +87,8 @@ export function ChatComposer({
       </span>
       {image ? (
         <div className="chat-composer-attachment">
-          <img src={image.dataUrl} alt={`첨부 이미지: ${image.name}`} />
-          <button type="button" aria-label="첨부 이미지 제거" onClick={onImageRemove}>
+          <img src={image.dataUrl} alt={t("composer.imageAlt", { name: image.name })} />
+          <button type="button" aria-label={t("composer.removeImage")} onClick={onImageRemove}>
             <X size={12} strokeWidth={2.25} />
           </button>
         </div>
@@ -115,8 +118,8 @@ export function ChatComposer({
             <button
               type="button"
               className="chat-attach-button"
-              aria-label="이미지 첨부"
-              title="이미지 첨부 (붙여넣기·끌어놓기도 가능)"
+              aria-label={t("composer.attachImage")}
+              title={t("composer.attachImageHint")}
               disabled={sending}
               onClick={() => fileInput.current?.click()}
             >
@@ -146,7 +149,7 @@ export function ChatComposer({
           <button
             type="button"
             className="chat-cancel-button"
-            aria-label="응답 중단"
+            aria-label={t("composer.stop")}
             onClick={onCancel}
           >
             <Square size={12} strokeWidth={2.25} />

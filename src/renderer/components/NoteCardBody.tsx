@@ -1,4 +1,6 @@
 import { type JSX, useEffect, useRef, useState } from "react"
+import { useTranslator } from "../lib/locale"
+import { noteMessages } from "../messages/note"
 import type { BoardCard } from "../types"
 import { MarkdownContent } from "./MarkdownContent"
 
@@ -19,6 +21,7 @@ export function NoteCardBody({
   readonly autoEdit: boolean
   readonly onBodyChange: (body: string) => void
 }): JSX.Element {
+  const t = useTranslator(noteMessages)
   const body = noteCardBody(card)
   const [editing, setEditing] = useState(autoEdit || body.trim() === "")
   const [draft, setDraft] = useState(body)
@@ -37,9 +40,9 @@ export function NoteCardBody({
       <textarea
         ref={editor}
         className="post-it-editor note-card-editor"
-        aria-label="메모 내용"
+        aria-label={t("memo.content")}
         value={draft}
-        placeholder="메모"
+        placeholder={t("memo.placeholder")}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={finishEditing}
         onKeyDown={(event) => {
@@ -57,7 +60,7 @@ export function NoteCardBody({
     <button
       type="button"
       className="card-markdown post-it-preview"
-      aria-label="메모 고쳐 쓰기"
+      aria-label={t("memo.edit")}
       onDoubleClick={() => {
         setDraft(body)
         setEditing(true)

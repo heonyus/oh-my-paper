@@ -1,5 +1,7 @@
 import { type JSX, useEffect, useRef, useState } from "react"
 import { initialResearchCardHeight } from "../lib/board"
+import { useTranslator } from "../lib/locale"
+import { boardMessages } from "../messages/board"
 import type { AiDeltaHandler, BoardCard as Card, CardId } from "../types"
 import { BoardCardChat } from "./BoardCardChat"
 import { BoardCardCitationMeta } from "./BoardCardCitationMeta"
@@ -54,6 +56,7 @@ export function BoardCard({
   onActiveChange,
   zoom,
 }: BoardCardProps): JSX.Element {
+  const t = useTranslator(boardMessages)
   const cardElement = useRef<HTMLElement>(null)
   const editor = useRef<HTMLTextAreaElement>(null)
   const [editing, setEditing] = useState(false)
@@ -93,7 +96,7 @@ export function BoardCard({
         width: card.minimized ? 240 : card.width,
         ...(card.minimized || expandedHeight === null ? {} : { height: expandedHeight }),
       }}
-      aria-label={`${card.title}, ${card.anchor.page} 페이지 연결 카드`}
+      aria-label={t("card.label", { title: card.title, page: card.anchor.page })}
       data-active={active}
       data-kind={card.kind}
       data-minimized={card.minimized}
@@ -123,16 +126,16 @@ export function BoardCard({
       {!card.minimized ? (
         <div className="card-body" onWheel={(event) => event.stopPropagation()}>
           {card.loading ? (
-            <span className="card-loading-bar" role="status" aria-label="AI 응답 생성 중" />
+            <span className="card-loading-bar" role="status" aria-label={t("card.generating")} />
           ) : null}
           {card.sourceMeta ? <BoardCardCitationMeta meta={card.sourceMeta} /> : null}
           {card.kind === "sticky" && editing ? (
             <textarea
               ref={editor}
               className="post-it-editor"
-              aria-label="포스트잇 내용"
+              aria-label={t("card.stickyContent")}
               value={draft}
-              placeholder="Markdown으로 메모하세요…"
+              placeholder={t("card.stickyPlaceholder")}
               onChange={(event) => setDraft(event.target.value)}
               onBlur={finishEditing}
               onKeyDown={(event) => {
@@ -148,9 +151,9 @@ export function BoardCard({
             <textarea
               ref={editor}
               className="post-it-editor"
-              aria-label="포스트잇 내용"
+              aria-label={t("card.stickyContent")}
               value={draft}
-              placeholder="메모"
+              placeholder={t("card.stickyEmptyPlaceholder")}
               onChange={(event) => setDraft(event.target.value)}
               onBlur={finishEditing}
             />
