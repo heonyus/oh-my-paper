@@ -1,18 +1,32 @@
+import { browserLocale } from "../renderer/lib/locale"
+import { type LibraryMessageKey, libraryMessages } from "../renderer/messages/library"
+import { isLocale, type Locale } from "../shared/i18n/locale"
 import { type ImportProgress, type ImportResult, importResultSchema } from "../shared/ipc"
 import { LocalApiError, readLocalResponse } from "./localTransport"
 
-export function createLocalImporter() {
+/** The language the page shows: `LocaleProvider` keeps it on `<html lang>`. */
+function pageLocale(): Locale {
+  const lang = typeof document === "undefined" ? null : document.documentElement.lang
+  return isLocale(lang) ? lang : browserLocale()
+}
+
+export function createLocalImporter(locale: () => Locale = pageLocale) {
+  const message = (key: LibraryMessageKey): string => libraryMessages[locale()][key]
   const files = new Map<string, File>()
   const listeners = new Set<(progress: ImportProgress) => void>()
 
   async function upload(file: File): Promise<ImportResult> {
-    if (file.size > 100 * 1024 * 1024)
-      throw new LocalApiError(413, "PDF는 100MB까지 가져올 수 있습니다.")
+    if (file.size > 100 * 1024 * 1024) throw new LocalApiError(413, message("import.tooLarge"))
     const id = crypto.randomUUID()
     const publish = (progress: Omit<ImportProgress, "id" | "fileName">): void => {
       for (const listener of listeners) listener({ ...progress, id, fileName: file.name })
     }
-    publish({ stage: "checking", state: "active", progress: 0.1, message: "PDF를 확인하는 중…" })
+    publish({
+      stage: "checking",
+      state: "active",
+      progress: 0.1,
+      message: message("import.checking"),
+    })
     try {
       const response = await fetch(`/api/documents?name=${encodeURIComponent(file.name)}`, {
         method: "POST",
@@ -21,7 +35,12 @@ export function createLocalImporter() {
         signal: AbortSignal.timeout(180_000),
       })
       const result = await readLocalResponse(response, importResultSchema)
-      publish({ stage: "complete", state: "complete", progress: 1, message: "가져오기 완료" })
+      publish({
+        stage: "complete",
+        state: "complete",
+        progress: 1,
+        message: message("import.complete"),
+      })
       return result
     } catch (error) {
       if (!(error instanceof Error)) throw error
@@ -35,7 +54,7 @@ export function createLocalImporter() {
       const input = document.createElement("input")
       input.type = "file"
       input.accept = "application/pdf,.pdf"
-      input.setAttribute("aria-label", "가져올 PDF 선택")
+      input.setAttribute("aria-label", message("import.pick"))
       input.hidden = true
       document.body.append(input)
       input.addEventListener(
@@ -62,7 +81,7 @@ export function createLocalImporter() {
 
   async function importToken(token: string): Promise<ImportResult> {
     const file = files.get(token)
-    if (!file) throw new LocalApiError(400, "가져올 파일을 다시 선택하세요.")
+    if (!file) throw new LocalApiError(400, message("import.pickAgain"))
     files.delete(token)
     return upload(file)
   }

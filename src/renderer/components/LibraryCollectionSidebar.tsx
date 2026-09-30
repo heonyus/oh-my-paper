@@ -7,9 +7,11 @@ import {
   PanelLeftOpen,
 } from "lucide-react"
 import { type FormEvent, type JSX, useState } from "react"
+import { documentKindName } from "../../shared/documentKind"
+import { useLocale, useTranslator } from "../lib/locale"
+import { libraryMessages } from "../messages/library"
 import type { DocumentRecord } from "../types"
 import type { LibraryCollection } from "./library-collections"
-import { documentKindLabels } from "./library-home-formatting"
 
 export type LibraryFilter = "all" | "recent" | DocumentRecord["kind"]
 
@@ -47,6 +49,8 @@ export function LibraryCollectionSidebar({
   readonly onCreateCollection: (title: string) => Promise<boolean>
   readonly collectionsEnabled: boolean
 }): JSX.Element {
+  const { locale } = useLocale()
+  const t = useTranslator(libraryMessages)
   const countFor = (filter: LibraryFilter): number => {
     if (filter === "all") return documents.length
     if (filter === "recent") return recentDocumentId ? 1 : 0
@@ -72,15 +76,19 @@ export function LibraryCollectionSidebar({
   }
 
   return (
-    <aside className="library-collections" aria-label="라이브러리 탐색" data-collapsed={collapsed}>
+    <aside
+      className="library-collections"
+      aria-label={t("sidebar.label")}
+      data-collapsed={collapsed}
+    >
       <div className="library-collections-heading">
         <div className="library-collections-heading-copy">
-          <h2>보관함</h2>
+          <h2>{t("sidebar.title")}</h2>
         </div>
         <button
           type="button"
           className="library-collections-toggle"
-          aria-label={collapsed ? "컬렉션 사이드바 열기" : "컬렉션 사이드바 접기"}
+          aria-label={t(collapsed ? "sidebar.expand" : "sidebar.collapse")}
           onClick={onToggle}
         >
           {collapsed ? (
@@ -99,7 +107,7 @@ export function LibraryCollectionSidebar({
             onClick={() => onChange("all")}
           >
             <FileText size={16} aria-hidden="true" />
-            <span>전체 문서</span>
+            <span>{t("home.allDocuments")}</span>
             <small aria-hidden="true">{countFor("all")}</small>
           </button>
           <button
@@ -110,20 +118,20 @@ export function LibraryCollectionSidebar({
             onClick={() => onChange("recent")}
           >
             <Clock3 size={16} aria-hidden="true" />
-            <span>최근 읽기</span>
+            <span>{t("home.recent")}</span>
             <small aria-hidden="true">{countFor("recent")}</small>
           </button>
         </div>
         {collectionsEnabled ? (
           <div className="library-collection-group library-project-collections">
             <div className="library-collection-label-row">
-              <span className="library-collection-label" title="컬렉션 · 프로젝트">
-                컬렉션
+              <span className="library-collection-label" title={t("sidebar.collectionsHint")}>
+                {t("sidebar.collections")}
               </span>
               <button
                 type="button"
                 className="library-collection-add"
-                aria-label="컬렉션 만들기"
+                aria-label={t("sidebar.create")}
                 onClick={() => setCreateOpen((value) => !value)}
               >
                 <FilePlus2 size={14} aria-hidden="true" />
@@ -131,7 +139,7 @@ export function LibraryCollectionSidebar({
               <button
                 type="button"
                 className="library-collection-add"
-                aria-label={collectionsOpen ? "컬렉션 목록 접기" : "컬렉션 목록 열기"}
+                aria-label={t(collectionsOpen ? "sidebar.collapseList" : "sidebar.expandList")}
                 aria-pressed={collectionsOpen}
                 onClick={() => setCollectionsOpen((value) => !value)}
               >
@@ -143,7 +151,7 @@ export function LibraryCollectionSidebar({
                 className="library-collection-form"
                 onSubmit={(event) => void submitCollection(event)}
               >
-                <label htmlFor="library-new-collection">새 컬렉션 이름</label>
+                <label htmlFor="library-new-collection">{t("sidebar.newName")}</label>
                 <input
                   id="library-new-collection"
                   value={createTitle}
@@ -157,10 +165,10 @@ export function LibraryCollectionSidebar({
                     disabled={createPending}
                     onClick={() => setCreateOpen(false)}
                   >
-                    취소
+                    {t("common.cancel")}
                   </button>
                   <button type="submit" disabled={createPending || !createTitle.trim()}>
-                    {createPending ? "만드는 중…" : "만들기"}
+                    {t(createPending ? "sidebar.creating" : "sidebar.submit")}
                   </button>
                 </div>
               </form>
@@ -182,13 +190,15 @@ export function LibraryCollectionSidebar({
                     >
                       <FolderOpen size={16} aria-hidden="true" />
                       <span>{collection.board.title}</span>
-                      <small>{collection.placementLoadFailed ? "확인 필요" : memberCount}</small>
+                      <small>
+                        {collection.placementLoadFailed ? t("sidebar.needsCheck") : memberCount}
+                      </small>
                     </button>
                   )
                 })
               : null}
             {collectionsOpen && collections.length === 0 ? (
-              <span className="library-collections-empty">아직 만든 컬렉션이 없습니다.</span>
+              <span className="library-collections-empty">{t("sidebar.noCollections")}</span>
             ) : null}
             {selectedCollectionId ? (
               <button
@@ -196,16 +206,16 @@ export function LibraryCollectionSidebar({
                 className="library-clear-collection"
                 onClick={() => onCollectionSelect(null)}
               >
-                전체 컬렉션 보기
+                {t("sidebar.allCollections")}
               </button>
             ) : null}
           </div>
         ) : null}
         <details className="library-collection-group library-kind-filters">
           <summary>
-            <span>문서 유형 필터</span>
+            <span>{t("sidebar.kindFilter")}</span>
             {value !== "all" && value !== "recent" ? (
-              <small>{documentKindLabels[value]}</small>
+              <small>{documentKindName(value, locale)}</small>
             ) : null}
           </summary>
           <div className="library-kind-filter-list">
@@ -218,7 +228,7 @@ export function LibraryCollectionSidebar({
                 onClick={() => onChange(kind)}
               >
                 <span className="library-kind-dot" aria-hidden="true" data-kind={kind} />
-                <span>{documentKindLabels[kind]}</span>
+                <span>{documentKindName(kind, locale)}</span>
                 <small aria-hidden="true">{countFor(kind)}</small>
               </button>
             ))}

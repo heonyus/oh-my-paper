@@ -4,6 +4,7 @@ import type { PreparationUpdate, ProviderStatus } from "../../shared/ipc"
 import type { KnowledgeNodeId } from "../../shared/knowledgeSchemas"
 import type { BoardTool, Workspace } from "../types"
 import type { WorkspaceViewMode } from "./knowledgeTypes"
+import { useLocale } from "./locale"
 import type { CitationIndexEntry } from "./pdfCitationIndex"
 import type { PreparedSummary } from "./pdfDocumentFeatures"
 import type { PdfOutlineEntry } from "./pdfOutline"
@@ -26,6 +27,7 @@ import { useWorkspacePersistence } from "./useWorkspacePersistence"
 
 export function useAppWorkspace() {
   const history = useWorkspaceHistory()
+  const { locale } = useLocale()
   const [preparation, setPreparation] = useState<PreparationUpdate[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [outlineOpen, setOutlineOpen] = useState(false)
@@ -201,11 +203,17 @@ export function useAppWorkspace() {
         current ? applyPreparedSummary(current, activeId, summary) : current,
       )
       setDocumentReady(true)
-      if (!activeDocument.overview) setPreparation([...completedPreparation(summary)])
+      if (!activeDocument.overview) setPreparation([...completedPreparation(summary, locale)])
       setCitations({ documentId: activeId, entries: summary.citations ?? [] })
       evidence.onPrepared()
     },
-    [activeDocument?.id, activeDocument?.overview, history.setWorkspace, evidence.onPrepared],
+    [
+      activeDocument?.id,
+      activeDocument?.overview,
+      history.setWorkspace,
+      evidence.onPrepared,
+      locale,
+    ],
   )
   const jumpToCard = useBoardCardJump(activeCards, history.setWorkspace, setCurrentPage)
 

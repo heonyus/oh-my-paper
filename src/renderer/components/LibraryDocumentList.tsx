@@ -1,5 +1,7 @@
 import { Grid2X2, List, SortAsc } from "lucide-react"
 import { type JSX, memo, useLayoutEffect, useMemo, useRef } from "react"
+import { useTranslator } from "../lib/locale"
+import { countKey, libraryMessages } from "../messages/library"
 import type { DocumentId, DocumentRecord } from "../types"
 import { LibraryDocumentRow, type LibraryDocumentRowActions } from "./LibraryDocumentRow"
 
@@ -36,18 +38,21 @@ export const LibraryDocumentList = memo(function LibraryDocumentList(
 ): JSX.Element {
   const { documents, selectedId, view, onViewChange, onRequestDelete } = props
   const actions = useStableRowActions(props)
+  const t = useTranslator(libraryMessages)
   const canDelete = onRequestDelete !== undefined
 
   return (
-    <section className="library-documents" aria-label="문서 결과">
+    <section className="library-documents" aria-label={t("list.label")}>
       <div className="library-documents-toolbar">
-        <p className="library-result-count">{documents.length}개 문서</p>
+        <p className="library-result-count">
+          {t(countKey("list.count", documents.length), { count: documents.length })}
+        </p>
         <fieldset className="library-view-controls">
-          <legend>문서 보기 방식</legend>
+          <legend>{t("list.viewMode")}</legend>
           <button
             type="button"
             className={view === "list" ? "active" : undefined}
-            aria-label="목록 보기"
+            aria-label={t("list.listView")}
             aria-pressed={view === "list"}
             onClick={() => onViewChange("list")}
           >
@@ -56,7 +61,7 @@ export const LibraryDocumentList = memo(function LibraryDocumentList(
           <button
             type="button"
             className={view === "grid" ? "active" : undefined}
-            aria-label="격자 보기"
+            aria-label={t("list.gridView")}
             aria-pressed={view === "grid"}
             onClick={() => onViewChange("grid")}
           >
@@ -64,11 +69,11 @@ export const LibraryDocumentList = memo(function LibraryDocumentList(
           </button>
           <span className="library-sort-label">
             <SortAsc size={17} aria-hidden="true" />
-            <span>최근 추가순</span>
+            <span>{t("list.sort")}</span>
           </span>
         </fieldset>
       </div>
-      <ul className="library-grid" data-view={view} aria-label="문서 목록">
+      <ul className="library-grid" data-view={view} aria-label={t("list.items")}>
         {documents.map((document) => (
           <LibraryDocumentRow
             key={document.id}

@@ -1,16 +1,9 @@
+import type { Locale } from "../../shared/i18n/locale"
+import { libraryMessages } from "../messages/library"
 import type { DocumentRecord } from "../types"
 
-export const documentKindLabels = {
-  research_paper: "논문",
-  report: "보고서",
-  manual: "매뉴얼",
-  contract: "계약서",
-  presentation: "발표 자료",
-  document: "문서",
-} satisfies Record<DocumentRecord["kind"], string>
-
-export function documentAuthors(document: DocumentRecord): string {
-  return document.authors.slice(0, 3).join(", ") || "저자 정보 없음"
+export function documentAuthors(document: DocumentRecord, locale: Locale): string {
+  return document.authors.slice(0, 3).join(", ") || libraryMessages[locale]["doc.unknownAuthors"]
 }
 
 export function documentSearchText(document: DocumentRecord): string {
@@ -19,11 +12,18 @@ export function documentSearchText(document: DocumentRecord): string {
     .toLocaleLowerCase()
 }
 
-/** Built once: constructing a formatter per row dominated rendering a large library. */
-const importedAtFormat = new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium" })
+const dateLocales: Readonly<Record<Locale, string>> = { ko: "ko-KR", en: "en-US" }
 
-export function formatImportedAt(value: string): string {
-  return importedAtFormat.format(new Date(value))
+/** Built once per language: constructing a formatter per row dominated rendering a large library. */
+const importedAtFormats = new Map<Locale, Intl.DateTimeFormat>()
+
+export function formatImportedAt(value: string, locale: Locale): string {
+  let format = importedAtFormats.get(locale)
+  if (!format) {
+    format = new Intl.DateTimeFormat(dateLocales[locale], { dateStyle: "medium" })
+    importedAtFormats.set(locale, format)
+  }
+  return format.format(new Date(value))
 }
 
 export function formatFileSize(bytes: number): string {

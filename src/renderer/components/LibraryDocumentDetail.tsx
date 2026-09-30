@@ -1,5 +1,8 @@
 import { BookOpen, CalendarDays, FileText, Hash, TriangleAlert } from "lucide-react"
 import type { JSX } from "react"
+import { documentKindName } from "../../shared/documentKind"
+import { useLocale, useTranslator } from "../lib/locale"
+import { countKey, libraryMessages } from "../messages/library"
 import type { DocumentRecord } from "../types"
 import { DocumentThumbnail } from "./DocumentThumbnail"
 import { LibraryDocumentDelete } from "./LibraryDocumentDelete"
@@ -7,7 +10,6 @@ import { LibraryDocumentOverview } from "./LibraryDocumentOverview"
 import type { LibraryCollection } from "./library-collections"
 import {
   documentAuthors,
-  documentKindLabels,
   formatFileSize,
   formatImportedAt,
   normalizedReadingPage,
@@ -38,31 +40,33 @@ export function LibraryDocumentDetail({
       }
     | undefined
 }): JSX.Element {
+  const { locale } = useLocale()
+  const t = useTranslator(libraryMessages)
   if (!document) {
     return (
-      <section className="library-detail is-empty" aria-label="문서 상세">
+      <section className="library-detail is-empty" aria-label={t("detail.label")}>
         <FileText size={22} aria-hidden="true" />
-        <h2>문서를 선택하세요</h2>
-        <p>목록에서 문서를 선택하면 논문 정보와 읽기 상태를 확인할 수 있습니다.</p>
+        <h2>{t("detail.emptyTitle")}</h2>
+        <p>{t("detail.emptyBody")}</p>
       </section>
     )
   }
   const readingPage = normalizedReadingPage(document)
   return (
-    <section className="library-detail" aria-label="문서 상세">
+    <section className="library-detail" aria-label={t("detail.label")}>
       <div className="library-detail-preview">
         <DocumentThumbnail document={document} />
       </div>
-      <span className="library-eyebrow">선택한 문서</span>
+      <span className="library-eyebrow">{t("detail.eyebrow")}</span>
       <h2>{document.title}</h2>
-      <p className="library-detail-authors">{documentAuthors(document)}</p>
+      <p className="library-detail-authors">{documentAuthors(document, locale)}</p>
       <button
         type="button"
         className="library-reader-action"
         onClick={() => onOpenReader(document.id)}
       >
         <BookOpen size={16} aria-hidden="true" />
-        <span>{readingPage ? `${readingPage}페이지부터 읽기` : "PDF 읽기"}</span>
+        <span>{readingPage ? t("detail.readFrom", { page: readingPage }) : t("detail.read")}</span>
       </button>
       {onOpenKnowledge ? (
         <button
@@ -71,31 +75,32 @@ export function LibraryDocumentDetail({
           onClick={() => onOpenKnowledge(document.id)}
         >
           <Hash size={15} aria-hidden="true" />
-          <span>지식으로 연결</span>
+          <span>{t("detail.knowledge")}</span>
         </button>
       ) : null}
       <dl className="library-detail-meta">
         <div>
           <dt>
             <CalendarDays size={14} aria-hidden="true" />
-            가져온 날짜
+            {t("detail.importedAt")}
           </dt>
-          <dd>{formatImportedAt(document.importedAt)}</dd>
+          <dd>{formatImportedAt(document.importedAt, locale)}</dd>
         </div>
         <div>
           <dt>
             <FileText size={14} aria-hidden="true" />
-            문서 정보
+            {t("detail.info")}
           </dt>
           <dd>
-            {documentKindLabels[document.kind]} · {document.pageCount}페이지 ·{" "}
+            {documentKindName(document.kind, locale)} ·{" "}
+            {t(countKey("detail.pages", document.pageCount), { count: document.pageCount })} ·{" "}
             {formatFileSize(document.bytes)}
           </dd>
         </div>
         <div>
           <dt>
             <Hash size={14} aria-hidden="true" />
-            파일명
+            {t("detail.fileName")}
           </dt>
           <dd>{document.name}</dd>
         </div>
@@ -112,12 +117,12 @@ export function LibraryDocumentDetail({
       {document.quality.needsOcr ? (
         <p className="library-detail-warning">
           <TriangleAlert size={15} aria-hidden="true" />
-          텍스트가 부족해 OCR 확인이 필요합니다.
+          {t("detail.needsOcr")}
         </p>
       ) : null}
       {collections.length > 0 && onToggleMembership ? (
         <div className="library-detail-collections">
-          <h3>컬렉션</h3>
+          <h3>{t("detail.collections")}</h3>
           {collections.map((collection) => {
             const member = collection.members.some((item) => item.documentId === document.id)
             const available = Boolean(collection.paperNodeIds[document.id])
@@ -136,7 +141,9 @@ export function LibraryDocumentDetail({
               >
                 <span>{collection.board.title}</span>
                 <small>
-                  {available && collectionReady ? (member ? "담김" : "추가") : "새로고침 필요"}
+                  {available && collectionReady
+                    ? t(member ? "detail.inCollection" : "detail.addToCollection")
+                    : t("detail.needsRefresh")}
                 </small>
               </button>
             )
@@ -146,9 +153,7 @@ export function LibraryDocumentDetail({
       {document.overview ? (
         <LibraryDocumentOverview key={document.id} overview={document.overview} />
       ) : (
-        <p className="library-detail-muted">
-          저장된 개요가 없습니다. PDF를 열어 내용을 확인하세요.
-        </p>
+        <p className="library-detail-muted">{t("detail.noOverview")}</p>
       )}
       {deletion ? <LibraryDocumentDelete document={document} {...deletion} /> : null}
     </section>
