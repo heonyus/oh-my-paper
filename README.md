@@ -62,6 +62,8 @@ The installer clones the app into `~/.oh-my-paper/app`, installs dependencies, b
 app, links an `oh-my-paper` command into `~/.local/bin` (adding it to `PATH` for zsh/bash),
 and starts the setup wizard. The wizard walks through four explained steps — runtime check,
 AI connection, the optional OCR engine, and a short usage tour — then offers to open the app.
+The OCR engine downloads in the background (about 3 GB), so the app is usable meanwhile and
+switches it on once it is ready; `oh-my-paper doctor` shows whether it is still installing.
 
 | Command | What it does |
 |---|---|

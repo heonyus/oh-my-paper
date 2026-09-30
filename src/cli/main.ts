@@ -1,10 +1,12 @@
 import { spawnSync } from "node:child_process"
 import { access } from "node:fs/promises"
+import { homedir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { intro, log, note, outro, spinner } from "@clack/prompts"
 import { ClaudeSubscriptionAdapter } from "../electron/claudeSubscriptionAdapter"
 import { CodexSubscriptionAdapter } from "../electron/codexSubscriptionAdapter"
+import { paddleInstallPaths } from "../electron/paddleInstallState"
 import { readWebServerConfig, type WebServerConfig } from "../server/config"
 import { checkEnvironment } from "./environment"
 import { readOnboardingState, runOnboarding } from "./onboarding"
@@ -62,7 +64,11 @@ async function doctor(config: WebServerConfig): Promise<void> {
       )
     } else log.info(gray("Claude Code CLI 없음 (선택)"))
     line(state.configured, state.configured ? "AI 연결됨" : "AI 연결 없음", "oh-my-paper onboard")
-    line(report.ocrReady, "OCR 엔진 (선택)", "npm run setup:paddle-vl")
+    if (report.ocrInstalling) {
+      log.info(
+        `OCR 엔진 설치 중 (백그라운드)\n${gray(`→ 로그 ${paddleInstallPaths(homedir()).log}`)}`,
+      )
+    } else line(report.ocrReady, "OCR 엔진 (선택)", "npm run setup:paddle-vl")
     log.info(`${running ? "실행 중" : "꺼져 있음"} · ${link(appUrl(config.host, config.port))}`)
     log.info(`데이터 ${config.dataDir}`)
     outro(state.configured ? "사용할 준비가 됐습니다" : "oh-my-paper onboard 로 AI를 연결하세요")

@@ -1,0 +1,69 @@
+// @vitest-environment node
+import { spawnSync } from "node:child_process"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { startOcrInstallInBackground } from "../../src/cli/environment"
+import {
+  lockHolderAlive,
+  paddleInstallPaths,
+  paddleInstallRunning,
+} from "../../src/electron/paddleInstallState"
+
+describe("PaddleOCR-VL install state", () => {
+  let home = ""
+
+  beforeEach(async () => {
+    home = await mkdtemp(join(tmpdir(), "ohmypaper-ocr-install-"))
+  })
+
+  afterEach(async () => {
+    await rm(home, { recursive: true, force: true })
+  })
+
+  async function writeLock(content: string): Promise<void> {
+    const { lock } = paddleInstallPaths(home)
+    await mkdir(join(home, ".ohmypaper"), { recursive: true })
+    await writeFile(lock, content)
+  }
+
+  it("keeps the lock and log beside the runtime folders", () => {
+    expect(paddleInstallPaths(home)).toEqual({
+      lock: join(home, ".ohmypaper", "paddle-vl-install.pid"),
+      log: join(home, ".ohmypaper", "paddle-vl-install.log"),
+    })
+  })
+
+  it("is not running without a lock", () => {
+    expect(paddleInstallRunning(home)).toBe(false)
+  })
+
+  it("is running while the process in the lock is alive", async () => {
+    await writeLock(`${process.pid}\n`)
+    expect(paddleInstallRunning(home)).toBe(true)
+  })
+
+  it("treats a lock left by a finished process as stale", async () => {
+    const finished = spawnSync(process.execPath, ["-e", ""])
+    await writeLock(`${finished.pid}\n`)
+    expect(paddleInstallRunning(home)).toBe(false)
+  })
+
+  it("ignores a damaged lock", async () => {
+    await writeLock("not a pid")
+    expect(lockHolderAlive(paddleInstallPaths(home).lock)).toBe(false)
+  })
+
+  it("starts the install detached and sends its output to the log", async () => {
+    const script = join(home, "fake-setup.mjs")
+    await writeFile(script, 'process.stdout.write("fake install done\\n")\n')
+
+    const log = startOcrInstallInBackground({ home, script })
+
+    expect(log).toBe(paddleInstallPaths(home).log)
+    await expect
+      .poll(async () => readFile(log, "utf8").catch(() => ""), { timeout: 10_000 })
+      .toContain("fake install done")
+  })
+})
