@@ -147,8 +147,8 @@ describe("WebOnboarding", () => {
       ),
     )
     expect(mocks.saveAiMode).toHaveBeenCalledWith(expect.objectContaining({ mode: "api" }))
-    await screen.findByRole("button", { name: "라이브러리 열기" })
-    fireEvent.click(screen.getByRole("button", { name: "라이브러리 열기" }))
+    await screen.findByRole("button", { name: "시작하기" })
+    fireEvent.click(screen.getByRole("button", { name: "시작하기" }))
     expect(onDone).toHaveBeenCalledWith(expect.objectContaining({ configured: true }))
   })
 
@@ -200,6 +200,18 @@ describe("WebOnboarding", () => {
 
     expect(await screen.findByText("access_denied")).toBeVisible()
     expect(mocks.saveAiMode).not.toHaveBeenCalled()
-    expect(screen.queryByRole("button", { name: "라이브러리 열기" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "시작하기" })).toBeNull()
+  })
+
+  it("opens on the ready step when the terminal wizard already connected AI", () => {
+    const onDone = vi.fn()
+    const connected = { ...providerStatusProp, configured: true, mode: "claude" } as const
+    render(<WebOnboarding status={connected} onDone={onDone} />)
+
+    expect(screen.getByRole("heading", { name: "준비됐습니다" })).toBeVisible()
+    expect(screen.getByText(/Claude 구독 연결됨/)).toBeVisible()
+    expect(screen.queryByText("AI를 연결하세요")).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: "시작하기" }))
+    expect(onDone).toHaveBeenCalledWith(connected)
   })
 })

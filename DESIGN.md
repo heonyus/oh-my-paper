@@ -29,7 +29,8 @@ a terminal install that explains itself, and short per-feature tutorials.
   one-line description and its keys. At most one tip per visit to a screen, shown after the
   screen settles, never over the PDF selection itself, dismissed with `알겠어요`, Escape or
   `팁 끄기` (all tips). Seen tips are a per-browser convenience in localStorage; losing it only
-  means a tip shows again. The header `?` (사용법) lists every tip with its clip and can show them
+  means a tip shows again, and a fresh data folder's welcome clears it. A tip whose clip is
+  missing shows without one (`page-translation.mp4` has not been recorded yet). The header `?` (사용법) lists every tip with its clip and can show them
   again. Recordings for tips and the README video hide tips and use the quiet note companion.
 - GitHub star invitation (owner request, 2026-09-29; direct star 2026-09-30): the app asks and never
   stars without that choice or with credentials of its own. The wizard asks once, after the usage
@@ -148,7 +149,11 @@ The local browser runtime has a guided first-run onboarding screen (welcome, con
 choice, done) that replaces any bare settings gate. Library and reader content stay
 hidden until the user connects ChatGPT subscription login or saves a personal API key
 (OpenRouter, OpenAI, Gemini or Groq) with its model; both paths are a handful of
-clicks and never expose credentials. Every imported PDF completes page parsing and
+clicks and never expose credentials. A fresh data folder shows the same page even when
+the terminal wizard already connected AI (owner request, 2026-09-30): it opens on the done
+step (`준비됐습니다 · … 연결됨`), and `시작하기` opens the 사용법 clips once and starts the
+feature tips over. The data folder records this in `welcome.json`; a folder that already
+holds papers counts as welcomed, and a failed status call skips the welcome. Every imported PDF completes page parsing and
 validation before its reader action becomes available. PDF.js supplies digital text
 and geometry, while local PaddleOCR-VL supplies figures, tables and equations. The
 library shows page-level progress, the active engine and bounded retries; a page that

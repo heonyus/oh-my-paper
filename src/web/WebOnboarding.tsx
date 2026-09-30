@@ -64,6 +64,12 @@ const CODEX_DEFAULT_LABEL =
   CODEX_MODEL_OPTIONS.find((option) => option.id === CODEX_DEFAULT_MODEL)?.label ??
   CODEX_DEFAULT_MODEL
 
+const CONNECTION_LABELS: Readonly<Record<NonNullable<ProviderStatus["mode"]>, string>> = {
+  chatgpt: "ChatGPT 구독",
+  claude: "Claude 구독",
+  api: "API 키",
+}
+
 const FIRST_STEPS: ReadonlyArray<{ title: string; detail: string; keys?: readonly string[] }> = [
   { title: "PDF 가져오기", detail: "라이브러리에 끌어다 놓으면 페이지 구조를 먼저 분석합니다." },
   {
@@ -253,6 +259,10 @@ function Choice({
   )
 }
 
+/**
+ * The first-run page. Without AI it walks through connecting; when AI is already connected (the
+ * terminal wizard did it) it opens on the ready step, so a fresh data folder still gets the intro.
+ */
 export function WebOnboarding({
   status,
   onDone,
@@ -260,9 +270,13 @@ export function WebOnboarding({
   readonly status: ProviderStatus
   readonly onDone: (next: ProviderStatus) => void
 }): JSX.Element {
-  const [step, setStep] = useState<Step>("choose")
-  const [summary, setSummary] = useState("")
-  const [doneStatus, setDoneStatus] = useState<ProviderStatus | null>(null)
+  const [step, setStep] = useState<Step>(status.configured ? "done" : "choose")
+  const [summary, setSummary] = useState(
+    status.configured ? CONNECTION_LABELS[status.mode ?? "chatgpt"] : "",
+  )
+  const [doneStatus, setDoneStatus] = useState<ProviderStatus | null>(
+    status.configured ? status : null,
+  )
   const [chatgptError, setChatgptError] = useState("")
   const loginStarted = useRef(false)
 
@@ -464,7 +478,9 @@ export function WebOnboarding({
             </span>
             <div className="web-onboarding-step-head">
               <h2>준비됐습니다</h2>
-              <p className="web-onboarding-hint">{summary} 연결됨 — 이렇게 시작하세요.</p>
+              <p className="web-onboarding-hint">
+                {summary} 연결됨 — 이렇게 시작하세요. 시작하면 사용법 영상을 한 번 보여 드려요.
+              </p>
             </div>
             <ol className="web-onboarding-tour">
               {FIRST_STEPS.map((item) => (
@@ -488,7 +504,7 @@ export function WebOnboarding({
               className="web-onboarding-primary"
               onClick={() => (doneStatus ? onDone(doneStatus) : window.location.assign("/"))}
             >
-              라이브러리 열기
+              시작하기
             </button>
           </div>
         ) : null}
