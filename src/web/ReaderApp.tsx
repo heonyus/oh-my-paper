@@ -4,6 +4,7 @@ import leafMarkUrl from "../../assets/branding/ohmypaper-leaf-mark.png"
 import { Topbar } from "../renderer/components/AppChrome"
 import { AppStatusOverlays } from "../renderer/components/AppStatusOverlays"
 import { LibraryHome } from "../renderer/components/LibraryHome"
+import { prefetchWhenIdle } from "../renderer/lib/prefetchWhenIdle"
 import { appShellStyle } from "../renderer/lib/uiFontScale"
 import { useAppWorkspace } from "../renderer/lib/useAppWorkspace"
 import { analysedPaperCount } from "../shared/documentAnalysis"
@@ -19,10 +20,9 @@ const ReaderWorkspace = lazy(() =>
     default: module.ReaderWorkspace,
   })),
 )
+const loadSettingsDialog = () => import("../renderer/components/AppSettingsDialog")
 const AppSettingsDialog = lazy(() =>
-  import("../renderer/components/AppSettingsDialog").then((module) => ({
-    default: module.AppSettingsDialog,
-  })),
+  loadSettingsDialog().then((module) => ({ default: module.AppSettingsDialog })),
 )
 const ResearchView = lazy(() =>
   import("./research/ResearchView").then((module) => ({
@@ -50,6 +50,9 @@ export function ReaderApp(): JSX.Element {
   const workspace = app.workspace
   const credentialsReady = app.provider.configured
   const libraryVisible = !researchOpen && app.libraryView
+
+  // 설정 opens at once: its code is fetched while the app is idle, not on the first click.
+  useEffect(() => prefetchWhenIdle(loadSettingsDialog), [])
 
   useEffect(() => {
     if (!openImportUrl || !workspace || !credentialsReady || openImportState !== "idle") return
