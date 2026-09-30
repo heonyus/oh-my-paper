@@ -41,7 +41,7 @@ describe("AiOverviewPanel", () => {
       "three_line_summary",
     )
     await userEvent.click(screen.getByRole("button", { name: "3줄 요약 보드에 저장" }))
-    expect(onSave).toHaveBeenCalledWith("3줄 요약", "1. 문제\n2. 방법\n3. 결과")
+    expect(onSave).toHaveBeenCalledWith("3줄 요약", "1. 문제\n2. 방법\n3. 결과", "3줄 요약")
   })
 
   it("shows keywords as tags that open their definition", async () => {

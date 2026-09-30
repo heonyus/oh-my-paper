@@ -18,9 +18,11 @@ import type { ProviderStatus } from "../../shared/ipc"
 import type { DocumentInsight, DocumentInsightKind } from "../../shared/schemas"
 import { researchSidebarLayout } from "../../shared/uiLayout"
 import type { SourceCitation } from "../lib/chatCitations"
+import { useTranslator } from "../lib/locale"
 import { togglePageTranslation } from "../lib/pageTranslationToggle"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
 import { saveCitationAssessment, saveSidebarInsight } from "../lib/sidebarCards"
+import { researchMessages } from "../messages/research"
 import type { AiRequestRunner, BoardCard, BoardTool, CardId, DocumentRecord } from "../types"
 import { AiOverviewPanel } from "./AiOverviewPanel"
 import { BoardIndexPanel } from "./BoardIndexPanel"
@@ -31,14 +33,6 @@ import { SidebarResizeHandle } from "./SidebarResizeHandle"
 
 type CardMode = Exclude<BoardCard["kind"], "citation" | "translation">
 type ResearchMode = "ai" | "citations" | "translation" | "scholar" | CardMode
-
-const cardModeLabels: Readonly<Record<CardMode, string>> = {
-  explanation: "AI 설명",
-  infographic: "AI 카드",
-  note: "메모",
-  sticky: "포스트잇",
-  highlight: "하이라이트",
-}
 
 function isCardMode(mode: ResearchMode): mode is CardMode {
   return mode !== "ai" && mode !== "citations" && mode !== "translation" && mode !== "scholar"
@@ -82,54 +76,61 @@ export function ResearchSidebar({
   readonly tool: BoardTool
   readonly onToolChange: (tool: BoardTool) => void
 }): JSX.Element {
+  const t = useTranslator(researchMessages)
   const [mode, setMode] = useState<ResearchMode>("ai")
   const [flyout, setFlyout] = useState<"hover" | "open" | "pinned">("hover")
   const [seenCounts, setSeenCounts] = useState<Partial<Record<ResearchMode, number>>>({})
+  const modeLabel = (id: ResearchMode): string => t(`sidebar.mode.${id}`)
   const modes: readonly {
     readonly id: ResearchMode
     readonly label: string
     readonly count?: number
     readonly icon: JSX.Element
   }[] = [
-    { id: "ai", label: "AI", icon: <Sparkles size={18} /> },
+    { id: "ai", label: modeLabel("ai"), icon: <Sparkles size={18} /> },
     {
       id: "translation",
-      label: "번역",
+      label: modeLabel("translation"),
       count: cards.filter((card) => card.kind === "translation").length,
       icon: <Languages size={18} />,
     },
     {
       id: "explanation",
-      label: "AI 설명",
+      label: modeLabel("explanation"),
       count: cards.filter((card) => card.kind === "explanation").length,
       icon: <MessageSquareText size={18} />,
     },
     {
       id: "infographic",
-      label: "AI 카드",
+      label: modeLabel("infographic"),
       count: cards.filter((card) => card.kind === "infographic").length,
       icon: <Palette size={18} />,
     },
     {
       id: "note",
-      label: "메모",
+      label: modeLabel("note"),
       count: cards.filter((card) => card.kind === "note").length,
       icon: <NotebookPen size={18} />,
     },
     {
       id: "sticky",
-      label: "포스트잇",
+      label: modeLabel("sticky"),
       count: cards.filter((card) => card.kind === "sticky").length,
       icon: <StickyNote size={18} />,
     },
     {
       id: "highlight",
-      label: "하이라이트",
+      label: modeLabel("highlight"),
       count: cards.filter((card) => card.kind === "highlight").length,
       icon: <Highlighter size={18} />,
     },
-    { id: "citations", label: "인용", count: citations.length, icon: <Quote size={18} /> },
-    { id: "scholar", label: "논문 탐색", icon: <Search size={18} /> },
+    {
+      id: "citations",
+      label: modeLabel("citations"),
+      count: citations.length,
+      icon: <Quote size={18} />,
+    },
+    { id: "scholar", label: modeLabel("scholar"), icon: <Search size={18} /> },
   ]
   const translationPortal = document ? (
     <PageTranslationPortal
@@ -144,7 +145,7 @@ export function ResearchSidebar({
     return (
       <>
         {translationPortal}
-        <aside className="research-sidebar is-collapsed" aria-label="연구 사이드바 접힘">
+        <aside className="research-sidebar is-collapsed" aria-label={t("sidebar.collapsedLabel")}>
           <nav className="research-mode-rail">
             <button
               type="button"
@@ -152,7 +153,7 @@ export function ResearchSidebar({
                 setFlyout("open")
                 onToggle()
               }}
-              aria-label="연구 사이드바 펼치기"
+              aria-label={t("sidebar.expand")}
               aria-expanded={false}
             >
               <ChevronLeft size={18} />
@@ -167,7 +168,7 @@ export function ResearchSidebar({
       {translationPortal}
       <aside
         className="research-sidebar"
-        aria-label="연구 사이드바"
+        aria-label={t("sidebar.label")}
         data-mode={mode}
         data-flyout={flyout}
         onPointerLeave={() => setFlyout((current) => (current === "pinned" ? current : "hover"))}
@@ -179,7 +180,7 @@ export function ResearchSidebar({
         <div className="research-sidebar-flyout" style={{ width }}>
           {onWidthChange ? (
             <SidebarResizeHandle
-              label="연구 사이드바 너비 조절"
+              label={t("sidebar.resize")}
               width={width}
               minimum={researchSidebarLayout.contentMinimum}
               maximum={researchSidebarLayout.contentMaximum}
@@ -189,7 +190,7 @@ export function ResearchSidebar({
           ) : null}
           <div className="research-sidebar-content">
             {!document ? (
-              <p className="mode-empty">열려 있는 논문이 없습니다.</p>
+              <p className="mode-empty">{t("sidebar.noDocument")}</p>
             ) : mode === "ai" ? (
               <AiOverviewPanel
                 key={document.id}
@@ -200,29 +201,29 @@ export function ResearchSidebar({
                 cachedInsights={insights}
                 onInsightChange={onInsightChange}
                 onNavigateToSource={onNavigateToSource}
-                onSave={(title, body) =>
-                  onCardsChange(saveSidebarInsight(cards, document, title, body))
+                onSave={(title, body, sourceTitle) =>
+                  onCardsChange(saveSidebarInsight(cards, document, title, body, sourceTitle))
                 }
               />
             ) : mode === "translation" ? (
               <BoardIndexPanel
                 cards={cards}
                 kind="translation"
-                label="번역"
+                label={modeLabel("translation")}
                 onJump={onJumpToCard}
               />
             ) : mode === "highlight" ? (
               <BoardIndexPanel
                 cards={cards}
                 kind="highlight"
-                label={cardModeLabels.highlight}
+                label={modeLabel("highlight")}
                 onJump={onJumpToCard}
               />
             ) : isCardMode(mode) ? (
               <BoardIndexPanel
                 cards={cards}
                 kind={mode}
-                label={cardModeLabels[mode]}
+                label={modeLabel(mode)}
                 onJump={onJumpToCard}
               />
             ) : mode === "scholar" ? (
@@ -239,13 +240,13 @@ export function ResearchSidebar({
             )}
           </div>
         </div>
-        <nav className="research-mode-rail" aria-label="연구 사이드바 모드">
+        <nav className="research-mode-rail" aria-label={t("sidebar.modes")}>
           <button
             type="button"
             onClick={() => setFlyout((current) => (current === "pinned" ? "hover" : "pinned"))}
-            aria-label={flyout === "pinned" ? "연구 사이드바 고정 해제" : "연구 사이드바 고정"}
+            aria-label={flyout === "pinned" ? t("sidebar.unpin") : t("sidebar.pin")}
             aria-pressed={flyout === "pinned"}
-            title={flyout === "pinned" ? "고정 해제" : "고정"}
+            title={flyout === "pinned" ? t("sidebar.unpinShort") : t("sidebar.pinShort")}
           >
             {flyout === "pinned" ? <PinOff size={18} /> : <Pin size={18} />}
           </button>
@@ -255,7 +256,7 @@ export function ResearchSidebar({
               setFlyout("hover")
               onToggle()
             }}
-            aria-label="연구 사이드바 접기"
+            aria-label={t("sidebar.collapse")}
             aria-expanded
           >
             <PanelRightClose size={18} />
@@ -268,9 +269,15 @@ export function ResearchSidebar({
               data-active={mode === item.id}
               aria-pressed={mode === item.id}
               aria-expanded={mode === item.id && flyout === "pinned" && mode !== "translation"}
-              aria-description={mode === item.id && flyout === "pinned" ? "고정됨" : undefined}
+              aria-description={
+                mode === item.id && flyout === "pinned" ? t("sidebar.pinned") : undefined
+              }
               data-research-mode={item.id}
-              aria-label={item.id === "ai" ? "AI 개요 열기" : `${item.label} 모드`}
+              aria-label={
+                item.id === "ai"
+                  ? t("sidebar.openAi")
+                  : t("sidebar.modeButton", { label: item.label })
+              }
               title={item.label}
               onClick={() => {
                 if (flyout !== "pinned") setFlyout("open")

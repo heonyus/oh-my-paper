@@ -1,12 +1,13 @@
 import { citationAssessmentResultSchema } from "../../shared/citationAssessment"
+import { type Locale, translator } from "../../shared/i18n/locale"
 import type { CitationPaper } from "../../shared/ipc"
+import { citationMessages } from "../messages/citations"
 import type { AiRequestRunner } from "../types"
 import {
   citationAssessmentInput,
   citationLookupRequest,
   parseCitationAssessment,
   rankCitationAssessments,
-  readingTierLabel,
 } from "./citationTriage"
 import type { CitationIndexEntry } from "./pdfCitationIndex"
 import type { DetectedStructure } from "./structureDetector"
@@ -26,6 +27,8 @@ type CitationStructureAssessmentInput = {
   readonly currentPaperTitle: string
   readonly onAiRequest: AiRequestRunner
   readonly onMetadata: (paper: CitationPaper) => void
+  /** The language of the card body's headings; Korean when not given. */
+  readonly locale?: Locale | undefined
 }
 
 function entryFor(structure: DetectedStructure): CitationIndexEntry {
@@ -68,22 +71,23 @@ export async function assessCitationStructure(
       score: ranked.score,
       tier: ranked.tier,
     })
+    const t = translator(citationMessages, input.locale ?? "ko")
     return {
       status: "assessed",
       paper: lookup.paper,
       assessment,
       body: [
-        `## 읽기 판단`,
-        `- **권장 수준:** ${readingTierLabel[ranked.tier]}`,
-        `- **읽기 점수:** ${ranked.score}/100`,
+        `## ${t("citation.body.verdict")}`,
+        `- **${t("citation.body.level")}:** ${t(`citation.tier.${ranked.tier}`)}`,
+        `- **${t("citation.body.score")}:** ${ranked.score}/100`,
         "",
-        "## 현재 논문에서의 역할",
+        `## ${t("citation.body.role")}`,
         assessment.citationReason,
         "",
-        "## 읽을 가치",
+        `## ${t("citation.body.value")}`,
         assessment.readingValue,
         assessment.reasons.length
-          ? `\n## 근거\n${assessment.reasons.map((reason) => `- ${reason}`).join("\n")}`
+          ? `\n## ${t("citation.body.reasons")}\n${assessment.reasons.map((reason) => `- ${reason}`).join("\n")}`
           : "",
       ]
         .filter(Boolean)

@@ -1,5 +1,7 @@
 import { ChevronDown, Copy, Pin, RefreshCw } from "lucide-react"
 import { type JSX, useId, useState } from "react"
+import { useTranslator } from "../lib/locale"
+import { researchMessages } from "../messages/research"
 import { MarkdownContent } from "./MarkdownContent"
 
 type SidebarInsightSectionProps = {
@@ -22,6 +24,7 @@ export function SidebarInsightSection({
   onSave,
   view,
 }: SidebarInsightSectionProps): JSX.Element {
+  const t = useTranslator(researchMessages)
   const [open, setOpen] = useState(true)
   const [showAll, setShowAll] = useState(false)
   const bodyId = useId()
@@ -43,17 +46,21 @@ export function SidebarInsightSection({
             <>
               <button
                 type="button"
-                aria-label={`${title} 복사`}
+                aria-label={t("insight.copy", { title })}
                 onClick={() => void navigator.clipboard?.writeText(value)}
               >
                 <Copy size={14} />
               </button>
-              <button type="button" aria-label={`${title} 보드에 저장`} onClick={onSave}>
+              <button type="button" aria-label={t("insight.save", { title })} onClick={onSave}>
                 <Pin size={14} />
               </button>
             </>
           ) : null}
-          <button type="button" aria-label={`${title} 다시 생성`} onClick={onGenerate}>
+          <button
+            type="button"
+            aria-label={t("insight.regenerate", { title })}
+            onClick={onGenerate}
+          >
             <RefreshCw size={14} />
           </button>
         </div>
@@ -73,10 +80,14 @@ export function SidebarInsightSection({
                 type="button"
                 className="insight-disclosure"
                 aria-expanded={showAll}
-                aria-label={`${title} ${showAll ? "접기" : "전체 내용 펼치기"}`}
+                aria-label={
+                  showAll
+                    ? t("insight.collapseLabel", { title })
+                    : t("insight.expandLabel", { title })
+                }
                 onClick={() => setShowAll(!showAll)}
               >
-                <span>{showAll ? "접기" : "더 보기"}</span>
+                <span>{showAll ? t("insight.collapse") : t("insight.more")}</span>
                 <ChevronDown size={12} />
               </button>
             ) : null}

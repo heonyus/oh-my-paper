@@ -1,13 +1,15 @@
 import { BookOpen, ExternalLink } from "lucide-react"
 import type { JSX } from "react"
+import { useTranslator } from "../../renderer/lib/locale"
 import type { AgentPaper } from "../../shared/agentChat"
+import { researchViewMessages } from "./messages"
 
 export type PaperOpenState = "idle" | "importing" | "failed"
 
-const relevanceLabels: Readonly<Record<number, string>> = {
-  3: "핵심",
-  2: "관련",
-  1: "약한 관련",
+const relevanceKeys: Readonly<Record<number, keyof typeof researchViewMessages.ko>> = {
+  3: "paper.relevance.3",
+  2: "paper.relevance.2",
+  1: "paper.relevance.1",
 }
 
 export function paperKey(paper: AgentPaper): string {
@@ -25,10 +27,12 @@ export function ResearchPaperCard({
   readonly openState: PaperOpenState
   readonly onOpenInReader: (paper: AgentPaper) => void
 }): JSX.Element {
+  const t = useTranslator(researchViewMessages)
   const meta = [paper.authors.slice(0, 3).join(", "), paper.year ?? "n.d.", paper.venue]
     .filter((part) => part !== "")
     .join(" · ")
-  const relevance = paper.relevance === undefined ? null : relevanceLabels[paper.relevance]
+  const relevanceKey = paper.relevance === undefined ? undefined : relevanceKeys[paper.relevance]
+  const relevance = relevanceKey ? t(relevanceKey) : null
   return (
     <article className="research-paper">
       <header>
@@ -42,7 +46,9 @@ export function ResearchPaperCard({
             </span>
           ) : null}
           {paper.citationCount !== null ? (
-            <span className="research-paper-cites">인용 {paper.citationCount}</span>
+            <span className="research-paper-cites">
+              {t("paper.citedBy", { count: paper.citationCount })}
+            </span>
           ) : null}
         </span>
       </header>
@@ -57,7 +63,7 @@ export function ResearchPaperCard({
           onClick={() => onOpenInReader(paper)}
         >
           <BookOpen size={13} aria-hidden="true" />
-          {openState === "importing" ? "가져오는 중…" : "리더에서 열기"}
+          {openState === "importing" ? t("paper.importing") : t("paper.open")}
         </button>
         {paper.landingUrl ? (
           <a
@@ -67,12 +73,12 @@ export function ResearchPaperCard({
             className="research-paper-site"
           >
             <ExternalLink size={12} aria-hidden="true" />
-            원문 사이트
+            {t("paper.site")}
           </a>
         ) : null}
         {openState === "failed" ? (
           <span className="research-paper-failed" role="alert">
-            가져오지 못했습니다
+            {t("paper.importFailed")}
           </span>
         ) : null}
       </footer>
