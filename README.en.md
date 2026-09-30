@@ -39,7 +39,7 @@ You need an Apple Silicon Mac, git and Node.js 22+ (`brew install node`). The se
 
 | Step | What it does |
 |:--|:--|
-| **1** Runtime check | Looks for Node.js, the sign-in runtime and Claude Code |
+| **1** Runtime check | Looks for Node.js and what the AI connection uses: the ChatGPT sign-in runtime (Codex) and Claude Code |
 | **2** Document engine | Starts downloading PaddleOCR-VL **in the background** (about 3 GB) |
 | **3** AI connection | Pick a ChatGPT subscription, a Claude subscription or an API key |
 | **4** Usage tour | Shows the keys and first steps, then opens the app |

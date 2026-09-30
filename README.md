@@ -37,7 +37,7 @@ Apple Silicon Mac, git, Node.js 22 이상(`brew install node`)만 있으면 됩�
 
 | 단계 | 하는 일 |
 |:--|:--|
-| **1** 실행 환경 확인 | Node.js, 로그인 런타임, Claude Code가 있는지 봅니다 |
+| **1** 실행 환경 확인 | Node.js와 AI 연결에 쓰는 ChatGPT 로그인 런타임(Codex), Claude Code가 있는지 봅니다 |
 | **2** 문서 분석 엔진 | PaddleOCR-VL을 **백그라운드로** 받기 시작합니다 (약 3GB) |
 | **3** AI 연결 | ChatGPT 구독 · Claude 구독 · API 키 중 하나를 고릅니다 |
 | **4** 사용법 | 단축키와 첫걸음을 보여 주고 앱을 엽니다 |
