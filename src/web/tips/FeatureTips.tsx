@@ -1,5 +1,13 @@
 import { X } from "lucide-react"
-import { type JSX, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import {
+  type JSX,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react"
 import { GITHUB_REPO_URL } from "../../shared/githubStar"
 import { markStarOpened } from "../star/starInviteRules"
 import {
@@ -217,8 +225,19 @@ export function FeatureTips({
   )
 }
 
-/** Every tip in one place, reachable from the header's 사용법 button. */
-export function TipsGallery({ onClose }: { readonly onClose: () => void }): JSX.Element {
+/**
+ * Every tip in one place, reachable from the header's 사용법 button. The first-run page opens it
+ * with the engine download's progress (`status`) and, once that is done, a `primary` action.
+ */
+export function TipsGallery({
+  onClose,
+  status,
+  primary,
+}: {
+  readonly onClose: () => void
+  readonly status?: ReactNode
+  readonly primary?: { readonly label: string; readonly onClick: () => void } | undefined
+}): JSX.Element {
   const closeRef = useRef<HTMLButtonElement>(null)
   const [reset, setReset] = useState(false)
 
@@ -248,6 +267,7 @@ export function TipsGallery({ onClose }: { readonly onClose: () => void }): JSX.
             <X size={16} />
           </button>
         </header>
+        {status}
         <ul>
           {FEATURE_TIPS.map((tip) => (
             <li key={tip.id}>
@@ -278,6 +298,11 @@ export function TipsGallery({ onClose }: { readonly onClose: () => void }): JSX.
           >
             {reset ? "기능을 처음 열 때 다시 보여줍니다" : "팁 다시 보기"}
           </button>
+          {primary ? (
+            <button type="button" className="tips-gallery-primary" onClick={primary.onClick}>
+              {primary.label}
+            </button>
+          ) : null}
         </footer>
       </section>
     </div>

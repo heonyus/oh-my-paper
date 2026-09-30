@@ -41,6 +41,7 @@ import {
   scholarlySearchResultSchema,
   scholarlySearchStreamEventSchema,
 } from "../shared/scholarlySearchSchemas"
+import { welcomeStatusSchema } from "../shared/welcome"
 import { workspacePatchRequestSchema, workspacePatchSavedSchema } from "../shared/workspacePatch"
 import { createClaudeRoutes } from "./claudeRoutes"
 import type { WebServerConfig } from "./config"
@@ -50,6 +51,7 @@ import { streamParsedPage } from "./pageParseStream"
 import type { WebServices } from "./services"
 import { importPdfBytes, importPdfFromUrl, readWorkspace } from "./services"
 import { createSubscriptionRoutes } from "./subscriptionRoutes"
+import { readWelcomeSeen, saveWelcomeSeen } from "./welcomeStore"
 
 function sendJson(res: ServerResponse, status: number, data: unknown): void {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8" })
@@ -327,6 +329,21 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
           }
           case "documentOcrStatus": {
             sendJson(res, 200, await services.ocrStatus())
+            return
+          }
+          case "welcomeStatus": {
+            let seen = await readWelcomeSeen(config.dataDir)
+            // A folder that already holds papers predates the welcome; do not show it there.
+            if (!seen && (await services.store.read()).documents.length > 0) {
+              await saveWelcomeSeen(config.dataDir)
+              seen = true
+            }
+            sendJson(res, 200, welcomeStatusSchema.parse({ seen }))
+            return
+          }
+          case "markWelcomeSeen": {
+            await saveWelcomeSeen(config.dataDir)
+            sendJson(res, 200, welcomeStatusSchema.parse({ seen: true }))
             return
           }
           case "githubStarStatus": {

@@ -334,6 +334,13 @@
   cursor: pointer;
 }
 
+.tips-gallery > footer .tips-gallery-primary {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--surface);
+  font-weight: 600;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .feature-tip,
   .tips-gallery {

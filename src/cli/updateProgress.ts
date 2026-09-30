@@ -1,0 +1,108 @@
+import { spawn } from "node:child_process"
+
+/** Plain text of one output line: no color codes, no surrounding space. */
+export function plainLine(line: string): string {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: strips ANSI escape sequences.
+  return line.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, "").trim()
+}
+
+// npm 11 logs downloads as `npm http fetch GET 200 <url> 12ms (cache miss)` and cache reads as
+// `npm http cache <name>@<url> 0ms (cache hit)`.
+const NPM_FETCH = /^npm http fetch \w+ (\d{3}) (\S+) \d+ms(?: \((.+)\))?/
+const NPM_CACHE = /^npm http cache \S+?@(https?:\/\/\S+) \d+ms/
+
+function tarballName(url: string): string {
+  return decodeURIComponent(url.split("/").at(-1) ?? url).replace(/\.tgz$/, "")
+}
+
+/**
+ * What the dim progress log shows for a line of `npm ci --loglevel=http`: a package name for each
+ * download or cache read instead of its registry URL. Other lines pass through.
+ */
+export function describeUpdateLine(line: string): string | null {
+  const text = plainLine(line)
+  if (!text) return null
+  const cached = NPM_CACHE.exec(text)
+  if (cached) return `${tarballName(cached[1] ?? "")} · 캐시`
+  const fetch = NPM_FETCH.exec(text)
+  if (!fetch) return text
+  const [, status, url = "", note] = fetch
+  if (status !== "200") return `${tarballName(url)} (${status})`
+  return note?.includes("cache hit") ? `${tarballName(url)} · 캐시` : `${tarballName(url)} 받는 중`
+}
+
+export function isNpmFetchLine(line: string): boolean {
+  const text = plainLine(line)
+  return NPM_FETCH.test(text) || NPM_CACHE.test(text)
+}
+
+/** `패키지 812개 · 41s` from npm's closing line. */
+export function npmSummary(lines: readonly string[]): string | null {
+  for (const line of [...lines].reverse()) {
+    const match = /added (\d+) packages?.* in ([\d.]+m?s)/.exec(plainLine(line))
+    if (match) return `패키지 ${match[1]}개 · ${match[2]}`
+  }
+  return null
+}
+
+/** `모듈 1234개 · 3.94s` from Vite's output. */
+export function buildSummary(lines: readonly string[]): string | null {
+  const text = lines.map(plainLine)
+  const modules = text.map((line) => /(\d+) modules transformed/.exec(line)?.[1]).find(Boolean)
+  const time = text.map((line) => /built in ([\d.]+m?s)/.exec(line)?.[1]).find(Boolean)
+  if (!time) return null
+  return modules ? `모듈 ${modules}개 · ${time}` : time
+}
+
+/** `3ed7cc4 → 2e1683f · 커밋 3개`, or `이미 최신` when nothing changed. */
+export function gitSummary(before: string, after: string, commits: number): string {
+  if (before === after) return "이미 최신"
+  return `${before.slice(0, 7)} → ${after.slice(0, 7)} · 커밋 ${commits}개`
+}
+
+/** Cuts a line to the terminal width so the rolling log never wraps. */
+export function fitLine(line: string, columns: number): string {
+  const room = Math.max(20, columns - 8)
+  return line.length > room ? `${line.slice(0, room - 1)}…` : line
+}
+
+/**
+ * Runs a command and hands every output line (stdout and stderr, split on `\r` too so progress
+ * redraws arrive as lines) to `onLine`. Resolves with the exit status and all lines.
+ */
+export function runStreaming(
+  command: string,
+  args: readonly string[],
+  options: { readonly cwd: string; readonly onLine: (line: string) => void },
+): Promise<{ readonly ok: boolean; readonly lines: readonly string[] }> {
+  return new Promise((resolve) => {
+    const lines: string[] = []
+    // npm is a .cmd script on Windows, which only a shell can start; the arguments are fixed.
+    const child =
+      process.platform === "win32" && command === "npm"
+        ? spawn([command, ...args].join(" "), { cwd: options.cwd, shell: true })
+        : spawn(command, args, { cwd: options.cwd })
+    for (const stream of [child.stdout, child.stderr]) {
+      let pending = ""
+      stream.setEncoding("utf8")
+      stream.on("data", (chunk: string) => {
+        const parts = (pending + chunk).split(/\r\n|\r|\n/)
+        pending = parts.pop() ?? ""
+        for (const part of parts) {
+          lines.push(part)
+          options.onLine(part)
+        }
+      })
+      stream.on("end", () => {
+        if (!pending) return
+        lines.push(pending)
+        options.onLine(pending)
+      })
+    }
+    child.on("error", (error) => {
+      lines.push(error.message)
+      resolve({ ok: false, lines })
+    })
+    child.on("close", (code) => resolve({ ok: code === 0, lines }))
+  })
+}

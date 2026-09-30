@@ -309,6 +309,14 @@ describe("Paddle page parser service", () => {
         configured: false,
         installing: true,
       })
+      await writeFile(
+        join(root, ".ohmypaper", "paddle-vl-install.progress.json"),
+        JSON.stringify({ percent: 42, etaSeconds: 90 }),
+      )
+      await expect(service.status()).resolves.toMatchObject({
+        installing: true,
+        installProgress: { percent: 42, etaSeconds: 90 },
+      })
     } finally {
       service.dispose()
       await cleanup()

@@ -134,6 +134,7 @@ const ALL_EFFORTS = ["low", "medium", "high", "xhigh", "max", "ultra"]
 
 /** Korean hints for models the runtime is known to list; others keep its English text. */
 const CODEX_MODEL_HINTS: Readonly<Record<string, string>> = {
+  "gpt-6.1-sol": "최신 · 복잡한 작업",
   "gpt-6-astra": "최신 · 가장 깊은 추론과 리서치",
   "gpt-6-sol": "최신 · 복잡한 작업",
   "gpt-6-luna": "최신 · 빠르고 가벼움",
@@ -143,11 +144,14 @@ const CODEX_MODEL_HINTS: Readonly<Record<string, string>> = {
   "gpt-5.5": "레거시",
 }
 
-export const CODEX_DEFAULT_MODEL = "gpt-6-astra"
+/** Fast and light enough for translation and explanations; chosen whenever the account lists it. */
+export const CODEX_DEFAULT_MODEL = "gpt-6-luna"
 
 /** Shown until the bundled runtime answers `model/list` (offline or an older runtime). */
 export const CODEX_MODEL_OPTIONS: readonly CodexModel[] = [
+  { id: "gpt-6-luna", label: "GPT-6 Luna", efforts: ALL_EFFORTS.slice(0, 5) },
   { id: "gpt-6-astra", label: "GPT-6 Astra", efforts: ALL_EFFORTS },
+  { id: "gpt-6-sol", label: "GPT-6 Sol", efforts: ALL_EFFORTS },
   { id: "gpt-5.6-sol", label: "GPT-5.6 Sol", efforts: ALL_EFFORTS },
   { id: "gpt-5.6-terra", label: "GPT-5.6 Terra", efforts: ALL_EFFORTS },
   { id: "gpt-5.6-luna", label: "GPT-5.6 Luna", efforts: ALL_EFFORTS.slice(0, 5) },
@@ -178,9 +182,14 @@ export function codexModelFromRuntime(raw: {
   }
 }
 
-/** The runtime's default model, falling back to the app default. */
+/** The app default when the account lists it, else the runtime's default, else the first model. */
 export function defaultCodexModel(models: readonly CodexModel[]): string {
-  return models.find((model) => model.isDefault)?.id ?? models[0]?.id ?? CODEX_DEFAULT_MODEL
+  return (
+    models.find((model) => model.id === CODEX_DEFAULT_MODEL)?.id ??
+    models.find((model) => model.isDefault)?.id ??
+    models[0]?.id ??
+    CODEX_DEFAULT_MODEL
+  )
 }
 
 /** The model choices, keeping a saved model that is no longer listed so the select shows it. */

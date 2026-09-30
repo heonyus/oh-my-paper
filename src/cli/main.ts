@@ -3,17 +3,31 @@ import { access } from "node:fs/promises"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { intro, log, note, outro, spinner } from "@clack/prompts"
+import { intro, log, note, outro, spinner, taskLog } from "@clack/prompts"
 import { ClaudeSubscriptionAdapter } from "../electron/claudeSubscriptionAdapter"
 import { CodexSubscriptionAdapter } from "../electron/codexSubscriptionAdapter"
-import { paddleInstallPaths } from "../electron/paddleInstallState"
+import {
+  describePaddleInstallProgress,
+  paddleInstallPaths,
+  readPaddleInstallProgress,
+} from "../electron/paddleInstallState"
 import { readWebServerConfig, type WebServerConfig } from "../server/config"
 import { checkEnvironment } from "./environment"
 import { readOnboardingState, runOnboarding } from "./onboarding"
 import { portOpen, startApp } from "./startApp"
 import { banner, bold, gray, inverse, link } from "./style"
 import { appUrl, quickstart } from "./tutorial"
-import { packageVersion } from "./version"
+import {
+  buildSummary,
+  describeUpdateLine,
+  fitLine,
+  gitSummary,
+  isNpmFetchLine,
+  npmSummary,
+  plainLine,
+  runStreaming,
+} from "./updateProgress"
+import { packageVersion, readPackageVersion } from "./version"
 
 const appRoot = fileURLToPath(new URL("../..", import.meta.url))
 async function doctor(config: WebServerConfig): Promise<void> {
@@ -65,8 +79,9 @@ async function doctor(config: WebServerConfig): Promise<void> {
     } else log.info(gray("Claude Code CLI 없음 (선택)"))
     line(state.configured, state.configured ? "AI 연결됨" : "AI 연결 없음", "oh-my-paper onboard")
     if (report.ocrInstalling) {
+      const progress = describePaddleInstallProgress(readPaddleInstallProgress(homedir()))
       log.info(
-        `OCR 엔진 설치 중 (백그라운드)\n${gray(`→ 로그 ${paddleInstallPaths(homedir()).log}`)}`,
+        `OCR 엔진 설치 중 ${progress} (백그라운드)\n${gray(`→ 로그 ${paddleInstallPaths(homedir()).log}`)}`,
       )
     } else line(report.ocrReady, "OCR 엔진 (선택)", "npm run setup:paddle-vl")
     log.info(`${running ? "실행 중" : "꺼져 있음"} · ${link(appUrl(config.host, config.port))}`)
@@ -78,36 +93,82 @@ async function doctor(config: WebServerConfig): Promise<void> {
   }
 }
 
-function update(): void {
+type UpdateStep = {
+  readonly title: string
+  readonly command: string
+  readonly args: readonly string[]
+  readonly summary: (lines: readonly string[]) => string | null
+}
+
+function gitOutput(args: readonly string[]): string {
+  return spawnSync("git", args, { cwd: appRoot, encoding: "utf8" }).stdout.trim()
+}
+
+/** Each step streams its output as a dim rolling log, then leaves one summary line. */
+async function update(): Promise<void> {
   process.stdout.write(`${banner(packageVersion())}\n`)
   intro(inverse(" 업데이트 "))
-  const steps: ReadonlyArray<{ title: string; command: string; args: readonly string[] }> = [
-    { title: "최신 코드 받기", command: "git", args: ["pull", "--ff-only"] },
-    { title: "의존성 설치", command: "npm", args: ["ci", "--no-audit", "--no-fund"] },
-    { title: "웹 앱 빌드", command: "npm", args: ["run", "build:web"] },
+  const before = gitOutput(["rev-parse", "HEAD"])
+  const newCommits = (): readonly string[] => {
+    const after = gitOutput(["rev-parse", "HEAD"])
+    if (!before || after === before) return []
+    return gitOutput(["log", "--no-merges", "--format=%s", `${before}..${after}`])
+      .split("\n")
+      .filter(Boolean)
+  }
+  const steps: readonly UpdateStep[] = [
+    {
+      title: "최신 코드 받기",
+      command: "git",
+      args: ["pull", "--ff-only", "--progress"],
+      summary: () => gitSummary(before, gitOutput(["rev-parse", "HEAD"]), newCommits().length),
+    },
+    {
+      title: "의존성 설치",
+      command: "npm",
+      args: ["ci", "--no-audit", "--no-fund", "--loglevel=http", "--foreground-scripts"],
+      summary: npmSummary,
+    },
+    { title: "웹 앱 빌드", command: "npm", args: ["run", "build:web"], summary: buildSummary },
   ]
+  // clack divides by the width to erase the rolling log, so a terminal that reports none gets
+  // only the step lines.
+  const columns = process.stdout.columns ?? 0
+  const rolling = columns > 0
   for (const step of steps) {
-    const task = spinner()
-    task.start(`${step.title}…`)
-    // npm is a .cmd script on Windows, which only a shell can start; the arguments are fixed.
-    const result =
-      process.platform === "win32" && step.command === "npm"
-        ? spawnSync(["npm", ...step.args].join(" "), {
-            cwd: appRoot,
-            encoding: "utf8",
-            shell: true,
-          })
-        : spawnSync(step.command, step.args, { cwd: appRoot, encoding: "utf8" })
-    if (result.status !== 0) {
-      task.error(`${step.title} 실패`)
-      log.error(`${result.stderr || result.stdout}`.trim().split("\n").slice(-8).join("\n"))
+    const task = taskLog({ title: `${step.title}…`, limit: 5 })
+    const result = await runStreaming(step.command, step.args, {
+      cwd: appRoot,
+      onLine: (line) => {
+        const shown = rolling ? describeUpdateLine(line) : null
+        if (shown) task.message(fitLine(shown, columns))
+      },
+    })
+    if (!result.ok) {
+      task.error(`${step.title} 실패`, { showLog: false })
+      const tail = result.lines
+        .filter((line) => !isNpmFetchLine(line))
+        .map(plainLine)
+        .filter(Boolean)
+        .slice(-12)
+      if (tail.length > 0) log.message(tail.map((line) => gray(line)).join("\n"))
       outro("업데이트를 마치지 못했습니다")
       process.exitCode = 1
       return
     }
-    task.stop(step.title)
+    const summary = step.summary(result.lines)
+    task.success(summary ? `${step.title} ${gray(`· ${summary}`)}` : step.title)
+    if (step.command === "git") {
+      const commits = newCommits()
+      if (commits.length > 0) {
+        const width = columns || 80
+        const shown = commits.slice(0, 5).map((subject) => gray(`• ${fitLine(subject, width)}`))
+        if (commits.length > 5) shown.push(gray(`  외 ${commits.length - 5}개`))
+        log.message(shown.join("\n"))
+      }
+    }
   }
-  outro(`v${packageVersion()} — 다시 시작하면 적용됩니다`)
+  outro(`v${readPackageVersion()} — 실행 중인 앱은 다시 시작하면 적용됩니다`)
 }
 
 function help(config: WebServerConfig): void {
@@ -144,7 +205,7 @@ async function main(): Promise<void> {
       await doctor(config)
       return
     case "update":
-      update()
+      await update()
       return
     case "-v":
     case "--version":

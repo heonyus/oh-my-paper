@@ -40,7 +40,7 @@ describe("browser subscription AI service", () => {
 
     const result = await service.run(request)
 
-    expect(result).toEqual({ text: "subscription answer", model: "gpt-6-astra" })
+    expect(result).toEqual({ text: "subscription answer", model: "gpt-6-luna" })
     const params = completion.mock.calls[0]?.[0]
     expect(params?.prompt).toContain("What does this show?")
     expect(params?.prompt).not.toContain("private-image-bytes")

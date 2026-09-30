@@ -13,6 +13,7 @@ import leafMarkUrl from "../../assets/branding/ohmypaper-leaf-mark.png"
 import { useCodexSettings } from "../renderer/components/useCodexSettings"
 import { CLAUDE_MODEL_OPTIONS, DEFAULT_CLAUDE_MODEL } from "../shared/claudeTypes"
 import { CODEX_DEFAULT_MODEL, CODEX_MODEL_OPTIONS, defaultCodexModel } from "../shared/codexTypes"
+import type { DocumentOcrProviderStatus } from "../shared/documentOcr"
 import type { ProviderConfig, ProviderStatus } from "../shared/ipc"
 import {
   DEFAULT_OPENROUTER_MODEL,
@@ -23,6 +24,8 @@ import {
   OPENROUTER_PAGE_TRANSLATION_MODEL,
 } from "../shared/providerModels"
 import { ClaudeOnboardingStep } from "./ClaudeOnboardingStep"
+import { EngineSetupProgress } from "./EngineSetupProgress"
+import { TipsGallery } from "./tips/FeatureTips"
 
 type Step = "choose" | "claude" | "chatgpt" | "api" | "done"
 
@@ -63,6 +66,12 @@ const CLAUDE_DEFAULT_LABEL = (
 const CODEX_DEFAULT_LABEL =
   CODEX_MODEL_OPTIONS.find((option) => option.id === CODEX_DEFAULT_MODEL)?.label ??
   CODEX_DEFAULT_MODEL
+
+const CONNECTION_LABELS: Readonly<Record<NonNullable<ProviderStatus["mode"]>, string>> = {
+  chatgpt: "ChatGPT 구독",
+  claude: "Claude 구독",
+  api: "API 키",
+}
 
 const FIRST_STEPS: ReadonlyArray<{ title: string; detail: string; keys?: readonly string[] }> = [
   { title: "PDF 가져오기", detail: "라이브러리에 끌어다 놓으면 페이지 구조를 먼저 분석합니다." },
@@ -253,17 +262,39 @@ function Choice({
   )
 }
 
+/**
+ * The first-run page. Without AI it walks through connecting; when AI is already connected (the
+ * terminal wizard did it) it opens on the ready step, so a fresh data folder still gets the intro.
+ */
 export function WebOnboarding({
   status,
+  ocrStatus,
   onDone,
 }: {
   readonly status: ProviderStatus
-  readonly onDone: (next: ProviderStatus) => void
+  /** The OCR engine; while it downloads, the ready step waits with its progress and the clips. */
+  readonly ocrStatus?: DocumentOcrProviderStatus | undefined
+  readonly onDone: (next: ProviderStatus, options?: { readonly watchedTips: boolean }) => void
 }): JSX.Element {
-  const [step, setStep] = useState<Step>("choose")
-  const [summary, setSummary] = useState("")
-  const [doneStatus, setDoneStatus] = useState<ProviderStatus | null>(null)
+  const [step, setStep] = useState<Step>(status.configured ? "done" : "choose")
+  const [summary, setSummary] = useState(
+    status.configured ? CONNECTION_LABELS[status.mode ?? "chatgpt"] : "",
+  )
+  const [doneStatus, setDoneStatus] = useState<ProviderStatus | null>(
+    status.configured ? status : null,
+  )
   const [chatgptError, setChatgptError] = useState("")
+  const [watching, setWatching] = useState(false)
+  const [watchedTips, setWatchedTips] = useState(false)
+  const engineInstalling = ocrStatus?.installing === true
+  const start = (): void => {
+    if (doneStatus) onDone(doneStatus, { watchedTips })
+    else window.location.assign("/")
+  }
+  const watch = (): void => {
+    setWatching(true)
+    setWatchedTips(true)
+  }
   const loginStarted = useRef(false)
 
   const finish = useCallback(async (label: string): Promise<void> => {
@@ -363,6 +394,7 @@ export function WebOnboarding({
               />
             </div>
             <p className="web-onboarding-foot">설정 › AI에서 언제든 바꿀 수 있습니다.</p>
+            {ocrStatus ? <EngineSetupProgress status={ocrStatus} /> : null}
           </div>
         ) : null}
 
@@ -463,8 +495,12 @@ export function WebOnboarding({
               <Check size={20} strokeWidth={2.6} />
             </span>
             <div className="web-onboarding-step-head">
-              <h2>준비됐습니다</h2>
-              <p className="web-onboarding-hint">{summary} 연결됨 — 이렇게 시작하세요.</p>
+              <h2>{engineInstalling ? "거의 준비됐습니다" : "준비됐습니다"}</h2>
+              <p className="web-onboarding-hint">
+                {engineInstalling
+                  ? `${summary} 연결됨 — 문서 분석 엔진을 받는 동안 사용법을 둘러보세요.`
+                  : `${summary} 연결됨 — 이렇게 시작하세요. 시작하면 사용법 영상을 한 번 보여 드려요.`}
+              </p>
             </div>
             <ol className="web-onboarding-tour">
               {FIRST_STEPS.map((item) => (
@@ -483,16 +519,31 @@ export function WebOnboarding({
                 </li>
               ))}
             </ol>
-            <button
-              type="button"
-              className="web-onboarding-primary"
-              onClick={() => (doneStatus ? onDone(doneStatus) : window.location.assign("/"))}
-            >
-              라이브러리 열기
-            </button>
+            {ocrStatus ? <EngineSetupProgress status={ocrStatus} /> : null}
+            {engineInstalling ? (
+              <div className="web-onboarding-actions">
+                <button type="button" className="web-onboarding-ghost" onClick={start}>
+                  기다리지 않고 시작
+                </button>
+                <button type="button" className="web-onboarding-primary" onClick={watch}>
+                  사용법 영상 보며 기다리기
+                </button>
+              </div>
+            ) : (
+              <button type="button" className="web-onboarding-primary" onClick={start}>
+                시작하기
+              </button>
+            )}
           </div>
         ) : null}
       </section>
+      {watching ? (
+        <TipsGallery
+          onClose={() => setWatching(false)}
+          status={ocrStatus ? <EngineSetupProgress status={ocrStatus} /> : null}
+          primary={engineInstalling ? undefined : { label: "시작하기", onClick: start }}
+        />
+      ) : null}
     </main>
   )
 }

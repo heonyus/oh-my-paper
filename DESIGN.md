@@ -14,7 +14,8 @@ a terminal install that explains itself, and short per-feature tutorials.
   screen uses the app's canvas/ink/action tokens, follows the system light/dark scheme, hides the
   picture below 960px and keeps the choices above the fold at 375px.
 - ChatGPT models come from the bundled Codex runtime (`model/list`) for the signed-in account;
-  a first connection saves the runtime's default model. The bundled list is only a fallback.
+  a first connection saves GPT-6 Luna when the account lists it, otherwise the runtime's default
+  model (owner request, 2026-09-30). The bundled list is only a fallback.
 - Terminal: `scripts/install.sh` (curl one-liner) clones, installs, builds, links
   `oh-my-paper` and starts the wizard. The wizard has four explained steps (runtime, AI
   connection, optional OCR, usage tour). The AI step lists ChatGPT first and preselects it; only a
@@ -28,7 +29,8 @@ a terminal install that explains itself, and short per-feature tutorials.
   one-line description and its keys. At most one tip per visit to a screen, shown after the
   screen settles, never over the PDF selection itself, dismissed with `알겠어요`, Escape or
   `팁 끄기` (all tips). Seen tips are a per-browser convenience in localStorage; losing it only
-  means a tip shows again. The header `?` (사용법) lists every tip with its clip and can show them
+  means a tip shows again, and a fresh data folder's welcome clears it. A tip whose clip is
+  missing shows without one. The header `?` (사용법) lists every tip with its clip and can show them
   again. Recordings for tips and the README video hide tips and use the quiet note companion.
 - GitHub star invitation (owner request, 2026-09-29; direct star 2026-09-30): the app asks and never
   stars without that choice or with credentials of its own. The wizard asks once, after the usage
@@ -147,7 +149,15 @@ The local browser runtime has a guided first-run onboarding screen (welcome, con
 choice, done) that replaces any bare settings gate. Library and reader content stay
 hidden until the user connects ChatGPT subscription login or saves a personal API key
 (OpenRouter, OpenAI, Gemini or Groq) with its model; both paths are a handful of
-clicks and never expose credentials. Every imported PDF completes page parsing and
+clicks and never expose credentials. A fresh data folder shows the same page even when
+the terminal wizard already connected AI (owner request, 2026-09-30): it opens on the done
+step (`준비됐습니다 · … 연결됨`), and `시작하기` opens the 사용법 clips once and starts the
+feature tips over. While the OCR engine still downloads, the connect and ready steps show its
+progress (`문서 분석 엔진 내려받는 중 42% · 약 3분 남음`); the ready step reads `거의
+준비됐습니다` with `사용법 영상 보며 기다리기` (the clips, with the same bar) and a quiet `기다리지
+않고 시작`. When the download finishes the bar turns into `문서 분석 엔진 준비 완료` and the clips
+offer `시작하기`; clips watched there are not shown again in the library. The data folder records this in `welcome.json`; a folder that already
+holds papers counts as welcomed, and a failed status call skips the welcome. Every imported PDF completes page parsing and
 validation before its reader action becomes available. PDF.js supplies digital text
 and geometry, while local PaddleOCR-VL supplies figures, tables and equations. The
 library shows page-level progress, the active engine and bounded retries; a page that

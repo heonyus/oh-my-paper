@@ -321,6 +321,42 @@ async function smoothScroll(dy: number): Promise<void> {
   }
 }
 
+/** Scrolls the board sideways the way a trackpad does; positive moves the content left. */
+async function smoothPanX(dx: number): Promise<void> {
+  const steps = Math.max(6, Math.ceil(Math.abs(dx) / 30))
+  for (let i = 0; i < steps; i++) {
+    await page.mouse.wheel(dx / steps, 0)
+    await sleep(16)
+  }
+}
+
+/**
+ * Brings a page and the translation beside it fully on screen, as a reader would: zoom out until
+ * the pair fits the board, then slide it to the middle.
+ */
+async function framePageTranslation(): Promise<void> {
+  const room = VIEWPORT.w - 72
+  for (let i = 0; i < 8; i++) {
+    const page1 = await boxOf('.page[data-page-number="1"]')
+    const pane = await boxOf(".page-translation-pane")
+    if (!page1 || !pane) return
+    const width = pane.x + pane.w - page1.x
+    if (width > room - 48) {
+      await clickSelector('button[aria-label="축소"]', 450)
+      // The pane keeps its old place until the zoomed page is drawn.
+      await sleep(1500)
+      continue
+    }
+    const dx = page1.x - (room - width) / 2
+    if (Math.abs(dx) <= 12) return
+    // Each pass measures again, since a pan can land short while the board settles.
+    if (i === 0 || pointer.x > page1.x + page1.w)
+      await glide(page1.x + page1.w * 0.5, VIEWPORT.h * 0.55, 500)
+    await smoothPanX(dx)
+    await sleep(800)
+  }
+}
+
 /** Waits until the newest card of a kind shows its finished answer (the copy action appears). */
 async function waitForCard(kind: string, timeoutMs = 150_000): Promise<Box | null> {
   const started = now()
@@ -488,15 +524,18 @@ await scene("explain", "어려운 문장은", ["E"], async () => {
 })
 
 await scene("page-translation", "페이지를 통째로 번역", undefined, async () => {
-  const toggle = await clickSelector(".topbar-translation-action")
+  await clickSelector(".topbar-translation-action")
   await page
     .locator(".page-translation-pane")
     .first()
     .waitFor({ timeout: 60_000 })
     .catch(() => undefined)
+  await sleep(600)
+  // At 1440 px the pane opens past the right edge of the board.
+  await framePageTranslation()
   await waitForQuiet(".page-translation-pane", 240_000, 200, 5000)
   await sleep(1200)
-  return union(toggle, await boxOf(".page-translation-pane"))
+  return union(await boxOf('.page[data-page-number="1"]'), await boxOf(".page-translation-pane"))
 })
 
 await scene("note", "노트에 담고, 내 말로", ["C"], async () => {

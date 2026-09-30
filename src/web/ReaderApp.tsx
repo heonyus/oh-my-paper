@@ -7,8 +7,10 @@ import { LibraryHome } from "../renderer/components/LibraryHome"
 import { appShellStyle } from "../renderer/lib/uiFontScale"
 import { useAppWorkspace } from "../renderer/lib/useAppWorkspace"
 import { type DocumentId, documentIdSchema } from "../shared/schemas"
+import { EngineSetupProgress } from "./EngineSetupProgress"
 import { StarInvite } from "./star/StarInvite"
 import { FeatureTips, TipsGallery } from "./tips/FeatureTips"
+import { useWelcome } from "./useWelcome"
 import { WebOnboarding } from "./WebOnboarding"
 
 const ReaderWorkspace = lazy(() =>
@@ -32,6 +34,7 @@ export function ReaderApp(): JSX.Element {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [researchOpen, setResearchOpen] = useState(false)
   const [tipsOpen, setTipsOpen] = useState(false)
+  const welcome = useWelcome()
   const [openImportUrl] = useState(() => {
     const current = new URL(window.location.href)
     return current.pathname === "/open" ? current.searchParams.get("url") : null
@@ -103,7 +106,29 @@ export function ReaderApp(): JSX.Element {
       </main>
     )
 
-  if (!credentialsReady) return <WebOnboarding status={app.provider} onDone={app.setProvider} />
+  if (credentialsReady && welcome.state === "loading")
+    return (
+      <main className="loading-screen" aria-live="polite">
+        <p>oh-my-paper를 여는 중…</p>
+      </main>
+    )
+
+  // A fresh data folder gets the intro even when the terminal wizard already connected AI, then
+  // the 사용법 clips once.
+  if (!credentialsReady || welcome.state === "pending")
+    return (
+      <WebOnboarding
+        status={app.provider}
+        ocrStatus={app.ocrStatus}
+        onDone={(next, options) => {
+          app.setProvider(next)
+          if (welcome.state !== "pending") return
+          welcome.finish()
+          // Clips already watched while the engine downloaded are not shown again.
+          if (!options?.watchedTips) setTipsOpen(true)
+        }}
+      />
+    )
 
   if (openImportState === "loading")
     return (
@@ -314,7 +339,10 @@ export function ReaderApp(): JSX.Element {
         onPreparationClose={() => app.setPreparation([])}
       />
       {tipsOpen ? (
-        <TipsGallery onClose={() => setTipsOpen(false)} />
+        <TipsGallery
+          onClose={() => setTipsOpen(false)}
+          status={<EngineSetupProgress status={app.ocrStatus} />}
+        />
       ) : (
         <FeatureTips
           view={researchOpen ? "research" : libraryVisible ? "library" : "reader"}
