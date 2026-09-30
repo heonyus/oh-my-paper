@@ -23,6 +23,11 @@ describe("update progress", () => {
       ),
     ).toBe("vite-7.1.2 받는 중")
     expect(
+      describeUpdateLine(
+        "npm http cache @types/node@https://registry.npmjs.org/@types/node/-/node-24.3.0.tgz 0ms (cache hit)",
+      ),
+    ).toBe("node-24.3.0 · 캐시")
+    expect(
       isNpmFetchLine("npm http fetch GET 200 https://registry.npmjs.org/a/-/a-1.tgz 1ms"),
     ).toBe(true)
   })

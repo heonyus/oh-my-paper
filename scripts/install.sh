@@ -49,19 +49,33 @@ fail() {
   exit 1
 }
 
-# Runs a command with a spinner; its output goes to the log and is shown only on failure.
+# The newest line of the log, as the spinner's dim second line: progress redraws split, color
+# codes dropped, npm package downloads shown by name, cut to the terminal width.
+latest() {
+  tail -c 4000 "$LOG" 2>/dev/null | tr '\r' '\n' | grep -v '^[[:space:]]*$' | tail -n 1 |
+    sed -E $'s/\x1b\\[[0-9;]*[A-Za-z]//g' |
+    sed -E -e 's#^npm http cache [^ ]*/([^/ ]+)\.tgz .*#\1#' \
+      -e 's#^npm http fetch [A-Z]+ [0-9]+ [^ ]*/([^/ ]+)\.tgz .*#\1#' |
+    cut -c "1-$1"
+}
+
+# Runs a command with a spinner and its latest output line beneath it; the full output goes to
+# the log and is shown only on failure.
 run() {
   local label="$1"
   shift
   "$@" >>"$LOG" 2>&1 &
-  local pid=$! i=0
+  local pid=$! i=0 width
   local frames=('◒' '◐' '◓' '◑')
   if [ -t 1 ]; then
+    width=$(($(tput cols 2>/dev/null || echo 80) - 10))
+    [ "$width" -gt 20 ] || width=20
     while kill -0 "$pid" 2>/dev/null; do
-      printf '\r%s│%s  %s%s%s %s' "$DIM" "$RESET" "$CYAN" "${frames[i++ % 4]}" "$RESET" "$label"
+      printf '\r\033[K%s│%s  %s%s%s %s\n\033[K%s│    %s%s\033[1A\r' "$DIM" "$RESET" "$CYAN" \
+        "${frames[i++ % 4]}" "$RESET" "$label" "$DIM" "$(latest "$width")" "$RESET"
       sleep 0.12
     done
-    printf '\r\033[K'
+    printf '\r\033[K\n\033[K\033[1A\r'
   fi
   if wait "$pid"; then
     ok "$label"
@@ -93,15 +107,16 @@ command -v npm >/dev/null 2>&1 || fail "npm이 없습니다" "Node.js를 다시 
 
 step "2/4  내려받기"
 if [ -d "$APP_DIR/.git" ]; then
-  run "최신 버전으로 업데이트" git -C "$APP_DIR" pull --ff-only
+  run "최신 버전으로 업데이트" git -C "$APP_DIR" pull --ff-only --progress
 else
   mkdir -p "$(dirname "$APP_DIR")"
-  run "저장소 복제" git clone --depth 1 --branch "$BRANCH" "$REPO" "$APP_DIR"
+  run "저장소 복제" git clone --progress --depth 1 --branch "$BRANCH" "$REPO" "$APP_DIR"
 fi
 
 step "3/4  설치와 빌드"
 printf '%s│%s  %s처음에는 몇 분 걸립니다%s\n' "$DIM" "$RESET" "$DIM" "$RESET"
-run "의존성 설치 (Codex 로그인 런타임 포함)" npm --prefix "$APP_DIR" ci --no-audit --no-fund
+run "의존성 설치 (Codex 로그인 런타임 포함)" npm --prefix "$APP_DIR" ci --no-audit --no-fund \
+  --loglevel=http --foreground-scripts
 run "웹 앱 빌드" npm --prefix "$APP_DIR" run build:web
 
 step "4/4  명령어 연결"

@@ -126,13 +126,16 @@ async function update(): Promise<void> {
     },
     { title: "웹 앱 빌드", command: "npm", args: ["run", "build:web"], summary: buildSummary },
   ]
-  const columns = process.stdout.columns ?? 80
+  // clack divides by the width to erase the rolling log, so a terminal that reports none gets
+  // only the step lines.
+  const columns = process.stdout.columns ?? 0
+  const rolling = columns > 0
   for (const step of steps) {
     const task = taskLog({ title: `${step.title}…`, limit: 5 })
     const result = await runStreaming(step.command, step.args, {
       cwd: appRoot,
       onLine: (line) => {
-        const shown = describeUpdateLine(line)
+        const shown = rolling ? describeUpdateLine(line) : null
         if (shown) task.message(fitLine(shown, columns))
       },
     })
@@ -153,7 +156,8 @@ async function update(): Promise<void> {
     if (step.command === "git") {
       const commits = newCommits()
       if (commits.length > 0) {
-        const shown = commits.slice(0, 5).map((subject) => gray(`• ${fitLine(subject, columns)}`))
+        const width = columns || 80
+        const shown = commits.slice(0, 5).map((subject) => gray(`• ${fitLine(subject, width)}`))
         if (commits.length > 5) shown.push(gray(`  외 ${commits.length - 5}개`))
         log.message(shown.join("\n"))
       }

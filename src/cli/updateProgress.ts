@@ -6,25 +6,34 @@ export function plainLine(line: string): string {
   return line.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, "").trim()
 }
 
+// npm 11 logs downloads as `npm http fetch GET 200 <url> 12ms (cache miss)` and cache reads as
+// `npm http cache <name>@<url> 0ms (cache hit)`.
 const NPM_FETCH = /^npm http fetch \w+ (\d{3}) (\S+) \d+ms(?: \((.+)\))?/
+const NPM_CACHE = /^npm http cache \S+?@(https?:\/\/\S+) \d+ms/
+
+function tarballName(url: string): string {
+  return decodeURIComponent(url.split("/").at(-1) ?? url).replace(/\.tgz$/, "")
+}
 
 /**
  * What the dim progress log shows for a line of `npm ci --loglevel=http`: a package name for each
- * download instead of its registry URL. Other lines pass through.
+ * download or cache read instead of its registry URL. Other lines pass through.
  */
 export function describeUpdateLine(line: string): string | null {
   const text = plainLine(line)
   if (!text) return null
+  const cached = NPM_CACHE.exec(text)
+  if (cached) return `${tarballName(cached[1] ?? "")} · 캐시`
   const fetch = NPM_FETCH.exec(text)
   if (!fetch) return text
   const [, status, url = "", note] = fetch
-  const tarball = decodeURIComponent(url.split("/").at(-1) ?? url).replace(/\.tgz$/, "")
-  if (status !== "200") return `${tarball} (${status})`
-  return note?.includes("cache") ? `${tarball} · 캐시` : `${tarball} 받는 중`
+  if (status !== "200") return `${tarballName(url)} (${status})`
+  return note?.includes("cache hit") ? `${tarballName(url)} · 캐시` : `${tarballName(url)} 받는 중`
 }
 
 export function isNpmFetchLine(line: string): boolean {
-  return NPM_FETCH.test(plainLine(line))
+  const text = plainLine(line)
+  return NPM_FETCH.test(text) || NPM_CACHE.test(text)
 }
 
 /** `패키지 812개 · 41s` from npm's closing line. */
