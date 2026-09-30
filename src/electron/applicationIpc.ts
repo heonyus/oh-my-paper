@@ -144,8 +144,9 @@ export function registerApplicationIpc(
   })
   const analysis = new DocumentAnalysisService(store, pageParser, {
     maxConcurrency: 4,
-    // Papers imported while the OCR engine downloads wait for it instead of failing.
-    engineInstalling: async () => (await paddlePageParser.status()).installing === true,
+    // Papers wait quietly for the OCR engine (still downloading, or not installed) and are
+    // analysed once it is ready; reading never waits for it.
+    engineReady: async () => (await paddlePageParser.status()).configured,
   })
   const disposeAnalysisIpc = registerDocumentAnalysisIpc(analysis)
   const disposeTranslationCacheIpc = registerPageTranslationCacheIpc(

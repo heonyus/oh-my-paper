@@ -148,6 +148,9 @@ export function installLocalReaderApi(): void {
     retryDocumentAnalysis: async (id) => {
       await localRpc("retryDocumentAnalysis", { id }, documentAnalysisSnapshotSchema)
     },
+    setReadingFocus: async (focus) => {
+      await localRpc("setReadingFocus", focus, z.object({ ok: z.literal(true) }))
+    },
     documentOcrStatus: async (): Promise<DocumentOcrProviderStatus> => {
       return localRpc("documentOcrStatus", {}, documentOcrProviderStatusSchema)
     },

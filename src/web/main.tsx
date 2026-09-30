@@ -25,7 +25,6 @@ import "../renderer/components/reader-workspace.css"
 import "./local-reader.css"
 import "./web-onboarding.css"
 import "./tips/feature-tips.css"
-import "./engine-setup.css"
 import "./star/star-invite.css"
 import "./research/research.css"
 

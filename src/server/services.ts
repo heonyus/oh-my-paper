@@ -94,8 +94,9 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
   })
   const analysis = new DocumentAnalysisService(store, pages, {
     maxConcurrency: 4,
-    // Papers imported while the OCR engine downloads wait for it instead of failing.
-    engineInstalling: async () => (await paddle.status()).installing === true,
+    // Papers wait quietly for the OCR engine (still downloading, or not installed) and are
+    // analysed once it is ready; reading never waits for it.
+    engineReady: async () => (await paddle.status()).configured,
   })
   // The server listens while the library's unanalysed papers are queued in the background.
   const resuming = analysis.resumePending().catch((error: unknown) => {

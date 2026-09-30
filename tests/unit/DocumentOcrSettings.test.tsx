@@ -34,4 +34,18 @@ describe("DocumentOcrSettings", () => {
       "42",
     )
   })
+  it("tells whoever looks how many papers are analysed", () => {
+    render(
+      <DocumentOcrSettings
+        status={{ ...missing, configured: true, acceleration: "mlx" }}
+        analysis={{ analysed: 2, total: 3 }}
+      />,
+    )
+    expect(screen.getByText("논문 3편 중 2편 완료")).toBeVisible()
+  })
+
+  it("leaves the count out of an empty library", () => {
+    render(<DocumentOcrSettings status={missing} analysis={{ analysed: 0, total: 0 }} />)
+    expect(screen.queryByText(/편 완료/)).toBeNull()
+  })
 })

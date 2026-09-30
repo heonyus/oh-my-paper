@@ -160,18 +160,20 @@ export function bindViewerEventBridge(params: EventBridgeParams): {
     if (pageDiv) applyParsedPage(parsed, pageDiv)
   })
 
-  let analyzedPages = 0
+  let analyzedPages: number | null = null
   const unsubscribeAnalysis = params.subscribeDocumentAnalysis?.((snapshot) => {
     const job = snapshot.jobs.find((candidate) => candidate.id === params.document.id)
-    if (!job) return
-    const completed = job.state === "complete" ? job.pageCount : job.completedPages
-    if (completed <= analyzedPages) return
+    const completed = job ? (job.state === "complete" ? job.pageCount : job.completedPages) : null
+    // Pages finish in reading order rather than 1..n, and a finished paper leaves the snapshot,
+    // so any change looks again at every rendered page still showing PDF.js text alone. The
+    // overlay only adds boxes over the page, so the page being read may take it too.
+    if (completed === analyzedPages) return
+    const finished = completed === null
     analyzedPages = completed
-    // Pages rendered before their analysis finished have no overlay yet, or one from PDF.js
-    // text alone.
+    if (!finished && completed === 0) return
     for (const pageDiv of params.container.querySelectorAll<HTMLElement>(".page[data-loaded]")) {
       const pageNumber = Number(pageDiv.getAttribute("data-page-number"))
-      if (!Number.isInteger(pageNumber) || pageNumber < 1 || pageNumber > completed) continue
+      if (!Number.isInteger(pageNumber) || pageNumber < 1) continue
       if (awaitingStructuredPage(params.document.id, pageNumber))
         loadPreparedPage(pageNumber, pageDiv)
     }

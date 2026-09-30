@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { WebOnboarding } from "../../src/web/WebOnboarding"
 
@@ -149,9 +149,7 @@ describe("WebOnboarding", () => {
     expect(mocks.saveAiMode).toHaveBeenCalledWith(expect.objectContaining({ mode: "api" }))
     await screen.findByRole("button", { name: "시작하기" })
     fireEvent.click(screen.getByRole("button", { name: "시작하기" }))
-    expect(onDone).toHaveBeenCalledWith(expect.objectContaining({ configured: true }), {
-      watchedTips: false,
-    })
+    expect(onDone).toHaveBeenCalledWith(expect.objectContaining({ configured: true }))
   })
 
   it("starts ChatGPT login immediately when the subscription card is chosen", async () => {
@@ -214,67 +212,6 @@ describe("WebOnboarding", () => {
     expect(screen.getByText(/Claude 구독 연결됨/)).toBeVisible()
     expect(screen.queryByText("AI를 연결하세요")).toBeNull()
     fireEvent.click(screen.getByRole("button", { name: "시작하기" }))
-    expect(onDone).toHaveBeenCalledWith(connected, { watchedTips: false })
-  })
-
-  it("waits for the engine download with its progress and the clips, then starts", () => {
-    const onDone = vi.fn()
-    const connected = { ...providerStatusProp, configured: true, mode: "claude" } as const
-    const engine = {
-      configured: false,
-      provider: "paddle",
-      model: "PaddleOCR-VL-1.6",
-      acceleration: null,
-    } as const
-    const { rerender } = render(
-      <WebOnboarding
-        status={connected}
-        ocrStatus={{
-          ...engine,
-          installing: true,
-          installProgress: { percent: 42, etaSeconds: 150 },
-        }}
-        onDone={onDone}
-      />,
-    )
-
-    expect(screen.getByRole("heading", { name: "거의 준비됐습니다" })).toBeVisible()
-    expect(screen.getByText("42% · 약 3분 남음")).toBeVisible()
-    expect(screen.queryByRole("button", { name: "시작하기" })).toBeNull()
-    fireEvent.click(screen.getByRole("button", { name: "사용법 영상 보며 기다리기" }))
-    const gallery = screen.getByRole("dialog", { name: "사용법" })
-    expect(within(gallery).getByText("문서 분석 엔진 내려받는 중")).toBeVisible()
-    expect(within(gallery).queryByRole("button", { name: "시작하기" })).toBeNull()
-
-    rerender(
-      <WebOnboarding
-        status={connected}
-        ocrStatus={{ ...engine, configured: true, acceleration: "mlx" }}
-        onDone={onDone}
-      />,
-    )
-    expect(within(gallery).getByText(/문서 분석 엔진 준비 완료/)).toBeVisible()
-    fireEvent.click(within(gallery).getByRole("button", { name: "시작하기" }))
-    expect(onDone).toHaveBeenCalledWith(connected, { watchedTips: true })
-  })
-
-  it("lets the person start without waiting for the engine", () => {
-    const onDone = vi.fn()
-    const connected = { ...providerStatusProp, configured: true, mode: "chatgpt" } as const
-    render(
-      <WebOnboarding
-        status={connected}
-        ocrStatus={{
-          configured: false,
-          provider: "paddle",
-          model: "PaddleOCR-VL-1.6",
-          acceleration: null,
-          installing: true,
-        }}
-        onDone={onDone}
-      />,
-    )
-    fireEvent.click(screen.getByRole("button", { name: "기다리지 않고 시작" }))
-    expect(onDone).toHaveBeenCalledWith(connected, { watchedTips: false })
+    expect(onDone).toHaveBeenCalledWith(connected)
   })
 })

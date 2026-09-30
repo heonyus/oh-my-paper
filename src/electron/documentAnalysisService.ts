@@ -24,11 +24,13 @@ export class DocumentAnalysisService {
   /** Deleted while queued or running; their in-flight work must not report back. */
   readonly #forgotten = new Set<DocumentId>()
   readonly #queue: DocumentRecord[] = []
-  /** Held while the OCR engine downloads, so they wait instead of failing without it. */
+  /** Held until the OCR engine is ready, so they wait quietly instead of failing without it. */
   readonly #waitingForEngine: DocumentRecord[] = []
-  readonly #engineInstalling: () => Promise<boolean>
+  readonly #engineReady: () => Promise<boolean>
   readonly #enginePollMs: number
   #enginePoll: ReturnType<typeof setInterval> | null = null
+  /** The page someone is reading; its document goes first and its pages in reading order. */
+  #focus: { readonly documentId: DocumentId; readonly pageNumber: number } | null = null
   readonly #scheduling = new Map<DocumentId, Promise<void>>()
   readonly #running = new Set<Promise<void>>()
   readonly #abort = new AbortController()
@@ -48,12 +50,12 @@ export class DocumentAnalysisService {
       readonly pageConcurrency?: number
       /** Documents analysed under another parser version are analysed again. */
       readonly parserVersion?: string
-      /** True while the OCR engine is being installed and is not ready yet. */
-      readonly engineInstalling?: () => Promise<boolean>
+      /** Whether the OCR engine can run now; documents wait for it otherwise, installed or not. */
+      readonly engineReady?: () => Promise<boolean>
       readonly enginePollMs?: number
     } = {},
   ) {
-    this.#engineInstalling = options.engineInstalling ?? (async () => false)
+    this.#engineReady = options.engineReady ?? (async () => true)
     this.#enginePollMs = options.enginePollMs ?? 5_000
     const positiveInt = (value: number | undefined, fallback: number): number =>
       typeof value === "number" && Number.isInteger(value) && value > 0 ? value : fallback
@@ -77,6 +79,18 @@ export class DocumentAnalysisService {
 
   isReady(documentId: DocumentId): boolean {
     return this.#readyDocuments.has(documentId)
+  }
+
+  /**
+   * Where someone is reading. That document is analysed before the others and its pages in
+   * `readingPageOrder`; a document already queued or waiting for the engine moves to the front.
+   */
+  focus(documentId: DocumentId, pageNumber: number): void {
+    this.#focus = { documentId, pageNumber }
+    for (const list of [this.#queue, this.#waitingForEngine]) {
+      const index = list.findIndex((document) => document.id === documentId)
+      if (index > 0) list.unshift(...list.splice(index, 1))
+    }
   }
 
   /** Queues every library document not analysed yet, in one pass and one state write. */
@@ -185,7 +199,7 @@ export class DocumentAnalysisService {
 
   async #run(document: DocumentRecord): Promise<void> {
     const cancelled = (): boolean => this.#disposed || this.#forgotten.has(document.id)
-    if (await this.#engineInstalling().catch(() => false)) {
+    if (!(await this.#engineReady().catch(() => false))) {
       if (cancelled()) return
       this.#waitingForEngine.push(document)
       this.#jobs.set(document.id, waitingAnalysisJob(document))
@@ -200,6 +214,7 @@ export class DocumentAnalysisService {
       signal: this.#abort.signal,
       pageConcurrency: this.#pageConcurrency,
       cancelled,
+      readingPage: () => (this.#focus?.documentId === document.id ? this.#focus.pageNumber : null),
       onProgress: (progress) => {
         this.#jobs.set(document.id, runningAnalysisJob({ document, ...progress }))
         this.#emit()
@@ -219,17 +234,17 @@ export class DocumentAnalysisService {
     void this.#persist()
   }
 
-  /** Checks the engine until its install ends, then queues the documents that waited for it. */
+  /** Checks the engine until it is ready, then queues the documents that waited for it. */
   #startEnginePoll(): void {
     if (this.#enginePoll || this.#disposed) return
     let checking = false
     this.#enginePoll = setInterval(() => {
       if (checking) return
       checking = true
-      void this.#engineInstalling()
+      void this.#engineReady()
         .catch(() => false)
-        .then((installing) => {
-          if (installing || this.#disposed) return
+        .then((ready) => {
+          if (!ready || this.#disposed) return
           this.#stopEnginePoll()
           const waiting = this.#waitingForEngine.splice(0)
           for (const document of waiting) {

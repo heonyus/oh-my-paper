@@ -16,8 +16,8 @@ export type TextSize = "normal" | "large" | "largest"
 
 export function parserStageMessage(stage: DocumentPageParseProgress["stage"]): string {
   switch (stage) {
+    // The OCR engine works unseen, so its start reads like any other page read.
     case "engine-starting":
-      return "문서 인식 엔진을 준비하고 있습니다."
     case "page-rendering":
       return "현재 페이지를 읽고 있습니다."
     case "document-analyzing":

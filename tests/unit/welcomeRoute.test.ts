@@ -2,7 +2,7 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { defaultWorkspace } from "../../src/electron/workspaceStore"
 import type { WebServerConfig } from "../../src/server/config"
 import { createLocalWebServer } from "../../src/server/server"
@@ -46,7 +46,7 @@ async function setup() {
     })
     return welcomeStatusSchema.parse(await response.json())
   }
-  return { root, services, call }
+  return { root, services, call, base: `http://127.0.0.1:${address.port}` }
 }
 
 describe("welcome routes", () => {
@@ -80,5 +80,16 @@ describe("welcome routes", () => {
 
     expect(await call("welcomeStatus")).toEqual({ seen: true })
     expect(await readWelcomeSeen(root)).toBe(true)
+  })
+  it("passes the page being read to background analysis", async () => {
+    const { services, base } = await setup()
+    const focus = vi.spyOn(services.analysis, "focus")
+    const response = await fetch(`${base}/api/rpc/setReadingFocus`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: "aabbccddeeff0011", pageNumber: 3 }),
+    })
+    expect(response.status).toBe(200)
+    expect(focus).toHaveBeenCalledWith("aabbccddeeff0011", 3)
   })
 })

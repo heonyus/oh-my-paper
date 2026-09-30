@@ -84,7 +84,7 @@ describe("PDF viewer event bridge", () => {
     bridge.dispose()
   })
 
-  it("loads a rendered page's analysis once background analysis reaches it", () => {
+  it("looks again at rendered pages whenever background analysis moves on or finishes", () => {
     const parsePage = vi
       .spyOn(documentPageRuntime, "loadParsedDocumentPage")
       .mockResolvedValue(null)
@@ -109,12 +109,18 @@ describe("PDF viewer event bridge", () => {
       maxAttempts: 2,
     } as const
 
-    publish?.(snapshotOfAnalysisJobs([{ ...running, completedPages: 1 }]))
+    publish?.(snapshotOfAnalysisJobs([{ ...running, completedPages: 0 }]))
     expect(parsePage).not.toHaveBeenCalled()
-    publish?.(snapshotOfAnalysisJobs([{ ...running, completedPages: 2 }]))
+    // Pages finish in reading order, so the page may be done before its number is reached.
+    publish?.(snapshotOfAnalysisJobs([{ ...running, completedPages: 1 }]))
     expect(parsePage).toHaveBeenCalledExactlyOnceWith("aabbccddeeff0011", 2, {
       preparedOnly: true,
     })
+    publish?.(snapshotOfAnalysisJobs([{ ...running, completedPages: 1 }]))
+    expect(parsePage).toHaveBeenCalledOnce()
+    // A finished paper leaves the snapshot; that is the last look.
+    publish?.(snapshotOfAnalysisJobs([]))
+    expect(parsePage).toHaveBeenCalledTimes(2)
 
     bridge.dispose()
     expect(unsubscribe).toHaveBeenCalledOnce()

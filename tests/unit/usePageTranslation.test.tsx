@@ -129,14 +129,51 @@ describe("usePageTranslation partial results and cancellation", () => {
     // Incomplete output must NEVER be marked complete or cached
     expect(result.current.status).not.toBe("complete")
     expect(mockWriteCache).not.toHaveBeenCalled()
+    // An analysed page is asked for first and never waited for.
     expect(window.ohmypaper.parseDocumentPage).toHaveBeenCalledWith(
-      {
-        id: testDoc.id,
-        pageNumber: 1,
-        awaitStructure: true,
-      },
+      { id: testDoc.id, pageNumber: 1, preparedOnly: true },
       expect.any(AbortSignal),
     )
+    expect(window.ohmypaper.parseDocumentPage).not.toHaveBeenCalledWith(
+      expect.objectContaining({ awaitStructure: true }),
+      expect.anything(),
+    )
+  })
+
+  it("translates from the PDF's own text at once when the page is not analysed yet", async () => {
+    const unanalysed = documentRecordSchema.parse({ ...testDoc, id: "aabbccddeeff0099" })
+    const parse = vi.fn(async (request: { readonly preparedOnly?: boolean }) =>
+      request.preparedOnly
+        ? { status: "unavailable" as const, reason: "needs_ocr" as const }
+        : { status: "ready" as const, page: mockParsedPage },
+    )
+    Object.defineProperty(window, "ohmypaper", {
+      value: { ...window.ohmypaper, parseDocumentPage: parse },
+      configurable: true,
+      writable: true,
+    })
+    const onAiRequest = vi.fn(async (req: { readonly quote: string }) => {
+      const requestData = JSON.parse(req.quote) as { blocks: Array<{ id: string }> }
+      return JSON.stringify({
+        translations: requestData.blocks.map((b) => ({ id: b.id, markdown: `번역됨: ${b.id}` })),
+      })
+    })
+
+    const { result } = renderHook(() =>
+      usePageTranslation({
+        document: unanalysed,
+        currentPage: 1,
+        citations: emptyCitations,
+        provider: configuredProvider,
+        onAiRequest,
+      }),
+    )
+
+    await waitFor(() => expect(result.current.status).toBe("complete"))
+    expect(parse.mock.calls.map(([request]) => request)).toEqual([
+      { id: unanalysed.id, pageNumber: 1, preparedOnly: true },
+      { id: unanalysed.id, pageNumber: 1 },
+    ])
   })
 
   it("tells the reader why the page failed and clears the reason on retry", async () => {

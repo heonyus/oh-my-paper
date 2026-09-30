@@ -513,7 +513,7 @@ describe("DocumentAnalysisService", () => {
       await rm(root, { recursive: true, force: true })
     }
   })
-  it("waits for the OCR engine download instead of failing, then analyses on its own", async () => {
+  it("waits quietly for the OCR engine instead of failing, then analyses on its own", async () => {
     const root = await mkdtemp(join(tmpdir(), "document-analysis-engine-wait-"))
     const store = new WorkspaceStore(root)
     const document = record("5", "Waiting paper")
@@ -525,7 +525,7 @@ describe("DocumentAnalysisService", () => {
       ),
     }
     const service = new DocumentAnalysisService(store, parser, {
-      engineInstalling: async () => installing,
+      engineReady: async () => !installing,
       enginePollMs: 20,
     })
 
@@ -534,7 +534,7 @@ describe("DocumentAnalysisService", () => {
       await vi.waitFor(() =>
         expect(service.snapshot().jobs.find((job) => job.id === document.id)).toMatchObject({
           state: "queued",
-          message: "문서 분석 엔진을 받는 중 · 끝나면 자동으로 분석합니다",
+          message: "문서 분석 엔진을 기다리는 중 · 준비되면 자동으로 분석합니다",
         }),
       )
       await new Promise((resolve) => setTimeout(resolve, 80))
@@ -559,7 +559,7 @@ describe("DocumentAnalysisService", () => {
     let installing = true
     const parser = { parse: vi.fn(async () => readyPage(document.hash, 1)) }
     const service = new DocumentAnalysisService(store, parser, {
-      engineInstalling: async () => installing,
+      engineReady: async () => !installing,
       enginePollMs: 20,
     })
 
@@ -573,6 +573,41 @@ describe("DocumentAnalysisService", () => {
       await new Promise((resolve) => setTimeout(resolve, 80))
       expect(parser.parse).not.toHaveBeenCalled()
       expect(service.snapshot().jobs).toEqual([])
+    } finally {
+      await service.dispose()
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+  it("analyses the paper being read first, the pages ahead before the page on screen", async () => {
+    const root = await mkdtemp(join(tmpdir(), "document-analysis-focus-"))
+    const store = new WorkspaceStore(root)
+    const other = record("3", "Other paper")
+    const reading = documentRecordSchema.parse({ ...record("2", "Reading paper"), pageCount: 8 })
+    await store.save({ ...defaultWorkspace(), documents: [other, reading] })
+    let ready = false
+    const order: string[] = []
+    const parser = {
+      parse: vi.fn(async (input: { readonly documentId: string; readonly pageNumber: number }) => {
+        order.push(`${input.documentId === reading.id ? "R" : "O"}${input.pageNumber}`)
+        const hash = input.documentId === reading.id ? reading.hash : other.hash
+        return readyPage(hash, input.pageNumber)
+      }),
+    }
+    const service = new DocumentAnalysisService(store, parser, {
+      maxConcurrency: 1,
+      pageConcurrency: 1,
+      engineReady: async () => ready,
+      enginePollMs: 20,
+    })
+
+    try {
+      await service.schedule(other.id)
+      await service.schedule(reading.id)
+      service.focus(reading.id, 2)
+      ready = true
+      await vi.waitFor(() => expect(service.isReady(other.id)).toBe(true))
+      expect(order.slice(0, 8)).toEqual(["R3", "R4", "R5", "R2", "R6", "R7", "R8", "R1"])
+      expect(order.slice(8)).toEqual(["O1", "O2"])
     } finally {
       await service.dispose()
       await rm(root, { recursive: true, force: true })

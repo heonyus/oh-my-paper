@@ -28,8 +28,8 @@ export function queuedAnalysisJob(document: DocumentRecord): DocumentAnalysisJob
   }
 }
 
-/** Shown while the OCR engine downloads; the document is analysed once it is ready. */
-export const ENGINE_WAIT_MESSAGE = "문서 분석 엔진을 받는 중 · 끝나면 자동으로 분석합니다"
+/** While the OCR engine is not ready (downloading or not installed); analysis follows once it is. */
+export const ENGINE_WAIT_MESSAGE = "문서 분석 엔진을 기다리는 중 · 준비되면 자동으로 분석합니다"
 
 export function waitingAnalysisJob(document: DocumentRecord): DocumentAnalysisJob {
   return {

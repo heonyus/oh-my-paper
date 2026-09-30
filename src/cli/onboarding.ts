@@ -145,7 +145,7 @@ async function offerOcr(report: Awaited<ReturnType<typeof checkEnvironment>>): P
     return
   }
   if (report.ocrInstalling) {
-    log.info("백그라운드에서 이미 설치 중입니다 — 끝나면 자동으로 켜집니다")
+    log.success("문서 분석 엔진은 뒤에서 준비하고 있어요")
     return
   }
   if (!report.uvAvailable) {
@@ -162,9 +162,10 @@ async function offerOcr(report: Awaited<ReturnType<typeof checkEnvironment>>): P
     log.info(gray("건너뛰었습니다 — 나중에 npm run setup:paddle-vl 로 설치할 수 있습니다"))
     return
   }
-  const logPath = startOcrInstallInBackground()
+  // It works unseen from here: papers open at once and fill in as it becomes ready.
+  startOcrInstallInBackground()
   log.success(
-    `백그라운드에서 설치를 시작했어요 — 끝나면 자동으로 켜집니다\n${gray(`진행 상황: oh-my-paper doctor · 로그 ${logPath}`)}`,
+    `문서 분석 엔진은 뒤에서 준비할게요 — 기다릴 필요 없이 바로 쓰면 됩니다\n${gray("궁금하면 oh-my-paper doctor")}`,
   )
 }
 
