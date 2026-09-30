@@ -1,16 +1,9 @@
 import { spawn, spawnSync } from "node:child_process"
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from "node:fs"
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { downloadRepository, modelSources } from "./model-download.mjs"
 
 const runtimeRoot =
   process.env.OH_MY_PAPER_PADDLE_VL_RUNTIME ?? join(homedir(), ".ohmypaper", "paddle-vl-runtime")
@@ -30,7 +23,6 @@ const mlxPython = join(mlxRuntimeRoot, "bin", "python")
 const mlxModelRepository = "PaddlePaddle/PaddleOCR-VL-1.6"
 const mlxModelDirectory = join(mlxRuntimeRoot, "models", "PaddleOCR-VL-1.6")
 const mlxReadinessMarker = join(mlxRuntimeRoot, ".ready-mlx-v1.6")
-const huggingfaceHub = "huggingface_hub==2.0.0"
 // Beside the runtime folders, matching paddleInstallPaths() in src/electron/paddleInstallState.ts.
 const installLock = join(dirname(runtimeRoot), "paddle-vl-install.pid")
 const installProgress = join(dirname(runtimeRoot), "paddle-vl-install.progress.json")
@@ -44,28 +36,6 @@ const weights = appleAcceleration
 const finished = new Set()
 const model = { total: 1_930_000_000, bytes: 0, samples: [] }
 let installStarted = Date.now()
-
-function directoryBytes(path) {
-  let entries
-  try {
-    entries = readdirSync(path, { withFileTypes: true })
-  } catch {
-    return 0
-  }
-  let total = 0
-  for (const entry of entries) {
-    const child = join(path, entry.name)
-    if (entry.isDirectory()) total += directoryBytes(child)
-    else if (entry.isFile()) {
-      try {
-        total += statSync(child).size
-      } catch {
-        // Moved while counting (a finished download); the next sample sees it.
-      }
-    }
-  }
-  return total
-}
 
 function progressPercent() {
   let sum = 0
@@ -95,10 +65,8 @@ function secondsLeft(percent) {
 
 /** What doctor and 설정 read while the install runs; removed with the lock. */
 function writeProgress() {
-  if (appleAcceleration && !finished.has("model")) {
-    model.bytes = directoryBytes(mlxModelDirectory)
+  if (appleAcceleration && !finished.has("model"))
     model.samples = [...model.samples, { at: Date.now(), bytes: model.bytes }].slice(-16)
-  }
   const percent = progressPercent()
   try {
     writeFileSync(
@@ -107,22 +75,6 @@ function writeProgress() {
     )
   } catch {
     // Progress is best effort; the install itself does not depend on it.
-  }
-}
-
-/** The model's real size from the Hub, so the percentage tracks bytes rather than a guess. */
-async function measureModel() {
-  if (process.env.HF_HUB_OFFLINE === "1") return
-  try {
-    const response = await fetch(
-      `https://huggingface.co/api/models/${mlxModelRepository}?blobs=true`,
-      { signal: AbortSignal.timeout(10_000) },
-    )
-    const body = await response.json()
-    const total = (body.siblings ?? []).reduce((sum, file) => sum + (file.size ?? 0), 0)
-    if (total > 0) model.total = total
-  } catch {
-    // Offline or rate limited: keep the estimate.
   }
 }
 
@@ -289,30 +241,28 @@ async function mlxLane() {
 }
 
 /**
- * The ~2 GB model needs neither Python environment, so it downloads from the start. Plain HTTPS
- * from the CDN: the Xet transfer stalled mid-file without a token, while HTTPS keeps full speed
- * and resumes an interrupted file.
+ * The ~2 GB model needs neither Python environment, so it downloads from the start, in ranges
+ * from Hugging Face and ModelScope at once (see model-download.mjs).
  */
 async function modelLane() {
-  await step(
-    "model",
-    mlxModelRepository,
-    "uv",
-    [
-      "tool",
-      "run",
-      "--python",
-      "3.12",
-      "--from",
-      huggingfaceHub,
-      "hf",
-      "download",
-      mlxModelRepository,
-      "--local-dir",
-      mlxModelDirectory,
-    ],
-    { env: { ...process.env, HF_HUB_DISABLE_XET: "1" }, key: "model" },
-  )
+  const started = Date.now()
+  say(`[model] ▶ ${mlxModelRepository}`)
+  const served = await downloadRepository({
+    sources: modelSources(mlxModelRepository),
+    directory: mlxModelDirectory,
+    onTotal: (total) => {
+      model.total = total
+    },
+    onBytes: (count) => {
+      model.bytes += count
+    },
+  })
+  const sizes = Object.entries(served)
+    .map(([host, bytes]) => `${host} ${Math.round(bytes / 1e6)}MB`)
+    .join(" · ")
+  say(`[model] ✔ ${mlxModelRepository} (${Math.round((Date.now() - started) / 1000)}초 · ${sizes})`)
+  finished.add("model")
+  writeProgress()
 }
 
 async function main() {
@@ -321,7 +271,6 @@ async function main() {
   installStarted = started
   writeProgress()
   const ticker = setInterval(writeProgress, 2_000)
-  if (appleAcceleration) void measureModel()
   await environments()
   if (appleAcceleration) {
     await Promise.all([paddleLane(), mlxLane(), modelLane()])
