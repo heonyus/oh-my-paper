@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process"
 import { isCancel, log, select } from "@clack/prompts"
 import { readGithubStarAnswer, saveGithubStarAnswer } from "../server/githubStarStore"
 import { GITHUB_REPO_URL, type GithubStarAnswer } from "../shared/githubStar"
+import { t } from "./messages"
 import { openBrowser } from "./openBrowser"
 import { gray, link } from "./style"
 
@@ -58,20 +59,20 @@ export async function offerGithubStar(
   }
   const direct = gh.loggedIn()
   const choice = await select({
-    message: "oh-my-paper가 도움이 된다면 GitHub에서 ⭐ 하나 부탁드려요",
+    message: t("star.ask"),
     options: [
       direct
         ? {
             value: "starred" as const,
-            label: "⭐ 별 달기",
-            hint: "이 컴퓨터의 GitHub 로그인(gh)으로 바로 달아요",
+            label: t("star.star"),
+            hint: t("star.starHint"),
           }
         : {
             value: "opened" as const,
-            label: "⭐ GitHub 열고 별 달기",
-            hint: "브라우저에서 저장소 페이지가 열려요",
+            label: t("star.open"),
+            hint: t("star.openHint"),
           },
-      { value: "skipped" as const, label: "괜찮아요, 건너뛸게요", hint: "다시 묻지 않아요" },
+      { value: "skipped" as const, label: t("star.skip"), hint: t("star.skipHint") },
     ],
   })
   const picked: GithubStarAnswer = isCancel(choice) ? "skipped" : choice
@@ -79,12 +80,12 @@ export async function offerGithubStar(
   // A failed save only means the wizard may ask once more.
   await saveGithubStarAnswer(dataDir, answer).catch(() => undefined)
   if (answer === "starred") {
-    log.success("⭐ 별을 달았어요. 고마워요!")
+    log.success(t("star.starred"))
   } else if (answer === "opened") {
     openBrowser(GITHUB_REPO_URL)
-    const lead = picked === "starred" ? "바로 달지 못해서 페이지를 열었어요." : "고마워요!"
-    log.success(`${lead} 열린 페이지에서 Star를 눌러 주세요\n${link(GITHUB_REPO_URL)}`)
+    const lead = picked === "starred" ? t("star.openedFallback") : t("star.thanks")
+    log.success(`${t("star.pressStar", { lead })}\n${link(GITHUB_REPO_URL)}`)
   } else {
-    log.info(gray("건너뛰었어요 — 다시 묻지 않을게요"))
+    log.info(gray(t("star.skipped")))
   }
 }

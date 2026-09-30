@@ -1,6 +1,8 @@
 import { ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react"
 import { type JSX, useCallback, useEffect, useRef, useState } from "react"
+import { useTranslator } from "../../renderer/lib/locale"
 import { GITHUB_REPO_URL } from "../../shared/githubStar"
+import { webMessages } from "../messages"
 import { markStarOpened } from "../star/starInviteRules"
 import { TipClip, TipKeys } from "./FeatureTips"
 import { FEATURE_TIPS, writeTipState } from "./tipCatalog"
@@ -19,6 +21,7 @@ export function TipsGallery({
   readonly onClose: () => void
   readonly initialFocus?: number
 }): JSX.Element {
+  const t = useTranslator(webMessages)
   const closeRef = useRef<HTMLButtonElement>(null)
   const [reset, setReset] = useState(false)
   const [focus, setFocus] = useState<number | null>(
@@ -61,14 +64,10 @@ export function TipsGallery({
       >
         <header>
           <div>
-            <h2 id="tips-gallery-title">사용법</h2>
-            <p>
-              {focused
-                ? "하나씩 크게 봅니다. 끝나면 다음 영상으로 넘어가고, ← → 로도 넘길 수 있습니다."
-                : "기능마다 짧은 영상으로 봅니다. 누르면 크게 봅니다."}
-            </p>
+            <h2 id="tips-gallery-title">{t("gallery.title")}</h2>
+            <p>{focused ? t("gallery.focused") : t("gallery.all")}</p>
           </div>
-          <button ref={closeRef} type="button" aria-label="사용법 닫기" onClick={onClose}>
+          <button ref={closeRef} type="button" aria-label={t("gallery.close")} onClick={onClose}>
             <X size={16} />
           </button>
         </header>
@@ -77,26 +76,26 @@ export function TipsGallery({
             <TipClip
               key={focused.id}
               src={focused.clip}
-              title={focused.title}
+              title={t(focused.title)}
               loop={false}
               onEnded={() => step(1)}
             />
             <div className="tips-gallery-focus-text">
-              <h3>{focused.title}</h3>
-              <p>{focused.body}</p>
+              <h3>{t(focused.title)}</h3>
+              <p>{t(focused.body)}</p>
               <TipKeys tip={focused} />
             </div>
-            <nav className="tips-gallery-focus-nav" aria-label="사용법 영상 넘기기">
+            <nav className="tips-gallery-focus-nav" aria-label={t("gallery.nav")}>
               <button type="button" onClick={() => setFocus(null)}>
-                모두 보기
+                {t("gallery.showAll")}
               </button>
               <span aria-live="polite">
                 {focus + 1} / {COUNT}
               </span>
-              <button type="button" aria-label="이전 영상" onClick={() => step(-1)}>
+              <button type="button" aria-label={t("gallery.prev")} onClick={() => step(-1)}>
                 <ChevronLeft size={16} />
               </button>
-              <button type="button" aria-label="다음 영상" onClick={() => step(1)}>
+              <button type="button" aria-label={t("gallery.next")} onClick={() => step(1)}>
                 <ChevronRight size={16} />
               </button>
             </nav>
@@ -106,20 +105,20 @@ export function TipsGallery({
             {FEATURE_TIPS.map((tip, index) => (
               <li key={tip.id}>
                 <div className="tips-gallery-thumb">
-                  <TipClip src={tip.clip} title={tip.title} controls={false} />
+                  <TipClip src={tip.clip} title={t(tip.title)} controls={false} />
                   <button
                     type="button"
                     className="tips-gallery-enlarge"
-                    aria-label={`${tip.title} 크게 보기`}
+                    aria-label={t("gallery.enlargeLabel", { title: t(tip.title) })}
                     onClick={() => setFocus(index)}
                   >
                     <span>
-                      <Maximize2 size={14} aria-hidden="true" /> 크게 보기
+                      <Maximize2 size={14} aria-hidden="true" /> {t("gallery.enlarge")}
                     </span>
                   </button>
                 </div>
-                <h3>{tip.title}</h3>
-                <p>{tip.body}</p>
+                <h3>{t(tip.title)}</h3>
+                <p>{t(tip.body)}</p>
                 <TipKeys tip={tip} />
               </li>
             ))}
@@ -133,7 +132,7 @@ export function TipsGallery({
             rel="noopener noreferrer"
             onClick={markStarOpened}
           >
-            ⭐ GitHub에서 별 달기
+            {t("gallery.star")}
           </a>
           <button
             type="button"
@@ -143,7 +142,7 @@ export function TipsGallery({
               setReset(true)
             }}
           >
-            {reset ? "기능을 처음 열 때 다시 보여줍니다" : "팁 다시 보기"}
+            {reset ? t("gallery.resetDone") : t("gallery.reset")}
           </button>
         </footer>
       </section>

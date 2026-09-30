@@ -5,7 +5,9 @@ import type { ProviderConfig, ProviderStatus } from "../../shared/ipc"
 import type { AiMode } from "../../shared/providerModels"
 import type { AppearanceTheme } from "../../shared/schemas"
 import { uiFontScaleLabel, uiFontScalePercent, uiFontScalePresets } from "../../shared/uiAppearance"
+import { type LanguagePreference, useLocale, useTranslator } from "../lib/locale"
 import { translationFontOptions, useTranslationFont } from "../lib/translationFont"
+import { settingsMessages } from "../messages/settings"
 import { AiProviderSettings, useAiProviderForm } from "./AiProviderSettings"
 import { ClaudeSettings } from "./ClaudeSettings"
 import { CodexSettings } from "./CodexSettings"
@@ -18,6 +20,30 @@ import { LocalAiPanel } from "./localAi/LocalAiPanel"
 import "./settings-dialog.css"
 
 type SettingsSection = "general" | "ai" | "reading"
+
+/** The app's language, kept in this browser. Language names read the same in every language. */
+function LanguageRow(): JSX.Element {
+  const t = useTranslator(settingsMessages)
+  const { preference, setPreference } = useLocale()
+  return (
+    <label className="settings-row" htmlFor="app-language">
+      <span>{t("settings.language")}</span>
+      <select
+        id="app-language"
+        value={preference}
+        onChange={(event) => {
+          const next = event.currentTarget.value
+          if (next === "auto" || next === "ko" || next === "en")
+            setPreference(next satisfies LanguagePreference)
+        }}
+      >
+        <option value="auto">{t("settings.languageAuto")}</option>
+        <option value="ko">한국어</option>
+        <option value="en">English</option>
+      </select>
+    </label>
+  )
+}
 
 type SettingsModalProps = {
   readonly status: ProviderStatus
@@ -132,6 +158,7 @@ export function SettingsModal({
             {section === "general" ? (
               <fieldset className="settings-group">
                 <legend>일반 환경설정</legend>
+                <LanguageRow />
                 <label className="settings-row" htmlFor="appearance-theme">
                   <span>화면 모드</span>
                   <select

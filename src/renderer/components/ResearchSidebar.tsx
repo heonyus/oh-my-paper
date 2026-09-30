@@ -269,6 +269,7 @@ export function ResearchSidebar({
               aria-pressed={mode === item.id}
               aria-expanded={mode === item.id && flyout === "pinned" && mode !== "translation"}
               aria-description={mode === item.id && flyout === "pinned" ? "고정됨" : undefined}
+              data-research-mode={item.id}
               aria-label={item.id === "ai" ? "AI 개요 열기" : `${item.label} 모드`}
               title={item.label}
               onClick={() => {

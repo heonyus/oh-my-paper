@@ -1,5 +1,7 @@
 import { X } from "lucide-react"
 import { type JSX, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { useTranslator } from "../../renderer/lib/locale"
+import { webMessages } from "../messages"
 import { type FeatureTip, nextTip, readTipState, type TipView, writeTipState } from "./tipCatalog"
 
 const TIP_WIDTH = 320
@@ -38,6 +40,7 @@ export function TipClip({
   readonly controls?: boolean
   readonly onEnded?: () => void
 }): JSX.Element | null {
+  const t = useTranslator(webMessages)
   const [failed, setFailed] = useState(false)
   const reduced = prefersReducedMotion()
   if (failed) return null
@@ -51,7 +54,7 @@ export function TipClip({
       loop={loop}
       playsInline
       preload="auto"
-      aria-label={`${title} 사용 예시`}
+      aria-label={t("tips.example", { title })}
       onError={() => setFailed(true)}
       onEnded={onEnded}
     />
@@ -59,13 +62,14 @@ export function TipClip({
 }
 
 export function TipKeys({ tip }: { readonly tip: FeatureTip }): JSX.Element | null {
+  const t = useTranslator(webMessages)
   if (!tip.keys) return null
   return (
     <p className="feature-tip-keys">
       {tip.keys.map(([key, label]) => (
         <span key={key}>
           <kbd>{key}</kbd>
-          {label}
+          {t(label)}
         </span>
       ))}
     </p>
@@ -110,6 +114,7 @@ export function FeatureTips({
   readonly hasDocument: boolean
   readonly visitKey: string
 }): JSX.Element | null {
+  const t = useTranslator(webMessages)
   const [tip, setTip] = useState<FeatureTip | null>(null)
   const [position, setPosition] = useState<Position | null>(null)
   const shownThisVisit = useRef(false)
@@ -193,24 +198,24 @@ export function FeatureTips({
         ...(position.arrow === null ? {} : { "--tip-arrow": `${position.arrow}px` }),
       }}
     >
-      <TipClip src={tip.clip} title={tip.title} />
+      <TipClip src={tip.clip} title={t(tip.title)} />
       <div className="feature-tip-body">
-        <h2 id={`feature-tip-${tip.id}`}>{tip.title}</h2>
-        <p>{tip.body}</p>
+        <h2 id={`feature-tip-${tip.id}`}>{t(tip.title)}</h2>
+        <p>{t(tip.body)}</p>
         <TipKeys tip={tip} />
         <div className="feature-tip-actions">
           <button type="button" className="feature-tip-off" onClick={() => dismiss(true)}>
-            팁 끄기
+            {t("tips.off")}
           </button>
           <button type="button" className="feature-tip-ok" onClick={() => dismiss()}>
-            알겠어요
+            {t("tips.ok")}
           </button>
         </div>
       </div>
       <button
         type="button"
         className="feature-tip-close"
-        aria-label="팁 닫기"
+        aria-label={t("tips.close")}
         onClick={() => dismiss()}
       >
         <X size={14} />

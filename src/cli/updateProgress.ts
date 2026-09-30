@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from "node:child_process"
+import { t } from "./messages"
 
 /** Plain text of one output line: no color codes, no surrounding space. */
 export function plainLine(line: string): string {
@@ -30,12 +31,14 @@ export function describeUpdateLine(line: string): string | null {
   const text = plainLine(line)
   if (!text || CODEX_PACKAGE.test(text)) return null
   const cached = NPM_CACHE.exec(text)
-  if (cached) return `${tarballName(cached[1] ?? "")} · 캐시`
+  if (cached) return t("progress.cached", { name: tarballName(cached[1] ?? "") })
   const fetch = NPM_FETCH.exec(text)
   if (!fetch) return text
   const [, status, url = "", note] = fetch
   if (status !== "200") return `${tarballName(url)} (${status})`
-  return note?.includes("cache hit") ? `${tarballName(url)} · 캐시` : `${tarballName(url)} 받는 중`
+  return note?.includes("cache hit")
+    ? t("progress.cached", { name: tarballName(url) })
+    : t("progress.downloading", { name: tarballName(url) })
 }
 
 export function isNpmFetchLine(line: string): boolean {
@@ -47,7 +50,7 @@ export function isNpmFetchLine(line: string): boolean {
 export function npmSummary(lines: readonly string[]): string | null {
   for (const line of [...lines].reverse()) {
     const match = /added (\d+) packages?.* in ([\d.]+m?s)/.exec(plainLine(line))
-    if (match) return `패키지 ${match[1]}개 · ${match[2]}`
+    if (match) return t("progress.packages", { count: match[1] ?? "", time: match[2] ?? "" })
   }
   return null
 }
@@ -58,13 +61,13 @@ export function buildSummary(lines: readonly string[]): string | null {
   const modules = text.map((line) => /(\d+) modules transformed/.exec(line)?.[1]).find(Boolean)
   const time = text.map((line) => /built in ([\d.]+m?s)/.exec(line)?.[1]).find(Boolean)
   if (!time) return null
-  return modules ? `모듈 ${modules}개 · ${time}` : time
+  return modules ? t("progress.modules", { count: modules, time: time ?? "" }) : time
 }
 
 /** `3ed7cc4 → 2e1683f · 커밋 3개`, or `이미 최신` when nothing changed. */
 export function gitSummary(before: string, after: string, commits: number): string {
-  if (before === after) return "이미 최신"
-  return `${before.slice(0, 7)} → ${after.slice(0, 7)} · 커밋 ${commits}개`
+  if (before === after) return t("progress.upToDate")
+  return t("progress.commits", { from: before.slice(0, 7), to: after.slice(0, 7), count: commits })
 }
 
 /** Cuts a line to the terminal width so the rolling log never wraps. */

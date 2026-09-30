@@ -11,6 +11,7 @@ import {
 import { type FormEvent, type JSX, useCallback, useEffect, useRef, useState } from "react"
 import leafMarkUrl from "../../assets/branding/ohmypaper-leaf-mark.png"
 import { useCodexSettings } from "../renderer/components/useCodexSettings"
+import { useTranslator } from "../renderer/lib/locale"
 import { CLAUDE_MODEL_OPTIONS, DEFAULT_CLAUDE_MODEL } from "../shared/claudeTypes"
 import { CODEX_DEFAULT_MODEL, CODEX_MODEL_OPTIONS, defaultCodexModel } from "../shared/codexTypes"
 import type { ProviderConfig, ProviderStatus } from "../shared/ipc"
@@ -23,6 +24,7 @@ import {
   OPENROUTER_PAGE_TRANSLATION_MODEL,
 } from "../shared/providerModels"
 import { ClaudeOnboardingStep } from "./ClaudeOnboardingStep"
+import { type WebMessageKey, webMessages } from "./messages"
 
 type Step = "choose" | "claude" | "chatgpt" | "api" | "done"
 
@@ -64,24 +66,25 @@ const CODEX_DEFAULT_LABEL =
   CODEX_MODEL_OPTIONS.find((option) => option.id === CODEX_DEFAULT_MODEL)?.label ??
   CODEX_DEFAULT_MODEL
 
-const CONNECTION_LABELS: Readonly<Record<NonNullable<ProviderStatus["mode"]>, string>> = {
-  chatgpt: "ChatGPT 구독",
-  claude: "Claude 구독",
-  api: "API 키",
+const CONNECTION_LABELS: Readonly<Record<NonNullable<ProviderStatus["mode"]>, WebMessageKey>> = {
+  chatgpt: "onb.chatgpt",
+  claude: "onb.claude",
+  api: "onb.api",
 }
 
-const FIRST_STEPS: ReadonlyArray<{ title: string; detail: string; keys?: readonly string[] }> = [
-  { title: "PDF 가져오기", detail: "라이브러리에 끌어다 놓으면 페이지 구조를 먼저 분석합니다." },
-  {
-    title: "문장을 고르고 한 키로",
-    detail: "번역, 설명, 노트에 담기. 카드는 원문 옆에 붙습니다.",
-    keys: ["T", "E", "C"],
-  },
-  { title: "내 말로 남기기", detail: "노트에 쓰면 근거가 된 문단을 찾아 옆에 보여줍니다." },
+const FIRST_STEPS: ReadonlyArray<{
+  title: WebMessageKey
+  detail: WebMessageKey
+  keys?: readonly string[]
+}> = [
+  { title: "onb.step1.title", detail: "onb.step1.detail" },
+  { title: "onb.step2.title", detail: "onb.step2.detail", keys: ["T", "E", "C"] },
+  { title: "onb.step3.title", detail: "onb.step3.detail" },
 ]
 
 /** A looping picture of the reader: a sentence lights up, its card and note appear beside it. */
 function ReaderVignette(): JSX.Element {
+  const t = useTranslator(webMessages)
   return (
     <div className="onboarding-vignette" aria-hidden="true">
       <div className="onboarding-page">
@@ -103,13 +106,13 @@ function ReaderVignette(): JSX.Element {
         <span className="onboarding-page-line" style={{ width: "64%" }} />
       </div>
       <div className="onboarding-card onboarding-card-translation">
-        <small>번역</small>
-        <p>어텐션은 모든 토큰이 한 번에 다른 모든 토큰을 보게 합니다.</p>
+        <small>{t("onb.vignette.cardLabel")}</small>
+        <p>{t("onb.vignette.cardText")}</p>
       </div>
       <div className="onboarding-card onboarding-card-note">
-        <small>내 노트</small>
+        <small>{t("onb.vignette.noteLabel")}</small>
         <p>
-          순서대로 읽지 않아도 된다 — 그래서 병렬화가 쉽다 <b>p.3</b>
+          {t("onb.vignette.noteText")} <b>p.3</b>
         </p>
       </div>
     </div>
@@ -123,6 +126,7 @@ function ApiKeyStep({
   readonly onBack: () => void
   readonly onConnected: () => Promise<void>
 }): JSX.Element {
+  const t = useTranslator(webMessages)
   const [provider, setProvider] = useState<(typeof API_PROVIDERS)[number]>(DEFAULT_API_PROVIDER)
   const [model, setModel] = useState<string>(DEFAULT_OPENROUTER_MODEL)
   const [key, setKey] = useState("")
@@ -137,7 +141,7 @@ function ApiKeyStep({
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
     if (key.trim().length < 20) {
-      setError("API 키는 20자 이상이어야 합니다")
+      setError(t("onb.api.keyTooShort"))
       return
     }
     setBusy(true)
@@ -160,16 +164,16 @@ function ApiKeyStep({
       })
       await onConnected()
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "저장에 실패했습니다")
+      setError(cause instanceof Error ? cause.message : t("onb.saveFailed"))
       setBusy(false)
     }
   }
 
   return (
     <form className="web-onboarding-step" onSubmit={(event) => void submit(event)}>
-      <h2>API 키로 연결</h2>
-      <p className="web-onboarding-hint">키는 이 컴퓨터의 로컬 저장소에만 보관됩니다.</p>
-      <span className="web-onboarding-field-label">프로바이더</span>
+      <h2>{t("onb.api.title")}</h2>
+      <p className="web-onboarding-hint">{t("onb.api.hint")}</p>
+      <span className="web-onboarding-field-label">{t("onb.api.provider")}</span>
       <div className="web-onboarding-chips">
         {API_PROVIDERS.map((option) => (
           <button
@@ -184,7 +188,7 @@ function ApiKeyStep({
         ))}
       </div>
       <label className="web-onboarding-field">
-        <span>모델</span>
+        <span>{t("onb.api.model")}</span>
         <select value={model} onChange={(event) => setModel(event.currentTarget.value)}>
           {provider.models.map((option) => (
             <option key={option} value={option}>
@@ -194,7 +198,7 @@ function ApiKeyStep({
         </select>
       </label>
       <label className="web-onboarding-field">
-        <span>{provider.label} API 키</span>
+        <span>{t("onb.api.keyLabel", { provider: provider.label })}</span>
         <input
           type="password"
           autoComplete="off"
@@ -211,11 +215,11 @@ function ApiKeyStep({
       ) : null}
       <div className="web-onboarding-actions">
         <button type="button" className="web-onboarding-ghost" onClick={onBack} disabled={busy}>
-          <ArrowLeft size={14} /> 뒤로
+          <ArrowLeft size={14} /> {t("onb.back")}
         </button>
         <button type="submit" className="web-onboarding-primary" disabled={busy}>
           {busy ? <Loader2 size={15} className="web-onboarding-spin" /> : <KeyRound size={15} />}
-          {busy ? "연결하는 중…" : "연결하기"}
+          {busy ? t("onb.connecting") : t("onb.connect")}
         </button>
       </div>
     </form>
@@ -270,10 +274,9 @@ export function WebOnboarding({
   readonly status: ProviderStatus
   readonly onDone: (next: ProviderStatus) => void
 }): JSX.Element {
+  const t = useTranslator(webMessages)
   const [step, setStep] = useState<Step>(status.configured ? "done" : "choose")
-  const [summary, setSummary] = useState(
-    status.configured ? CONNECTION_LABELS[status.mode ?? "chatgpt"] : "",
-  )
+  const [summary, setSummary] = useState<WebMessageKey>(CONNECTION_LABELS[status.mode ?? "chatgpt"])
   const [doneStatus, setDoneStatus] = useState<ProviderStatus | null>(
     status.configured ? status : null,
   )
@@ -284,7 +287,7 @@ export function WebOnboarding({
   }
   const loginStarted = useRef(false)
 
-  const finish = useCallback(async (label: string): Promise<void> => {
+  const finish = useCallback(async (label: WebMessageKey): Promise<void> => {
     setDoneStatus(await window.ohmypaper.providerStatus())
     setSummary(label)
     setStep("done")
@@ -300,7 +303,7 @@ export function WebOnboarding({
       codexModel: defaultCodexModel(models),
       codexReasoningEffort: status.codexReasoningEffort ?? DEFAULT_CODEX_EFFORT,
     })
-    await finish("ChatGPT 구독")
+    await finish("onb.chatgpt")
   }, [status, finish])
 
   const codex = useCodexSettings({ onConnectionChange: connectChatgpt })
@@ -315,14 +318,14 @@ export function WebOnboarding({
     loginStarted.current = true
     if (codex.isConnected) {
       void connectChatgpt().catch((cause: unknown) =>
-        setChatgptError(cause instanceof Error ? cause.message : "저장에 실패했습니다"),
+        setChatgptError(cause instanceof Error ? cause.message : t("onb.saveFailed")),
       )
       return
     }
     void codex.startLogin("chatgpt").catch((cause: unknown) => {
-      setChatgptError(cause instanceof Error ? cause.message : "로그인을 시작하지 못했습니다")
+      setChatgptError(cause instanceof Error ? cause.message : t("onb.startFailed"))
     })
-  }, [step, codex, connectChatgpt])
+  }, [step, codex, connectChatgpt, t])
 
   return (
     <main className="web-onboarding">
@@ -333,15 +336,13 @@ export function WebOnboarding({
           <h1>oh-my-paper</h1>
         </header>
         <p className="web-onboarding-headline">
-          PDF는 그대로,
+          {t("onb.headline1")}
           <br />
-          번역·설명·노트는
+          {t("onb.headline2")}
           <br />
-          <span>원문 자리에.</span>
+          <span>{t("onb.headline3")}</span>
         </p>
-        <p className="web-onboarding-lede">
-          문장을 고르고 한 키로 번역·설명·노트를 붙입니다. 문서는 이 컴퓨터 밖으로 나가지 않습니다.
-        </p>
+        <p className="web-onboarding-lede">{t("onb.lede")}</p>
         <ReaderVignette />
       </section>
 
@@ -349,50 +350,48 @@ export function WebOnboarding({
         {step === "choose" ? (
           <div className="web-onboarding-step">
             <div className="web-onboarding-step-head">
-              <span className="web-onboarding-eyebrow">시작하기</span>
-              <h2>AI를 연결하세요</h2>
-              <p className="web-onboarding-hint">
-                가진 구독으로 바로 쓰거나, API 키를 넣으세요. 한 번이면 됩니다.
-              </p>
+              <span className="web-onboarding-eyebrow">{t("onb.eyebrow")}</span>
+              <h2>{t("onb.chooseTitle")}</h2>
+              <p className="web-onboarding-hint">{t("onb.chooseHint")}</p>
             </div>
             <div className="web-onboarding-choices">
               <Choice
                 icon={<MessageSquareText size={18} />}
-                title="ChatGPT 구독"
-                badge="API 키 불필요"
-                hint={`ChatGPT 계정으로 로그인 · ${CODEX_DEFAULT_LABEL}`}
+                title={t("onb.chatgpt")}
+                badge={t("onb.noApiKey")}
+                hint={t("onb.chatgptHint", { model: CODEX_DEFAULT_LABEL })}
                 onClick={beginChatgpt}
               />
               {window.ohmypaper.claude ? (
                 <Choice
                   icon={<Sparkles size={18} />}
-                  title="Claude 구독"
-                  badge="API 키 불필요"
-                  hint={`이 컴퓨터의 Claude Code 로그인 · ${CLAUDE_DEFAULT_LABEL}`}
+                  title={t("onb.claude")}
+                  badge={t("onb.noApiKey")}
+                  hint={t("onb.claudeHint", { model: CLAUDE_DEFAULT_LABEL })}
                   onClick={() => setStep("claude")}
                 />
               ) : null}
               <Choice
                 icon={<KeyRound size={18} />}
-                title="API 키"
+                title={t("onb.api")}
                 hint="OpenRouter · OpenAI · Gemini · Groq"
                 onClick={() => setStep("api")}
               />
             </div>
-            <p className="web-onboarding-foot">설정 › AI에서 언제든 바꿀 수 있습니다.</p>
+            <p className="web-onboarding-foot">{t("onb.foot")}</p>
           </div>
         ) : null}
 
         {step === "chatgpt" ? (
           <div className="web-onboarding-step">
-            <h2>ChatGPT 구독 연결</h2>
+            <h2>{t("onb.chatgpt.title")}</h2>
             {codex.pendingLogin ? (
               <div className="web-onboarding-pending" role="status">
                 <Loader2 size={16} className="web-onboarding-spin" />
                 <p>
                   {codex.pendingLogin.userCode
-                    ? `열린 페이지에서 코드 ${codex.pendingLogin.userCode} 를 입력하세요`
-                    : "열린 브라우저에서 ChatGPT 승인을 완료하세요"}
+                    ? t("onb.chatgpt.enterCode", { code: codex.pendingLogin.userCode })
+                    : t("onb.chatgpt.approve")}
                 </p>
                 <div className="web-onboarding-actions">
                   <a
@@ -401,7 +400,7 @@ export function WebOnboarding({
                     target="_blank"
                     rel="noreferrer"
                   >
-                    <ExternalLink size={14} /> 로그인 페이지
+                    <ExternalLink size={14} /> {t("onb.signInPage")}
                   </a>
                   {!codex.pendingLogin.userCode ? (
                     <button
@@ -409,7 +408,7 @@ export function WebOnboarding({
                       className="web-onboarding-ghost"
                       onClick={() => void codex.startLogin("chatgptDeviceCode")}
                     >
-                      기기 코드로 전환
+                      {t("onb.chatgpt.deviceCode")}
                     </button>
                   ) : null}
                   <button
@@ -421,7 +420,7 @@ export function WebOnboarding({
                       setStep("choose")
                     }}
                   >
-                    취소
+                    {t("onb.cancel")}
                   </button>
                 </div>
               </div>
@@ -430,8 +429,8 @@ export function WebOnboarding({
                 <Loader2 size={16} className="web-onboarding-spin" />
                 <p>
                   {codex.status === null
-                    ? "로그인 런타임을 확인하는 중…"
-                    : chatgptError || codex.message || "로그인을 준비하는 중…"}
+                    ? t("onb.chatgpt.checkingRuntime")
+                    : chatgptError || codex.message || t("onb.chatgpt.preparing")}
                 </p>
                 {chatgptError || codex.message ? (
                   <div className="web-onboarding-actions">
@@ -443,7 +442,7 @@ export function WebOnboarding({
                         setStep("choose")
                       }}
                     >
-                      <ArrowLeft size={14} /> 뒤로
+                      <ArrowLeft size={14} /> {t("onb.back")}
                     </button>
                     <button
                       type="button"
@@ -454,7 +453,7 @@ export function WebOnboarding({
                         void codex.refresh()
                       }}
                     >
-                      다시 시도
+                      {t("onb.retry")}
                     </button>
                   </div>
                 ) : null}
@@ -466,12 +465,12 @@ export function WebOnboarding({
         {step === "claude" ? (
           <ClaudeOnboardingStep
             onBack={() => setStep("choose")}
-            onConnected={() => finish("Claude 구독")}
+            onConnected={() => finish("onb.claude")}
           />
         ) : null}
 
         {step === "api" ? (
-          <ApiKeyStep onBack={() => setStep("choose")} onConnected={() => finish("API 키")} />
+          <ApiKeyStep onBack={() => setStep("choose")} onConnected={() => finish("onb.api")} />
         ) : null}
 
         {step === "done" ? (
@@ -480,16 +479,16 @@ export function WebOnboarding({
               <Check size={20} strokeWidth={2.6} />
             </span>
             <div className="web-onboarding-step-head">
-              <h2>준비됐습니다</h2>
+              <h2>{t("onb.ready")}</h2>
               <p className="web-onboarding-hint">
-                {summary} 연결됨 — 이렇게 시작하세요. 시작하면 사용법 영상을 한 번 보여 드려요.
+                {t("onb.readyHint", { connection: t(summary) })}
               </p>
             </div>
             <ol className="web-onboarding-tour">
               {FIRST_STEPS.map((item) => (
                 <li key={item.title}>
                   <strong>
-                    {item.title}
+                    {t(item.title)}
                     {item.keys ? (
                       <span className="web-onboarding-keys">
                         {item.keys.map((key) => (
@@ -498,12 +497,12 @@ export function WebOnboarding({
                       </span>
                     ) : null}
                   </strong>
-                  <span>{item.detail}</span>
+                  <span>{t(item.detail)}</span>
                 </li>
               ))}
             </ol>
             <button type="button" className="web-onboarding-primary" onClick={start}>
-              시작하기
+              {t("onb.start")}
             </button>
           </div>
         ) : null}

@@ -1,7 +1,9 @@
 import { ArrowLeft, ExternalLink, Loader2, Sparkles } from "lucide-react"
 import { type JSX, useCallback, useEffect, useRef, useState } from "react"
 import { useClaudeSettings } from "../renderer/components/useClaudeSettings"
+import { useTranslator } from "../renderer/lib/locale"
 import { DEFAULT_CLAUDE_EFFORT, DEFAULT_CLAUDE_MODEL } from "../shared/claudeTypes"
+import { webMessages } from "./messages"
 
 export function ClaudeOnboardingStep({
   onBack,
@@ -10,6 +12,7 @@ export function ClaudeOnboardingStep({
   readonly onBack: () => void
   readonly onConnected: () => Promise<void>
 }): JSX.Element {
+  const t = useTranslator(webMessages)
   const [error, setError] = useState("")
   const connecting = useRef(false)
 
@@ -25,9 +28,9 @@ export function ClaudeOnboardingStep({
       await onConnected()
     } catch (cause) {
       connecting.current = false
-      setError(cause instanceof Error ? cause.message : "저장에 실패했습니다")
+      setError(cause instanceof Error ? cause.message : t("onb.saveFailed"))
     }
-  }, [onConnected])
+  }, [onConnected, t])
 
   const claude = useClaudeSettings({ onConnectionChange: connect })
   const { status } = claude
@@ -39,31 +42,30 @@ export function ClaudeOnboardingStep({
   const problem =
     error ||
     (status?.available === false
-      ? "Claude Code CLI(claude)를 찾지 못했습니다. 설치 후 다시 시도하세요."
+      ? t("onb.claude.missing")
       : claude.message && !status?.loginPending
         ? claude.message
         : "")
 
   return (
     <div className="web-onboarding-step">
-      <h2>Claude 구독 연결</h2>
+      <h2>{t("onb.claude.title")}</h2>
       <div className="web-onboarding-pending" role="status">
         {status === null || status.loginPending || status.authenticated ? (
           <Loader2 size={16} className="web-onboarding-spin" />
         ) : null}
         <p>
           {status === null
-            ? "Claude Code 로그인 상태를 확인하는 중…"
+            ? t("onb.claude.checking")
             : status.loginPending
-              ? "열린 브라우저에서 Claude 로그인을 완료하세요"
+              ? t("onb.claude.finish")
               : status.authenticated
-                ? `${status.email ?? "Claude"} 계정으로 연결하는 중…`
-                : problem ||
-                  "이 컴퓨터의 Claude Code로 로그인하면 구독 사용량으로 바로 시작합니다."}
+                ? t("onb.claude.connectingAs", { account: status.email ?? "Claude" })
+                : problem || t("onb.claude.intro")}
         </p>
         <div className="web-onboarding-actions">
           <button type="button" className="web-onboarding-ghost" onClick={onBack}>
-            <ArrowLeft size={14} /> 뒤로
+            <ArrowLeft size={14} /> {t("onb.back")}
           </button>
           {status?.loginPending ? (
             <>
@@ -74,7 +76,7 @@ export function ClaudeOnboardingStep({
                   target="_blank"
                   rel="noreferrer"
                 >
-                  <ExternalLink size={14} /> 로그인 페이지
+                  <ExternalLink size={14} /> {t("onb.signInPage")}
                 </a>
               ) : null}
               <button
@@ -82,7 +84,7 @@ export function ClaudeOnboardingStep({
                 className="web-onboarding-ghost"
                 onClick={() => void claude.cancelLogin()}
               >
-                취소
+                {t("onb.cancel")}
               </button>
             </>
           ) : status && !status.authenticated && status.available ? (
@@ -92,7 +94,7 @@ export function ClaudeOnboardingStep({
               disabled={claude.busy}
               onClick={() => void claude.startLogin()}
             >
-              <Sparkles size={15} /> Claude로 로그인
+              <Sparkles size={15} /> {t("onb.claude.signIn")}
             </button>
           ) : null}
         </div>

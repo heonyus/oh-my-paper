@@ -1,4 +1,5 @@
 import { type JSX, useEffect, useMemo, useState } from "react"
+import { useTranslator } from "../../renderer/lib/locale"
 import {
   GITHUB_REPO_URL,
   type GithubStarAnswer,
@@ -7,6 +8,7 @@ import {
 import type { ReaderNote } from "../../shared/readerNote"
 import type { DocumentRecord } from "../../shared/schemas"
 import { localRpc } from "../localTransport"
+import { webMessages } from "../messages"
 import {
   activeDays,
   closedAs,
@@ -38,6 +40,7 @@ export function StarInvite({
   readonly readerNotes: readonly Pick<ReaderNote, "markdown" | "updatedAt">[]
   readonly loadWizardAnswer?: () => Promise<GithubStarAnswer | null>
 }): JSX.Element | null {
+  const t = useTranslator(webMessages)
   const [wizardAnswer, setWizardAnswer] = useState<GithubStarAnswer | null | "loading">("loading")
   const [shown, setShown] = useState(false)
   const [done, setDone] = useState(false)
@@ -81,18 +84,18 @@ export function StarInvite({
 
   return (
     <aside className="star-invite" aria-labelledby="star-invite-title">
-      <h2 id="star-invite-title">oh-my-paper가 도움이 되고 있나요?</h2>
-      <p>GitHub에서 ⭐ 하나 남겨 주시면 계속 만들어 가는 데 큰 힘이 돼요.</p>
+      <h2 id="star-invite-title">{t("star.title")}</h2>
+      <p>{t("star.body")}</p>
       <div className="star-invite-actions">
         <button
           type="button"
           className="star-invite-never"
           onClick={() => finish((state) => closedAs(state, "never"))}
         >
-          다시 보지 않기
+          {t("star.never")}
         </button>
         <button type="button" onClick={() => finish((state) => snoozed(state, new Date()))}>
-          나중에
+          {t("star.later")}
         </button>
         <a
           className="star-invite-star"
@@ -101,7 +104,7 @@ export function StarInvite({
           rel="noopener noreferrer"
           onClick={() => finish((state) => closedAs(state, "opened"))}
         >
-          ⭐ 별 달기
+          {t("star.star")}
         </a>
       </div>
     </aside>

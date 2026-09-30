@@ -13,6 +13,8 @@ import {
 } from "../electron/paddleInstallState"
 import { readWebServerConfig, type WebServerConfig } from "../server/config"
 import { checkEnvironment, ensureOcrInstall } from "./environment"
+import { cliLocale } from "./locale"
+import { t } from "./messages"
 import { readOnboardingState, runOnboarding } from "./onboarding"
 import { portOpen, startApp } from "./startApp"
 import { banner, bold, gray, inverse, link } from "./style"
@@ -34,11 +36,11 @@ import { packageVersion, readPackageVersion } from "./version"
 const appRoot = fileURLToPath(new URL("../..", import.meta.url))
 async function doctor(config: WebServerConfig): Promise<void> {
   process.stdout.write(`${banner(packageVersion())}\n`)
-  intro(inverse(" 진단 "))
+  intro(inverse(` ${t("doctor.title")} `))
   const subscription = new CodexSubscriptionAdapter({ appRoot: config.dataDir })
   const claude = new ClaudeSubscriptionAdapter({ appRoot: config.dataDir })
   const checking = spinner()
-  checking.start("확인하는 중…")
+  checking.start(t("doctor.checking"))
   try {
     const [report, state, codex, claudeStatus, running] = await Promise.all([
       checkEnvironment(config, subscription.isAvailable),
@@ -52,43 +54,59 @@ async function doctor(config: WebServerConfig): Promise<void> {
       () => true,
       () => false,
     )
-    checking.stop("확인 완료")
+    checking.stop(t("doctor.checked"))
 
     const [major = 0] = process.versions.node.split(".").map(Number)
     const line = (ok: boolean, text: string, fix?: string): void => {
       if (ok) log.success(text)
       else log.warn(fix ? `${text}\n${gray(`→ ${fix}`)}` : text)
     }
-    line(major >= 22, `Node.js ${process.versions.node}`, "Node.js 22 이상을 설치하세요")
-    line(report.nodeModules, "의존성", "npm install")
-    line(built, "웹 앱 빌드", "npm run build:web")
-    line(report.codexRuntime, "ChatGPT 로그인 런타임 (Codex)", "npm install")
+    line(major >= 22, `Node.js ${process.versions.node}`, t("doctor.installNode"))
+    line(report.nodeModules, t("doctor.deps"), "npm install")
+    line(built, t("doctor.web"), "npm run build:web")
+    line(report.codexRuntime, t("doctor.codex"), "npm install")
     line(
       codex.authenticated,
       codex.authenticated
-        ? `ChatGPT 구독 · ${codex.account && "email" in codex.account ? codex.account.email : ""} · 모델 ${models.map((model) => model.id).join(", ")}`
-        : "ChatGPT 구독 로그인 안 됨",
+        ? t("doctor.chatgpt", {
+            email: codex.account && "email" in codex.account ? String(codex.account.email) : "",
+            models: models.map((model) => model.id).join(", "),
+          })
+        : t("doctor.chatgptNone"),
       "oh-my-paper onboard",
     )
     if (claudeStatus.available) {
       line(
         claudeStatus.authenticated,
         claudeStatus.authenticated
-          ? `Claude 구독 · ${[claudeStatus.subscriptionType, claudeStatus.email].filter(Boolean).join(" · ")}`
-          : "Claude Code 로그인 안 됨",
+          ? t("doctor.claude", {
+              detail: [claudeStatus.subscriptionType, claudeStatus.email]
+                .filter(Boolean)
+                .join(" · "),
+            })
+          : t("doctor.claudeNone"),
         "oh-my-paper onboard",
       )
-    } else log.info(gray("Claude Code CLI 없음 (선택)"))
-    line(state.configured, state.configured ? "AI 연결됨" : "AI 연결 없음", "oh-my-paper onboard")
+    } else log.info(gray(t("doctor.claudeMissing")))
+    line(
+      state.configured,
+      state.configured ? t("doctor.aiOk") : t("doctor.aiNone"),
+      "oh-my-paper onboard",
+    )
     if (report.ocrInstalling) {
-      const progress = describePaddleInstallProgress(readPaddleInstallProgress(homedir()))
-      log.info(
-        `OCR 엔진 설치 중 ${progress} (백그라운드)\n${gray(`→ 로그 ${paddleInstallPaths(homedir()).log}`)}`,
+      const progress = describePaddleInstallProgress(
+        readPaddleInstallProgress(homedir()),
+        cliLocale,
       )
-    } else line(report.ocrReady, "OCR 엔진 (선택)", "npm run setup:paddle-vl")
-    log.info(`${running ? "실행 중" : "꺼져 있음"} · ${link(appUrl(config.host, config.port))}`)
-    log.info(`데이터 ${config.dataDir}`)
-    outro(state.configured ? "사용할 준비가 됐습니다" : "oh-my-paper onboard 로 AI를 연결하세요")
+      log.info(
+        `${t("doctor.ocrInstalling", { progress })}\n${gray(t("doctor.log", { path: paddleInstallPaths(homedir()).log }))}`,
+      )
+    } else line(report.ocrReady, t("doctor.ocr"), "npm run setup:paddle-vl")
+    log.info(
+      `${running ? t("doctor.running") : t("doctor.stopped")} · ${link(appUrl(config.host, config.port))}`,
+    )
+    log.info(t("doctor.data", { path: config.dataDir }))
+    outro(state.configured ? t("doctor.ready") : t("doctor.connectAi"))
   } finally {
     subscription.dispose()
     claude.dispose()
@@ -109,7 +127,7 @@ function gitOutput(args: readonly string[]): string {
 
 async function update(): Promise<void> {
   process.stdout.write(`${banner(packageVersion())}\n`)
-  intro(inverse(" 업데이트 "))
+  intro(inverse(` ${t("update.title")} `))
   const before = gitOutput(["rev-parse", "HEAD"])
   const newCommits = (): readonly string[] => {
     const after = gitOutput(["rev-parse", "HEAD"])
@@ -123,7 +141,7 @@ async function update(): Promise<void> {
     runStreaming("npm", args, { cwd: appRoot, onLine })
   const steps: readonly UpdateStep[] = [
     {
-      title: "최신 코드 받기",
+      title: t("update.fetch"),
       run: async (onLine) => {
         const result = await syncToUpstream(appRoot, onLine)
         replaced = result.replaced
@@ -131,16 +149,16 @@ async function update(): Promise<void> {
       },
       summary: () =>
         replaced
-          ? "저장소 기록이 새로 정리되어 최신 버전으로 맞췄습니다"
+          ? t("update.replaced")
           : gitSummary(before, gitOutput(["rev-parse", "HEAD"]), newCommits().length),
       listsCommits: true,
     },
     {
-      title: "의존성 설치",
+      title: t("update.deps"),
       run: npm(["ci", "--no-audit", "--no-fund", "--loglevel=http", "--foreground-scripts"]),
       summary: npmSummary,
     },
-    { title: "웹 앱 빌드", run: npm(["run", "build:web"]), summary: buildSummary },
+    { title: t("update.build"), run: npm(["run", "build:web"]), summary: buildSummary },
   ]
   // clack divides by the width to erase the rolling log, so a terminal that reports none gets
   // only the step lines.
@@ -153,14 +171,14 @@ async function update(): Promise<void> {
       if (shown) task.message(fitLine(shown, columns))
     })
     if (!result.ok) {
-      task.error(`${step.title} 실패`, { showLog: false })
+      task.error(t("update.failed", { step: step.title }), { showLog: false })
       const tail = result.lines
         .filter((line) => !isNpmFetchLine(line))
         .map(plainLine)
         .filter(Boolean)
         .slice(-12)
       if (tail.length > 0) log.message(tail.map((line) => gray(line)).join("\n"))
-      outro("업데이트를 마치지 못했습니다")
+      outro(t("update.notFinished"))
       process.exitCode = 1
       return
     }
@@ -171,7 +189,7 @@ async function update(): Promise<void> {
       if (commits.length > 0) {
         const width = columns || 80
         const shown = commits.slice(0, 5).map((subject) => gray(`• ${fitLine(subject, width)}`))
-        if (commits.length > 5) shown.push(gray(`  외 ${commits.length - 5}개`))
+        if (commits.length > 5) shown.push(gray(t("update.more", { count: commits.length - 5 })))
         log.message(shown.join("\n"))
       }
     }
@@ -179,14 +197,12 @@ async function update(): Promise<void> {
   // A computer that never got the OCR engine, or whose install stopped, gets it now.
   const ocr = await ensureOcrInstall()
   if (ocr === "started")
-    log.success(
-      `문서 분석 엔진(OCR)이 없어서 뒤에서 설치를 시작했어요 ${gray("· 앱은 바로 쓸 수 있고, 진행 상황은 oh-my-paper doctor")}`,
-    )
+    log.success(`${t("update.ocrStarted")} ${gray(t("update.ocrStartedHint"))}`)
   else if (ocr === "installing")
     log.info(
-      `문서 분석 엔진(OCR)은 뒤에서 설치하고 있어요 ${gray(`· ${describePaddleInstallProgress(readPaddleInstallProgress(homedir()))}`)}`,
+      `${t("update.ocrInstalling")} ${gray(`· ${describePaddleInstallProgress(readPaddleInstallProgress(homedir()), cliLocale)}`)}`,
     )
-  outro(`v${readPackageVersion()} — 실행 중인 앱은 다시 시작하면 적용됩니다`)
+  outro(t("update.done", { version: readPackageVersion() }))
 }
 
 function help(config: WebServerConfig): void {
@@ -194,16 +210,16 @@ function help(config: WebServerConfig): void {
   const command = (name: string, text: string): string => `  ${bold(name.padEnd(30))}${text}`
   process.stdout.write(
     [
-      bold("사용법"),
-      command("oh-my-paper", "앱을 시작하고 브라우저를 엽니다 (처음이면 설정부터)"),
-      command("oh-my-paper onboard", "설정 마법사 — AI 연결, OCR, 사용법"),
-      command("oh-my-paper doctor", "환경과 연결 상태를 점검합니다"),
-      command("oh-my-paper update", "최신 버전으로 업데이트합니다"),
-      command("oh-my-paper start --no-open", "브라우저를 열지 않고 시작합니다"),
+      bold(t("help.usage")),
+      command("oh-my-paper", t("help.start")),
+      command("oh-my-paper onboard", t("help.onboard")),
+      command("oh-my-paper doctor", t("help.doctor")),
+      command("oh-my-paper update", t("help.update")),
+      command("oh-my-paper start --no-open", t("help.noOpen")),
       "",
     ].join("\n"),
   )
-  note(quickstart(appUrl(config.host, config.port), config.dataDir), "빠른 시작")
+  note(quickstart(appUrl(config.host, config.port), config.dataDir), t("help.quickstart"))
 }
 
 async function main(): Promise<void> {
@@ -240,7 +256,7 @@ async function main(): Promise<void> {
         await startApp(config, false)
         return
       }
-      process.stderr.write(`알 수 없는 명령: ${command}\n\n`)
+      process.stderr.write(`${t("help.unknown", { command })}\n\n`)
       help(config)
       process.exitCode = 1
   }

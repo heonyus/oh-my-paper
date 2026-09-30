@@ -1,5 +1,7 @@
 /** First-use tips: one short looping clip per feature, shown once beside the control it explains. */
 
+import type { WebMessageKey } from "../messages"
+
 export type TipView = "library" | "reader" | "research"
 
 export type FeatureTip = {
@@ -11,9 +13,10 @@ export type FeatureTip = {
   readonly anchor: readonly string[]
   /** `inside` pins the tip to the top of a large area such as the page column. */
   readonly placement: "below" | "inside"
-  readonly title: string
-  readonly body: string
-  readonly keys?: ReadonlyArray<readonly [key: string, label: string]>
+  /** Catalog keys, so the tip speaks the app's language. */
+  readonly title: WebMessageKey
+  readonly body: WebMessageKey
+  readonly keys?: ReadonlyArray<readonly [key: string, label: WebMessageKey]>
   readonly clip: string
 }
 
@@ -23,8 +26,8 @@ export const FEATURE_TIPS: readonly FeatureTip[] = [
     view: "library",
     anchor: [".library-empty button", ".library-import-button"],
     placement: "below",
-    title: "PDF 가져오기",
-    body: "파일을 끌어다 놓거나 버튼을 누르세요. 바로 열어서 읽을 수 있습니다.",
+    title: "tip.import.title",
+    body: "tip.import.body",
     clip: "/tutorials/import.mp4",
   },
   {
@@ -33,13 +36,13 @@ export const FEATURE_TIPS: readonly FeatureTip[] = [
     needsDocument: true,
     anchor: [".board-viewport"],
     placement: "inside",
-    title: "문장을 드래그해 보세요",
-    body: "고른 곳 위에 메뉴가 뜨고, 키 하나로 바로 실행됩니다. 결과는 원문 옆에 붙습니다.",
+    title: "tip.select.title",
+    body: "tip.select.body",
     keys: [
-      ["T", "번역"],
-      ["E", "설명"],
-      ["C", "노트에"],
-      ["H", "하이라이트"],
+      ["T", "key.T"],
+      ["E", "key.E"],
+      ["C", "key.C"],
+      ["H", "key.H"],
     ],
     clip: "/tutorials/translate.mp4",
   },
@@ -49,8 +52,8 @@ export const FEATURE_TIPS: readonly FeatureTip[] = [
     needsDocument: true,
     anchor: [".topbar-translation-action"],
     placement: "below",
-    title: "페이지를 통째로 번역",
-    body: "원문 옆에 한국어 페이지를 나란히 띄웁니다. 문단을 누르면 원문 자리로 돌아갑니다.",
+    title: "tip.pageTranslation.title",
+    body: "tip.pageTranslation.body",
     clip: "/tutorials/page-translation.mp4",
   },
   {
@@ -59,18 +62,18 @@ export const FEATURE_TIPS: readonly FeatureTip[] = [
     needsDocument: true,
     anchor: [".topbar-note-action"],
     placement: "below",
-    title: "내 말로 남기는 노트",
-    body: "쓰는 문장마다 근거가 된 문단을 찾아 보여줍니다. 문장을 고르고 C를 누르면 인용과 함께 담깁니다.",
+    title: "tip.note.title",
+    body: "tip.note.body",
     clip: "/tutorials/note.mp4",
   },
   {
     id: "overview",
     view: "reader",
     needsDocument: true,
-    anchor: ['button[aria-label="AI 개요 열기"]', ".ai-overview-panel", ".research-mode-rail"],
+    anchor: ['button[data-research-mode="ai"]', ".ai-overview-panel", ".research-mode-rail"],
     placement: "below",
-    title: "AI 개요",
-    body: "키워드, 3줄 요약, 요약을 한 번에 봅니다. 질문하면 근거 페이지와 함께 답합니다.",
+    title: "tip.overview.title",
+    body: "tip.overview.body",
     clip: "/tutorials/overview.mp4",
   },
   {
@@ -79,9 +82,9 @@ export const FEATURE_TIPS: readonly FeatureTip[] = [
     needsDocument: true,
     anchor: [],
     placement: "below",
-    title: "그림·수식 설명",
-    body: "문장이나 수식을 고르고 E를 누르면 앞뒤 맥락까지 읽고 풀어서 설명합니다.",
-    keys: [["E", "설명"]],
+    title: "tip.explain.title",
+    body: "tip.explain.body",
+    keys: [["E", "key.E"]],
     clip: "/tutorials/explain.mp4",
   },
 ]
