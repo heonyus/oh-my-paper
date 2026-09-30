@@ -4,7 +4,7 @@ import { translator } from "../../src/shared/i18n/locale"
 import { webMessages } from "../../src/web/messages"
 import { FeatureTips } from "../../src/web/tips/FeatureTips"
 import { TipsGallery } from "../../src/web/tips/TipsGallery"
-import { FEATURE_TIPS, nextTip, readTipState } from "../../src/web/tips/tipCatalog"
+import { FEATURE_TIPS, localizedClip, nextTip, readTipState } from "../../src/web/tips/tipCatalog"
 
 /** Tips name catalog keys; the screen shows their Korean wording in these tests. */
 const t = translator(webMessages, "ko")
@@ -129,5 +129,19 @@ describe("feature tips", () => {
     for (const tip of FEATURE_TIPS) {
       expect(screen.getByRole("heading", { name: t(tip.title) })).toBeVisible()
     }
+  })
+})
+
+describe("tip clips per language", () => {
+  it("plays the English recordings on the English screen, and Korean ones otherwise", () => {
+    expect(localizedClip("/tutorials/note.mp4", "ko")).toBe("/tutorials/note.mp4")
+    expect(localizedClip("/tutorials/note.mp4", "en")).toBe("/tutorials/en/note.mp4")
+  })
+
+  it("has no English translation clips, since an English paper stays English", () => {
+    expect(localizedClip("/tutorials/translate.mp4", "en")).toBe("/tutorials/en/explain.mp4")
+    expect(localizedClip("/tutorials/page-translation.mp4", "en")).toBe(
+      "/tutorials/page-translation.mp4",
+    )
   })
 })

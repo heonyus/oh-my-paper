@@ -1,8 +1,15 @@
 import { X } from "lucide-react"
 import { type JSX, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
-import { useTranslator } from "../../renderer/lib/locale"
+import { useLocale, useTranslator } from "../../renderer/lib/locale"
 import { webMessages } from "../messages"
-import { type FeatureTip, nextTip, readTipState, type TipView, writeTipState } from "./tipCatalog"
+import {
+  type FeatureTip,
+  localizedClip,
+  nextTip,
+  readTipState,
+  type TipView,
+  writeTipState,
+} from "./tipCatalog"
 
 const TIP_WIDTH = 320
 const EDGE = 12
@@ -41,13 +48,18 @@ export function TipClip({
   readonly onEnded?: () => void
 }): JSX.Element | null {
   const t = useTranslator(webMessages)
-  const [failed, setFailed] = useState(false)
+  const { locale } = useLocale()
+  // The English clips were recorded on the English screen; a missing one falls back to Korean.
+  const [tries, setTries] = useState(0)
   const reduced = prefersReducedMotion()
-  if (failed) return null
+  const sources = [...new Set([localizedClip(src, locale), src])]
+  const source = sources[tries]
+  if (source === undefined) return null
   return (
     <video
+      key={source}
       className="feature-tip-clip"
-      src={src}
+      src={source}
       autoPlay={!reduced}
       controls={reduced && controls}
       muted
@@ -55,7 +67,7 @@ export function TipClip({
       playsInline
       preload="auto"
       aria-label={t("tips.example", { title })}
-      onError={() => setFailed(true)}
+      onError={() => setTries((count) => count + 1)}
       onEnded={onEnded}
     />
   )
