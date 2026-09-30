@@ -27,6 +27,15 @@ sleep 0.4
 echo "end $*" >> "$log"
 `
 
+// Stands in for uv's official installer: puts the stand-in uv where UV_UNMANAGED_INSTALL says.
+const fakeUvInstaller = `#!/bin/sh
+echo "installer into $UV_UNMANAGED_INSTALL" >> "$FAKE_UV_LOG"
+mkdir -p "$UV_UNMANAGED_INSTALL"
+cat > "$UV_UNMANAGED_INSTALL/uv" <<'FAKE_UV'
+${fakeUv}FAKE_UV
+chmod +x "$UV_UNMANAGED_INSTALL/uv"
+`
+
 const MODEL_REPO = "PaddlePaddle/PaddleOCR-VL-1.6"
 const MODEL_FILES: Record<string, Buffer> = {
   "config.json": Buffer.from('{"model_type":"paddleocr_vl"}'),
@@ -37,6 +46,7 @@ const MODEL_FILES: Record<string, Buffer> = {
 async function fakeModelHosts(log: string): Promise<{ base: string; server: Server }> {
   const server = createServer((req, res) => {
     const url = new URL(req.url ?? "/", "http://local")
+    if (url.pathname === "/uv/install.sh") return void res.end(fakeUvInstaller)
     if (url.pathname === `/hf/api/models/${MODEL_REPO}`) {
       const siblings = Object.entries(MODEL_FILES).map(([path, data]) => ({
         rfilename: path,
@@ -96,6 +106,7 @@ describe("PaddleOCR-VL runtime setup", () => {
     let root = ""
     let env: NodeJS.ProcessEnv = {}
     let hosts: Server | null = null
+    let base = ""
 
     beforeEach(async () => {
       root = await mkdtemp(join(tmpdir(), "ohmypaper-paddle-setup-"))
@@ -106,6 +117,7 @@ describe("PaddleOCR-VL runtime setup", () => {
       const { PATH: inheritedPath = "" } = process.env
       const model = await fakeModelHosts(join(root, "uv.log"))
       hosts = model.server
+      base = model.base
       env = {
         ...process.env,
         PATH: `${bin}${delimiter}${inheritedPath}`,
@@ -162,6 +174,47 @@ describe("PaddleOCR-VL runtime setup", () => {
       await expect(
         readFile(join(root, "paddle-vl-mlx-runtime", "models", "PaddleOCR-VL-1.6", "config.json")),
       ).resolves.toEqual(MODEL_FILES["config.json"])
+    })
+
+    it("installs its own uv when the computer has none", async () => {
+      // Only the system tools: no uv on PATH, not even the stand-in.
+      const bare = {
+        ...env,
+        PATH: "/usr/bin:/bin",
+        OH_MY_PAPER_UV_INSTALLER: `${base}/uv/install.sh`,
+      }
+
+      const { code, output } = await runSetup(bare)
+
+      expect(code, output).toBe(0)
+      expect(output).toContain("uv 설치")
+      const calls = await readFile(join(root, "uv.log"), "utf8")
+      expect(calls).toContain(`installer into ${join(root, "tools", "uv")}`)
+      expect(calls).toContain("start pip install")
+      await expect(
+        readFile(join(root, "paddle-vl-runtime", ".ready-v1.6-layout-v2"), "utf8"),
+      ).resolves.toContain("PaddleOCR-VL-1.6")
+
+      // The next install finds that copy instead of fetching uv again.
+      await rm(join(root, "paddle-vl-runtime"), { recursive: true, force: true })
+      await rm(join(root, "paddle-vl-mlx-runtime"), { recursive: true, force: true })
+      const again = await runSetup(bare)
+      expect(again.code, again.output).toBe(0)
+      expect(again.output).not.toContain("uv 설치")
+    })
+
+    it("says so when uv cannot be installed", async () => {
+      const bare = {
+        ...env,
+        PATH: "/usr/bin:/bin",
+        OH_MY_PAPER_UV_INSTALLER: `${base}/uv/missing.sh`,
+      }
+
+      const { code, output } = await runSetup(bare)
+
+      expect(code).toBe(1)
+      expect(output).toContain("uv를 설치하지 못했습니다")
+      await expect(readFile(join(root, "paddle-vl-install.pid"))).rejects.toThrow()
     })
 
     it("leaves a running install alone", async () => {

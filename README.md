@@ -37,7 +37,7 @@ Apple Silicon Mac, git, Node.js 22 이상(`brew install node`)만 있으면 됩�
 
 | 단계 | 하는 일 |
 |:--|:--|
-| **1** 실행 환경 확인 | Node.js, 로그인 런타임, Claude Code, uv가 있는지 봅니다 |
+| **1** 실행 환경 확인 | Node.js, 로그인 런타임, Claude Code가 있는지 봅니다 |
 | **2** 문서 분석 엔진 | PaddleOCR-VL을 **백그라운드로** 받기 시작합니다 (약 3GB) |
 | **3** AI 연결 | ChatGPT 구독 · Claude 구독 · API 키 중 하나를 고릅니다 |
 | **4** 사용법 | 단축키와 첫걸음을 보여 주고 앱을 엽니다 |
@@ -110,7 +110,7 @@ PDF를 라이브러리에 놓으면 바로 열립니다. 제목·저자 같은 �
 
 - 마법사에서 기본으로 설치되며, 백그라운드에서 받는 동안 진행률이 설정 화면과 `oh-my-paper doctor`에 나옵니다 (예: `설치 중 42% · 약 1분 남음`).
 - 끝나면 앱을 다시 켜지 않아도 자동으로 켜집니다.
-- 나중에 설치하려면 `npm run setup:paddle-vl`을 실행하세요 (Python 3.12와 [`uv`](https://docs.astral.sh/uv/) 필요).
+- 나중에 설치하려면 `npm run setup:paddle-vl`을 실행하세요 ([`uv`](https://docs.astral.sh/uv/)와 Python 3.12가 없으면 함께 설치합니다).
 
 ## 🧭 명령어
 

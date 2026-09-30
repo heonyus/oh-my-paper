@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
-import { dirname, join } from "node:path"
+import { delimiter, dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { downloadRepository, modelSources } from "./model-download.mjs"
 
@@ -26,6 +26,10 @@ const mlxReadinessMarker = join(mlxRuntimeRoot, ".ready-mlx-v1.6")
 // Beside the runtime folders, matching paddleInstallPaths() in src/electron/paddleInstallState.ts.
 const installLock = join(dirname(runtimeRoot), "paddle-vl-install.pid")
 const installProgress = join(dirname(runtimeRoot), "paddle-vl-install.progress.json")
+// uv installed for oh-my-paper alone when the computer has none, beside the runtimes.
+const uvVersion = "0.10.4"
+const uvTools = join(dirname(runtimeRoot), "tools", "uv")
+let uv = "uv"
 
 const children = new Set()
 
@@ -186,26 +190,77 @@ const paddleSource = nvidiaGpu
   : []
 const paddlePackage = nvidiaGpu ? "paddlepaddle-gpu==3.2.1" : "paddlepaddle==3.2.1"
 
+/**
+ * uv from PATH, or else a copy of its own: the official installer puts it in ~/.ohmypaper/tools
+ * without touching shell profiles, and uv fetches Python 3.12 itself, so a computer with
+ * neither still gets the engine. `OH_MY_PAPER_UV_INSTALLER` points at another installer.
+ */
+async function ensureUv() {
+  const names = process.platform === "win32" ? ["uv.exe", "uv.cmd"] : ["uv"]
+  const onPath = (process.env.PATH ?? "")
+    .split(delimiter)
+    .some((directory) => directory && names.some((name) => existsSync(join(directory, name))))
+  if (onPath) return
+  const own = join(uvTools, process.platform === "win32" ? "uv.exe" : "uv")
+  if (!existsSync(own)) {
+    const windows = process.platform === "win32"
+    const installer =
+      process.env.OH_MY_PAPER_UV_INSTALLER ??
+      `https://astral.sh/uv/${uvVersion}/install.${windows ? "ps1" : "sh"}`
+    const env = {
+      ...process.env,
+      UV_UNMANAGED_INSTALL: uvTools,
+      UV_NO_MODIFY_PATH: "1",
+      OH_MY_PAPER_UV_INSTALLER_URL: installer,
+    }
+    if (windows)
+      await step(
+        "uv",
+        "uv 설치 (이 컴퓨터에 없어서 함께 받습니다)",
+        "powershell",
+        [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-Command",
+          "irm $env:OH_MY_PAPER_UV_INSTALLER_URL | iex",
+        ],
+        { env },
+      )
+    else
+      await step(
+        "uv",
+        "uv 설치 (이 컴퓨터에 없어서 함께 받습니다)",
+        "sh",
+        ["-c", 'curl -LsSf "$OH_MY_PAPER_UV_INSTALLER_URL" | sh'],
+        { env },
+      )
+  }
+  // A failed download leaves nothing behind, and the pipe alone would not say so.
+  if (!existsSync(own)) throw new Error("uv를 설치하지 못했습니다 (인터넷 연결을 확인하세요)")
+  uv = own
+}
+
 /** Both environments exist before the lanes start, so the model can land inside the MLX one. */
 async function environments() {
   if (!existsSync(python))
-    await step("paddle", "Python 환경", "uv", ["venv", "--python", "3.12", runtimeRoot])
+    await step("paddle", "Python 환경", uv, ["venv", "--python", "3.12", runtimeRoot])
   if (appleAcceleration && !existsSync(mlxPython))
-    await step("mlx", "Python 환경", "uv", ["venv", "--python", "3.12", mlxRuntimeRoot])
+    await step("mlx", "Python 환경", uv, ["venv", "--python", "3.12", mlxRuntimeRoot])
 }
 
 async function paddleLane() {
   await step(
     "paddle",
     paddlePackage,
-    "uv",
+    uv,
     ["pip", "install", "--python", python, ...paddleSource, paddlePackage],
     { key: "paddle" },
   )
   await step(
     "paddle",
     "PaddleOCR",
-    "uv",
+    uv,
     [
       "pip",
       "install",
@@ -234,7 +289,7 @@ async function mlxLane() {
   await step(
     "mlx",
     "MLX-VLM",
-    "uv",
+    uv,
     ["pip", "install", "--python", mlxPython, "mlx-vlm==0.6.17", "jinja2==3.1.6"],
     { key: "mlx" },
   )
@@ -271,6 +326,7 @@ async function main() {
   installStarted = started
   writeProgress()
   const ticker = setInterval(writeProgress, 2_000)
+  await ensureUv()
   await environments()
   if (appleAcceleration) {
     await Promise.all([paddleLane(), mlxLane(), modelLane()])
