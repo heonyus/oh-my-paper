@@ -2,7 +2,7 @@
   "name": "oh-my-paper",
   "version": "2.1.0",
   "private": true,
-  "description": "A local-first spatial PDF reading board",
+  "description": "A local-first reader for research papers",
   "license": "MIT",
   "author": {
     "name": "heonyus",
