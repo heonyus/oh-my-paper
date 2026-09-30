@@ -5,6 +5,7 @@ import { createConnection, createServer } from "node:net"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import { z } from "zod"
+import { backgroundCommand } from "./backgroundPriority"
 import { buildOfflineSubprocessEnv } from "./offlineSubprocessEnvironment"
 
 export type PaddleVlmBackend = "mlx-vlm-server" | "vllm-server"
@@ -196,25 +197,22 @@ export class ApplePaddleVlmServer implements PaddleVlmServer {
     }
     const port = await reserveLoopbackPort()
     const apiKey = randomUUID()
-    const server = spawn(
-      python,
-      [
-        "-m",
-        "mlx_vlm.server",
-        "--host",
-        "127.0.0.1",
-        "--port",
-        String(port),
-        "--model",
-        model,
-        "--log-level",
-        "ERROR",
-      ],
-      {
-        env: paddleVlmServerEnvironment(home, apiKey),
-        stdio: "ignore",
-      },
-    )
+    const [command, args] = backgroundCommand(python, [
+      "-m",
+      "mlx_vlm.server",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      String(port),
+      "--model",
+      model,
+      "--log-level",
+      "ERROR",
+    ])
+    const server = spawn(command, args, {
+      env: paddleVlmServerEnvironment(home, apiKey),
+      stdio: "ignore",
+    })
     this.#process = server
     server.once("error", (error) => console.warn("[paddle-vlm] MLX-VLM server failed", error))
     server.once("exit", () => {
