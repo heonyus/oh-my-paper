@@ -1,11 +1,14 @@
 import { type Editor, Extension, type Range } from "@tiptap/core"
 import { PluginKey } from "@tiptap/pm/state"
 import Suggestion from "@tiptap/suggestion"
+import { type Locale, translator } from "../../../shared/i18n/locale"
+import { type NoteMessageKey, noteMessages } from "../../messages/note"
 
 export type SlashItem = {
   readonly id: string
-  readonly label: string
-  readonly hint: string
+  /** Catalog keys of the block's name and its one-line description. */
+  readonly label: NoteMessageKey
+  readonly hint: NoteMessageKey
   readonly keywords: readonly string[]
   readonly run: (editor: Editor, range: Range) => void
 }
@@ -13,63 +16,66 @@ export type SlashItem = {
 export const slashItems: readonly SlashItem[] = [
   {
     id: "heading",
-    label: "제목",
-    hint: "큰 제목",
+    label: "slash.heading.label",
+    hint: "slash.heading.hint",
     keywords: ["h2", "heading", "title"],
     run: (editor, range) =>
       editor.chain().focus().deleteRange(range).setNode("heading", { level: 2 }).run(),
   },
   {
     id: "subheading",
-    label: "소제목",
-    hint: "작은 제목",
+    label: "slash.subheading.label",
+    hint: "slash.subheading.hint",
     keywords: ["h3", "subheading"],
     run: (editor, range) =>
       editor.chain().focus().deleteRange(range).setNode("heading", { level: 3 }).run(),
   },
   {
     id: "bullet",
-    label: "목록",
-    hint: "글머리 기호 목록",
+    label: "slash.bullet.label",
+    hint: "slash.bullet.hint",
     keywords: ["list", "bullet", "ul"],
     run: (editor, range) => editor.chain().focus().deleteRange(range).toggleBulletList().run(),
   },
   {
     id: "ordered",
-    label: "번호 목록",
-    hint: "순서가 있는 목록",
+    label: "slash.ordered.label",
+    hint: "slash.ordered.hint",
     keywords: ["ordered", "number", "ol"],
     run: (editor, range) => editor.chain().focus().deleteRange(range).toggleOrderedList().run(),
   },
   {
     id: "quote",
-    label: "인용",
-    hint: "원문이나 생각을 인용",
+    label: "slash.quote.label",
+    hint: "slash.quote.hint",
     keywords: ["quote", "blockquote"],
     run: (editor, range) => editor.chain().focus().deleteRange(range).toggleBlockquote().run(),
   },
   {
     id: "code",
-    label: "코드",
-    hint: "코드 블록",
+    label: "slash.code.label",
+    hint: "slash.code.hint",
     keywords: ["code"],
     run: (editor, range) => editor.chain().focus().deleteRange(range).toggleCodeBlock().run(),
   },
   {
     id: "divider",
-    label: "구분선",
-    hint: "단락 나누기",
+    label: "slash.divider.label",
+    hint: "slash.divider.hint",
     keywords: ["hr", "divider", "line"],
     run: (editor, range) => editor.chain().focus().deleteRange(range).setHorizontalRule().run(),
   },
 ]
 
-export function matchingSlashItems(query: string): readonly SlashItem[] {
+/** The blocks whose name, in the reader's language, or keywords match what follows `/`. */
+export function matchingSlashItems(query: string, locale: Locale = "ko"): readonly SlashItem[] {
   const needle = query.trim().toLocaleLowerCase()
   if (!needle) return slashItems
+  const t = translator(noteMessages, locale)
   return slashItems.filter(
     (item) =>
-      item.label.includes(needle) || item.keywords.some((keyword) => keyword.startsWith(needle)),
+      t(item.label).toLocaleLowerCase().includes(needle) ||
+      item.keywords.some((keyword) => keyword.startsWith(needle)),
   )
 }
 
@@ -113,7 +119,8 @@ export class SlashMenuStore {
   }
 }
 
-export function slashCommandExtension(store: SlashMenuStore) {
+/** `locale` is read on each keystroke, so the menu follows the reader's language as it changes. */
+export function slashCommandExtension(store: SlashMenuStore, locale: () => Locale = () => "ko") {
   return Extension.create({
     name: "slashCommand",
     addProseMirrorPlugins() {
@@ -123,7 +130,7 @@ export function slashCommandExtension(store: SlashMenuStore) {
           pluginKey: new PluginKey("slashCommand"),
           char: "/",
           allowSpaces: false,
-          items: ({ query }) => [...matchingSlashItems(query)],
+          items: ({ query }) => [...matchingSlashItems(query, locale())],
           command: ({ editor, range, props }) => props.run(editor, range),
           render: () => ({
             onStart: (props) =>

@@ -1,7 +1,10 @@
 import { Check, FileText, LoaderCircle, TriangleAlert } from "lucide-react"
 import { type JSX, useState } from "react"
 import type { DocumentAnalysisJob, DocumentAnalysisSnapshot } from "../../shared/documentAnalysis"
+import type { MessageParams } from "../../shared/i18n/locale"
 import type { ImportProgress } from "../../shared/ipc"
+import { useTranslator } from "../lib/locale"
+import { countKey, type LibraryMessageKey, libraryMessages } from "../messages/library"
 
 type LibraryTask = {
   readonly id: string
@@ -12,40 +15,43 @@ type LibraryTask = {
   readonly retryDocumentId?: DocumentAnalysisJob["id"] | undefined
 }
 
-const stageLabels: Readonly<
-  Record<Extract<DocumentAnalysisJob, { state: "running" }>["stage"], string>
-> = {
-  "engine-starting": "분석 엔진 준비 중",
-  "page-rendering": "페이지 읽는 중",
-  "document-analyzing": "구조 분석 중",
-  finalizing: "결과 저장 중",
+type RunningStage = Extract<DocumentAnalysisJob, { state: "running" }>["stage"]
+type Translate = (key: LibraryMessageKey, params?: MessageParams) => string
+
+const stageLabels: Readonly<Record<RunningStage, LibraryMessageKey>> = {
+  "engine-starting": "tasks.stage.engine-starting",
+  "page-rendering": "tasks.stage.page-rendering",
+  "document-analyzing": "tasks.stage.document-analyzing",
+  finalizing: "tasks.stage.finalizing",
 }
 
-const stageProgress: Readonly<
-  Record<Extract<DocumentAnalysisJob, { state: "running" }>["stage"], number>
-> = {
+const stageProgress: Readonly<Record<RunningStage, number>> = {
   "engine-starting": 0.05,
   "page-rendering": 0.2,
   "document-analyzing": 0.6,
   finalizing: 0.9,
 }
 
-function analysisTask(job: DocumentAnalysisJob): LibraryTask {
+function analysisTask(job: DocumentAnalysisJob, t: Translate): LibraryTask {
+  const pages = (current: number): string => t("tasks.pages", { current, total: job.pageCount })
   if (job.state === "queued") {
     return {
       id: `analysis:${job.id}`,
       title: job.title,
-      detail: `0 / ${job.pageCount}페이지 · ${job.message ?? "분석 대기 중"}`,
+      detail: `${pages(0)} · ${job.message ?? t("tasks.waiting")}`,
       progress: 0,
       state: "active",
     }
   }
   if (job.state === "running") {
-    const retry = job.maxAttempts > 1 ? ` · ${job.attempt}/${job.maxAttempts}차 시도` : ""
+    const retry =
+      job.maxAttempts > 1
+        ? ` · ${t("tasks.attempt", { attempt: job.attempt, max: job.maxAttempts })}`
+        : ""
     return {
       id: `analysis:${job.id}`,
       title: job.title,
-      detail: `${job.currentPage} / ${job.pageCount}페이지 · 로컬 PaddleOCR${retry} · ${stageLabels[job.stage]}`,
+      detail: `${pages(job.currentPage)} · ${t("tasks.localOcr")}${retry} · ${t(stageLabels[job.stage])}`,
       progress: (job.completedPages + stageProgress[job.stage]) / job.pageCount,
       state: "active",
     }
@@ -54,7 +60,7 @@ function analysisTask(job: DocumentAnalysisJob): LibraryTask {
     return {
       id: `analysis:${job.id}`,
       title: job.title,
-      detail: `${job.pageCount} / ${job.pageCount}페이지 · 로컬 분석 완료`,
+      detail: `${pages(job.pageCount)} · ${t("tasks.done")}`,
       progress: 1,
       state: "complete",
     }
@@ -62,7 +68,7 @@ function analysisTask(job: DocumentAnalysisJob): LibraryTask {
   return {
     id: `analysis:${job.id}`,
     title: job.title,
-    detail: `${job.completedPages} / ${job.pageCount}페이지 · ${job.message}`,
+    detail: `${pages(job.completedPages)} · ${job.message}`,
     progress: job.completedPages / job.pageCount,
     state: "failed",
     retryDocumentId: job.id,
@@ -80,11 +86,13 @@ function importTask(item: ImportProgress): LibraryTask {
 }
 
 /** What the jobs the snapshot only counts are doing, e.g. "3개 분석 대기 중 · 1개 확인 필요". */
-function unlistedDetail(unlisted: DocumentAnalysisSnapshot["unlisted"]): string {
+function unlistedDetail(unlisted: DocumentAnalysisSnapshot["unlisted"], t: Translate): string {
   return [
-    unlisted.running > 0 ? `${unlisted.running}개 분석 중` : "",
-    unlisted.queued > 0 ? `${unlisted.queued}개 분석 대기 중` : "",
-    unlisted.failed > 0 ? `${unlisted.failed}개 확인 필요` : "",
+    unlisted.running > 0 ? t("tasks.analyzing", { count: unlisted.running }) : "",
+    unlisted.queued > 0 ? t("tasks.queued", { count: unlisted.queued }) : "",
+    unlisted.failed > 0
+      ? t(countKey("tasks.needsCheck", unlisted.failed), { count: unlisted.failed })
+      : "",
   ]
     .filter(Boolean)
     .join(" · ")
@@ -99,8 +107,9 @@ export function LibraryTaskQueue({
   readonly analyses: DocumentAnalysisSnapshot
   readonly onRetryAnalysis?: ((id: DocumentAnalysisJob["id"]) => void) | undefined
 }): JSX.Element | null {
+  const t = useTranslator(libraryMessages)
   const [showCompleted, setShowCompleted] = useState(false)
-  const tasks = [...imports.map(importTask), ...analyses.jobs.map(analysisTask)]
+  const tasks = [...imports.map(importTask), ...analyses.jobs.map((job) => analysisTask(job, t))]
   const { unlisted } = analyses
   const unlistedActive = unlisted.queued + unlisted.running
   const unlistedCount = unlistedActive + unlisted.failed
@@ -110,7 +119,7 @@ export function LibraryTaskQueue({
   const expanded = active > 0 || failed > 0 || showCompleted
 
   return (
-    <section className="library-task-queue" aria-live="polite" aria-label="PDF 준비 진행">
+    <section className="library-task-queue" aria-live="polite" aria-label={t("tasks.label")}>
       <header>
         <div>
           {active > 0 ? (
@@ -119,12 +128,16 @@ export function LibraryTaskQueue({
             <Check size={15} aria-hidden="true" />
           )}
           <h2>
-            {active > 0 || failed > 0 ? "로컬 문서 준비" : `${tasks.length}개 문서 준비 완료`}
+            {active > 0 || failed > 0
+              ? t("tasks.preparing")
+              : t(countKey("tasks.ready", tasks.length), { count: tasks.length })}
           </h2>
         </div>
         {active > 0 || failed > 0 ? (
           <span className="library-task-summary">
-            {active > 0 ? `${active}개 진행 중` : `${failed}개 확인 필요`}
+            {active > 0
+              ? t("tasks.active", { count: active })
+              : t(countKey("tasks.needsCheck", failed), { count: failed })}
           </span>
         ) : (
           <button
@@ -132,7 +145,7 @@ export function LibraryTaskQueue({
             aria-expanded={expanded}
             onClick={() => setShowCompleted((current) => !current)}
           >
-            {expanded ? "접기" : "완료 내역"}
+            {t(expanded ? "tasks.collapse" : "tasks.completed")}
           </button>
         )}
       </header>
@@ -155,7 +168,7 @@ export function LibraryTaskQueue({
                 <div
                   className="library-task-progress"
                   role="progressbar"
-                  aria-label={`${task.title} 준비 진행`}
+                  aria-label={t("tasks.progressLabel", { title: task.title })}
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={Math.round(task.progress * 100)}
@@ -170,12 +183,12 @@ export function LibraryTaskQueue({
                   <button
                     type="button"
                     className="library-task-retry"
-                    aria-label={`${task.title} 다시 시도`}
+                    aria-label={t("tasks.retryLabel", { title: task.title })}
                     onClick={() => {
                       if (task.retryDocumentId) onRetryAnalysis(task.retryDocumentId)
                     }}
                   >
-                    다시 시도
+                    {t("tasks.retry")}
                   </button>
                 ) : null}
               </div>
@@ -187,8 +200,10 @@ export function LibraryTaskQueue({
                 <FileText size={14} />
               </span>
               <div className="library-task-copy">
-                <strong>외 {unlistedCount}개 문서</strong>
-                <span className="library-task-detail">{unlistedDetail(unlisted)}</span>
+                <strong>
+                  {t(countKey("tasks.more", unlistedCount), { count: unlistedCount })}
+                </strong>
+                <span className="library-task-detail">{unlistedDetail(unlisted, t)}</span>
               </div>
             </li>
           ) : null}

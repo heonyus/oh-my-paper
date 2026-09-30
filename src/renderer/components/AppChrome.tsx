@@ -12,11 +12,13 @@ import {
 } from "lucide-react"
 import type { JSX } from "react"
 import leafMarkUrl from "../../../assets/branding/ohmypaper-leaf-mark.png"
+import { useTranslator } from "../lib/locale"
 import {
   toggleAutomaticPageTranslation,
   usePageTranslationSession,
 } from "../lib/pageTranslationToggle"
 import { zoomViewportAt } from "../lib/viewport"
+import { chromeMessages } from "../messages/chrome"
 import type { BoardTool, DocumentId, DocumentRecord, Viewport } from "../types"
 
 export type WebAccount = {
@@ -59,6 +61,7 @@ export function Topbar({
   noteOpen,
   onToggleNote,
 }: TopbarProps): JSX.Element {
+  const t = useTranslator(chromeMessages)
   const pageTranslation = usePageTranslationSession()
   function changeZoom(delta: number): void {
     const board = document.querySelector<HTMLElement>(".board-viewport")
@@ -71,7 +74,7 @@ export function Topbar({
   return (
     <header className="topbar reader-toolbar">
       <label className="reader-document-picker">
-        <span>읽는 논문</span>
+        <span>{t("topbar.documentPicker")}</span>
         <select
           value={activeDocumentId ?? ""}
           disabled={documents.length === 0}
@@ -81,7 +84,7 @@ export function Topbar({
           }}
         >
           <option value="" disabled>
-            열린 논문 없음
+            {t("topbar.noDocument")}
           </option>
           {documents.map((document) => (
             <option key={document.id} value={document.id}>
@@ -90,11 +93,15 @@ export function Topbar({
           ))}
         </select>
       </label>
-      <fieldset className="reader-tools" disabled={!activeDocumentId} aria-label="논문 읽기 도구">
+      <fieldset
+        className="reader-tools"
+        disabled={!activeDocumentId}
+        aria-label={t("topbar.tools")}
+      >
         <button
           type="button"
           className={outlineOpen ? "active" : undefined}
-          aria-label={outlineOpen ? "목차 닫기" : "목차 열기"}
+          aria-label={t(outlineOpen ? "outline.close" : "outline.open")}
           aria-pressed={outlineOpen}
           onClick={onToggleOutline}
         >
@@ -103,18 +110,18 @@ export function Topbar({
         <button
           type="button"
           className={noteOpen ? "topbar-note-action active" : "topbar-note-action"}
-          aria-label={noteOpen ? "내 노트 닫기" : "내 노트 열기"}
+          aria-label={t(noteOpen ? "topbar.closeNote" : "topbar.openNote")}
           aria-pressed={noteOpen}
           onClick={onToggleNote}
         >
           <NotebookPen size={16} />
-          <span>노트</span>
+          <span>{t("topbar.note")}</span>
         </button>
         <div className="tool-cluster">
           <button
             type="button"
             className={tool === "select" ? "active" : undefined}
-            aria-label="선택 도구"
+            aria-label={t("topbar.select")}
             onClick={() => onToolChange("select")}
           >
             <MousePointer2 size={16} />
@@ -122,26 +129,26 @@ export function Topbar({
           <button
             type="button"
             className={tool === "pan" ? "active" : undefined}
-            aria-label="이동 도구"
+            aria-label={t("topbar.pan")}
             onClick={() => onToolChange("pan")}
           >
             <Hand size={16} />
           </button>
         </div>
         <div className="tool-cluster">
-          <button type="button" aria-label="실행 취소" onClick={onUndo} disabled={!canUndo}>
+          <button type="button" aria-label={t("topbar.undo")} onClick={onUndo} disabled={!canUndo}>
             <Undo2 size={16} />
           </button>
-          <button type="button" aria-label="다시 실행" onClick={onRedo} disabled={!canRedo}>
+          <button type="button" aria-label={t("topbar.redo")} onClick={onRedo} disabled={!canRedo}>
             <Redo2 size={16} />
           </button>
         </div>
         <div className="zoom-cluster">
-          <button type="button" onClick={() => changeZoom(-0.1)} aria-label="축소">
+          <button type="button" onClick={() => changeZoom(-0.1)} aria-label={t("topbar.zoomOut")}>
             <ZoomOut size={16} />
           </button>
           <output>{Math.round(viewport.zoom * 100)}%</output>
-          <button type="button" onClick={() => changeZoom(0.1)} aria-label="확대">
+          <button type="button" onClick={() => changeZoom(0.1)} aria-label={t("topbar.zoomIn")}>
             <ZoomIn size={16} />
           </button>
         </div>
@@ -149,12 +156,14 @@ export function Topbar({
           type="button"
           className="topbar-translation-action"
           data-active={pageTranslation.auto}
-          aria-label={pageTranslation.auto ? "자동 번역 끄기" : "자동 번역 켜기"}
+          aria-label={t(
+            pageTranslation.auto ? "topbar.autoTranslateOff" : "topbar.autoTranslateOn",
+          )}
           aria-pressed={pageTranslation.auto}
           onClick={toggleAutomaticPageTranslation}
         >
           <Languages size={16} />
-          <span>자동 번역</span>
+          <span>{t("topbar.autoTranslate")}</span>
           <small className="topbar-translation-state">{pageTranslation.auto ? "ON" : "OFF"}</small>
         </button>
       </fieldset>
@@ -163,11 +172,12 @@ export function Topbar({
 }
 
 function TopbarAccount({ account }: { readonly account: WebAccount }): JSX.Element {
+  const t = useTranslator(chromeMessages)
   return (
     <div className="topbar-account">
       <span>{account.name}</span>
       {account.onSignOut ? (
-        <button type="button" aria-label="로그아웃" onClick={account.onSignOut}>
+        <button type="button" aria-label={t("topbar.signOut")} onClick={account.onSignOut}>
           <LogOut size={16} />
         </button>
       ) : null}

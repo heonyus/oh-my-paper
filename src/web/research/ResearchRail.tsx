@@ -1,7 +1,9 @@
 import { MessageSquare, SquarePen } from "lucide-react"
 import type { JSX } from "react"
+import { useTranslator } from "../../renderer/lib/locale"
 import type { AgentThread } from "../../shared/agentChat"
 import { groupThreads } from "./agentThreadModel"
+import { researchViewMessages } from "./messages"
 
 export function ResearchRail({
   threads,
@@ -14,16 +16,18 @@ export function ResearchRail({
   readonly onNew: () => void
   readonly onSelect: (id: string) => void
 }): JSX.Element {
+  const t = useTranslator(researchViewMessages)
   const groups = groupThreads(threads)
   return (
-    <aside className="research-rail" aria-label="리서치 채팅 기록">
+    <aside className="research-rail" aria-label={t("rail.label")}>
       <button type="button" className="research-new-chat" onClick={onNew}>
-        <SquarePen size={15} aria-hidden="true" />새 채팅
+        <SquarePen size={15} aria-hidden="true" />
+        {t("rail.new")}
       </button>
       <nav className="research-history">
         {groups.map((group) => (
           <section key={group.key} className="research-history-group">
-            <h3>{group.label}</h3>
+            <h3>{t(`rail.group.${group.key}`)}</h3>
             <ul>
               {group.threads.map((thread) => (
                 <li key={thread.id}>
@@ -42,9 +46,7 @@ export function ResearchRail({
             </ul>
           </section>
         ))}
-        {threads.length === 0 ? (
-          <p className="research-history-empty">아직 대화가 없습니다</p>
-        ) : null}
+        {threads.length === 0 ? <p className="research-history-empty">{t("rail.empty")}</p> : null}
       </nav>
     </aside>
   )

@@ -1,4 +1,6 @@
 import { type JSX, useRef } from "react"
+import { useTranslator } from "../lib/locale"
+import { boardMessages } from "../messages/board"
 import type { CardId } from "../types"
 
 export function BoardCardResizeHandle({
@@ -16,6 +18,7 @@ export function BoardCardResizeHandle({
   readonly onResize: (id: CardId, width: number, height: number) => void
   readonly onResizeEnd?: ((id: CardId, width: number, height: number) => void) | undefined
 }): JSX.Element {
+  const t = useTranslator(boardMessages)
   const start = useRef<{
     readonly clientX: number
     readonly clientY: number
@@ -27,7 +30,7 @@ export function BoardCardResizeHandle({
     <button
       type="button"
       className="card-resize-handle"
-      aria-label="카드 크기 조절"
+      aria-label={t("card.resize")}
       onPointerDown={(event) => {
         start.current = { clientX: event.clientX, clientY: event.clientY, width, height }
         latest.current = null

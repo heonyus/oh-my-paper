@@ -62,8 +62,17 @@ const LocaleContext = createContext<LocaleState>({
 })
 
 /** The app's language: the reader's choice, kept in this browser, or the browser's own. */
-export function LocaleProvider({ children }: { readonly children: ReactNode }): JSX.Element {
-  const [preference, setState] = useState<LanguagePreference>(readPreference)
+export function LocaleProvider({
+  children,
+  initialPreference,
+}: {
+  readonly children: ReactNode
+  /** Starts on this choice instead of the saved one; tests and previews pin a language with it. */
+  readonly initialPreference?: LanguagePreference | undefined
+}): JSX.Element {
+  const [preference, setState] = useState<LanguagePreference>(
+    () => initialPreference ?? readPreference(),
+  )
   const setPreference = useCallback((next: LanguagePreference): void => {
     writePreference(next)
     setState(next)

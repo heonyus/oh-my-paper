@@ -1,3 +1,6 @@
+import { type Locale, translator } from "../../shared/i18n/locale"
+import { readerMessages } from "../messages/reader"
+
 export type ChatImage = { readonly dataUrl: string; readonly name: string }
 
 /** Long edge sent to vision models; larger photos only add upload time. */
@@ -26,11 +29,12 @@ export function fitWithin(
  * Reads a picked, pasted or dropped image into a data URL the AI request accepts.
  * PNG stays PNG so screenshots of equations and tables keep crisp text.
  */
-export async function chatImageFromFile(file: File): Promise<ChatImage> {
-  if (!file.type.startsWith("image/")) throw new ChatImageError("이미지 파일만 첨부할 수 있습니다")
-  if (file.size > MAX_FILE_BYTES) throw new ChatImageError("20MB 이하 이미지만 첨부할 수 있습니다")
+export async function chatImageFromFile(file: File, locale: Locale = "ko"): Promise<ChatImage> {
+  const t = translator(readerMessages, locale)
+  if (!file.type.startsWith("image/")) throw new ChatImageError(t("image.notImage"))
+  if (file.size > MAX_FILE_BYTES) throw new ChatImageError(t("image.tooLargeFile"))
   const bitmap = await createImageBitmap(file).catch(() => {
-    throw new ChatImageError("이미지를 읽지 못했습니다")
+    throw new ChatImageError(t("image.unreadable"))
   })
   try {
     const size = fitWithin(bitmap.width, bitmap.height)
@@ -38,13 +42,13 @@ export async function chatImageFromFile(file: File): Promise<ChatImage> {
     canvas.width = size.width
     canvas.height = size.height
     const context = canvas.getContext("2d")
-    if (!context) throw new ChatImageError("이미지를 처리하지 못했습니다")
+    if (!context) throw new ChatImageError(t("image.processFailed"))
     context.drawImage(bitmap, 0, 0, size.width, size.height)
     const png = file.type === "image/png" ? canvas.toDataURL("image/png") : ""
     const dataUrl =
       png && png.length <= MAX_DATA_URL_CHARACTERS ? png : canvas.toDataURL("image/jpeg", 0.9)
-    if (dataUrl.length > MAX_DATA_URL_CHARACTERS) throw new ChatImageError("이미지가 너무 큽니다")
-    return { dataUrl, name: file.name || "붙여넣은 이미지" }
+    if (dataUrl.length > MAX_DATA_URL_CHARACTERS) throw new ChatImageError(t("image.tooLarge"))
+    return { dataUrl, name: file.name || t("image.pastedName") }
   } finally {
     bitmap.close()
   }

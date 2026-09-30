@@ -1,7 +1,10 @@
 import { FilePlus2, Search } from "lucide-react"
 import { type JSX, useCallback, useState } from "react"
+import { documentKindName } from "../../shared/documentKind"
 import type { KnowledgeNodeId } from "../../shared/knowledgeSchemas"
 import type { KnowledgeClientOps } from "../lib/knowledgeTypes"
+import { useLocale, useTranslator } from "../lib/locale"
+import { libraryMessages } from "../messages/library"
 import type { DocumentId, DocumentRecord } from "../types"
 import { DocumentThumbnail } from "./DocumentThumbnail"
 import { LibraryCollectionSidebar, type LibraryFilter } from "./LibraryCollectionSidebar"
@@ -9,7 +12,6 @@ import { LibraryDocumentDetail } from "./LibraryDocumentDetail"
 import { LibraryDocumentList, type LibraryView } from "./LibraryDocumentList"
 import { LibrarySavedPapers } from "./LibrarySavedPapers"
 import type { LibraryCollection } from "./library-collections"
-import { documentKindLabels } from "./library-home-formatting"
 
 export type LibraryHomeContentProps = {
   readonly documents: readonly DocumentRecord[]
@@ -89,6 +91,8 @@ export function LibraryHomeContent({
   onToggleMembership,
   onDeleteDocument,
 }: LibraryHomeContentProps): JSX.Element {
+  const { locale } = useLocale()
+  const t = useTranslator(libraryMessages)
   const [deleteRequestId, setDeleteRequestId] = useState<DocumentId | null>(null)
   const requestDelete = useCallback(
     (id: DocumentId) => {
@@ -119,21 +123,21 @@ export function LibraryHomeContent({
               {collections.find((collection) => collection.board.id === selectedCollectionId)?.board
                 .title ??
                 (filter === "all"
-                  ? "전체 문서"
+                  ? t("home.allDocuments")
                   : filter === "recent"
-                    ? "최근 읽기"
-                    : documentKindLabels[filter])}
+                    ? t("home.recent")
+                    : documentKindName(filter, locale))}
             </h1>
           </div>
           <div className="library-header-actions">
             {onOpenSearch ? (
               <button type="button" onClick={onOpenSearch}>
-                논문 검색
+                {t("home.searchPapers")}
               </button>
             ) : null}
             {onOpenGraph ? (
               <button type="button" onClick={onOpenGraph}>
-                연결 보기
+                {t("home.graph")}
               </button>
             ) : null}
             <button type="button" className="library-import-button" onClick={onImport}>
@@ -143,13 +147,13 @@ export function LibraryHomeContent({
           </div>
         </header>
         {recentDocument && recentPageToShow ? (
-          <section className="library-recent" aria-label="계속 읽기">
+          <section className="library-recent" aria-label={t("home.continueLabel")}>
             <button type="button" onClick={() => onOpenReader(recentDocument.id)}>
               <DocumentThumbnail document={recentDocument} />
-              <span>이어서 읽기</span>
+              <span>{t("home.continue")}</span>
               <strong>{recentDocument.title}</strong>
               <small>
-                {recentPageToShow} / {recentDocument.pageCount}페이지
+                {t("home.recentPage", { page: recentPageToShow, total: recentDocument.pageCount })}
               </small>
             </button>
           </section>
@@ -161,30 +165,24 @@ export function LibraryHomeContent({
               type="search"
               value={query}
               onChange={(event) => onQueryChange(event.target.value)}
-              placeholder="제목, 저자, 파일명 검색"
-              aria-label="라이브러리 검색"
+              placeholder={t("home.searchPlaceholder")}
+              aria-label={t("home.searchLabel")}
             />
           </label>
         </div>
         {documents.length === 0 && !hasActiveImport ? (
           <div className="library-empty">
             <FilePlus2 size={24} aria-hidden="true" />
-            <h2>첫 PDF를 가져오세요</h2>
-            <p>
-              문서를 가져오면 이곳에서 제목·저자 같은 논문 정보와 읽기 상태를 관리할 수 있습니다.
-            </p>
+            <h2>{t("home.emptyTitle")}</h2>
+            <p>{t("home.emptyBody")}</p>
             <button type="button" onClick={onImport}>
               {importLabel}
             </button>
           </div>
         ) : documents.length > 0 && visibleDocuments.length === 0 ? (
           <div className="library-empty is-search">
-            <h2>{selectedCollectionId ? "이 컬렉션은 비어 있습니다" : "검색 결과가 없습니다"}</h2>
-            <p>
-              {selectedCollectionId
-                ? "상세 패널에서 문서를 추가하거나 다른 컬렉션을 선택하세요."
-                : "다른 컬렉션, 제목, 저자 또는 문서 유형을 입력해보세요."}
-            </p>
+            <h2>{t(selectedCollectionId ? "home.emptyCollectionTitle" : "home.noResultsTitle")}</h2>
+            <p>{t(selectedCollectionId ? "home.emptyCollectionBody" : "home.noResultsBody")}</p>
           </div>
         ) : documents.length > 0 ? (
           <div className="library-results-layout">
@@ -221,7 +219,7 @@ export function LibraryHomeContent({
           <div className="library-collection-error" role="alert">
             <p>{collectionError}</p>
             <button type="button" onClick={onRetryCollections}>
-              컬렉션 다시 불러오기
+              {t("home.reloadCollections")}
             </button>
           </div>
         ) : null}

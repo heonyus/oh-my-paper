@@ -3,6 +3,7 @@ import type { AiHistoryMessage, ProviderStatus } from "../../shared/ipc"
 import type { DocumentInsight, DocumentInsightKind } from "../../shared/schemas"
 import type { SourceCitation } from "../lib/chatCitations"
 import { keywordEntries } from "../lib/keywordEntries"
+import { useTranslator } from "../lib/locale"
 import {
   OVERVIEW_ACTIONS,
   overviewRequestKey,
@@ -10,13 +11,20 @@ import {
   PAPER_LEVEL_TARGET,
 } from "../lib/paperOverview"
 import { paperOverviewContext, preparePaperContextForQuestion } from "../lib/pdfSearch"
+import { researchMessages } from "../messages/research"
 import type { AiDeltaHandler, AiRequestRunner, DocumentRecord } from "../types"
 import { KeywordTags } from "./KeywordTags"
 import { PaperDiscussion } from "./PaperDiscussion"
 import { SidebarInsightSection } from "./SidebarInsightSection"
 
 type InsightKey = DocumentInsightKind
-type InsightState = { readonly value: string; readonly loading: boolean; readonly error: string }
+/** A catalog key, read in the app's language when shown; empty when there is no error. */
+type InsightError = "" | "overview.failed" | "overview.checkSettings"
+type InsightState = {
+  readonly value: string
+  readonly loading: boolean
+  readonly error: InsightError
+}
 type InsightRecord = Record<InsightKey, InsightState>
 
 const initialState: InsightRecord = {
@@ -25,11 +33,11 @@ const initialState: InsightRecord = {
   summary: { value: "", loading: false, error: "" },
 }
 
-const titles: Readonly<Record<InsightKey, string>> = {
-  keywords: "키워드 사전",
-  threeLines: "3줄 요약",
-  summary: "요약",
-}
+const titleKeys = {
+  keywords: "overview.keywords",
+  threeLines: "overview.threeLines",
+  summary: "overview.summary",
+} as const satisfies Readonly<Record<InsightKey, keyof typeof researchMessages.ko>>
 /** Bounds of aiHistoryMessageSchema; older turns and longer answers would be rejected. */
 const maxHistoryEntries = 24
 const maxHistoryCharacters = 4_000
@@ -78,12 +86,14 @@ export function AiOverviewPanel({
   readonly currentPage: number
   readonly provider: ProviderStatus
   readonly onAiRequest: AiRequestRunner
-  readonly onSave: (title: string, body: string) => void
+  /** `sourceTitle` is the Korean title, which names the insight in every language. */
+  readonly onSave: (title: string, body: string, sourceTitle: string) => void
   readonly cachedInsights?: readonly DocumentInsight[] | undefined
   readonly onInsightChange?: ((kind: DocumentInsightKind, value: string) => void) | undefined
   readonly activationToken?: number | undefined
   readonly onNavigateToSource?: ((citation: SourceCitation) => void) | undefined
 }): JSX.Element {
+  const t = useTranslator(researchMessages)
   const running = useRef(new Set<InsightKey>())
   const [insights, setInsights] = useState(() => mergeCachedInsights(initialState, cachedInsights))
   const insightsRef = useRef(insights)
@@ -139,9 +149,7 @@ export function AiOverviewPanel({
           [key]: {
             ...current[key],
             loading: false,
-            error: provider.configured
-              ? "요청을 완료하지 못했습니다. 다시 시도해주세요."
-              : "AI 설정을 확인해주세요.",
+            error: provider.configured ? "overview.failed" : "overview.checkSettings",
           },
         }))
       } finally {
@@ -198,29 +206,36 @@ export function AiOverviewPanel({
     )
   }
 
+  const errorText = (key: InsightKey): string => {
+    const error = insights[key].error
+    return error ? t(error) : ""
+  }
+  const save = (key: InsightKey): void =>
+    onSave(t(titleKeys[key]), insights[key].value, researchMessages.ko[titleKeys[key]])
+
   return (
-    <section className="sidebar-mode-panel ai-overview-panel" aria-label="AI 논문 개요">
+    <section className="sidebar-mode-panel ai-overview-panel" aria-label={t("overview.label")}>
       <div className="ai-overview-scroll">
         {leadingInsightKeys.map((key) => (
           <SidebarInsightSection
             key={key}
-            title={titles[key]}
+            title={t(titleKeys[key])}
             value={insights[key].value}
             loading={insights[key].loading}
-            error={insights[key].error}
+            error={errorText(key)}
             onGenerate={() => void generate(key)}
-            onSave={() => onSave(titles[key], insights[key].value)}
+            onSave={() => save(key)}
             view={key === "keywords" ? keywordView(insights.keywords.value) : null}
           />
         ))}
         <div className="summary-discussion-flow">
           <SidebarInsightSection
-            title={titles.summary}
+            title={t(titleKeys.summary)}
             value={insights.summary.value}
             loading={insights.summary.loading}
-            error={insights.summary.error}
+            error={errorText("summary")}
             onGenerate={() => void generate("summary")}
-            onSave={() => onSave(titles.summary, insights.summary.value)}
+            onSave={() => save("summary")}
           />
           <PaperDiscussion
             provider={provider}

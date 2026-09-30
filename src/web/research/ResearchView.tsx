@@ -1,4 +1,5 @@
 import { type JSX, useEffect, useRef, useState } from "react"
+import { useTranslator } from "../../renderer/lib/locale"
 import {
   type AgentMode,
   type AgentPaper,
@@ -9,6 +10,7 @@ import {
 } from "../../shared/agentChat"
 import type { DocumentId, Workspace } from "../../shared/schemas"
 import { appendMessage, createThread, upsertThread } from "./agentThreadModel"
+import { researchViewMessages } from "./messages"
 import { type PaperOpenState, paperKey } from "./ResearchPaperCard"
 import { ResearchRail } from "./ResearchRail"
 import { ResearchThread } from "./ResearchThread"
@@ -22,6 +24,7 @@ export function ResearchView({
   readonly onWorkspaceChange: (update: (current: Workspace) => Workspace) => void
   readonly onOpenImportedDocument: (id: DocumentId) => void
 }): JSX.Element {
+  const t = useTranslator(researchViewMessages)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [attachedIds, setAttachedIds] = useState<readonly DocumentId[]>([])
   const [sending, setSending] = useState(false)
@@ -113,7 +116,7 @@ export function ResearchView({
       persistThread(done)
     } catch (cause) {
       if (controller.signal.aborted) setCancelled(true)
-      else setError(cause instanceof Error ? cause.message : "답변을 만들지 못했습니다")
+      else setError(cause instanceof Error ? cause.message : t("research.answerFailed"))
     } finally {
       if (controllerRef.current === controller) controllerRef.current = null
       setSending(false)
@@ -142,7 +145,7 @@ export function ResearchView({
         onNew={() => selectThread(null)}
         onSelect={selectThread}
       />
-      <section className="research-main" aria-label="리서치 에이전트">
+      <section className="research-main" aria-label={t("research.label")}>
         <ResearchThread
           thread={active}
           documents={workspace.documents}

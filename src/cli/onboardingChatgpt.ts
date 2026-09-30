@@ -4,6 +4,7 @@ import {
   type CodexLoginCompletedEvent,
   type CodexLoginStartResult,
   type CodexModel,
+  codexModelHint,
   codexReasoningEffortOptions,
   defaultCodexModel,
 } from "../shared/codexTypes"
@@ -14,12 +15,6 @@ import { openBrowser } from "./openBrowser"
 import { bold, dim, link } from "./style"
 
 const DEFAULT_EFFORT: CodexReasoningEffort = "medium"
-
-/** The shared effort labels are Korean (`medium (중간 · 기본)`); English shows the level itself. */
-function effortLabel(option: { readonly id: string; readonly label: string }): string {
-  if (cliLocale === "ko") return option.label
-  return option.id === DEFAULT_EFFORT ? `${option.id} (default)` : option.id
-}
 
 async function waitForLogin(
   subscription: CodexSubscriptionAdapter,
@@ -46,11 +41,10 @@ async function chooseSubscriptionModel(models: readonly CodexModel[]): Promise<{
 } | null> {
   const codexModel = await select({
     message: t("chatgpt.pickModel"),
-    options: models.map((option) => ({
-      value: option.id,
-      label: option.label,
-      ...(option.description ? { hint: option.description } : {}),
-    })),
+    options: models.map((option) => {
+      const hint = codexModelHint(option.id, cliLocale) ?? option.description
+      return { value: option.id, label: option.label, ...(hint ? { hint } : {}) }
+    }),
     initialValue: defaultCodexModel(models),
   })
   if (isCancel(codexModel)) return null
@@ -58,7 +52,7 @@ async function chooseSubscriptionModel(models: readonly CodexModel[]): Promise<{
   const effortOptions = codexReasoningEffortOptions(codexModel, models)
   const effort = await select({
     message: t("chatgpt.pickEffort"),
-    options: effortOptions.map((option) => ({ value: option.id, label: effortLabel(option) })),
+    options: effortOptions.map((option) => ({ value: option.id, label: option.label[cliLocale] })),
     initialValue: effortOptions.some((option) => option.id === DEFAULT_EFFORT)
       ? DEFAULT_EFFORT
       : effortOptions[0]?.id,

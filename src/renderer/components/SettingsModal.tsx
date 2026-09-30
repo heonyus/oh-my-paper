@@ -65,9 +65,9 @@ type SettingsModalProps = {
 }
 
 const sections = [
-  { id: "general", label: "일반", icon: SlidersHorizontal },
-  { id: "ai", label: "AI 모델", icon: Bot },
-  { id: "reading", label: "읽기", icon: BookOpen },
+  { id: "general", label: "settings.section.general", icon: SlidersHorizontal },
+  { id: "ai", label: "settings.section.ai", icon: Bot },
+  { id: "reading", label: "settings.section.reading", icon: BookOpen },
 ] as const
 
 export function SettingsModal({
@@ -88,6 +88,8 @@ export function SettingsModal({
   openRouterRequired = false,
   locked = false,
 }: SettingsModalProps): JSX.Element {
+  const t = useTranslator(settingsMessages)
+  const { locale } = useLocale()
   const [section, setSection] = useState<SettingsSection>(appearanceOnly ? "general" : "ai")
   const [translationFont, setTranslationFont] = useTranslationFont()
   const visibleSections = locked
@@ -98,6 +100,7 @@ export function SettingsModal({
   const hideChatgptMode = locked && status.mode === undefined
   const aiProviderForm = useAiProviderForm(status, openRouterRequired, hideChatgptMode)
   const credentialsReady = status.configured
+  const sectionLabel = visibleSections.find((item) => item.id === section)?.label
   const dialog = useRef<HTMLDialogElement>(null)
   useLayoutEffect(() => {
     const element = dialog.current
@@ -116,8 +119,8 @@ export function SettingsModal({
       }}
     >
       <section className="settings-modal">
-        <aside className="settings-source-list" aria-label="설정 섹션">
-          <h2 id="settings-title">설정</h2>
+        <aside className="settings-source-list" aria-label={t("settings.sections")}>
+          <h2 id="settings-title">{t("settings.title")}</h2>
           <nav>
             {visibleSections.map(({ id, label, icon: Icon }) => (
               <button
@@ -128,7 +131,7 @@ export function SettingsModal({
                 onClick={() => setSection(id)}
               >
                 <Icon size={16} />
-                <span>{label}</span>
+                <span>{t(label)}</span>
               </button>
             ))}
           </nav>
@@ -136,10 +139,13 @@ export function SettingsModal({
         <div className="settings-content">
           <header className="settings-content-head">
             <div>
-              <h3>{visibleSections.find((item) => item.id === section)?.label}</h3>
+              <h3>{sectionLabel ? t(sectionLabel) : null}</h3>
               {section === "ai" ? (
                 <span className="settings-connection" data-ready={credentialsReady}>
-                  <i /> {credentialsReady ? "연결 준비됨" : "AI 연결 설정 필요"}
+                  <i />{" "}
+                  {credentialsReady
+                    ? t("settings.connectionReady")
+                    : t("settings.connectionNeeded")}
                 </span>
               ) : null}
             </div>
@@ -147,7 +153,7 @@ export function SettingsModal({
               <button
                 type="button"
                 className="settings-close"
-                aria-label="설정 닫기"
+                aria-label={t("settings.close")}
                 onClick={onClose}
               >
                 <X size={17} />
@@ -157,10 +163,10 @@ export function SettingsModal({
           <div className="settings-page">
             {section === "general" ? (
               <fieldset className="settings-group">
-                <legend>일반 환경설정</legend>
+                <legend>{t("settings.general")}</legend>
                 <LanguageRow />
                 <label className="settings-row" htmlFor="appearance-theme">
-                  <span>화면 모드</span>
+                  <span>{t("settings.theme")}</span>
                   <select
                     id="appearance-theme"
                     value={theme}
@@ -170,15 +176,15 @@ export function SettingsModal({
                         onThemeChange?.(next)
                     }}
                   >
-                    <option value="system">시스템 설정</option>
-                    <option value="light">라이트</option>
-                    <option value="dark">다크</option>
+                    <option value="system">{t("settings.theme.system")}</option>
+                    <option value="light">{t("settings.theme.light")}</option>
+                    <option value="dark">{t("settings.theme.dark")}</option>
                   </select>
                 </label>
                 <label className="settings-row" htmlFor="ui-font-scale">
                   <span>
-                    <strong>글자 크기</strong>
-                    <small>{uiFontScaleLabel(fontScale)}</small>
+                    <strong>{t("settings.fontScale")}</strong>
+                    <small>{uiFontScaleLabel(fontScale, locale)}</small>
                   </span>
                   <span className="settings-range-control">
                     <input
@@ -194,7 +200,7 @@ export function SettingsModal({
                   </span>
                 </label>
                 <fieldset className="settings-scale-presets">
-                  <legend>글자 크기 빠른 선택</legend>
+                  <legend>{t("settings.fontScalePresets")}</legend>
                   {uiFontScalePresets.map((scale) => (
                     <button
                       key={scale}
@@ -255,14 +261,11 @@ export function SettingsModal({
             ) : null}
             {section === "reading" ? (
               <fieldset className="settings-group">
-                <legend>읽기 환경설정</legend>
+                <legend>{t("settings.reading")}</legend>
                 <label className="settings-row" htmlFor="translation-font">
                   <span>
-                    <strong>번역 글꼴</strong>
-                    <small>
-                      {translationFontOptions.find((option) => option.value === translationFont)
-                        ?.detail ?? ""}
-                    </small>
+                    <strong>{t("settings.translationFont")}</strong>
+                    <small>{t(`settings.translationFont.${translationFont}Detail`)}</small>
                   </span>
                   <select
                     id="translation-font"
@@ -276,20 +279,20 @@ export function SettingsModal({
                   >
                     {translationFontOptions.map((option) => (
                       <option key={option.value} value={option.value}>
-                        {option.label}
+                        {t(`settings.translationFont.${option.value}`)}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label className="settings-row settings-toggle-row">
                   <span>
-                    <strong>미니맵 표시</strong>
-                    <small>긴 논문과 카드 위치를 한눈에 봅니다.</small>
+                    <strong>{t("settings.minimap")}</strong>
+                    <small>{t("settings.minimapDetail")}</small>
                   </span>
                   <input
                     type="checkbox"
                     className="settings-switch"
-                    aria-label="미니맵 표시"
+                    aria-label={t("settings.minimap")}
                     checked={minimapVisible}
                     onChange={(event) => onMinimapVisibleChange?.(event.currentTarget.checked)}
                   />

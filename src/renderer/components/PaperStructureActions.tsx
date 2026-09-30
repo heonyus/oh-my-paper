@@ -1,6 +1,8 @@
 import { BookmarkPlus, BookOpen, Copy, FunctionSquare, Image, Sparkles, Table2 } from "lucide-react"
 import { type JSX, useState } from "react"
+import { useTranslator } from "../lib/locale"
 import type { DetectedStructure } from "../lib/structureDetector"
+import { type ReaderMessageKey, readerMessages } from "../messages/reader"
 
 type PaperStructureActionsProps = {
   readonly structure: DetectedStructure
@@ -27,12 +29,12 @@ function StructureIcon({ kind }: { readonly kind: DetectedStructure["kind"] }): 
 }
 
 const actionLabel = {
-  section: "AI 섹션 해설",
-  figure: "AI 그림 해설",
-  table: "AI 표 분석",
-  equation: "AI 수식 해설",
-  citation: "인용 논문 보기",
-} as const
+  section: "structure.section",
+  figure: "structure.figure",
+  table: "structure.table",
+  equation: "structure.equation",
+  citation: "structure.citation",
+} as const satisfies Readonly<Record<DetectedStructure["kind"], ReaderMessageKey>>
 
 export function PaperStructureActions({
   structure,
@@ -42,6 +44,7 @@ export function PaperStructureActions({
   onCopy,
   onCitationClose,
 }: PaperStructureActionsProps): JSX.Element | null {
+  const t = useTranslator(readerMessages)
   const [copying, setCopying] = useState(false)
   const [copied, setCopied] = useState(false)
   if (structure.kind === "citation") {
@@ -50,7 +53,7 @@ export function PaperStructureActions({
         <button
           type="button"
           className="citation-focus-trigger"
-          aria-label={`${structure.title} 인용 논문 미리보기 열기`}
+          aria-label={t("structure.citationPreviewOpen", { title: structure.title })}
           onFocus={onActivate}
           onBlur={(event) => {
             if (
@@ -67,20 +70,24 @@ export function PaperStructureActions({
           {structure.title}
         </button>
         {active ? (
-          <div className="citation-preview-popover" role="dialog" aria-label="인용 논문 미리보기">
+          <div
+            className="citation-preview-popover"
+            role="dialog"
+            aria-label={t("structure.citationPreview")}
+          >
             <div className="citation-preview-heading">
               <BookOpen size={14} aria-hidden="true" />
               <strong>{structure.reference?.title ?? structure.title}</strong>
             </div>
             <span className="citation-preview-secondary">
-              {structure.reference?.authors ?? "메타정보 없음"}
+              {structure.reference?.authors ?? t("structure.noMetadata")}
             </span>
             {structure.reference?.year ? (
               <span className="citation-preview-secondary">{structure.reference.year}</span>
             ) : null}
             <button
               type="button"
-              aria-label="인용 논문 카드를 보드에 저장"
+              aria-label={t("structure.saveCitationLabel")}
               onBlur={onCitationClose}
               onClick={(event) => {
                 event.stopPropagation()
@@ -88,7 +95,7 @@ export function PaperStructureActions({
                 onCitationClose()
               }}
             >
-              <BookmarkPlus size={13} aria-hidden="true" /> 보드에 저장
+              <BookmarkPlus size={13} aria-hidden="true" /> {t("structure.saveCitation")}
             </button>
           </div>
         ) : null}
@@ -100,8 +107,11 @@ export function PaperStructureActions({
       <button
         type="button"
         className="structure-ai-badge section-ai-badge"
-        aria-label={`${structure.title} AI 섹션 해설`}
-        title="AI 섹션 해설"
+        aria-label={t("structure.actionOn", {
+          title: structure.title,
+          action: t("structure.section"),
+        })}
+        title={t("structure.section")}
         onPointerEnter={onActivate}
         onClick={(event) => {
           event.stopPropagation()
@@ -116,19 +126,20 @@ export function PaperStructureActions({
     structure.kind === "figure" || structure.kind === "table" || structure.kind === "equation"
   const copyTitle =
     structure.kind === "figure"
-      ? "그림 복사"
+      ? t("structure.copyFigure")
       : structure.kind === "table"
-        ? "표 복사"
+        ? t("structure.copyTable")
         : structure.kind === "equation"
-          ? "LaTeX 복사"
+          ? t("structure.copyLatex")
           : undefined
+  const action = t(actionLabel[structure.kind])
   return (
     <div className="structure-action-cluster">
       <button
         type="button"
         className="structure-ai-badge"
-        aria-label={`${structure.title} ${actionLabel[structure.kind]}`}
-        title={actionLabel[structure.kind]}
+        aria-label={t("structure.actionOn", { title: structure.title, action })}
+        title={action}
         onPointerEnter={onActivate}
         onClick={(event) => {
           event.stopPropagation()
@@ -136,13 +147,13 @@ export function PaperStructureActions({
         }}
       >
         <StructureIcon kind={structure.kind} />
-        {structure.kind === "equation" ? null : <span>{actionLabel[structure.kind]}</span>}
+        {structure.kind === "equation" ? null : <span>{action}</span>}
       </button>
       {active && copyable ? (
         <button
           type="button"
           className="structure-copy-badge"
-          aria-label={`${structure.title} 복사`}
+          aria-label={t("structure.copyLabel", { title: structure.title })}
           title={copyTitle}
           onPointerEnter={onActivate}
           onClick={(event) => {
@@ -161,12 +172,12 @@ export function PaperStructureActions({
           {structure.kind === "equation" ? null : (
             <span>
               {copying
-                ? "복사 중…"
+                ? t("structure.copying")
                 : copied
-                  ? "복사됨"
+                  ? t("structure.copied")
                   : structure.kind === "figure"
-                    ? "그림 복사"
-                    : "표 복사"}
+                    ? t("structure.copyFigure")
+                    : t("structure.copyTable")}
             </span>
           )}
         </button>

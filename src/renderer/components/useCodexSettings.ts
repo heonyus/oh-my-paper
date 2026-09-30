@@ -9,6 +9,8 @@ import {
   type CodexModel,
 } from "../../shared/codexTypes"
 import type { CodexReasoningEffort } from "../../shared/ipc"
+import { useTranslator } from "../lib/locale"
+import { subscriptionMessages } from "../messages/subscription"
 
 export type PendingLogin = {
   readonly loginId: string
@@ -65,6 +67,7 @@ export function isCodexReasoningEffort(value: string): value is CodexReasoningEf
 }
 
 export function useCodexSettings({ onConnectionChange }: CodexSettingsOptions): CodexSettingsState {
+  const t = useTranslator(subscriptionMessages)
   const [status, setStatus] = useState<CodexAccountStatus | null>(null)
   const [pendingLogin, setPendingLogin] = useState<PendingLogin | null>(null)
   const [message, setMessage] = useState("")
@@ -74,10 +77,16 @@ export function useCodexSettings({ onConnectionChange }: CodexSettingsOptions): 
   const [selectedEffort, setSelectedEffort] = useState<CodexReasoningEffort>("medium")
   const changed = useRef(onConnectionChange)
   const pendingLoginRef = useRef<PendingLogin | null>(null)
+  // The latest wording, for callbacks that outlive a language switch.
+  const text = useRef(t)
 
   useEffect(() => {
     changed.current = onConnectionChange
   }, [onConnectionChange])
+
+  useEffect(() => {
+    text.current = t
+  }, [t])
 
   const refresh = useCallback(async (): Promise<void> => {
     try {
@@ -91,7 +100,7 @@ export function useCodexSettings({ onConnectionChange }: CodexSettingsOptions): 
       if (providerStatus.codexReasoningEffort)
         setSelectedEffort(providerStatus.codexReasoningEffort)
     } catch (error) {
-      setMessage(errorMessage(error))
+      setMessage(errorMessage(error, text.current("sub.requestFailed")))
     }
   }, [])
 
@@ -102,11 +111,21 @@ export function useCodexSettings({ onConnectionChange }: CodexSettingsOptions): 
       if (!activeLogin || event.loginId !== activeLogin.loginId) return
       pendingLoginRef.current = null
       setPendingLogin(null)
-      setMessage(event.success ? "로그인 완료" : (event.error ?? "로그인 실패"))
+      setMessage(
+        event.success
+          ? text.current("sub.signedIn")
+          : (event.error ?? text.current("sub.chatgpt.signInFailed")),
+      )
       void refresh()
-      void changed.current?.().catch((error: unknown) => setMessage(errorMessage(error)))
+      void changed
+        .current?.()
+        .catch((error: unknown) =>
+          setMessage(errorMessage(error, text.current("sub.requestFailed"))),
+        )
     })
   }, [refresh])
+
+  const failed = t("sub.requestFailed")
 
   async function startLogin(type: CodexLoginType): Promise<void> {
     setBusy(true)
@@ -115,7 +134,7 @@ export function useCodexSettings({ onConnectionChange }: CodexSettingsOptions): 
       const result = await window.ohmypaper.codex.startLogin(type)
       const pending = pendingLoginFromResult(result)
       if (!pending) {
-        setMessage("이 앱에서 지원하지 않는 로그인 응답입니다")
+        setMessage(t("sub.chatgpt.unsupportedLogin"))
         return
       }
       pendingLoginRef.current = pending
@@ -124,14 +143,14 @@ export function useCodexSettings({ onConnectionChange }: CodexSettingsOptions): 
         await window.ohmypaper.openExternal({ url: pending.authUrl })
         setMessage(
           pending.userCode
-            ? `브라우저에서 승인을 완료하세요. 기기 코드: ${pending.userCode}`
-            : "브라우저에서 승인을 완료하세요.",
+            ? t("sub.chatgpt.approveWithCode", { code: pending.userCode })
+            : t("sub.chatgpt.approve"),
         )
       } catch (error) {
-        setMessage(`브라우저를 자동으로 열지 못했습니다: ${errorMessage(error)}`)
+        setMessage(t("sub.chatgpt.browserFailed", { error: errorMessage(error, failed) }))
       }
     } catch (error) {
-      setMessage(errorMessage(error))
+      setMessage(errorMessage(error, failed))
     } finally {
       setBusy(false)
     }
@@ -145,9 +164,9 @@ export function useCodexSettings({ onConnectionChange }: CodexSettingsOptions): 
       await window.ohmypaper.codex.cancelLogin(activeLogin.loginId)
       pendingLoginRef.current = null
       setPendingLogin(null)
-      setMessage("로그인 취소됨")
+      setMessage(t("sub.signInCancelled"))
     } catch (error) {
-      setMessage(errorMessage(error))
+      setMessage(errorMessage(error, failed))
     } finally {
       setBusy(false)
     }
@@ -159,9 +178,9 @@ export function useCodexSettings({ onConnectionChange }: CodexSettingsOptions): 
       await window.ohmypaper.codex.logout()
       await refresh()
       await changed.current?.()
-      setMessage("이 앱의 ChatGPT 연결을 해제했습니다")
+      setMessage(t("sub.chatgpt.signedOut"))
     } catch (error) {
-      setMessage(errorMessage(error))
+      setMessage(errorMessage(error, failed))
     } finally {
       setBusy(false)
     }
@@ -179,7 +198,7 @@ export function useCodexSettings({ onConnectionChange }: CodexSettingsOptions): 
       await changed.current?.()
     } catch (error) {
       setSelectedModel(previousModel)
-      setMessage(errorMessage(error))
+      setMessage(errorMessage(error, failed))
     }
   }
 
@@ -195,7 +214,7 @@ export function useCodexSettings({ onConnectionChange }: CodexSettingsOptions): 
       await changed.current?.()
     } catch (error) {
       setSelectedEffort(previousEffort)
-      setMessage(errorMessage(error))
+      setMessage(errorMessage(error, failed))
     }
   }
 
@@ -221,7 +240,8 @@ export function useCodexSettings({ onConnectionChange }: CodexSettingsOptions): 
     isConnected,
     isError,
     badgeStatus,
-    messageIsError: /실패|못했습니다|error|Error/i.test(message),
+    // Failure wording in either language, or the runtime's own `error` text.
+    messageIsError: /실패|못했습니다|error|Error|failed|could not/i.test(message),
     refresh,
     startLogin,
     cancelLogin,
@@ -231,6 +251,6 @@ export function useCodexSettings({ onConnectionChange }: CodexSettingsOptions): 
   }
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "요청 실패"
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback
 }

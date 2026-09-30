@@ -1,3 +1,4 @@
+import { type Locale, translator } from "../../shared/i18n/locale"
 import {
   type BoardCard,
   cardIdSchema,
@@ -6,6 +7,7 @@ import {
   type SourceAnchor,
   type SourceFragment,
 } from "../../shared/schemas"
+import { type BoardMessageKey, boardMessages } from "../messages/board"
 import type { BoardTextSelection } from "./boardSelection"
 import { translationCardTitle } from "./cardPresentation"
 import { addAstRangesToAnchor } from "./documentAstMigration"
@@ -50,19 +52,19 @@ export function connectorPath(card: BoardCard): string {
   return `M ${sourceRight} ${startY} C ${sourceRight + 90} ${startY}, ${card.x - 90} ${endY}, ${card.x} ${endY}`
 }
 
-export const CARD_COPY = {
-  translation: {
-    title: "선택 번역",
-    body: "",
-  },
-  explanation: {
-    title: "선택 구절 설명",
-    body: "",
-  },
-  infographic: { title: "인포그래픽", body: "" },
-  note: { title: "메모", body: "" },
-  highlight: { title: "하이라이트", body: "" },
-} as const
+/**
+ * The title a card made from a selection starts with, in the reader's language when it is made;
+ * a translation card is named after the selection itself. Nothing compares these titles later.
+ */
+const SELECTION_CARD_TITLE = {
+  translation: null,
+  explanation: "default.explanationTitle",
+  infographic: "default.infographicTitle",
+  note: "default.noteTitle",
+  highlight: "default.highlightTitle",
+} as const satisfies Readonly<Record<string, BoardMessageKey | null>>
+
+export type SelectionCardKind = keyof typeof SELECTION_CARD_TITLE
 
 type CreateCardInput = {
   readonly documentId: DocumentId
@@ -94,15 +96,26 @@ export function createBoardCard(input: CreateCardInput): BoardCard {
   }
 }
 
-export function saveTranslationAsAnnotation(card: BoardCard): BoardCard {
-  return card.kind === "translation" ? { ...card, kind: "highlight", title: "AI 번역" } : card
+export function saveTranslationAsAnnotation(card: BoardCard, locale: Locale = "ko"): BoardCard {
+  return card.kind === "translation"
+    ? {
+        ...card,
+        kind: "highlight",
+        title: translator(boardMessages, locale)("default.annotationTitle"),
+      }
+    : card
 }
 
-export function createPostIt(documentId: DocumentId, page: number, placement: Point): BoardCard {
+export function createPostIt(
+  documentId: DocumentId,
+  page: number,
+  placement: Point,
+  locale: Locale = "ko",
+): BoardCard {
   return createBoardCard({
     documentId,
     kind: "sticky",
-    title: "포스트잇",
+    title: translator(boardMessages, locale)("default.stickyTitle"),
     body: "",
     placement,
     anchor: {
@@ -118,9 +131,10 @@ export function createPostIt(documentId: DocumentId, page: number, placement: Po
 export function createSelectionCard(
   documentId: DocumentId,
   selection: BoardTextSelection,
-  kind: keyof typeof CARD_COPY,
+  kind: SelectionCardKind,
+  locale: Locale = "ko",
 ): BoardCard | null {
-  const copy = CARD_COPY[kind]
+  const titleKey = SELECTION_CARD_TITLE[kind]
   const first = selection.fragments[0]
   if (!first) return null
   const anchor = {
@@ -134,8 +148,11 @@ export function createSelectionCard(
   return createBoardCard({
     documentId,
     kind,
-    title: kind === "translation" ? translationCardTitle(selection.quote) : copy.title,
-    body: kind === "highlight" ? selection.quote : copy.body,
+    title:
+      titleKey === null
+        ? translationCardTitle(selection.quote)
+        : translator(boardMessages, locale)(titleKey),
+    body: kind === "highlight" ? selection.quote : "",
     placement: selection.cardPosition,
     anchor: ast ? addAstRangesToAnchor(ast, anchor) : anchor,
     loading: kind !== "note" && kind !== "highlight",

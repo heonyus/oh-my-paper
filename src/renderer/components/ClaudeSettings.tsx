@@ -1,6 +1,8 @@
 import { AlertCircle, CheckCircle2, Info, Loader2 } from "lucide-react"
 import type { JSX } from "react"
 import { CLAUDE_EFFORT_OPTIONS, claudeModelChoices, isClaudeEffort } from "../../shared/claudeTypes"
+import { useLocale, useTranslator } from "../lib/locale"
+import { subscriptionMessages } from "../messages/subscription"
 import { useClaudeSettings } from "./useClaudeSettings"
 
 export function ClaudeSettings({
@@ -8,6 +10,8 @@ export function ClaudeSettings({
 }: {
   readonly onConnectionChange?: (() => Promise<void>) | undefined
 }): JSX.Element {
+  const t = useTranslator(subscriptionMessages)
+  const { locale } = useLocale()
   const {
     status,
     message,
@@ -30,37 +34,36 @@ export function ClaudeSettings({
         : status.error
           ? "error"
           : "needed"
-  const messageIsError = /실패|못했|않았|error/i.test(message)
+  // Failure wording in either language, or the CLI's own `error` text.
+  const messageIsError = /실패|못했|않았|error|failed|could not|not completed/i.test(message)
   return (
-    <section className="settings-group codex-settings-card" aria-label="Claude 구독">
+    <section className="settings-group codex-settings-card" aria-label={t("sub.claude")}>
       <div className="codex-card-header">
         <div className="codex-card-titles">
-          <h4>Claude 구독 연결</h4>
-          <p className="settings-help">
-            이 컴퓨터의 Claude Code 로그인으로 구독 사용량을 이용합니다. API 키는 쓰지 않습니다.
-          </p>
+          <h4>{t("sub.claude.title")}</h4>
+          <p className="settings-help">{t("sub.claude.help")}</p>
         </div>
         <span className="settings-badge" data-status={badgeStatus} role="status">
           <i />
           {pending
-            ? "로그인 진행 중…"
+            ? t("sub.signingIn")
             : status === null
-              ? "확인 중…"
+              ? t("sub.checking")
               : isConnected
-                ? `연결됨${status.subscriptionType ? ` · ${status.subscriptionType}` : ""}${status.email ? ` · ${status.email}` : ""}`
+                ? `${t("sub.connected")}${status.subscriptionType ? ` · ${status.subscriptionType}` : ""}${status.email ? ` · ${status.email}` : ""}`
                 : status.error
-                  ? `사용 불가: ${status.error}`
-                  : "로그인 필요"}
+                  ? t("sub.unavailable", { error: status.error })
+                  : t("sub.signInNeeded")}
         </span>
       </div>
       {pending ? (
         <div className="settings-alert-banner" data-variant="info" role="status">
           <Info size={15} />
           <span>
-            브라우저에서 Claude 로그인을 완료한 뒤 돌아오세요.{" "}
+            {t("sub.claude.comeBack")}{" "}
             {status?.loginUrl ? (
               <a href={status.loginUrl} target="_blank" rel="noreferrer">
-                로그인 페이지 다시 열기
+                {t("sub.reopenSignIn")}
               </a>
             ) : null}
           </span>
@@ -68,15 +71,15 @@ export function ClaudeSettings({
       ) : null}
       <div className="settings-row">
         <span>
-          <strong>Claude 모델</strong>
-          <small>번역, 해설, 질의응답, 요약에 사용됩니다.</small>
+          <strong>{t("sub.claude.model")}</strong>
+          <small>{t("sub.claude.modelDetail")}</small>
         </span>
         <select
-          aria-label="Claude 모델"
+          aria-label={t("sub.claude.model")}
           value={selectedModel}
           onChange={(event) => void updateModel(event.currentTarget.value)}
         >
-          {claudeModelChoices(selectedModel).map((option) => (
+          {claudeModelChoices(selectedModel, locale).map((option) => (
             <option key={option.id} value={option.id}>
               {option.label}
             </option>
@@ -85,11 +88,11 @@ export function ClaudeSettings({
       </div>
       <div className="settings-row">
         <span>
-          <strong>추론 수준 (Effort)</strong>
-          <small>높을수록 느리지만 더 깊이 검토합니다. Haiku에는 적용되지 않습니다.</small>
+          <strong>{t("sub.claude.effort")}</strong>
+          <small>{t("sub.claude.effortDetail")}</small>
         </span>
         <select
-          aria-label="Claude 추론 수준"
+          aria-label={t("sub.claude.effortLabel")}
           value={selectedEffort}
           onChange={(event) => {
             const next = event.currentTarget.value
@@ -98,7 +101,7 @@ export function ClaudeSettings({
         >
           {CLAUDE_EFFORT_OPTIONS.map((option) => (
             <option key={option.id} value={option.id}>
-              {option.label}
+              {option.label[locale]}
             </option>
           ))}
         </select>
@@ -106,7 +109,7 @@ export function ClaudeSettings({
       {status?.available === false ? (
         <div className="settings-alert-banner" data-variant="warning">
           <AlertCircle size={15} />
-          <span>Claude Code CLI를 찾지 못했습니다. 설치한 뒤 상태를 새로고침하세요.</span>
+          <span>{t("sub.claude.cliMissing")}</span>
         </div>
       ) : null}
       {message ? (
@@ -126,7 +129,7 @@ export function ClaudeSettings({
           disabled={busy}
           onClick={() => void refresh()}
         >
-          상태 새로고침
+          {t("sub.refresh")}
         </button>
         {pending ? (
           <button
@@ -135,7 +138,7 @@ export function ClaudeSettings({
             disabled={busy}
             onClick={() => void cancelLogin()}
           >
-            로그인 취소
+            {t("sub.cancelSignIn")}
           </button>
         ) : !isConnected ? (
           <button
@@ -145,7 +148,7 @@ export function ClaudeSettings({
             onClick={() => void startLogin()}
           >
             {busy ? <Loader2 size={14} className="settings-spinner" /> : null}
-            {busy ? "로그인 준비 중…" : "Claude로 로그인"}
+            {busy ? t("sub.preparingSignIn") : t("sub.claude.signIn")}
           </button>
         ) : null}
       </div>

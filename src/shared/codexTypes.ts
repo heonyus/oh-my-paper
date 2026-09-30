@@ -1,4 +1,5 @@
 import { z } from "zod"
+import type { Locale } from "./i18n/locale"
 
 export const codexKnownPlanTypeSchema = z.enum([
   "free",
@@ -132,16 +133,27 @@ export const codexModelListSchema = z.array(codexModelSchema)
 
 const ALL_EFFORTS = ["low", "medium", "high", "xhigh", "max", "ultra"]
 
-/** Korean hints for models the runtime is known to list; others keep its English text. */
-const CODEX_MODEL_HINTS: Readonly<Record<string, string>> = {
-  "gpt-6.1-sol": "최신 · 복잡한 작업",
-  "gpt-6-astra": "최신 · 가장 깊은 추론과 리서치",
-  "gpt-6-sol": "최신 · 복잡한 작업",
-  "gpt-6-luna": "최신 · 빠르고 가벼움",
-  "gpt-5.6-sol": "이전 세대 · 복잡한 작업",
-  "gpt-5.6-terra": "이전 세대 · 균형",
-  "gpt-5.6-luna": "이전 세대 · 빠르고 가벼움",
-  "gpt-5.5": "레거시",
+/**
+ * Short hints for models the runtime is known to list; others keep its English text. A model's
+ * `description` carries the Korean one; `codexModelHint` gives it in the reader's language.
+ */
+const CODEX_MODEL_HINTS: Readonly<Record<string, Readonly<Record<Locale, string>>>> = {
+  "gpt-6.1-sol": { ko: "최신 · 복잡한 작업", en: "Latest · complex tasks" },
+  "gpt-6-astra": {
+    ko: "최신 · 가장 깊은 추론과 리서치",
+    en: "Latest · deepest reasoning and research",
+  },
+  "gpt-6-sol": { ko: "최신 · 복잡한 작업", en: "Latest · complex tasks" },
+  "gpt-6-luna": { ko: "최신 · 빠르고 가벼움", en: "Latest · fast and light" },
+  "gpt-5.6-sol": { ko: "이전 세대 · 복잡한 작업", en: "Previous generation · complex tasks" },
+  "gpt-5.6-terra": { ko: "이전 세대 · 균형", en: "Previous generation · balanced" },
+  "gpt-5.6-luna": { ko: "이전 세대 · 빠르고 가벼움", en: "Previous generation · fast and light" },
+  "gpt-5.5": { ko: "레거시", en: "Legacy" },
+}
+
+/** The hint for a model the app knows, in `locale`; undefined for any other model. */
+export function codexModelHint(id: string, locale: Locale): string | undefined {
+  return CODEX_MODEL_HINTS[id]?.[locale]
 }
 
 /** Fast and light enough for translation and explanations; chosen whenever the account lists it. */
@@ -158,7 +170,7 @@ export const CODEX_MODEL_OPTIONS: readonly CodexModel[] = [
   { id: "gpt-5.5", label: "GPT-5.5", efforts: ALL_EFFORTS.slice(0, 4) },
 ].map((model) => ({
   ...model,
-  description: CODEX_MODEL_HINTS[model.id] ?? "",
+  description: codexModelHint(model.id, "ko") ?? "",
   isDefault: model.id === CODEX_DEFAULT_MODEL,
 }))
 
@@ -176,7 +188,7 @@ export function codexModelFromRuntime(raw: {
   return {
     id: raw.id,
     label,
-    description: CODEX_MODEL_HINTS[raw.id] ?? raw.description ?? "",
+    description: codexModelHint(raw.id, "ko") ?? raw.description ?? "",
     isDefault: raw.isDefault ?? false,
     efforts: (raw.supportedReasoningEfforts ?? []).map((option) => option.reasoningEffort),
   }
@@ -196,6 +208,7 @@ export function defaultCodexModel(models: readonly CodexModel[]): string {
 export function codexModelChoices(
   models: readonly CodexModel[],
   selected: string,
+  locale: Locale = "ko",
 ): readonly CodexModel[] {
   return models.some((model) => model.id === selected)
     ? models
@@ -204,21 +217,25 @@ export function codexModelChoices(
         {
           id: selected,
           label: selected,
-          description: "저장된 모델",
+          description: locale === "en" ? "Saved model" : "저장된 모델",
           isDefault: false,
           efforts: [],
         },
       ]
 }
 
+/** The runtime's effort names: English shows them as they are, Korean adds a gloss. */
 export const CODEX_REASONING_EFFORT_OPTIONS = [
-  { id: "low", label: "low (낮음)" },
-  { id: "medium", label: "medium (중간 · 기본)" },
-  { id: "high", label: "high (높음)" },
-  { id: "xhigh", label: "xhigh (매우 높음)" },
-  { id: "max", label: "max (최대)" },
-  { id: "ultra", label: "ultra (울트라)" },
-] as const
+  { id: "low", label: { ko: "low (낮음)", en: "low" } },
+  { id: "medium", label: { ko: "medium (중간 · 기본)", en: "medium (default)" } },
+  { id: "high", label: { ko: "high (높음)", en: "high" } },
+  { id: "xhigh", label: { ko: "xhigh (매우 높음)", en: "xhigh" } },
+  { id: "max", label: { ko: "max (최대)", en: "max" } },
+  { id: "ultra", label: { ko: "ultra (울트라)", en: "ultra" } },
+] as const satisfies readonly {
+  readonly id: string
+  readonly label: Readonly<Record<Locale, string>>
+}[]
 
 /** The efforts a model supports; an unknown model offers the four every model accepts. */
 export function codexReasoningEffortOptions(

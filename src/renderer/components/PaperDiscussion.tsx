@@ -2,7 +2,9 @@ import { type FormEvent, type JSX, useCallback, useEffect, useRef, useState } fr
 import type { AiHistoryMessage, ProviderStatus } from "../../shared/ipc"
 import type { SourceCitation } from "../lib/chatCitations"
 import { type ChatImage, chatImageFromFile } from "../lib/chatImage"
+import { useLocale, useTranslator } from "../lib/locale"
 import { PaperAiJobError } from "../lib/usePaperAiRequest"
+import { researchMessages } from "../messages/research"
 import type { AiDeltaHandler } from "../types"
 import { ChatComposer } from "./ChatComposer"
 import { MarkdownContent } from "./MarkdownContent"
@@ -14,6 +16,7 @@ type ChatEntry = AiHistoryMessage & {
   readonly attachment?: "image" | undefined
 }
 
+// Sent to the model as the question, so it stays as written whatever the app's language.
 const imageOnlyQuestion = "첨부한 이미지를 이 논문 내용과 연결해 설명해 주세요."
 
 const MAX_PERSISTED_ENTRIES = 60
@@ -22,7 +25,8 @@ export function paperDiscussionStorageKey(documentId: string): string {
   return `ohmypaper:discussion:${documentId}`
 }
 
-function loadEntries(documentId: string): readonly ChatEntry[] {
+/** `stopped` replaces answers that were cut off before they finished. */
+function loadEntries(documentId: string, stopped: string): readonly ChatEntry[] {
   try {
     const raw = window.localStorage.getItem(paperDiscussionStorageKey(documentId))
     if (!raw) return []
@@ -41,9 +45,9 @@ function loadEntries(documentId: string): readonly ChatEntry[] {
       .map((entry) =>
         entry.role === "assistant" &&
         /^(?:답변 작성 중…|논문 근거를 확인하는 중…)$/u.test(entry.content.trim())
-          ? { ...entry, content: "중단되었습니다." }
+          ? { ...entry, content: stopped }
           : entry.content.trim().length === 0
-            ? { ...entry, content: "중단되었습니다." }
+            ? { ...entry, content: stopped }
             : entry,
       )
   } catch {
@@ -68,7 +72,14 @@ export function PaperDiscussion({
     imageDataUrl?: string,
   ) => Promise<string>
 }): JSX.Element {
-  const [entries, setEntries] = useState<readonly ChatEntry[]>(() => loadEntries(documentId))
+  const t = useTranslator(researchMessages)
+  const { locale } = useLocale()
+  // Read through a ref so a language switch does not reload the conversation.
+  const stoppedRef = useRef(t("discussion.stopped"))
+  stoppedRef.current = t("discussion.stopped")
+  const [entries, setEntries] = useState<readonly ChatEntry[]>(() =>
+    loadEntries(documentId, stoppedRef.current),
+  )
   const [input, setInput] = useState("")
   const [sending, setSending] = useState(false)
   const [image, setImage] = useState<ChatImage | null>(null)
@@ -83,7 +94,7 @@ export function PaperDiscussion({
   )
   useEffect(() => () => abortRef.current?.abort(), [])
   useEffect(() => {
-    setEntries(loadEntries(documentId))
+    setEntries(loadEntries(documentId, stoppedRef.current))
   }, [documentId])
   useEffect(() => {
     try {
@@ -105,10 +116,10 @@ export function PaperDiscussion({
 
   function selectImage(file: File): void {
     setImageError("")
-    chatImageFromFile(file)
+    chatImageFromFile(file, locale)
       .then(setImage)
       .catch((error: unknown) =>
-        setImageError(error instanceof Error ? error.message : "이미지를 첨부하지 못했습니다"),
+        setImageError(error instanceof Error ? error.message : t("discussion.imageFailed")),
       )
   }
 
@@ -160,9 +171,9 @@ export function PaperDiscussion({
                 ...entry,
                 content: cancelled
                   ? entry.content
-                    ? `${entry.content}\n\n*(중단됨)*`
-                    : "중단되었습니다."
-                  : "AI provider 설정을 확인한 뒤 다시 보내주세요.",
+                    ? `${entry.content}\n\n${t("discussion.stoppedMark")}`
+                    : t("discussion.stopped")
+                  : t("discussion.providerError"),
               }
             : entry,
         ),
@@ -174,16 +185,20 @@ export function PaperDiscussion({
   }
 
   return (
-    <section className="discussion-section" aria-label="논문 토론">
+    <section className="discussion-section" aria-label={t("discussion.label")}>
       <div className="discussion-messages" aria-live="polite">
         {entries.length > 0
           ? entries.map((entry) => (
               <article key={entry.id} data-role={entry.role}>
-                <strong>{entry.role === "user" ? "나" : "oh-my-paper"}</strong>
+                <strong>{entry.role === "user" ? t("discussion.you") : "oh-my-paper"}</strong>
                 {entry.image ? (
-                  <img className="discussion-image" src={entry.image} alt="첨부 이미지" />
+                  <img
+                    className="discussion-image"
+                    src={entry.image}
+                    alt={t("discussion.imageAlt")}
+                  />
                 ) : entry.attachment === "image" ? (
-                  <span className="discussion-attachment">이미지 첨부</span>
+                  <span className="discussion-attachment">{t("discussion.imageAttached")}</span>
                 ) : null}
                 <MarkdownContent
                   source={entry.content}
@@ -201,8 +216,8 @@ export function PaperDiscussion({
         </p>
       ) : null}
       <ChatComposer
-        label="논문 토론 질문"
-        submitLabel="토론 질문 보내기"
+        label={t("discussion.inputLabel")}
+        submitLabel={t("discussion.submit")}
         value={input}
         sending={sending}
         responseStarted={Boolean(entries.at(-1)?.content)}

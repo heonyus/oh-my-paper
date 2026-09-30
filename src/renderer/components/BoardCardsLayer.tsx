@@ -1,6 +1,7 @@
 import type { JSX } from "react"
 import { saveTranslationAsAnnotation } from "../lib/board"
 import { conciseCardTitle } from "../lib/cardPresentation"
+import { useLocale } from "../lib/locale"
 import type { AiDeltaHandler, BoardCard, CardId } from "../types"
 import { BoardCard as BoardCardView } from "./BoardCard"
 
@@ -36,6 +37,7 @@ export function BoardCardsLayer({
   readonly onRegenerateTitle: (card: BoardCard) => Promise<string>
   readonly streamingCardIds?: ReadonlySet<string> | undefined
 }): JSX.Element {
+  const { locale } = useLocale()
   return (
     <>
       {cards
@@ -117,7 +119,7 @@ export function BoardCardsLayer({
               if (activeId === id) onActiveChange(null)
               commitCards(
                 getCards().map((item) =>
-                  item.id === id ? saveTranslationAsAnnotation(item) : item,
+                  item.id === id ? saveTranslationAsAnnotation(item, locale) : item,
                 ),
               )
             }}

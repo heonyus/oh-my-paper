@@ -1,6 +1,11 @@
 import { AlertCircle, Check, Loader2 } from "lucide-react"
 import type { JSX } from "react"
+import type { MessageParams } from "../../shared/i18n/locale"
 import type { ScholarlySearchStep } from "../../shared/scholarlySearchSchemas"
+import { useTranslator } from "../lib/locale"
+import { scholarMessages } from "../messages/scholar"
+
+type ScholarTranslate = (key: keyof typeof scholarMessages.ko, params?: MessageParams) => string
 
 const providerLabels: Readonly<Record<NonNullable<ScholarlySearchStep["provider"]>, string>> = {
   crossref: "Crossref",
@@ -8,38 +13,54 @@ const providerLabels: Readonly<Record<NonNullable<ScholarlySearchStep["provider"
   openalex: "OpenAlex",
 }
 
-const providerErrorLabels: Readonly<Record<string, string>> = {
-  rate_limited: "요청 한도 초과",
-  timeout: "시간 초과",
-  oversized: "응답 초과",
-  cancelled: "취소됨",
-  network: "네트워크 오류",
-  http_error: "HTTP 오류",
-  malformed_response: "응답 형식 오류",
+const providerErrorKinds = [
+  "rate_limited",
+  "timeout",
+  "oversized",
+  "cancelled",
+  "network",
+  "http_error",
+  "malformed_response",
+] as const
+
+/** A provider failure in words; a kind without a label reads as written. */
+export function providerErrorLabel(t: ScholarTranslate, kind: string): string {
+  return (providerErrorKinds as readonly string[]).includes(kind)
+    ? t(`scholar.error.${kind as (typeof providerErrorKinds)[number]}`)
+    : kind
 }
 
-function stepLabel(step: ScholarlySearchStep): string {
+function stepLabel(step: ScholarlySearchStep, t: ScholarTranslate): string {
   switch (step.kind) {
     case "provider": {
-      const name = step.provider ? providerLabels[step.provider] : "검색"
-      if (step.status === "running") return `${name} 조회 중…`
+      const name = step.provider ? providerLabels[step.provider] : t("scholar.step.search")
+      const count = step.found ?? 0
+      if (step.status === "running") return t("scholar.step.providerRunning", { name })
       if (step.status === "failed")
-        return `${name} 실패 · ${providerErrorLabels[step.detail ?? ""] ?? step.detail ?? "오류"}`
-      return `${name} ${step.found ?? 0}건${step.detail === "cached" ? " (캐시)" : ""}`
+        return t("scholar.step.providerFailed", {
+          name,
+          error:
+            step.detail === undefined
+              ? t("scholar.step.error")
+              : providerErrorLabel(t, step.detail),
+        })
+      return step.detail === "cached"
+        ? t("scholar.step.providerDoneCached", { name, count })
+        : t("scholar.step.providerDone", { name, count })
     }
     case "merge":
-      if (step.status === "running") return "출처별 결과 합치는 중…"
-      if (step.status === "failed") return "결과 병합 실패"
-      return `출처별 결과 병합 · 후보 ${step.found ?? 0}편`
+      if (step.status === "running") return t("scholar.step.mergeRunning")
+      if (step.status === "failed") return t("scholar.step.mergeFailed")
+      return t("scholar.step.mergeDone", { count: step.found ?? 0 })
     case "rank":
-      if (step.status === "running") return "현재 논문과의 관련도 계산 중…"
-      if (step.status === "failed") return "관련도 계산 실패"
-      return `관련도 순 정렬 · ${step.found ?? 0}편 통과`
+      if (step.status === "running") return t("scholar.step.rankRunning")
+      if (step.status === "failed") return t("scholar.step.rankFailed")
+      return t("scholar.step.rankDone", { count: step.found ?? 0 })
     case "judge":
-      if (step.status === "running") return `Jev가 후보 ${step.found ?? 0}편 읽고 판정 중…`
-      if (step.status === "failed")
-        return step.detail ?? "Jev 판정을 사용할 수 없어 규칙 기반으로 정렬"
-      return step.detail ?? "Jev 판정 완료"
+      if (step.status === "running")
+        return t("scholar.step.judgeRunning", { count: step.found ?? 0 })
+      if (step.status === "failed") return step.detail ?? t("scholar.step.judgeFailed")
+      return step.detail ?? t("scholar.step.judgeDone")
   }
 }
 
@@ -65,12 +86,13 @@ export function ScholarSearchSteps({
 }: {
   readonly steps: readonly ScholarlySearchStep[]
 }): JSX.Element {
+  const t = useTranslator(scholarMessages)
   return (
-    <ol className="scholar-search-steps" aria-label="검색 진행 상황">
+    <ol className="scholar-search-steps" aria-label={t("scholar.stepsLabel")}>
       {steps.map((step) => (
         <li key={step.id} className={`scholar-search-step scholar-search-step-${step.status}`}>
           <StepIcon status={step.status} />
-          <span>{stepLabel(step)}</span>
+          <span>{stepLabel(step, t)}</span>
         </li>
       ))}
     </ol>

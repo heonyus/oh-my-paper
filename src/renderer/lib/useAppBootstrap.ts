@@ -1,9 +1,11 @@
-import { type Dispatch, type SetStateAction, useCallback, useEffect } from "react"
+import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef } from "react"
 import type { DocumentOcrProviderStatus } from "../../shared/documentOcr"
 import { type PreparationUpdate, type ProviderStatus, preparationSteps } from "../../shared/ipc"
 import { DEFAULT_OPENROUTER_MODEL } from "../../shared/providerModels"
 import type { Workspace } from "../../shared/schemas"
+import { chromeMessages } from "../messages/chrome"
 import { normalizeWorkspaceTranslations } from "./cardPresentation"
+import { useTranslator } from "./locale"
 import { settleInterruptedCards } from "./structureCardState"
 
 export const initialProviderStatus: ProviderStatus = {
@@ -37,9 +39,15 @@ export function useAppBootstrap({
   readonly setCredentialsChecked: Dispatch<SetStateAction<boolean>>
   readonly setBootstrapError?: Dispatch<SetStateAction<string | null>>
 }): void {
+  const t = useTranslator(chromeMessages)
+  // Read when a failure arrives, so a language switch does not restart the bootstrap.
+  const startFailed = useRef(t("status.startFailed"))
+  useEffect(() => {
+    startFailed.current = t("status.startFailed")
+  }, [t])
   const report = useCallback(
     (error: unknown): void => {
-      setBootstrapError?.(error instanceof Error ? error.message : "앱 시작에 실패했습니다.")
+      setBootstrapError?.(error instanceof Error ? error.message : startFailed.current)
     },
     [setBootstrapError],
   )
