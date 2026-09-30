@@ -77,8 +77,8 @@ AI connection choices, all selectable with arrow keys and Enter:
 
 - **ChatGPT 구독 (OpenAI)** — sign in with your ChatGPT account in the browser, or with a
   device code on another device; no API key. The model list comes from the bundled Codex
-  runtime for your account, so new models (currently GPT-6 Astra by default) appear
-  without an app update.
+  runtime for your account, so new models appear without an app update. GPT-6 Luna is the
+  default whenever the account offers it.
 - **Claude 구독 (Anthropic)** — reuses the local Claude Code login (default Claude Haiku 4.5).
 - **API 키** — OpenRouter, OpenAI, Gemini or Groq.
 

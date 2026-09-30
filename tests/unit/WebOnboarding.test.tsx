@@ -104,7 +104,7 @@ describe("WebOnboarding", () => {
     render(<WebOnboarding status={{ ...providerStatusProp }} onDone={vi.fn()} />)
 
     expect(screen.getByRole("heading", { name: "oh-my-paper" })).toBeVisible()
-    expect(screen.getByRole("button", { name: /ChatGPT 구독.*GPT-6 Astra/ })).toBeVisible()
+    expect(screen.getByRole("button", { name: /ChatGPT 구독.*GPT-6 Luna/ })).toBeVisible()
     expect(screen.getByRole("button", { name: /^API 키 OpenRouter/ })).toBeVisible()
     expect(screen.queryByRole("button", { name: /Claude 구독/ })).toBeNull()
   })

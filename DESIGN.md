@@ -14,7 +14,8 @@ a terminal install that explains itself, and short per-feature tutorials.
   screen uses the app's canvas/ink/action tokens, follows the system light/dark scheme, hides the
   picture below 960px and keeps the choices above the fold at 375px.
 - ChatGPT models come from the bundled Codex runtime (`model/list`) for the signed-in account;
-  a first connection saves the runtime's default model. The bundled list is only a fallback.
+  a first connection saves GPT-6 Luna when the account lists it, otherwise the runtime's default
+  model (owner request, 2026-09-30). The bundled list is only a fallback.
 - Terminal: `scripts/install.sh` (curl one-liner) clones, installs, builds, links
   `oh-my-paper` and starts the wizard. The wizard has four explained steps (runtime, AI
   connection, optional OCR, usage tour). The AI step lists ChatGPT first and preselects it; only a
