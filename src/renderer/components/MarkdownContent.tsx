@@ -3,9 +3,17 @@ import ReactMarkdown, { type Components } from "react-markdown"
 import rehypeKatex from "rehype-katex"
 import remarkGfm from "remark-gfm"
 import remarkMath from "remark-math"
+import type { MessageParams } from "../../shared/i18n/locale"
 import { parseCitationHref, rehypeSourceCitations, type SourceCitation } from "../lib/chatCitations"
+import { useTranslator } from "../lib/locale"
+import { type ReaderMessageKey, readerMessages } from "../messages/reader"
 
-function markdownComponents(onCitation?: (citation: SourceCitation) => void): Components {
+type Translate = (key: ReaderMessageKey, params?: MessageParams) => string
+
+function markdownComponents(
+  t: Translate,
+  onCitation?: (citation: SourceCitation) => void,
+): Components {
   return {
     a: ({ children, href }) => {
       const citation = onCitation && href ? parseCitationHref(href) : null
@@ -16,8 +24,8 @@ function markdownComponents(onCitation?: (citation: SourceCitation) => void): Co
             className="source-citation"
             title={
               citation.quote
-                ? `${citation.page}페이지: ${citation.quote}`
-                : `${citation.page}페이지로 이동`
+                ? t("markdown.citationQuote", { page: citation.page, quote: citation.quote })
+                : t("markdown.citationPage", { page: citation.page })
             }
             onClick={() => onCitation(citation)}
           >
@@ -64,7 +72,8 @@ export function MarkdownContent({
   /** When set, page citations in the text become chips that call this with the target. */
   readonly onCitation?: ((citation: SourceCitation) => void) | undefined
 }): JSX.Element {
-  const components = useMemo(() => markdownComponents(onCitation), [onCitation])
+  const t = useTranslator(readerMessages)
+  const components = useMemo(() => markdownComponents(t, onCitation), [t, onCitation])
   const rehypePlugins = useMemo(
     () => (onCitation ? [rehypeKatex, rehypeSourceCitations] : [rehypeKatex]),
     [onCitation],

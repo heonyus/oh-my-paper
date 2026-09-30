@@ -1,5 +1,7 @@
 import { Check, Copy, ExternalLink, Maximize2, StickyNote } from "lucide-react"
 import { type JSX, useEffect, useState } from "react"
+import { useTranslator } from "../lib/locale"
+import { boardMessages } from "../messages/board"
 import type { BoardCard, CardId } from "../types"
 
 export function BoardCardFooter({
@@ -13,6 +15,7 @@ export function BoardCardFooter({
   readonly onJump: (page: number) => void
   readonly onSaveAsAnnotation?: ((id: CardId) => void) | undefined
 }): JSX.Element {
+  const t = useTranslator(boardMessages)
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle")
   useEffect(() => {
     if (card.body) setCopyState("idle")
@@ -41,14 +44,18 @@ export function BoardCardFooter({
           data-state={copyState}
           aria-label={
             copyState === "copied"
-              ? "카드 내용 복사됨"
+              ? t("card.copiedLabel")
               : copyState === "failed"
-                ? "카드 내용 복사 실패"
-                : "카드 내용 복사"
+                ? t("card.copyFailedLabel")
+                : t("card.copyLabel")
           }
           onClick={() => void copyCardBody()}
         >
-          {copyState === "copied" ? "복사됨" : copyState === "failed" ? "복사 실패" : "복사"}
+          {copyState === "copied"
+            ? t("card.copied")
+            : copyState === "failed"
+              ? t("card.copyFailed")
+              : t("card.copy")}
           {copyState === "copied" ? <Check size={13} /> : <Copy size={13} />}
         </button>
       ) : null}
@@ -58,17 +65,17 @@ export function BoardCardFooter({
           className="source-link"
           onClick={() => void window.ohmypaper.openExternal({ url: sourceUrl })}
         >
-          논문 열기 <ExternalLink size={13} />
+          {t("card.openPaper")} <ExternalLink size={13} />
         </button>
       ) : null}
       {card.kind === "translation" && onSaveAsAnnotation ? (
         <button
           type="button"
           className="source-link"
-          aria-label="번역을 주석으로 저장"
+          aria-label={t("card.saveAsAnnotationLabel")}
           onClick={() => onSaveAsAnnotation(card.id)}
         >
-          주석으로 저장 <StickyNote size={13} />
+          {t("card.saveAsAnnotation")} <StickyNote size={13} />
         </button>
       ) : null}
       <button
@@ -76,7 +83,7 @@ export function BoardCardFooter({
         className="source-link source-jump"
         onClick={() => onJump(card.anchor.page)}
       >
-        p. {card.anchor.page} 원문으로 이동 <Maximize2 size={13} />
+        {t("card.jumpToSource", { page: card.anchor.page })} <Maximize2 size={13} />
       </button>
     </footer>
   )

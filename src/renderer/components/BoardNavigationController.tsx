@@ -20,6 +20,8 @@ import {
   type ViewportSize,
   type WorldRect,
 } from "../lib/boardNavigation"
+import { useTranslator } from "../lib/locale"
+import { boardMessages } from "../messages/board"
 import type { BoardCard, Viewport } from "../types"
 import { BoardMinimap } from "./BoardMinimap"
 
@@ -81,6 +83,7 @@ export function BoardNavigationController({
   panConstraintRef,
   occludedRight,
 }: BoardNavigationControllerProps): JSX.Element {
+  const t = useTranslator(boardMessages)
   const hostRef = useRef<HTMLDivElement>(null)
   const viewportRef = useRef(viewport)
   const frameRef = useRef<number | null>(null)
@@ -215,7 +218,7 @@ export function BoardNavigationController({
         />
       ) : (
         <button type="button" className="minimap-show" onClick={() => onVisibleChange(true)}>
-          미니맵
+          {t("minimap.title")}
         </button>
       )}
     </div>

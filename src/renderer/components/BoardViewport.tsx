@@ -13,6 +13,7 @@ import { askBoardCard, regenerateBoardCardTitle } from "../lib/boardCardAi"
 import { boardHighlightState, highlightAtPoint } from "../lib/boardHighlights"
 import { type BoardTextSelection, captureNativeBoardTextSelection } from "../lib/boardSelection"
 import { parsedCardResponse, parsedTranslationResponse } from "../lib/cardPresentation"
+import { useLocale, useTranslator } from "../lib/locale"
 import { postItFromPointer } from "../lib/postItPlacement"
 import { useSelectionShortcuts } from "../lib/selectionActions"
 import { selectionAiRequest } from "../lib/selectionAiRequest"
@@ -25,6 +26,7 @@ import { useCardStreams } from "../lib/useCardStreams"
 import { usePageJump } from "../lib/usePageJump"
 import { usePanConstraint } from "../lib/usePanConstraint"
 import { mostVisiblePage, revealWorldRectHorizontally } from "../lib/viewport"
+import { boardMessages } from "../messages/board"
 import type { BoardCard, CardId } from "../types"
 import { BoardCardsLayer } from "./BoardCardsLayer"
 import { BoardNavigationController } from "./BoardNavigationController"
@@ -33,6 +35,8 @@ import type { BoardViewportProps } from "./BoardViewportProps"
 import { PdfSurface } from "./PdfSurface"
 
 export function BoardViewport(props: BoardViewportProps): JSX.Element {
+  const { locale } = useLocale()
+  const t = useTranslator(boardMessages)
   const viewportRef = useRef<HTMLDivElement>(null)
   const worldRef = useRef<HTMLDivElement>(null)
   const viewportStateRef = useRef(props.viewport)
@@ -178,6 +182,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
       viewport: props.viewport,
       viewportElement: viewportRef.current,
       enabled: props.tool === "sticky",
+      locale,
     })
     if (!card) return false
     event.preventDefault()
@@ -196,7 +201,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
       window.getSelection()?.removeAllRanges()
       return
     }
-    const card = createSelectionCard(props.document.id, selectionMenu, kind)
+    const card = createSelectionCard(props.document.id, selectionMenu, kind, locale)
     if (!card) return
     const boardWidth = viewportRef.current?.clientWidth
     if (boardWidth) {
@@ -225,6 +230,8 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
         })
         .catch(() => {
           cardStreams.clear(card.id)
+          // Stored as the card's body and read back as a translation, which keeps only Korean
+          // meanings (see cardPresentation), so it is not translated yet.
           updateCardBody(card.id, "AI 설정을 확인한 뒤 다시 실행하세요.")
         })
     }
@@ -291,6 +298,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
     onCardStream: cardStreams.append,
     onCardStreamEnd: cardStreams.clear,
     onAiRequest: props.onAiRequest,
+    locale,
   })
 
   const menuPosition = useMemo(() => {
@@ -384,13 +392,13 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
       {props.evidenceFocus ? (
         <div className="evidence-return" role="status">
           <span>
-            {props.evidenceFocus.page}페이지 ·{" "}
+            {t("evidence.page", { page: props.evidenceFocus.page })} ·{" "}
             {props.evidenceFocus.fragments.length > 0
-              ? "연결된 원문 구절"
-              : "원문 페이지 · 구절 위치 정보 없음"}
+              ? t("evidence.linked")
+              : t("evidence.noPosition")}
           </span>
           <button type="button" onClick={props.onDismissEvidence}>
-            표시 닫기
+            {t("evidence.dismiss")}
           </button>
         </div>
       ) : null}

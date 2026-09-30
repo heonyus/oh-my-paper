@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { EvidenceAnchorId } from "../../shared/knowledgeSchemas"
 import type { EvidenceNavigationTarget } from "../../shared/knowledgeTypes"
+import { readerMessages } from "../messages/reader"
 import type { Workspace } from "../types"
 import { evidenceDocument } from "./evidenceDocument"
 import { evidenceFocusViewport } from "./evidenceFocus"
 import type { KnowledgeClientOps } from "./knowledgeTypes"
+import { useLocale, useTranslator } from "./locale"
 
 type WorkspaceUpdate = Workspace | null | ((current: Workspace | null) => Workspace | null)
 
@@ -17,6 +19,8 @@ export function useEvidenceNavigation(input: {
   readonly setPage: (page: number) => void
   readonly onError: (message: string) => void
 }) {
+  const { locale } = useLocale()
+  const t = useTranslator(readerMessages)
   const [target, setTarget] = useState<EvidenceNavigationTarget | null>(null)
   const pending = useRef<EvidenceNavigationTarget | null>(null)
   const jump = useRef<(page: number) => void>(() => {})
@@ -68,8 +72,8 @@ export function useEvidenceNavigation(input: {
         .getEvidenceNavigation(id)
         .then((next) => {
           if (request !== generation.current) return
-          if (!next || !input.workspace) throw new Error("원문 근거 위치를 찾을 수 없습니다.")
-          const document = evidenceDocument(next, input.workspace.documents)
+          if (!next || !input.workspace) throw new Error(t("evidence.notFound"))
+          const document = evidenceDocument(next, input.workspace.documents, locale)
           setTarget(next)
           const ready = input.readerVisible && input.workspace.activeDocumentId === document.id
           pending.current = ready ? null : next
@@ -82,10 +86,10 @@ export function useEvidenceNavigation(input: {
         })
         .catch((error: unknown) => {
           if (request === generation.current)
-            input.onError(error instanceof Error ? error.message : "원문을 열지 못했습니다.")
+            input.onError(error instanceof Error ? error.message : t("evidence.openFailed"))
         })
     },
-    [input, focus],
+    [input, focus, locale, t],
   )
   const dismiss = useCallback(() => {
     generation.current += 1

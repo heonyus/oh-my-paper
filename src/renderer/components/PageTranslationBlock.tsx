@@ -1,11 +1,13 @@
 import { ArrowUpLeft } from "lucide-react"
 import { type JSX, memo } from "react"
+import { useTranslator } from "../lib/locale"
 import type { PageTranslationMode } from "../lib/pageTranslationMode"
 import {
   type PageTranslationBlock as Block,
   focusPageSource,
   setPageSourceActive,
 } from "../lib/pageTranslationSource"
+import { readerMessages } from "../messages/reader"
 import { MarkdownContent } from "./MarkdownContent"
 import { PageTranslationFigure } from "./PageTranslationFigure"
 
@@ -60,6 +62,7 @@ export const PageTranslationBlock = memo(function PageTranslationBlock({
   readonly mode: PageTranslationMode
   readonly group?: readonly Block[] | undefined
 }): JSX.Element {
+  const t = useTranslator(readerMessages)
   const blocks = group ?? [block]
 
   function setActive(active: boolean): void {
@@ -87,7 +90,7 @@ export const PageTranslationBlock = memo(function PageTranslationBlock({
     <button
       type="button"
       className="page-translation-source"
-      aria-label="원문으로 이동"
+      aria-label={t("translation.toSource")}
       onFocus={focusSource}
       onClick={focusSource}
     >
@@ -99,7 +102,7 @@ export const PageTranslationBlock = memo(function PageTranslationBlock({
       <button
         type="button"
         className="page-translation-focus-source"
-        aria-label="번역에서 원문 위치로 이동"
+        aria-label={t("translation.toSourcePosition")}
         onClick={(event) => {
           event.stopPropagation()
           focusSource()

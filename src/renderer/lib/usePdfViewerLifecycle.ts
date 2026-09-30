@@ -2,8 +2,10 @@ import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs"
 import { EventBus, PDFLinkService, PDFViewer } from "pdfjs-dist/legacy/web/pdf_viewer.mjs"
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react"
 import "./pdfWorker"
+import { readerMessages } from "../messages/reader"
 import type { DocumentRecord } from "../types"
 import { clearParsedDocumentPages } from "./documentPageRuntime"
+import { useTranslator } from "./locale"
 import { PdfAstRuntimeSession } from "./pdfAstRuntimeSession"
 import type { ViewerSession } from "./pdfColumnSupport"
 import * as Pdf from "./pdfColumnSupport"
@@ -80,7 +82,10 @@ export function usePdfViewerLifecycle({
   const pageOverlaysRef = useRef<Readonly<Record<number, PageOverlayState>>>({})
   const pageTextsRef = useRef<string[]>([])
   const [pageOverlays, setPageOverlays] = useState<Readonly<Record<number, PageOverlayState>>>({})
-  const [error, setError] = useState<string | null>(null)
+  const t = useTranslator(readerMessages)
+  // A failure without a message of its own is worded when shown, in the reader's language.
+  const [failure, setFailure] = useState<{ readonly message: string | null } | null>(null)
+  const error = failure ? (failure.message ?? t("pdf.openFailed")) : null
 
   useEffect(() => {
     zoomRef.current = zoom
@@ -101,7 +106,7 @@ export function usePdfViewerLifecycle({
     const viewerElement = viewerRef.current
     if (!container || !viewerElement) return
 
-    setError(null)
+    setFailure(null)
     setPageOverlays({})
     pageTextsRef.current = []
     outlineRef.current.clear()
@@ -200,7 +205,7 @@ export function usePdfViewerLifecycle({
       })
       .catch((reason: unknown) => {
         if (disposed) return
-        setError(reason instanceof Error ? reason.message : "PDF를 열 수 없습니다.")
+        setFailure({ message: reason instanceof Error ? reason.message : null })
       })
 
     return () => {

@@ -1,13 +1,16 @@
 import { Search, X } from "lucide-react"
 import { type JSX, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useTranslator } from "../lib/locale"
 import type { PdfRetrievalRuntime } from "../lib/pdfRetrievalRuntime"
 import { rankPdfPassages } from "../lib/pdfSearch"
+import { readerMessages } from "../messages/reader"
 
 export function DocumentRetrievalSwitcher({
   runtime,
 }: {
   readonly runtime: PdfRetrievalRuntime | null
 }): JSX.Element | null {
+  const t = useTranslator(readerMessages)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [activeIndex, setActiveIndex] = useState(0)
@@ -91,7 +94,7 @@ export function DocumentRetrievalSwitcher({
       <button
         type="button"
         className="document-retrieval-backdrop"
-        aria-label="문서 검색 닫기"
+        aria-label={t("search.close")}
         tabIndex={-1}
         onClick={() => close(true)}
       />
@@ -99,7 +102,7 @@ export function DocumentRetrievalSwitcher({
         className="document-retrieval-switcher"
         role="dialog"
         aria-modal="true"
-        aria-label="문서 연관 검색"
+        aria-label={t("search.dialog")}
         onKeyDown={(event) => {
           if (event.key === "Escape") {
             event.preventDefault()
@@ -118,20 +121,20 @@ export function DocumentRetrievalSwitcher({
           <input
             ref={inputRef}
             type="search"
-            aria-label="현재 문서 검색"
+            aria-label={t("search.input")}
             value={query}
             onChange={(event) => {
               setQuery(event.target.value)
               setActiveIndex(0)
               runtime?.clear()
             }}
-            placeholder="개념, 근거, 결과를 검색하세요"
+            placeholder={t("search.placeholder")}
           />
           <span className="document-retrieval-count" role="status" aria-live="polite">
-            {query.trim() ? `${results.length}개 관련 구절` : "문서 전체에서 검색"}
+            {query.trim() ? t("search.count", { count: results.length }) : t("search.whole")}
           </span>
           <kbd>⌘F</kbd>
-          <button type="button" aria-label="문서 검색 닫기" onClick={() => close(true)}>
+          <button type="button" aria-label={t("search.close")} onClick={() => close(true)}>
             <X size={17} />
           </button>
         </div>
@@ -139,16 +142,14 @@ export function DocumentRetrievalSwitcher({
           ref={resultsRef}
           className="document-retrieval-results"
           role="listbox"
-          aria-label="관련도 순 검색 결과"
+          aria-label={t("search.results")}
         >
           {!query.trim() ? (
-            <p className="document-retrieval-empty">
-              질문처럼 입력하면 관련 구절을 순위별로 찾습니다.
-            </p>
+            <p className="document-retrieval-empty">{t("search.hint")}</p>
           ) : !runtime ? (
-            <p className="document-retrieval-empty">문서 검색 인덱스를 준비하는 중…</p>
+            <p className="document-retrieval-empty">{t("search.indexing")}</p>
           ) : results.length === 0 ? (
-            <p className="document-retrieval-empty">관련 구절을 찾지 못했습니다.</p>
+            <p className="document-retrieval-empty">{t("search.none")}</p>
           ) : (
             results.map((result, index) => (
               <button
@@ -167,7 +168,7 @@ export function DocumentRetrievalSwitcher({
                 </span>
                 <span className="document-retrieval-meta">
                   <strong>p. {result.page}</strong>
-                  <span>{result.relevance}% 관련</span>
+                  <span>{t("search.relevance", { relevance: result.relevance })}</span>
                 </span>
                 <span className="document-retrieval-snippet">{result.snippet}</span>
               </button>
@@ -175,9 +176,9 @@ export function DocumentRetrievalSwitcher({
           )}
         </div>
         <footer>
-          <span>Tab 결과 이동</span>
-          <span>Enter 원문 열기</span>
-          <span>Esc 닫기</span>
+          <span>{t("search.keyTab")}</span>
+          <span>{t("search.keyEnter")}</span>
+          <span>{t("search.keyEsc")}</span>
         </footer>
       </section>
     </div>

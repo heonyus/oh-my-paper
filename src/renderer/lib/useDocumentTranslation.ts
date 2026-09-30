@@ -5,6 +5,7 @@ import {
   type DocumentTranslationProgress,
   translateDocumentPages,
 } from "./documentTranslationRunner"
+import { useLocale } from "./locale"
 import { pause, type TranslationStatus } from "./pageTranslationPaneState"
 import type { PageTranslationBlock } from "./pageTranslationSource"
 import type { CitationIndexEntry } from "./pdfCitationIndex"
@@ -28,6 +29,7 @@ export function useDocumentTranslation({
   readonly pageStatusRef: TranslationStatusRef
   readonly onPageBlocks: (page: number, blocks: readonly PageTranslationBlock[]) => void
 }) {
+  const { locale } = useLocale()
   const [progress, setProgress] = useState<DocumentTranslationProgress | null>(null)
   const [status, setStatus] = useState<DocumentTranslationStatus>("idle")
   const [error, setError] = useState<string | null>(null)
@@ -72,6 +74,7 @@ export function useDocumentTranslation({
         signal: controller.signal,
         onProgress: setProgress,
         onPageBlocks: recordPageBlocks,
+        locale,
       })
       if (controller.signal.aborted) setStatus("cancelled")
       else setStatus("complete")
@@ -84,7 +87,7 @@ export function useDocumentTranslation({
     } finally {
       if (abortRef.current === controller) abortRef.current = null
     }
-  }, [citations, document, onAiRequest, pageStatusRef, provider, recordPageBlocks, status])
+  }, [citations, document, locale, onAiRequest, pageStatusRef, provider, recordPageBlocks, status])
 
   const cancelAll = useCallback((): void => {
     abortRef.current?.abort()

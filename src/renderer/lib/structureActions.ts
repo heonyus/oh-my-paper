@@ -1,4 +1,6 @@
+import { type Locale, translator } from "../../shared/i18n/locale"
 import type { BoardCard, DocumentId, Viewport } from "../../shared/schemas"
+import { readerMessages } from "../messages/reader"
 import type { AiRequestRunner } from "../types"
 import { CARD_WIDTH, createStructureCard } from "./board"
 import { parsedCardResponse } from "./cardPresentation"
@@ -33,6 +35,8 @@ type StructureActionsInput = {
   readonly onCardStream: (id: BoardCard["id"], delta: string) => void
   readonly onCardStreamEnd: (id: BoardCard["id"]) => void
   readonly onAiRequest: AiRequestRunner
+  /** The language of the notices written into a citation card; Korean when left out. */
+  readonly locale?: Locale | undefined
 }
 
 function patchCard(
@@ -48,6 +52,7 @@ const activeGenerations = new Map<string, number>()
 export function createStructureActionHandler(
   input: StructureActionsInput,
 ): (structure: DetectedStructure) => void {
+  const t = translator(readerMessages, input.locale ?? "ko")
   return (structure) => {
     const viewer = input.viewportElement
     const pageElement = viewer?.querySelector<HTMLElement>(
@@ -115,8 +120,7 @@ export function createStructureActionHandler(
         patchCard(input.getCards(), card.id, (item) => ({
           ...item,
           loading: true,
-          body:
-            structure.kind === "citation" ? "인용 논문과 읽을 가치를 다시 확인하는 중입니다." : "",
+          body: structure.kind === "citation" ? t("structure.citationRechecking") : "",
         })),
       )
     }
@@ -161,7 +165,7 @@ export function createStructureActionHandler(
             patchCard(input.getCards(), card.id, (item) => ({
               ...item,
               loading: false,
-              body: "인용 논문의 온라인 메타정보를 찾지 못했습니다. 인용 문맥은 보존했습니다.",
+              body: t("structure.citationNotFound"),
             })),
           )
         }

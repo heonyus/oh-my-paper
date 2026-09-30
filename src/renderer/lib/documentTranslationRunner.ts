@@ -1,4 +1,6 @@
+import { type Locale, translator } from "../../shared/i18n/locale"
 import type { ProviderStatus } from "../../shared/ipc"
+import { readerMessages } from "../messages/reader"
 import type { AiRequestRunner, DocumentRecord } from "../types"
 import { loadParsedDocumentPage } from "./documentPageRuntime"
 import { translatePageBatch } from "./pageTranslationAi"
@@ -33,6 +35,8 @@ export type DocumentTranslationRunnerInput = {
   readonly signal: AbortSignal
   readonly onProgress: (progress: DocumentTranslationProgress) => void
   readonly onPageBlocks: (page: number, blocks: readonly PageTranslationBlock[]) => void
+  /** The language of a failure's detail when the error carries no message; Korean when left out. */
+  readonly locale?: Locale | undefined
 }
 
 export type DocumentTranslationStage =
@@ -44,10 +48,11 @@ export type DocumentTranslationStage =
   | "translation"
   | "cache-write"
 
-function safeErrorMessage(error: unknown): string {
-  if (!(error instanceof Error)) return "알 수 없는 오류"
+function safeErrorMessage(error: unknown, locale: Locale): string {
+  const unknown = translator(readerMessages, locale)("translation.error.unknown")
+  if (!(error instanceof Error)) return unknown
   const message = error.message.trim().replace(/\s+/gu, " ")
-  return message.length > 180 ? `${message.slice(0, 177)}...` : message || "알 수 없는 오류"
+  return message.length > 180 ? `${message.slice(0, 177)}...` : message || unknown
 }
 
 export class DocumentTranslationError extends Error {
@@ -63,6 +68,7 @@ export class DocumentTranslationError extends Error {
 }
 
 async function runStage<T>(
+  locale: Locale,
   page: number,
   stage: DocumentTranslationStage,
   run: () => Promise<T>,
@@ -71,7 +77,7 @@ async function runStage<T>(
     return await run()
   } catch (error) {
     if (error instanceof DocumentTranslationError) throw error
-    throw new DocumentTranslationError(page, stage, safeErrorMessage(error))
+    throw new DocumentTranslationError(page, stage, safeErrorMessage(error, locale))
   }
 }
 
@@ -83,7 +89,11 @@ function notifyPageBlocks(
   try {
     input.onPageBlocks(page, blocks)
   } catch (error) {
-    throw new DocumentTranslationError(page, "ui-update", safeErrorMessage(error))
+    throw new DocumentTranslationError(
+      page,
+      "ui-update",
+      safeErrorMessage(error, input.locale ?? "ko"),
+    )
   }
 }
 
@@ -95,7 +105,11 @@ function notifyProgress(
   try {
     input.onProgress({ page, ...progress })
   } catch (error) {
-    throw new DocumentTranslationError(page, "ui-update", safeErrorMessage(error))
+    throw new DocumentTranslationError(
+      page,
+      "ui-update",
+      safeErrorMessage(error, input.locale ?? "ko"),
+    )
   }
 }
 
@@ -110,13 +124,14 @@ function completeBlocks(
 }
 
 export async function translateDocumentPages(input: DocumentTranslationRunnerInput): Promise<void> {
+  const locale = input.locale ?? "ko"
   let completedPages = 0
   let completedBlocks = 0
   let totalBlocks = 0
 
   // 다음 페이지의 파싱과 캐시 읽기를 현재 페이지 번역과 겹쳐서 진행한다
   const preparePage = async (page: number) => {
-    const parsedPage = await runStage(page, "parse", () =>
+    const parsedPage = await runStage(locale, page, "parse", () =>
       loadParsedDocumentPage(input.document.id, page, {
         awaitStructure: true,
         signal: input.signal,
@@ -125,7 +140,7 @@ export async function translateDocumentPages(input: DocumentTranslationRunnerInp
     if (input.signal.aborted) return null
     if (!parsedPage)
       throw new DocumentTranslationError(page, "parse", "parser unavailable or cancelled")
-    const parserCached = await runStage(page, "cache-read", () =>
+    const parserCached = await runStage(locale, page, "cache-read", () =>
       readCachedPageTranslation(
         input.document.id,
         page,
@@ -159,7 +174,7 @@ export async function translateDocumentPages(input: DocumentTranslationRunnerInp
       })
       continue
     }
-    const planned = await runStage(page, "planning", async () => {
+    const planned = await runStage(locale, page, "planning", async () => {
       const source = withPageTranslationCitationLinks(
         pageTranslationBlocksFromParsedPage(parsedPage),
         input.citations,
@@ -188,7 +203,7 @@ export async function translateDocumentPages(input: DocumentTranslationRunnerInp
       totalBlocks,
     })
 
-    await runStage(page, "translation", () =>
+    await runStage(locale, page, "translation", () =>
       runPageTranslationBatches(
         batches,
         async (batch) => {
@@ -222,7 +237,7 @@ export async function translateDocumentPages(input: DocumentTranslationRunnerInp
     const finished = completeBlocks(plan.initial, completed)
     if (finished.some((block) => !block.translation.trim()))
       throw new Error(`incomplete page translation: ${page}`)
-    await runStage(page, "cache-write", () =>
+    await runStage(locale, page, "cache-write", () =>
       storeCachedPageTranslation(input.document.id, page, input.provider, finished),
     )
     completedBlocks += pageCompletedBlocks

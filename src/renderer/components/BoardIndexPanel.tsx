@@ -9,46 +9,48 @@ import {
 } from "lucide-react"
 import type { JSX } from "react"
 import { conciseCardTitle } from "../lib/cardPresentation"
+import { useTranslator } from "../lib/locale"
+import { type BoardMessageKey, boardMessages } from "../messages/board"
 import type { BoardCard, CardId } from "../types"
 
 export type BoardCategoryKind = Exclude<BoardCard["kind"], "citation">
 
 type CategoryCopy = {
-  readonly purpose: string
-  readonly empty: string
-  readonly action: string | null
+  readonly purpose: BoardMessageKey
+  readonly empty: BoardMessageKey
+  readonly action: BoardMessageKey | null
 }
 
 const categoryCopy: Readonly<Record<BoardCategoryKind, CategoryCopy>> = {
   translation: {
-    purpose: "번역문과 원문을 함께 봅니다.",
-    empty: "PDF 문장을 선택해 번역하면 결과와 원문이 여기에 함께 저장됩니다.",
-    action: "보드에서 보기",
+    purpose: "index.translation.purpose",
+    empty: "index.translation.empty",
+    action: "index.translation.action",
   },
   explanation: {
-    purpose: "해설 핵심과 근거 구절을 함께 봅니다.",
-    empty: "섹션·그림·선택 구절을 설명하면 근거가 연결된 해설이 여기에 나타납니다.",
-    action: "근거와 함께 보기",
+    purpose: "index.explanation.purpose",
+    empty: "index.explanation.empty",
+    action: "index.explanation.action",
   },
   infographic: {
-    purpose: "그림·표 분석을 자료별로 봅니다.",
-    empty: "그림이나 표에서 AI 해설을 실행하면 시각 분석 카드가 여기에 모입니다.",
-    action: "분석 카드 보기",
+    purpose: "index.infographic.purpose",
+    empty: "index.infographic.empty",
+    action: "index.infographic.action",
   },
   note: {
-    purpose: "보드에 남긴 메모와 그 원문을 함께 봅니다.",
-    empty: "보드에 남긴 메모 카드가 여기에 모입니다.",
+    purpose: "index.note.purpose",
+    empty: "index.note.empty",
     action: null,
   },
   sticky: {
-    purpose: "빠른 메모를 모아 편집 위치로 이동합니다.",
-    empty: "포스트잇 도구로 보드를 클릭하면 빠른 메모가 여기에 나타납니다.",
+    purpose: "index.sticky.purpose",
+    empty: "index.sticky.empty",
     action: null,
   },
   highlight: {
-    purpose: "핵심 문장을 페이지 순서로 다시 찾습니다.",
-    empty: "PDF 문장을 선택해 하이라이트하면 핵심 근거가 여기에 모입니다.",
-    action: "원문 위치 보기",
+    purpose: "index.highlight.purpose",
+    empty: "index.highlight.empty",
+    action: "index.highlight.action",
   },
 }
 
@@ -84,7 +86,7 @@ function boundedPreview(value: string, maximum: number): string {
   return `${candidate.slice(0, boundary > maximum * 0.7 ? boundary : maximum).trim()}…`
 }
 
-function previewFor(card: BoardCard, kind: BoardCategoryKind): string {
+function previewFor(card: BoardCard, kind: BoardCategoryKind, emptySticky: string): string {
   switch (kind) {
     case "translation":
     case "explanation":
@@ -93,7 +95,7 @@ function previewFor(card: BoardCard, kind: BoardCategoryKind): string {
     case "infographic":
       return boundedPreview(card.body, 280) || card.anchor.quote
     case "sticky":
-      return plainPreview(card.body) || "내용이 없는 포스트잇"
+      return plainPreview(card.body) || emptySticky
     case "highlight":
       return plainPreview(card.body) || card.anchor.quote
   }
@@ -124,13 +126,15 @@ export function BoardIndexPanel({
   readonly label: string
   readonly onJump: (id: CardId) => void
 }): JSX.Element {
+  const t = useTranslator(boardMessages)
   const visible = cards.filter((card) => card.kind === kind)
   const copy = categoryCopy[kind]
+  const action = copy.action ? t(copy.action) : null
   return (
     <section
       className="sidebar-mode-panel board-category-panel"
       data-kind={kind}
-      aria-label={`${label} 인덱스`}
+      aria-label={t("index.label", { label })}
     >
       <header className="mode-panel-head">
         <div>
@@ -139,7 +143,7 @@ export function BoardIndexPanel({
         </div>
         <span>{visible.length}</span>
       </header>
-      <p className="board-category-purpose">{copy.purpose}</p>
+      <p className="board-category-purpose">{t(copy.purpose)}</p>
       {visible.length > 0 ? (
         <ol className="board-index-list">
           {visible.map((card) => {
@@ -150,7 +154,7 @@ export function BoardIndexPanel({
                 <button
                   type="button"
                   data-kind={kind}
-                  aria-label={`${card.title}, p.${card.anchor.page}${copy.action ? `, ${copy.action}` : ""}`}
+                  aria-label={`${card.title}, p.${card.anchor.page}${action ? `, ${action}` : ""}`}
                   onClick={() => onJump(card.id)}
                 >
                   {showsItemIdentity ? (
@@ -164,16 +168,18 @@ export function BoardIndexPanel({
                     </>
                   ) : null}
                   <span className="board-index-page">p.{card.anchor.page}</span>
-                  <span className="board-index-preview">{previewFor(card, kind)}</span>
+                  <span className="board-index-preview">
+                    {previewFor(card, kind, t("index.emptySticky"))}
+                  </span>
                   {source ? (
                     <span className="board-index-source">
-                      <small>원문</small>
+                      <small>{t("index.source")}</small>
                       <span>{source}</span>
                     </span>
                   ) : null}
-                  {copy.action ? (
+                  {action ? (
                     <span className="board-index-action">
-                      {copy.action} <ArrowUpRight size={12} />
+                      {action} <ArrowUpRight size={12} />
                     </span>
                   ) : null}
                 </button>
@@ -186,8 +192,8 @@ export function BoardIndexPanel({
           <span className="board-category-empty-icon">
             <KindIcon kind={kind} size={22} />
           </span>
-          <strong>아직 저장된 항목이 없습니다.</strong>
-          <p>{copy.empty}</p>
+          <strong>{t("index.nothingSaved")}</strong>
+          <p>{t(copy.empty)}</p>
         </div>
       )}
     </section>

@@ -3,6 +3,7 @@ import type { DocumentPageParseProgress } from "../../shared/documentPageModel"
 import type { ProviderStatus } from "../../shared/ipc"
 import type { AiRequestRunner, DocumentRecord } from "../types"
 import { loadParsedDocumentPage } from "./documentPageRuntime"
+import { useLocale } from "./locale"
 import { translatePageBatch } from "./pageTranslationAi"
 import {
   clearCachedPageTranslation,
@@ -46,7 +47,9 @@ export function usePageTranslation({
 }) {
   const [blocks, setBlocks] = useState<readonly PageTranslationBlock[]>([])
   const [status, setStatus] = useState<TranslationStatus>("waiting")
-  const [failure, setFailure] = useState<string | null>(null)
+  const { locale } = useLocale()
+  // The error itself, so its notice follows the reader's language when that changes.
+  const [failure, setFailure] = useState<{ readonly error: unknown } | null>(null)
   const [revision, setRevision] = useState(0)
   const [progress, setProgress] = useState(0)
   const [totalChunks, setTotalChunks] = useState(0)
@@ -213,12 +216,12 @@ export function usePageTranslation({
         } catch (error) {
           if (cancelled || abortController.signal.aborted) return
           setBlocks((current) => mergePageTranslations(current, completed))
-          setFailure(pageTranslationFailureMessage(error))
+          setFailure({ error })
           setStatus("failed")
         }
       } catch (error) {
         if (cancelled || abortController.signal.aborted) return
-        setFailure(pageTranslationFailureMessage(error))
+        setFailure({ error })
         setStatus("failed")
       }
     }
@@ -254,7 +257,7 @@ export function usePageTranslation({
   return {
     blocks,
     status,
-    failure,
+    failure: failure ? pageTranslationFailureMessage(failure.error, locale) : null,
     progress,
     totalChunks,
     parserStage,

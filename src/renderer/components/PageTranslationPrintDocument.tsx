@@ -1,7 +1,9 @@
 import type { JSX } from "react"
 import { createPortal } from "react-dom"
+import { useTranslator } from "../lib/locale"
 import type { PageTranslationMode } from "../lib/pageTranslationMode"
 import type { PageTranslationBlock as TranslationBlock } from "../lib/pageTranslationSource"
+import { readerMessages } from "../messages/reader"
 import { PageTranslationBlock } from "./PageTranslationBlock"
 
 export function printableDocumentTitle(
@@ -44,11 +46,12 @@ export function PageTranslationPrintDocument({
   readonly pages: Readonly<Record<number, readonly TranslationBlock[]>>
   readonly pageImages: Readonly<Record<number, string>>
 }): JSX.Element {
+  const t = useTranslator(readerMessages)
   const orderedPages = Object.entries(pages).sort(([left], [right]) => Number(left) - Number(right))
   return createPortal(
     <main
       className="page-translation-print-document"
-      aria-label="전체 번역 PDF 출력"
+      aria-label={t("translation.printDocument")}
       data-mode={mode}
     >
       <h1>{printableDocumentTitle(documentTitle, pages)}</h1>
@@ -61,15 +64,18 @@ export function PageTranslationPrintDocument({
           <article
             key={pageKey}
             className="page-translation-print-page"
-            aria-label={`번역 페이지 ${page}`}
+            aria-label={t("translation.printPage", { page })}
           >
             <h2>p. {page}</h2>
             <div className="page-translation-print-page-content">
               {mode !== "bilingual" && image ? (
-                <img src={image} alt={`원본 PDF ${page}페이지`} />
+                <img src={image} alt={t("translation.printImage", { page })} />
               ) : null}
               {mode !== "source" || !image ? (
-                <section className="page-translation-print-blocks" aria-label={`p. ${page} 번역`}>
+                <section
+                  className="page-translation-print-blocks"
+                  aria-label={t("translation.printBlocks", { page })}
+                >
                   {groups.map((group, index) => {
                     const block = group[0]
                     if (!block) return null

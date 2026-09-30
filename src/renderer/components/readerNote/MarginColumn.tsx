@@ -2,9 +2,11 @@ import type { Node as ProseNode } from "@tiptap/pm/model"
 import type { Editor } from "@tiptap/react"
 import { type JSX, useEffect, useLayoutEffect, useRef, useState } from "react"
 import type { SourceCitation } from "../../lib/chatCitations"
+import { useTranslator } from "../../lib/locale"
 import { marginSnippet } from "../../lib/marginSnippet"
 import type { ScoredSource } from "../../lib/noteSources"
 import type { SourceMatch, TutorEntry } from "../../lib/useNoteCompanion"
+import { noteMessages } from "../../messages/note"
 import { MarkdownContent } from "../MarkdownContent"
 import { evidenceQuote } from "./evidenceNode"
 
@@ -85,11 +87,16 @@ function SourceCard({
   readonly onAttach: () => void
   readonly onOpen: () => void
 }): JSX.Element {
+  const t = useTranslator(noteMessages)
   return (
     <article className="note-margin-card" data-kind="source">
       <header>
-        <span>원문</span>
-        <button type="button" aria-label={`${source.page}쪽 원문 보기`} onClick={onOpen}>
+        <span>{t("margin.source")}</span>
+        <button
+          type="button"
+          aria-label={t("margin.viewSource", { page: source.page })}
+          onClick={onOpen}
+        >
           p.{source.page}
         </button>
       </header>
@@ -100,10 +107,10 @@ function SourceCard({
         {marginSnippet(source.text)}
       </p>
       {attached ? (
-        <span className="note-margin-attached">근거로 붙임</span>
+        <span className="note-margin-attached">{t("margin.attached")}</span>
       ) : (
         <button type="button" className="note-margin-attach" onClick={onAttach}>
-          근거로 붙이기
+          {t("margin.attach")}
         </button>
       )}
     </article>
@@ -121,6 +128,7 @@ function TutorCard({
   readonly onExpand: () => void
   readonly onCitation: (citation: SourceCitation) => void
 }): JSX.Element {
+  const t = useTranslator(noteMessages)
   return (
     <article
       className="note-margin-card"
@@ -128,9 +136,9 @@ function TutorCard({
       data-streaming={tutor.status === "streaming"}
     >
       <header>
-        <span>튜터</span>
+        <span>{t("margin.tutor")}</span>
         {tutor.status === "streaming" ? (
-          <span className="note-tutor-typing" role="status" aria-label="튜터가 쓰는 중" />
+          <span className="note-tutor-typing" role="status" aria-label={t("margin.tutorWriting")} />
         ) : null}
       </header>
       {expanded ? (
@@ -165,6 +173,7 @@ export function MarginColumn({
   readonly onOpen: (page: number, text: string) => void
   readonly onCitation: (citation: SourceCitation) => void
 }): JSX.Element {
+  const t = useTranslator(noteMessages)
   const column = useRef<HTMLElement>(null)
   const cards = useRef(new Map<number, HTMLElement>())
   const [layout, setLayout] = useState<readonly Placement[]>([])
@@ -206,7 +215,7 @@ export function MarginColumn({
   }, [layout])
 
   return (
-    <aside ref={column} className="note-margin" aria-label="여백">
+    <aside ref={column} className="note-margin" aria-label={t("margin.label")}>
       {layout.map((placement) => {
         const { source, tutor } = placement
         return (
