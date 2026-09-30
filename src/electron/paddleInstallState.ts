@@ -11,12 +11,15 @@ export function paddleInstallPaths(home: string): {
   readonly lock: string
   readonly log: string
   readonly progress: string
+  /** Present once the reader said no to the engine in the wizard; an install removes it. */
+  readonly declined: string
 } {
   const root = join(home, ".ohmypaper")
   return {
     lock: join(root, "paddle-vl-install.pid"),
     log: join(root, "paddle-vl-install.log"),
     progress: join(root, "paddle-vl-install.progress.json"),
+    declined: join(root, "paddle-vl-install.declined"),
   }
 }
 

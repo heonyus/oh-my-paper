@@ -110,7 +110,8 @@ PDF를 라이브러리에 놓으면 바로 열립니다. 제목·저자 같은 �
 
 - 마법사에서 기본으로 설치되며, 백그라운드에서 받는 동안 진행률이 설정 화면과 `oh-my-paper doctor`에 나옵니다 (예: `설치 중 42% · 약 1분 남음`).
 - 끝나면 앱을 다시 켜지 않아도 자동으로 켜집니다.
-- 나중에 설치하려면 `npm run setup:paddle-vl`을 실행하세요 ([`uv`](https://docs.astral.sh/uv/)와 Python 3.12가 없으면 함께 설치합니다).
+- 엔진이 없으면 `oh-my-paper update` 뒤나 앱을 켤 때 알아서 설치를 시작합니다. 마법사에서 설치하지 않겠다고 고른 경우는 제외합니다.
+- 직접 설치하려면 `npm run setup:paddle-vl`을 실행하세요 ([`uv`](https://docs.astral.sh/uv/)와 Python 3.12가 없으면 함께 설치합니다).
 
 ## 🧭 명령어
 

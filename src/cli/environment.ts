@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process"
-import { closeSync, existsSync, mkdirSync, openSync } from "node:fs"
+import { closeSync, existsSync, mkdirSync, openSync, rmSync, writeFileSync } from "node:fs"
 import { access } from "node:fs/promises"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
@@ -20,23 +20,27 @@ export type EnvironmentReport = {
 
 const sourceRoot = fileURLToPath(new URL("../..", import.meta.url))
 
-export async function checkEnvironment(
-  _config: WebServerConfig,
-  codexAvailable: boolean,
-): Promise<EnvironmentReport> {
+/** Whether the OCR engine is installed and ready to analyse pages. */
+async function ocrEngineReady(): Promise<boolean> {
   const paddle = new PaddlePageParserService({
     appPath: sourceRoot,
     resourcesPath: sourceRoot,
     packaged: false,
   })
-  let ocrReady = false
   try {
-    ocrReady = (await paddle.status()).configured
+    return (await paddle.status()).configured
   } catch {
-    ocrReady = false
+    return false
   } finally {
     paddle.dispose()
   }
+}
+
+export async function checkEnvironment(
+  _config: WebServerConfig,
+  codexAvailable: boolean,
+): Promise<EnvironmentReport> {
+  const ocrReady = await ocrEngineReady()
 
   let nodeModules = true
   try {
@@ -64,8 +68,9 @@ export function startOcrInstallInBackground(
   options: { readonly home?: string; readonly script?: string } = {},
 ): string {
   const script = options.script ?? join(sourceRoot, "scripts", "setup-paddle-vl-runtime.mjs")
-  const { log } = paddleInstallPaths(options.home ?? homedir())
+  const { log, declined } = paddleInstallPaths(options.home ?? homedir())
   mkdirSync(dirname(log), { recursive: true })
+  rmSync(declined, { force: true })
   const output = openSync(log, "w")
   try {
     spawn(process.execPath, [script], {
@@ -77,4 +82,34 @@ export function startOcrInstallInBackground(
     closeSync(output)
   }
   return log
+}
+
+/** Remembers a "no" to the engine in the wizard, so updates and starts do not install it. */
+export function recordOcrDeclined(home = homedir()): void {
+  const { declined } = paddleInstallPaths(home)
+  mkdirSync(dirname(declined), { recursive: true })
+  writeFileSync(declined, `${new Date().toISOString()}\n`)
+}
+
+export type OcrInstallCheck = "ready" | "installing" | "started" | "declined"
+
+/**
+ * Starts the OCR engine install in the background when the engine is missing, as the wizard
+ * would have: after an update, and when the app starts, so a computer that never got it (or
+ * whose install stopped) gets it without asking again. A "no" in the wizard is kept.
+ */
+export async function ensureOcrInstall(
+  options: {
+    readonly home?: string
+    readonly ready?: () => Promise<boolean>
+    readonly start?: () => void
+  } = {},
+): Promise<OcrInstallCheck> {
+  const home = options.home ?? homedir()
+  if (await (options.ready ?? ocrEngineReady)()) return "ready"
+  if (paddleInstallRunning(home)) return "installing"
+  if (existsSync(paddleInstallPaths(home).declined)) return "declined"
+  const start = options.start ?? (() => startOcrInstallInBackground({ home }))
+  start()
+  return "started"
 }

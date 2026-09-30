@@ -112,7 +112,8 @@ Scanned PDFs, figures, tables and equations are read on your computer by **Paddl
 
 - The wizard installs it by default. While it downloads in the background, 설정 and `oh-my-paper doctor` show its progress (e.g. `설치 중 42% · 약 1분 남음`).
 - It switches on by itself once ready, with no restart.
-- To install it later, run `npm run setup:paddle-vl` (it installs [`uv`](https://docs.astral.sh/uv/) and Python 3.12 too if they are missing).
+- If the engine is missing, `oh-my-paper update` and starting the app begin installing it, unless you said no in the wizard.
+- To install it yourself, run `npm run setup:paddle-vl` (it installs [`uv`](https://docs.astral.sh/uv/) and Python 3.12 too if they are missing).
 
 ## 🧭 Commands
 
