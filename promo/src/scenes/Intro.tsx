@@ -52,9 +52,9 @@ export function Intro(): JSX.Element {
             transform: `translateY(${(1 - rise(8)) * 30}px)`,
           }}
         >
-          읽은 것은 남고,
+          PDF는 그대로,
           <br />
-          필요한 것은{" "}
+          번역·설명·노트는{" "}
           <span
             style={{
               color: color.action,
@@ -64,7 +64,7 @@ export function Intro(): JSX.Element {
               backgroundSize: `${marker}% 34%`,
             }}
           >
-            다시 찾을 수 있게.
+            원문 자리에.
           </span>
         </h1>
         <p
@@ -76,7 +76,7 @@ export function Intro(): JSX.Element {
             letterSpacing: "-0.01em",
           }}
         >
-          PDF는 그대로, 번역·설명·노트는 원문 자리에. 문서는 이 Mac 밖으로 나가지 않습니다.
+          문장을 고르고 한 키로. 문서는 이 Mac 밖으로 나가지 않습니다.
         </p>
       </AbsoluteFill>
     </Backdrop>

@@ -70,14 +70,7 @@ export function wordmark(text = "oh-my-paper"): readonly string[] {
 
 export function banner(version: string): string {
   const [top = "", middle = "", bottom = ""] = wordmark()
-  return [
-    "",
-    `  ${top}`,
-    `  ${middle}   ${dim(`v${version}`)}`,
-    `  ${bottom}`,
-    `  ${italic(gray("읽은 것은 남고, 필요한 것은 다시 찾을 수 있게."))}`,
-    "",
-  ].join("\n")
+  return ["", `  ${top}`, `  ${middle}   ${dim(`v${version}`)}`, `  ${bottom}`, ""].join("\n")
 }
 
 /** A key cap such as ` T `, drawn inverted so it reads as a key on dark and light themes. */

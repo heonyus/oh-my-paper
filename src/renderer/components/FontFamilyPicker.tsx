@@ -2,8 +2,8 @@ import type { CSSProperties, JSX } from "react"
 import type { UiFontFamily } from "../../shared/schemas"
 import { uiFontFamilyStack, uiFontOptions } from "../../shared/uiAppearance"
 
-const koreanSample = "읽은 것은 남고, 필요한 것은 다시 찾을 수 있어야 합니다."
-const latinSample = "What we read should remain, and what we need should be easy to find again."
+const koreanSample = "어텐션은 모든 토큰이 한 번에 다른 모든 토큰을 보게 합니다."
+const latinSample = "Attention lets every token look at every other token in a single step."
 
 export function FontFamilyPicker({
   value,

@@ -30,7 +30,7 @@ describe("WebAppearanceSettings", () => {
       uiFontScale: 2,
     })
     expect(
-      screen.getByText("읽은 것은 남고, 필요한 것은 다시 찾을 수 있어야 합니다."),
+      screen.getByText("어텐션은 모든 토큰이 한 번에 다른 모든 토큰을 보게 합니다."),
     ).toBeVisible()
   })
 })
