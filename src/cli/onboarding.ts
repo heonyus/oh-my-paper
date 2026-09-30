@@ -17,7 +17,7 @@ import {
   DEFAULT_OPENROUTER_MODEL,
   OPENROUTER_MODEL_OPTIONS,
 } from "../shared/providerModels"
-import { checkEnvironment, startOcrInstallInBackground } from "./environment"
+import { checkEnvironment, recordOcrDeclined, startOcrInstallInBackground } from "./environment"
 import { runApiKeyOnboarding } from "./onboardingApi"
 import { runChatgptOnboarding } from "./onboardingChatgpt"
 import { runClaudeOnboarding } from "./onboardingClaude"
@@ -155,6 +155,8 @@ async function offerOcr(report: Awaited<ReturnType<typeof checkEnvironment>>): P
     initialValue: true,
   })
   if (isCancel(install) || !install) {
+    // Kept, so updates and app starts do not install it anyway.
+    if (!isCancel(install)) recordOcrDeclined()
     log.info(gray("건너뛰었습니다 — 나중에 npm run setup:paddle-vl 로 설치할 수 있습니다"))
     return
   }

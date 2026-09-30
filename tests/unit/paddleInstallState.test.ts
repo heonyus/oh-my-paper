@@ -3,8 +3,12 @@ import { spawnSync } from "node:child_process"
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { startOcrInstallInBackground } from "../../src/cli/environment"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import {
+  ensureOcrInstall,
+  recordOcrDeclined,
+  startOcrInstallInBackground,
+} from "../../src/cli/environment"
 import {
   describePaddleInstallProgress,
   lockHolderAlive,
@@ -35,6 +39,7 @@ describe("PaddleOCR-VL install state", () => {
       lock: join(home, ".ohmypaper", "paddle-vl-install.pid"),
       log: join(home, ".ohmypaper", "paddle-vl-install.log"),
       progress: join(home, ".ohmypaper", "paddle-vl-install.progress.json"),
+      declined: join(home, ".ohmypaper", "paddle-vl-install.declined"),
     })
   })
 
@@ -91,5 +96,44 @@ describe("PaddleOCR-VL install state", () => {
     await expect
       .poll(async () => readFile(log, "utf8").catch(() => ""), { timeout: 10_000 })
       .toContain("fake install done")
+  })
+
+  describe("after an update or on start", () => {
+    it("starts the install when the engine is missing", async () => {
+      const start = vi.fn()
+
+      await expect(ensureOcrInstall({ home, ready: async () => false, start })).resolves.toBe(
+        "started",
+      )
+      expect(start).toHaveBeenCalledOnce()
+    })
+
+    it("leaves a ready engine and a running install alone", async () => {
+      const start = vi.fn()
+
+      await expect(ensureOcrInstall({ home, ready: async () => true, start })).resolves.toBe(
+        "ready",
+      )
+      await writeLock(`${process.pid}\n`)
+      await expect(ensureOcrInstall({ home, ready: async () => false, start })).resolves.toBe(
+        "installing",
+      )
+      expect(start).not.toHaveBeenCalled()
+    })
+
+    it("keeps a no from the wizard until an install is asked for", async () => {
+      const start = vi.fn()
+      recordOcrDeclined(home)
+
+      await expect(ensureOcrInstall({ home, ready: async () => false, start })).resolves.toBe(
+        "declined",
+      )
+      expect(start).not.toHaveBeenCalled()
+
+      const script = join(home, "fake-setup.mjs")
+      await writeFile(script, "")
+      startOcrInstallInBackground({ home, script })
+      await expect(readFile(paddleInstallPaths(home).declined)).rejects.toThrow()
+    })
   })
 })

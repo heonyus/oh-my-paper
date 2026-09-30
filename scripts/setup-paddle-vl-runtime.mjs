@@ -26,6 +26,8 @@ const mlxReadinessMarker = join(mlxRuntimeRoot, ".ready-mlx-v1.6")
 // Beside the runtime folders, matching paddleInstallPaths() in src/electron/paddleInstallState.ts.
 const installLock = join(dirname(runtimeRoot), "paddle-vl-install.pid")
 const installProgress = join(dirname(runtimeRoot), "paddle-vl-install.progress.json")
+// A "no" in the wizard; running the install means yes after all.
+const installDeclined = join(dirname(runtimeRoot), "paddle-vl-install.declined")
 // uv installed for oh-my-paper alone when the computer has none, beside the runtimes.
 const uvVersion = "0.10.4"
 const uvTools = join(dirname(runtimeRoot), "tools", "uv")
@@ -322,6 +324,7 @@ async function modelLane() {
 
 async function main() {
   takeLock()
+  rmSync(installDeclined, { force: true })
   const started = Date.now()
   installStarted = started
   writeProgress()

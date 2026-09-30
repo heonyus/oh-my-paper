@@ -1,5 +1,6 @@
 import { connect } from "node:net"
 import type { WebServerConfig } from "../server/config"
+import { ensureOcrInstall } from "./environment"
 import { readOnboardingState, runOnboarding } from "./onboarding"
 import { openBrowser } from "./openBrowser"
 import { bold, dim, gray, link } from "./style"
@@ -55,5 +56,11 @@ export async function startApp(config: WebServerConfig, openAfter: boolean): Pro
       `\n  ${bold("oh-my-paper")} ${dim("열림")} → ${link(url)}   ${gray("종료: Ctrl+C")}\n\n`,
     )
     if (openAfter) openBrowser(url)
+    // After an update, or an install that stopped, the missing engine starts installing here.
+    const ocr = await ensureOcrInstall().catch(() => null)
+    if (ocr === "started")
+      process.stdout.write(
+        `  ${gray("문서 분석 엔진(OCR)이 없어서 뒤에서 설치를 시작했어요 — 준비되면 알아서 켜집니다")}\n\n`,
+      )
   }
 }

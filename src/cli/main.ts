@@ -12,7 +12,7 @@ import {
   readPaddleInstallProgress,
 } from "../electron/paddleInstallState"
 import { readWebServerConfig, type WebServerConfig } from "../server/config"
-import { checkEnvironment } from "./environment"
+import { checkEnvironment, ensureOcrInstall } from "./environment"
 import { readOnboardingState, runOnboarding } from "./onboarding"
 import { portOpen, startApp } from "./startApp"
 import { banner, bold, gray, inverse, link } from "./style"
@@ -168,6 +168,16 @@ async function update(): Promise<void> {
       }
     }
   }
+  // A computer that never got the OCR engine, or whose install stopped, gets it now.
+  const ocr = await ensureOcrInstall()
+  if (ocr === "started")
+    log.success(
+      `문서 분석 엔진(OCR)이 없어서 뒤에서 설치를 시작했어요 ${gray("· 앱은 바로 쓸 수 있고, 진행 상황은 oh-my-paper doctor")}`,
+    )
+  else if (ocr === "installing")
+    log.info(
+      `문서 분석 엔진(OCR)은 뒤에서 설치하고 있어요 ${gray(`· ${describePaddleInstallProgress(readPaddleInstallProgress(homedir()))}`)}`,
+    )
   outro(`v${readPackageVersion()} — 실행 중인 앱은 다시 시작하면 적용됩니다`)
 }
 
