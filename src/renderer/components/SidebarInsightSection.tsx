@@ -9,6 +9,8 @@ type SidebarInsightSectionProps = {
   readonly error: string
   readonly onGenerate: () => void
   readonly onSave: () => void
+  /** Shown in place of the Markdown value, unclamped, when the section has its own view. */
+  readonly view?: JSX.Element | null | undefined
 }
 
 export function SidebarInsightSection({
@@ -18,11 +20,12 @@ export function SidebarInsightSection({
   error,
   onGenerate,
   onSave,
+  view,
 }: SidebarInsightSectionProps): JSX.Element {
   const [open, setOpen] = useState(true)
   const [showAll, setShowAll] = useState(false)
   const bodyId = useId()
-  const long = value.length > 260
+  const long = !view && value.length > 260
   return (
     <section className="insight-section" data-open={open}>
       <header>
@@ -58,7 +61,8 @@ export function SidebarInsightSection({
       <div id={bodyId} className="insight-body" data-expanded={showAll} hidden={!open}>
         {loading ? <span className="insight-progress" aria-hidden="true" /> : null}
         {!loading && error ? <p className="insight-error">{error}</p> : null}
-        {value ? (
+        {value && view ? view : null}
+        {value && !view ? (
           <>
             <MarkdownContent
               className={long && !showAll ? "insight-clamped" : undefined}

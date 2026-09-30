@@ -2,8 +2,10 @@ import { type JSX, useCallback, useEffect, useRef, useState } from "react"
 import type { AiAction, AiHistoryMessage, ProviderStatus } from "../../shared/ipc"
 import type { DocumentInsight, DocumentInsightKind } from "../../shared/schemas"
 import type { SourceCitation } from "../lib/chatCitations"
+import { keywordEntries } from "../lib/keywordEntries"
 import { paperOverviewContext, preparePaperContextForQuestion } from "../lib/pdfSearch"
 import type { AiDeltaHandler, AiRequestRunner, DocumentRecord } from "../types"
+import { KeywordTags } from "./KeywordTags"
 import { PaperDiscussion } from "./PaperDiscussion"
 import { SidebarInsightSection } from "./SidebarInsightSection"
 
@@ -32,6 +34,12 @@ const leadingInsightKeys: readonly InsightKey[] = ["keywords", "threeLines"]
 const overviewInsightKeys: readonly InsightKey[] = [...leadingInsightKeys, "summary"]
 const overviewRequests = new Map<string, Promise<string>>()
 const emptyCachedInsights: readonly DocumentInsight[] = []
+
+/** Keywords read as tags once a term bullet arrives; until then the raw answer shows. */
+function keywordView(value: string): JSX.Element | null {
+  const entries = keywordEntries(value)
+  return entries.length > 0 ? <KeywordTags entries={entries} /> : null
+}
 
 function recentHistory(history: readonly AiHistoryMessage[]): AiHistoryMessage[] {
   return history.slice(-maxHistoryEntries).map((message) => ({
@@ -200,6 +208,7 @@ export function AiOverviewPanel({
             error={insights[key].error}
             onGenerate={() => void generate(key)}
             onSave={() => onSave(config[key].title, insights[key].value)}
+            view={key === "keywords" ? keywordView(insights.keywords.value) : null}
           />
         ))}
         <div className="summary-discussion-flow">

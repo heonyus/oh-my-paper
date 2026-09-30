@@ -16,7 +16,7 @@ const baseInstruction = [
   "Use context silently: never expose or refer to XML tags, placeholder names, context slot names, or labels such as PAPER_CONTEXT, CURRENT_SECTION, LOCAL_BEFORE, LOCAL_AFTER, or USER_QUESTION_OR_TARGET.",
   "Lead with the scientific answer or finding. Never open with tool, crop, OCR, extraction, caption-length, or context-window commentary.",
   "If a detail is genuinely unreadable, analyze everything supported first and place one short note under `확인 필요` only when it changes the conclusion.",
-  "Return readable GitHub Markdown with short paragraphs, descriptive headings, and real bullet lists; never imitate bullets with inline hyphens.",
+  "Return readable GitHub Markdown with short paragraphs, descriptive headings, and real bullet lists; never imitate bullets with inline hyphens. Never write HTML tags, and never report character, word, or line counts.",
   "Write math as valid LaTeX using $...$ inline or $$...$$ on separate lines. Put a blank line before and after lists, display math, tables, and headings.",
 ].join(" ")
 
@@ -41,11 +41,11 @@ const pageBlockRules =
 
 const actionInstruction: Readonly<Record<AiAction, string>> = {
   keywords:
-    "Extract exactly 5 paper-specific terms from the supplied source evidence. Return exactly five Markdown bullets, one per term, using `- **TERM**: Korean contextual definition`. Keep each definition to one sentence grounded in the source; do not return a title, publication date, author list, or generic domain words.",
+    "Pick the 5 terms a reader most needs in order to follow this paper, such as its proposed method, key concepts, datasets, or metrics; never a title, publication date, author, or generic domain word. Return only five Markdown bullets and nothing else, one per term, as `- **TERM**: definition`: TERM is written as the paper writes it, in one to four words, and the definition is one Korean sentence grounded in the paper. No heading, introduction, summary, or closing note.",
   three_line_summary:
-    "Return exactly three Markdown numbered items in this order: `1. **문제**: ...`, `2. **방법**: ...`, `3. **결과**: ...`. Each item must be one sentence under 90 Korean characters and use a representative source-supported number when available. Do not merge items or replace them with metadata.",
+    "Return only three Markdown numbered items and nothing else, in this order: `1. **문제**: ...`, `2. **방법**: ...`, `3. **결과**: ...`. Each item is one sentence under 90 Korean characters and uses a representative source-supported number when available. No heading, introduction, closing note, or fourth item.",
   paper_summary:
-    "Write a compact Korean research summary in at most 5 Markdown bullets and 500 Korean characters total. Cover problem, method, evaluation, main result, and one limitation, in that order when evidence is available. Start directly with the source-supported substance; never answer with title or publication metadata and never add a reader recommendation.",
+    "Return only a compact Korean research summary of at most 5 Markdown bullets and 500 Korean characters in total. Cover problem, method, evaluation, main result, and one limitation, in that order when evidence is available, each bullet opening with its bold label such as `**문제**:`. Start directly with the source-supported substance: no heading, title, publication metadata, reader recommendation, or closing note.",
   translation:
     'Translate only the text in USER_QUESTION_OR_TARGET. Use PAPER_CONTEXT, LOCAL_BEFORE, and LOCAL_AFTER only to settle what it means; never translate them, mention them, or name their tags. Use exactly one matching mode. SHORT ENGLISH SELECTION OF 1-5 WORDS: return JSON only as {"meanings":["...","...","..."]}, with one to three distinct Korean meanings ordered by fit to the surrounding context and the best contextual meaning first; use dictionary forms for a single word and natural phrase translations for a multi-word selection; the terminology tiers do not apply here, so always give Korean meanings; do not echo the selected text, add labels, examples, commentary, or Markdown. SENTENCE, PARAGRAPH, OR PAGE: return only the Korean translation, preserving paragraph breaks and any existing Markdown headings, lists, emphasis, display-math blocks, citations, and section order; never invent a heading. Write math that is not already LaTeX as valid LaTeX, using $...$ inline or $$...$$ on separate lines.',
   page_structure:
@@ -103,6 +103,16 @@ export function systemPromptForRequest(action: AiAction, model?: string): string
   return systemPromptFor(action)
 }
 
+/**
+ * The overview sends up to the whole paper before its fixed target, so the task is restated
+ * last: at 200K characters, a format given only in the system prompt was lost.
+ */
+const overviewActions: ReadonlySet<AiAction> = new Set([
+  "keywords",
+  "three_line_summary",
+  "paper_summary",
+])
+
 export function userInputFor(request: AiRequest): string {
   return [
     `<CURRENT_PAGE>${request.page}</CURRENT_PAGE>`,
@@ -116,6 +126,9 @@ export function userInputFor(request: AiRequest): string {
     request.before ? `<LOCAL_BEFORE>\n${request.before}\n</LOCAL_BEFORE>` : "",
     `<USER_QUESTION_OR_TARGET>\n${request.quote}\n</USER_QUESTION_OR_TARGET>`,
     request.after ? `<LOCAL_AFTER>\n${request.after}\n</LOCAL_AFTER>` : "",
+    overviewActions.has(request.action)
+      ? `<TASK>\n${actionInstruction[request.action]}\n</TASK>`
+      : "",
   ]
     .filter(Boolean)
     .join("\n\n")

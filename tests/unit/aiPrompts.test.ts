@@ -39,6 +39,26 @@ describe("research prompt routing contract", () => {
     expect(input).toContain("<USER_QUESTION_OR_TARGET>\ntarget\n</USER_QUESTION_OR_TARGET>")
   })
 
+  it("restates an overview task after the whole paper, and only for the overview", () => {
+    for (const action of ["keywords", "three_line_summary", "paper_summary"] as const) {
+      const input = userInputFor({ ...request, action, paperContext: "x".repeat(200_000) })
+      const task = input.slice(input.lastIndexOf("<TASK>"))
+
+      expect(input.indexOf("<TASK>")).toBeGreaterThan(input.indexOf("</PAPER_CONTEXT>"))
+      expect(input.endsWith("</TASK>")).toBe(true)
+      expect(systemPromptFor(action)).toContain(task.slice("<TASK>\n".length, -"\n</TASK>".length))
+    }
+    for (const action of ["figure", "chat", "translation"] as const)
+      expect(userInputFor({ ...request, action })).not.toContain("<TASK>")
+  })
+
+  it("keeps overview answers to their own format", () => {
+    expect(systemPromptFor("keywords")).toContain("Return only five Markdown bullets")
+    expect(systemPromptFor("three_line_summary")).toContain("Return only three")
+    expect(systemPromptFor("paper_summary")).toContain("no heading")
+    expect(systemPromptFor("paper_summary")).toContain("Never write HTML tags")
+  })
+
   it("uses the delimiter protocol for the dedicated Hy-MT2 translator", () => {
     expect(systemPromptForRequest("page_translation", "tencent/hy-mt2-1.8b")).toContain(
       "@@BLOCK_ID@@",
