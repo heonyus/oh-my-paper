@@ -6,8 +6,8 @@ import { AppStatusOverlays } from "../renderer/components/AppStatusOverlays"
 import { LibraryHome } from "../renderer/components/LibraryHome"
 import { appShellStyle } from "../renderer/lib/uiFontScale"
 import { useAppWorkspace } from "../renderer/lib/useAppWorkspace"
+import { analysedPaperCount } from "../shared/documentAnalysis"
 import { type DocumentId, documentIdSchema } from "../shared/schemas"
-import { EngineSetupProgress } from "./EngineSetupProgress"
 import { StarInvite } from "./star/StarInvite"
 import { FeatureTips } from "./tips/FeatureTips"
 import { TipsGallery } from "./tips/TipsGallery"
@@ -122,13 +122,10 @@ export function ReaderApp(): JSX.Element {
     return (
       <WebOnboarding
         status={app.provider}
-        ocrStatus={app.ocrStatus}
-        onDone={(next, options) => {
+        onDone={(next) => {
           app.setProvider(next)
           if (welcome.state !== "pending") return
           welcome.finish()
-          // Clips already watched while the engine downloaded are not shown again.
-          if (options?.watchedTips) return
           setTipsFromStart(true)
           setTipsOpen(true)
         }}
@@ -270,8 +267,6 @@ export function ReaderApp(): JSX.Element {
             onImport={() => void app.importPdf()}
             onFileDrop={(files) => void app.importDroppedPdfs(files)}
             importProgress={app.importProgress}
-            analysisJobs={app.documentAnalysisJobs}
-            onRetryAnalysis={(id) => void window.ohmypaper.retryDocumentAnalysis(id)}
             onDeleteDocument={app.deleteDocument}
           />
         ) : (
@@ -350,7 +345,6 @@ export function ReaderApp(): JSX.Element {
         <TipsGallery
           {...(tipsFromStart ? { initialFocus: 0 } : {})}
           onClose={() => setTipsOpen(false)}
-          status={<EngineSetupProgress status={app.ocrStatus} />}
         />
       ) : (
         <FeatureTips
@@ -370,6 +364,10 @@ export function ReaderApp(): JSX.Element {
             open
             status={app.provider}
             ocrStatus={app.ocrStatus}
+            documentAnalysis={{
+              analysed: analysedPaperCount(app.documentAnalysisJobs, workspace.documents.length),
+              total: workspace.documents.length,
+            }}
             workspace={workspace}
             onWorkspaceChange={app.setWorkspaceTransient}
             onProviderChange={app.setProvider}

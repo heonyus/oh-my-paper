@@ -10,6 +10,7 @@ export function AppSettingsDialog({
   open,
   status,
   ocrStatus,
+  documentAnalysis,
   workspace,
   onWorkspaceChange,
   onProviderChange,
@@ -22,6 +23,7 @@ export function AppSettingsDialog({
   readonly open: boolean
   readonly status: ProviderStatus
   readonly ocrStatus: DocumentOcrProviderStatus
+  readonly documentAnalysis?: { readonly analysed: number; readonly total: number } | undefined
   readonly workspace: Workspace
   readonly onWorkspaceChange: (workspace: Workspace) => void
   readonly onProviderChange: (status: ProviderStatus) => void
@@ -36,6 +38,7 @@ export function AppSettingsDialog({
     <SettingsModal
       status={status}
       ocrStatus={ocrStatus}
+      documentAnalysis={documentAnalysis}
       fontScale={workspace.uiFontScale}
       minimapVisible={workspace.minimapVisible}
       theme={workspace.theme}

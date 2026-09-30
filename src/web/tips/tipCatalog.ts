@@ -24,7 +24,7 @@ export const FEATURE_TIPS: readonly FeatureTip[] = [
     anchor: [".library-empty button", ".library-import-button"],
     placement: "below",
     title: "PDF 가져오기",
-    body: "파일을 끌어다 놓거나 버튼을 누르세요. 페이지 구조를 먼저 분석한 뒤 열립니다.",
+    body: "파일을 끌어다 놓거나 버튼을 누르세요. 바로 열어서 읽을 수 있습니다.",
     clip: "/tutorials/import.mp4",
   },
   {

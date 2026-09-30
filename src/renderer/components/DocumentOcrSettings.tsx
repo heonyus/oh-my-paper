@@ -22,10 +22,16 @@ function readiness(status: DocumentOcrProviderStatus): string {
   return "로컬 런타임 준비됨 · 가속 없음"
 }
 
+/**
+ * The OCR engine for whoever looks: whether it is ready or still downloading, and how many papers
+ * it has analysed. It works unseen everywhere else, so this is the one place that says so.
+ */
 export function DocumentOcrSettings({
   status,
+  analysis,
 }: {
   readonly status: DocumentOcrProviderStatus
+  readonly analysis?: { readonly analysed: number; readonly total: number } | undefined
 }): JSX.Element {
   return (
     <fieldset className="settings-group">
@@ -49,6 +55,17 @@ export function DocumentOcrSettings({
           />
         ) : null}
       </div>
+      {analysis && analysis.total > 0 ? (
+        <div className="settings-row">
+          <span>
+            <strong>정밀 분석</strong>
+            <small>그림·표·수식과 원본 배치를 뒤에서 채웁니다. 읽는 논문부터 합니다.</small>
+          </span>
+          <strong>
+            논문 {analysis.total}편 중 {analysis.analysed}편 완료
+          </strong>
+        </div>
+      ) : null}
     </fieldset>
   )
 }

@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react"
-import { type JSX, type ReactNode, useCallback, useEffect, useRef, useState } from "react"
+import { type JSX, useCallback, useEffect, useRef, useState } from "react"
 import { GITHUB_REPO_URL } from "../../shared/githubStar"
 import { markStarOpened } from "../star/starInviteRules"
 import { TipClip, TipKeys } from "./FeatureTips"
@@ -9,19 +9,14 @@ const COUNT = FEATURE_TIPS.length
 
 /**
  * Every tip in one place, reachable from the header's 사용법 button. A card opens its clip large,
- * one at a time, and a finished clip moves on to the next. The first-run page opens it large from
- * the first clip (`initialFocus`), with the engine download's progress (`status`) and, once that
- * is done, a `primary` action.
+ * one at a time, and a finished clip moves on to the next. The first-run welcome opens it large
+ * from the first clip (`initialFocus`).
  */
 export function TipsGallery({
   onClose,
-  status,
-  primary,
   initialFocus,
 }: {
   readonly onClose: () => void
-  readonly status?: ReactNode
-  readonly primary?: { readonly label: string; readonly onClick: () => void } | undefined
   readonly initialFocus?: number
 }): JSX.Element {
   const closeRef = useRef<HTMLButtonElement>(null)
@@ -77,7 +72,6 @@ export function TipsGallery({
             <X size={16} />
           </button>
         </header>
-        {status}
         {focused && focus !== null ? (
           <div className="tips-gallery-focus">
             <TipClip
@@ -151,11 +145,6 @@ export function TipsGallery({
           >
             {reset ? "기능을 처음 열 때 다시 보여줍니다" : "팁 다시 보기"}
           </button>
-          {primary ? (
-            <button type="button" className="tips-gallery-primary" onClick={primary.onClick}>
-              {primary.label}
-            </button>
-          ) : null}
         </footer>
       </section>
     </div>

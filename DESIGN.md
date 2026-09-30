@@ -22,9 +22,9 @@ a terminal install that explains itself, and short per-feature tutorials.
   usage tour); OCR comes before AI so its download overlaps the sign-in. The AI step lists ChatGPT
   first and preselects it; only a connection this app saved moves the cursor to `지금 연결 유지` (a Claude
   Code login on the machine alone does not). The OCR step (owner request, 2026-09-30) defaults to
-  Yes and never blocks: the setup runs detached, fetches the model in ranges from Hugging Face and
-  ModelScope at once (SHA-256 checked), a paper imported meanwhile waits for the engine instead of
-  failing, logs to `~/.ohmypaper/paddle-vl-install.log`, holds a pid lock so only one install runs,
+  Yes and never blocks: the setup runs detached (the wizard says only that it is prepared in the
+  background), fetches the model in ranges from Hugging Face and ModelScope at once (SHA-256
+  checked), logs to `~/.ohmypaper/paddle-vl-install.log`, holds a pid lock so only one install runs,
   and `doctor` and 설정 show `설치 중` until the readiness marker switches the engine on without a
   restart.
 - Feature tips: the first time a screen shows a feature's control, one small anchored tip
@@ -155,16 +155,24 @@ hidden until the user connects ChatGPT subscription login or saves a personal AP
 clicks and never expose credentials. A fresh data folder shows the same page even when
 the terminal wizard already connected AI (owner request, 2026-09-30): it opens on the done
 step (`준비됐습니다 · … 연결됨`), and `시작하기` opens the 사용법 clips once and starts the
-feature tips over. While the OCR engine still downloads, the connect and ready steps show its
-progress (`문서 분석 엔진 내려받는 중 42% · 약 3분 남음`); the ready step reads `거의
-준비됐습니다` with `사용법 영상 보며 기다리기` (the clips, with the same bar) and a quiet `기다리지
-않고 시작`. When the download finishes the bar turns into `문서 분석 엔진 준비 완료` and the clips
-offer `시작하기`; clips watched there are not shown again in the library. The data folder records this in `welcome.json`; a folder that already
-holds papers counts as welcomed, and a failed status call skips the welcome. Every imported PDF completes page parsing and
-validation before its reader action becomes available. PDF.js supplies digital text
-and geometry, while local PaddleOCR-VL supplies figures, tables and equations. The
-library shows page-level progress, the active engine and bounded retries; a page that
-cannot be parsed stays visibly failed with a retry action. Parsed pages, translations
+feature tips over. The first-run page never mentions the OCR engine. The data folder records
+the welcome in `welcome.json`; a folder that already holds papers counts as welcomed, and a
+failed status call skips the welcome.
+
+The OCR engine works unseen (owner request, 2026-09-30). Every imported PDF opens and reads at
+once: PDF.js supplies its digital text and geometry, and translation, explanation and notes use
+that page right away, never waiting for the engine. Local PaddleOCR-VL later adds figures,
+tables, equations, headings and the layout of `원본 배치` in the background, whether the engine
+was already there, is still downloading, or arrives later; until it is ready, papers wait
+quietly, never shown as failed. Background analysis follows the reader: the paper on screen
+first, then its next three pages, the page being read, the rest ahead and finally the pages
+already passed (`readingPageOrder`), then the other papers. A page's upgrade lands at once
+wherever the reader is not; the page being read, and the page the translation pane shows, keep
+what they show until the reader leaves them, and translations of unchanged sentences are reused
+when the page is shown again. Overlay boxes over the PDF only add and may appear on the page
+being read. The library task list shows imports only; 설정 › AI 모델 alone, for whoever looks,
+shows the engine (`설치 중 42% · 약 1분 남음` or ready) and `논문 N편 중 M편 완료`, and `oh-my-paper
+doctor` prints the same. Parsed pages, translations
 and paper insights reuse their persistent caches; source distributions contain no
 user keys.
 

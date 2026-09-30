@@ -27,6 +27,7 @@ type SettingsModalProps = {
   readonly onSave: (config: ProviderConfig) => Promise<void>
   readonly onModeSave?: (mode: AiMode) => Promise<void>
   readonly ocrStatus?: DocumentOcrProviderStatus | undefined
+  readonly documentAnalysis?: { readonly analysed: number; readonly total: number } | undefined
   readonly onFontScaleChange: (scale: number) => void
   readonly onMinimapVisibleChange?: ((visible: boolean) => void) | undefined
   readonly theme?: AppearanceTheme | undefined
@@ -57,6 +58,7 @@ export function SettingsModal({
   appearanceOnly = false,
   hostedCredentials,
   ocrStatus,
+  documentAnalysis,
   openRouterRequired = false,
   locked = false,
 }: SettingsModalProps): JSX.Element {
@@ -209,7 +211,9 @@ export function SettingsModal({
                     ) : null}
                   </>
                 )}
-                {ocrStatus && !locked ? <DocumentOcrSettings status={ocrStatus} /> : null}
+                {ocrStatus && !locked ? (
+                  <DocumentOcrSettings status={ocrStatus} analysis={documentAnalysis} />
+                ) : null}
                 {!openRouterRequired && window.ohmypaper?.localInference ? (
                   <LocalAiPanel
                     api={window.ohmypaper.localInference}

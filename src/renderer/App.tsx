@@ -1,4 +1,5 @@
 import { type JSX, lazy, Suspense, useState } from "react"
+import { analysedPaperCount } from "../shared/documentAnalysis"
 import { LibraryTopbar, Topbar, type WebAccount } from "./components/AppChrome"
 import { AppStatusOverlays } from "./components/AppStatusOverlays"
 import type { HostedCredentialSettingsProps } from "./components/HostedCredentialSettings"
@@ -107,6 +108,10 @@ export function App({
             locked
             status={provider}
             ocrStatus={ocrStatus}
+            documentAnalysis={{
+              analysed: analysedPaperCount(documentAnalysisJobs, workspace.documents.length),
+              total: workspace.documents.length,
+            }}
             workspace={workspace}
             onWorkspaceChange={app.setWorkspaceTransient}
             onProviderChange={app.setProvider}
@@ -175,8 +180,6 @@ export function App({
           onFileDrop={(files) => void importDroppedPdfs(files)}
           importLabel={platform === "web" ? "PDF 업로드 및 분석" : "PDF 가져오기"}
           importProgress={importProgress}
-          analysisJobs={documentAnalysisJobs}
-          onRetryAnalysis={(id) => void window.ohmypaper.retryDocumentAnalysis(id)}
           onSelect={openDocument}
         />
       </div>
