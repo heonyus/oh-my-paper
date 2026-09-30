@@ -148,14 +148,10 @@ async function offerOcr(report: Awaited<ReturnType<typeof checkEnvironment>>): P
     log.success("문서 분석 엔진은 뒤에서 준비하고 있어요")
     return
   }
-  if (!report.uvAvailable) {
-    log.warn(
-      "설치에는 uv가 필요합니다 — https://docs.astral.sh/uv/ 설치 후 npm run setup:paddle-vl",
-    )
-    return
-  }
+  // Without uv the install fetches its own copy (and uv its own Python), so it is still offered.
+  const size = report.uvAvailable ? "약 3GB" : "약 3GB · 필요한 uv도 함께 설치"
   const install = await confirm({
-    message: `설치할까요? ${dim("약 3GB · AI를 연결하는 동안 백그라운드로 받아 둡니다")}`,
+    message: `설치할까요? ${dim(`${size} · AI를 연결하는 동안 백그라운드로 받아 둡니다`)}`,
     initialValue: true,
   })
   if (isCancel(install) || !install) {

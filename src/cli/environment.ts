@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process"
-import { closeSync, mkdirSync, openSync } from "node:fs"
+import { closeSync, existsSync, mkdirSync, openSync } from "node:fs"
 import { access } from "node:fs/promises"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
@@ -49,7 +49,9 @@ export async function checkEnvironment(
     codexRuntime: codexAvailable,
     ocrReady,
     ocrInstalling: !ocrReady && paddleInstallRunning(homedir()),
-    uvAvailable: findOnPath("uv") !== null,
+    // The OCR install keeps its own uv beside the runtimes when the computer has none.
+    uvAvailable:
+      findOnPath("uv") !== null || existsSync(join(homedir(), ".ohmypaper", "tools", "uv", "uv")),
     nodeModules,
   }
 }
