@@ -15,6 +15,9 @@ const ko = {
 
   // Thread
   "thread.heroTitle": "무엇을 배우고 싶으세요?",
+  "thread.trendingExample": "최신 LLM 메모리 시스템 연구 동향을 정리해줘",
+  "thread.deepExample": "LLM이 긴 문서를 RAG 없이 기억하게 하는 연구들 정리해줘",
+  "thread.relatedQuestion": '"{title}"와 관련된 최신 연구를 찾아줘',
   "thread.deep": "딥리서치",
   "thread.related": "관련 연구",
   "thread.relatedHint": '"{title}" 관련 최신 논문',
@@ -88,6 +91,9 @@ const en: Readonly<Record<keyof typeof ko, string>> = {
   "rail.group.older": "Older",
 
   "thread.heroTitle": "What do you want to learn?",
+  "thread.trendingExample": "Summarize recent research on memory systems for LLMs",
+  "thread.deepExample": "Survey research on letting LLMs remember long documents without RAG",
+  "thread.relatedQuestion": 'Find recent research related to "{title}"',
   "thread.deep": "Deep research",
   "thread.related": "Related work",
   "thread.relatedHint": 'Recent papers related to "{title}"',

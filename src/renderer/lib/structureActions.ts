@@ -132,6 +132,7 @@ export function createStructureActionHandler(
       if (structure.kind === "citation") {
         const result = await assessCitationStructure({
           structure,
+          locale: input.locale,
           currentPaperTitle: input.currentPaperTitle,
           onAiRequest: input.onAiRequest,
           onMetadata: (paper) => {

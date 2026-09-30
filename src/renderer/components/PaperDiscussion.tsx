@@ -2,7 +2,7 @@ import { type FormEvent, type JSX, useCallback, useEffect, useRef, useState } fr
 import type { AiHistoryMessage, ProviderStatus } from "../../shared/ipc"
 import type { SourceCitation } from "../lib/chatCitations"
 import { type ChatImage, chatImageFromFile } from "../lib/chatImage"
-import { useTranslator } from "../lib/locale"
+import { useLocale, useTranslator } from "../lib/locale"
 import { PaperAiJobError } from "../lib/usePaperAiRequest"
 import { researchMessages } from "../messages/research"
 import type { AiDeltaHandler } from "../types"
@@ -73,6 +73,7 @@ export function PaperDiscussion({
   ) => Promise<string>
 }): JSX.Element {
   const t = useTranslator(researchMessages)
+  const { locale } = useLocale()
   // Read through a ref so a language switch does not reload the conversation.
   const stoppedRef = useRef(t("discussion.stopped"))
   stoppedRef.current = t("discussion.stopped")
@@ -115,7 +116,7 @@ export function PaperDiscussion({
 
   function selectImage(file: File): void {
     setImageError("")
-    chatImageFromFile(file)
+    chatImageFromFile(file, locale)
       .then(setImage)
       .catch((error: unknown) =>
         setImageError(error instanceof Error ? error.message : t("discussion.imageFailed")),

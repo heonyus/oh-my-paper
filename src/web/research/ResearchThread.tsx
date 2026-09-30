@@ -13,8 +13,6 @@ export type { PaperOpenState } from "./ResearchPaperCard"
 
 // The example questions are sent to the research agent as written, so they stay in Korean
 // until the agent's prompts speak the reader's language.
-const trendingExample = "최신 LLM 메모리 시스템 연구 동향을 정리해줘"
-const deepExample = "LLM이 긴 문서를 RAG 없이 기억하게 하는 연구들 정리해줘"
 /** Follow new steps only while the reader is already at the bottom of the thread. */
 const stickToBottomPx = 160
 
@@ -52,6 +50,9 @@ export function ResearchThread({
   readonly onOpenInReader: (paper: AgentPaper) => void
 }): JSX.Element {
   const t = useTranslator(researchViewMessages)
+  // Example questions go out as the question itself, in the reader's language.
+  const trendingExample = t("thread.trendingExample")
+  const deepExample = t("thread.deepExample")
   const related = documents[0]?.title
   const messagesRef = useRef<HTMLOListElement>(null)
   const pinnedRef = useRef(true)
@@ -108,7 +109,7 @@ export function ResearchThread({
             type="button"
             className="research-suggestion"
             disabled={!related}
-            onClick={() => onSend(`"${related ?? ""}"와 관련된 최신 연구를 찾아줘`)}
+            onClick={() => onSend(t("thread.relatedQuestion", { title: related ?? "" }))}
           >
             <LibraryBig size={14} aria-hidden="true" />
             <strong>{t("thread.related")}</strong>
