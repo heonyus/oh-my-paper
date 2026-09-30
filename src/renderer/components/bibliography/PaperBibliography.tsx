@@ -24,7 +24,7 @@ export function PaperBibliography({
           if (active) setPaper(value)
         })
         .catch(() => {
-          if (active) setError("서지 정보를 불러오지 못했습니다.")
+          if (active) setError("논문 정보를 불러오지 못했습니다.")
         })
     return () => {
       active = false
@@ -32,7 +32,7 @@ export function PaperBibliography({
   }, [api, id])
   if (!api) return null
   if (error) return <p role="alert">{error}</p>
-  if (!paper) return <p role="status">서지 정보를 여는 중…</p>
+  if (!paper) return <p role="status">논문 정보를 여는 중…</p>
   return (
     <PaperBibliographyPanel
       paper={paper}

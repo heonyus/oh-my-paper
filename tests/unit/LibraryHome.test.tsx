@@ -103,6 +103,7 @@ describe("LibraryHome", () => {
     )
 
     expect(screen.getByText("첫 PDF를 가져오세요")).toBeVisible()
+    expect(screen.getByText(/제목·저자 같은 논문 정보와 읽기 상태/)).toBeVisible()
     const emptyImport = screen.getAllByRole("button", { name: "PDF 가져오기" }).at(-1)
     if (!emptyImport) throw new Error("empty library import action is missing")
     fireEvent.click(emptyImport)

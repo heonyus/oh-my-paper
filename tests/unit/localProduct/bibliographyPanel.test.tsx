@@ -49,7 +49,7 @@ describe("PaperBibliographyPanel", () => {
     )
 
     // When
-    fireEvent.click(screen.getByRole("button", { name: "서지 정보 저장" }))
+    fireEvent.click(screen.getByRole("button", { name: "논문 정보 저장" }))
 
     // Then
     expect(await screen.findByText(/Potential duplicate/u)).toBeVisible()
