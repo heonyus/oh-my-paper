@@ -6,7 +6,7 @@ import type { CodexSubscriptionAdapter } from "../electron/codexSubscriptionAdap
 import { ProviderConfigurationError } from "../electron/providerConfigStore"
 import { DEFAULT_CLAUDE_EFFORT, DEFAULT_CLAUDE_MODEL } from "../shared/claudeTypes"
 import { CODEX_DEFAULT_MODEL } from "../shared/codexTypes"
-import { type aiRequestSchema, aiResultSchema } from "../shared/ipc"
+import { type aiRequestSchema, aiResultSchema, type CodexReasoningEffort } from "../shared/ipc"
 import { pageStructureResponseFormat } from "../shared/pageStructure"
 import { pageTranslationResponseFormat } from "../shared/pageTranslationProtocol"
 
@@ -77,7 +77,7 @@ export async function runWithCodex(
     prompt: flatten(requestMessages(request)),
     imageDataUrl: request.imageDataUrl,
     model,
-    reasoningEffort: settings.codexReasoningEffort,
+    reasoningEffort: codexEffortFor(request.action, settings.codexReasoningEffort),
     ...(options.onDelta ? { onDelta: options.onDelta } : {}),
     ...(options.signal ? { signal: options.signal } : {}),
   })
@@ -94,13 +94,33 @@ function claudeOutputSchema(
 }
 
 /**
- * A page-wide translation is long and literal, and thinking only delays it: Haiku 4.5, which
- * takes no effort level, thought for 80 s over two sentences, so a full page ran past the job
- * timeout and was never translated. API mode keeps reasoning at its lowest for these turns;
- * the CLI's lowest is no thinking.
+ * Translations, titles and the paper overview, where thinking only delays the answer. On
+ * Haiku 4.5 at medium effort a paragraph's translation took 110 s against 6 s without it, and
+ * the three overview answers 33–90 s against 6–8 s, with answers as good. API mode keeps
+ * reasoning at its lowest for these turns; the CLI's lowest is no thinking. Explanations and
+ * conversations keep the effort the reader chose (an explanation took 16 s against 14 s).
  */
+const QUICK_ACTIONS: ReadonlySet<AiRequest["action"]> = new Set([
+  "page_translation",
+  "page_structure",
+  "translation",
+  "card_title",
+  "keywords",
+  "three_line_summary",
+  "paper_summary",
+])
+
 function claudeThinks(action: AiRequest["action"]): boolean {
-  return action !== "page_translation" && action !== "page_structure"
+  return !QUICK_ACTIONS.has(action)
+}
+
+/** ChatGPT mode's quick turns run at `low`, which every model accepts, unless less was chosen. */
+export function codexEffortFor(
+  action: AiRequest["action"],
+  chosen: CodexReasoningEffort | undefined,
+): CodexReasoningEffort | undefined {
+  if (!QUICK_ACTIONS.has(action)) return chosen
+  return chosen === "none" || chosen === "minimal" ? chosen : "low"
 }
 
 /** System messages become the CLI system prompt; the rest is sent as one user turn. */

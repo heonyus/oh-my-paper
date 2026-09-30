@@ -1,8 +1,14 @@
 import { type JSX, useCallback, useEffect, useRef, useState } from "react"
-import type { AiAction, AiHistoryMessage, ProviderStatus } from "../../shared/ipc"
+import type { AiHistoryMessage, ProviderStatus } from "../../shared/ipc"
 import type { DocumentInsight, DocumentInsightKind } from "../../shared/schemas"
 import type { SourceCitation } from "../lib/chatCitations"
 import { keywordEntries } from "../lib/keywordEntries"
+import {
+  OVERVIEW_ACTIONS,
+  overviewRequestKey,
+  overviewRequests,
+  PAPER_LEVEL_TARGET,
+} from "../lib/paperOverview"
 import { paperOverviewContext, preparePaperContextForQuestion } from "../lib/pdfSearch"
 import type { AiDeltaHandler, AiRequestRunner, DocumentRecord } from "../types"
 import { KeywordTags } from "./KeywordTags"
@@ -19,20 +25,16 @@ const initialState: InsightRecord = {
   summary: { value: "", loading: false, error: "" },
 }
 
-const config: Readonly<Record<InsightKey, { readonly title: string; readonly action: AiAction }>> =
-  {
-    keywords: { title: "키워드 사전", action: "keywords" },
-    threeLines: { title: "3줄 요약", action: "three_line_summary" },
-    summary: { title: "요약", action: "paper_summary" },
-  }
-/** The request runner supplies the whole paper as PAPER_CONTEXT for these actions. */
-const paperLevelTarget = "The whole paper supplied in PAPER_CONTEXT."
+const titles: Readonly<Record<InsightKey, string>> = {
+  keywords: "키워드 사전",
+  threeLines: "3줄 요약",
+  summary: "요약",
+}
 /** Bounds of aiHistoryMessageSchema; older turns and longer answers would be rejected. */
 const maxHistoryEntries = 24
 const maxHistoryCharacters = 4_000
 const leadingInsightKeys: readonly InsightKey[] = ["keywords", "threeLines"]
 const overviewInsightKeys: readonly InsightKey[] = [...leadingInsightKeys, "summary"]
-const overviewRequests = new Map<string, Promise<string>>()
 const emptyCachedInsights: readonly DocumentInsight[] = []
 
 /** Keywords read as tags once a term bullet arrives; until then the raw answer shows. */
@@ -105,7 +107,7 @@ export function AiOverviewPanel({
         [key]: { value: "", loading: true, error: "" },
       }))
       try {
-        const requestKey = `${document.id}:${key}`
+        const requestKey = overviewRequestKey(document.id, key)
         const activeRequest = overviewRequests.get(requestKey)
         const request =
           activeRequest ??
@@ -113,9 +115,9 @@ export function AiOverviewPanel({
             const source = paperOverviewContext() || document.overview || document.title
             return onAiRequest(
               {
-                action: config[key].action,
+                action: OVERVIEW_ACTIONS[key],
                 page: 1,
-                quote: paperLevelTarget,
+                quote: PAPER_LEVEL_TARGET,
                 paperContext: source,
                 before: "",
                 after: "",
@@ -143,7 +145,7 @@ export function AiOverviewPanel({
           },
         }))
       } finally {
-        overviewRequests.delete(`${document.id}:${key}`)
+        overviewRequests.delete(overviewRequestKey(document.id, key))
         running.current.delete(key)
       }
     },
@@ -202,23 +204,23 @@ export function AiOverviewPanel({
         {leadingInsightKeys.map((key) => (
           <SidebarInsightSection
             key={key}
-            title={config[key].title}
+            title={titles[key]}
             value={insights[key].value}
             loading={insights[key].loading}
             error={insights[key].error}
             onGenerate={() => void generate(key)}
-            onSave={() => onSave(config[key].title, insights[key].value)}
+            onSave={() => onSave(titles[key], insights[key].value)}
             view={key === "keywords" ? keywordView(insights.keywords.value) : null}
           />
         ))}
         <div className="summary-discussion-flow">
           <SidebarInsightSection
-            title={config.summary.title}
+            title={titles.summary}
             value={insights.summary.value}
             loading={insights.summary.loading}
             error={insights.summary.error}
             onGenerate={() => void generate("summary")}
-            onSave={() => onSave(config.summary.title, insights.summary.value)}
+            onSave={() => onSave(titles.summary, insights.summary.value)}
           />
           <PaperDiscussion
             provider={provider}
