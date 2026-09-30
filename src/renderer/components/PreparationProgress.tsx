@@ -1,21 +1,13 @@
 import { Check, Circle, LoaderCircle, TriangleAlert, X, XCircle } from "lucide-react"
 import type { JSX } from "react"
 import { type PreparationUpdate, preparationSteps } from "../../shared/ipc"
+import { useTranslator } from "../lib/locale"
+import { preparationStepLabels } from "../lib/preparationState"
+import { libraryMessages } from "../messages/library"
 
 type PreparationProgressProps = {
   readonly updates: readonly PreparationUpdate[]
   readonly onClose?: (() => void) | undefined
-}
-
-const labels: Readonly<Record<PreparationUpdate["step"], string>> = {
-  pdf_check: "PDF 확인",
-  register: "문서 등록",
-  layout: "페이지 구성",
-  text_extract: "텍스트 추출",
-  anchors: "앵커 생성",
-  metadata: "메타정보",
-  quality: "품질 검사",
-  ready: "보드 준비 완료",
 }
 
 function StepIcon({
@@ -38,14 +30,15 @@ function StepIcon({
 }
 
 export function PreparationProgress({ updates, onClose }: PreparationProgressProps): JSX.Element {
+  const t = useTranslator(libraryMessages)
   const latest = updates.at(-1)
   return (
-    <aside className="preparation-progress" aria-label="PDF 로컬 준비 진행">
+    <aside className="preparation-progress" aria-label={t("prep.label")}>
       <header>
-        <strong>논문을 보드에 준비하는 중</strong>
+        <strong>{t("prep.title")}</strong>
         <div>
           {onClose ? (
-            <button type="button" aria-label="준비 상태 닫기" onClick={onClose}>
+            <button type="button" aria-label={t("prep.close")} onClick={onClose}>
               <X size={14} />
             </button>
           ) : null}
@@ -58,13 +51,13 @@ export function PreparationProgress({ updates, onClose }: PreparationProgressPro
           return (
             <li key={step} data-state={state}>
               <StepIcon state={state} />
-              <span data-state={state}>{labels[step]}</span>
+              <span data-state={state}>{t(preparationStepLabels[step])}</span>
             </li>
           )
         })}
       </ol>
       <p role="status" aria-live="polite">
-        {latest?.message ?? "준비 대기"}
+        {latest?.message ?? t("prep.waiting")}
       </p>
     </aside>
   )

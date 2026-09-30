@@ -1,13 +1,11 @@
 import { BookOpen, Trash2 } from "lucide-react"
 import { type JSX, type KeyboardEvent, memo } from "react"
+import { documentKindName } from "../../shared/documentKind"
+import { useLocale, useTranslator } from "../lib/locale"
+import { libraryMessages } from "../messages/library"
 import type { DocumentId, DocumentRecord } from "../types"
 import { DocumentThumbnail } from "./DocumentThumbnail"
-import {
-  documentAuthors,
-  documentKindLabels,
-  formatImportedAt,
-  normalizedReadingPage,
-} from "./library-home-formatting"
+import { documentAuthors, formatImportedAt, normalizedReadingPage } from "./library-home-formatting"
 
 export type LibraryDocumentRowActions = {
   readonly preview: (id: DocumentId) => void
@@ -50,13 +48,15 @@ export const LibraryDocumentRow = memo(function LibraryDocumentRow({
   readonly canDelete: boolean
   readonly actions: LibraryDocumentRowActions
 }): JSX.Element {
+  const { locale } = useLocale()
+  const t = useTranslator(libraryMessages)
   const readingPage = normalizedReadingPage(document)
   return (
     <li className={selected ? "is-selected" : undefined}>
       <button
         type="button"
         className="library-document-preview"
-        aria-label={`${document.title} 미리보기`}
+        aria-label={t("row.preview", { title: document.title })}
         aria-pressed={selected}
         onClick={() => actions.preview(document.id)}
         onKeyDown={moveFocus}
@@ -64,34 +64,36 @@ export const LibraryDocumentRow = memo(function LibraryDocumentRow({
         <DocumentThumbnail document={document} />
         <span className="library-document-copy">
           <strong>{document.title}</strong>
-          <span>{documentAuthors(document)}</span>
+          <span>{documentAuthors(document, locale)}</span>
           <small>
-            {document.year ?? "연도 미상"} · {documentKindLabels[document.kind]}
-            {readingPage ? ` · ${readingPage}/${document.pageCount}페이지` : ""}
+            {document.year ?? t("row.unknownYear")} · {documentKindName(document.kind, locale)}
+            {readingPage
+              ? ` · ${t("row.readingPage", { page: readingPage, total: document.pageCount })}`
+              : ""}
           </small>
         </span>
       </button>
       <button
         type="button"
         className="library-document-open"
-        aria-label={`${document.title} 열기`}
+        aria-label={t("row.openLabel", { title: document.title })}
         onClick={() => actions.openReader(document.id)}
       >
         <BookOpen size={15} aria-hidden="true" />
-        <span>열기</span>
+        <span>{t("row.open")}</span>
       </button>
       {canDelete ? (
         <button
           type="button"
           className="library-document-delete"
-          aria-label={`${document.title} 삭제`}
-          title="라이브러리에서 삭제"
+          aria-label={t("row.deleteLabel", { title: document.title })}
+          title={t("delete.action")}
           onClick={() => actions.requestDelete(document.id)}
         >
           <Trash2 size={15} aria-hidden="true" />
         </button>
       ) : null}
-      <span className="library-document-date">{formatImportedAt(document.importedAt)}</span>
+      <span className="library-document-date">{formatImportedAt(document.importedAt, locale)}</span>
     </li>
   )
 })

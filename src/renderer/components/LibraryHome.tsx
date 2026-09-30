@@ -3,9 +3,12 @@ import {
   type DocumentAnalysisSnapshot,
   emptyDocumentAnalysisSnapshot,
 } from "../../shared/documentAnalysis"
+import type { MessageParams } from "../../shared/i18n/locale"
 import type { ImportProgress } from "../../shared/ipc"
 import type { KnowledgeNodeId } from "../../shared/knowledgeSchemas"
 import type { KnowledgeClientOps } from "../lib/knowledgeTypes"
+import { useTranslator } from "../lib/locale"
+import { countKey, type LibraryMessageKey, libraryMessages } from "../messages/library"
 import type { DocumentId, DocumentRecord } from "../types"
 import type { LibraryFilter } from "./LibraryCollectionSidebar"
 import type { LibraryView } from "./LibraryDocumentList"
@@ -42,11 +45,16 @@ type LibraryHomeProps = {
   readonly onDeleteDocument?: ((id: DocumentId) => Promise<void>) | undefined
 }
 
-function collectionFailureMessage(cause: unknown): string {
+/** A collection problem to show: catalog wording, or the message the failure carried. */
+type CollectionNotice =
+  | { readonly key: LibraryMessageKey; readonly params?: MessageParams }
+  | { readonly text: string }
+
+function collectionFailureMessage(cause: unknown): CollectionNotice {
   if (cause instanceof Error && cause.message.length < 160 && !cause.message.includes("ZodError")) {
-    return cause.message
+    return { text: cause.message }
   }
-  return "컬렉션을 불러오지 못했습니다. 다시 시도하세요."
+  return { key: "home.collectionsLoadFailed" }
 }
 
 export function LibraryHome({
@@ -63,7 +71,7 @@ export function LibraryHome({
   active = true,
   onImport,
   onFileDrop,
-  importLabel = "PDF 가져오기",
+  importLabel,
   importProgress = [],
   analysisJobs = emptyDocumentAnalysisSnapshot,
   onRetryAnalysis,
@@ -71,6 +79,7 @@ export function LibraryHome({
   recentPage,
   onDeleteDocument,
 }: LibraryHomeProps): JSX.Element {
+  const t = useTranslator(libraryMessages)
   const [query, setQuery] = useState("")
   const [dragging, setDragging] = useState(false)
   const [filter, setFilter] = useState<LibraryFilter>("all")
@@ -80,7 +89,7 @@ export function LibraryHome({
   const [selectedCollectionId, setSelectedCollectionId] = useState<
     LibraryCollection["board"]["id"] | null
   >(null)
-  const [collectionError, setCollectionError] = useState<string | null>(null)
+  const [collectionError, setCollectionError] = useState<CollectionNotice | null>(null)
   const [membershipBusyKey, setMembershipBusyKey] = useState<string | null>(null)
   const membershipBusyKeys = useRef(new Set<string>())
   const refreshGeneration = useRef(0)
@@ -105,9 +114,11 @@ export function LibraryHome({
         (collection) => collection.placementLoadFailed,
       ).length
       setCollectionError(
-        failures > 0 || failedBoards > 0
-          ? `${failures > 0 ? `${failures}개 문서의 연결` : "일부 컬렉션"}을 확인하지 못했습니다. 다시 불러오세요.`
-          : null,
+        failures > 0
+          ? { key: countKey("home.collectionLinksFailed", failures), params: { count: failures } }
+          : failedBoards > 0
+            ? { key: "home.someCollectionsFailed" }
+            : null,
       )
       return true
     } catch (cause: unknown) {
@@ -173,15 +184,14 @@ export function LibraryHome({
                 },
               ],
         )
-        setCollectionError(
-          (current) =>
-            current ?? "컬렉션은 저장됐지만 목록을 새로 고치지 못했습니다. 다시 불러오세요.",
-        )
+        setCollectionError((current) => current ?? { key: "home.collectionListStale" })
       }
       setSelectedCollectionId(board.id)
       return true
     } catch (cause: unknown) {
-      setCollectionError(cause instanceof Error ? cause.message : "컬렉션을 만들지 못했습니다.")
+      setCollectionError(
+        cause instanceof Error ? { text: cause.message } : { key: "home.collectionCreateFailed" },
+      )
       return false
     }
   }
@@ -206,7 +216,7 @@ export function LibraryHome({
       await refreshCollections()
     } catch (cause: unknown) {
       setCollectionError(
-        cause instanceof Error ? cause.message : "컬렉션을 업데이트하지 못했습니다.",
+        cause instanceof Error ? { text: cause.message } : { key: "home.collectionUpdateFailed" },
       )
     } finally {
       membershipBusyKeys.current.delete(busyKey)
@@ -218,7 +228,7 @@ export function LibraryHome({
     <section
       className="library-home"
       data-dragging={dragging}
-      aria-label="PDF 라이브러리"
+      aria-label={t("home.label")}
       onDragOver={(event) => {
         event.preventDefault()
         setDragging(true)
@@ -249,9 +259,15 @@ export function LibraryHome({
         sidebarCollapsed={sidebarCollapsed}
         collections={collections}
         selectedCollectionId={selectedCollectionId}
-        importLabel={importLabel}
+        importLabel={importLabel ?? t("home.import")}
         hasActiveImport={hasActiveImport}
-        collectionError={collectionError}
+        collectionError={
+          collectionError === null
+            ? null
+            : "text" in collectionError
+              ? collectionError.text
+              : t(collectionError.key, collectionError.params)
+        }
         membershipBusyKey={membershipBusyKey}
         onRetryCollections={() => void refreshCollections()}
         active={active}

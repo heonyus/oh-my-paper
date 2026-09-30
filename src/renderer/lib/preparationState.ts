@@ -1,23 +1,30 @@
+import type { Locale } from "../../shared/i18n/locale"
 import { type PreparationUpdate, preparationSteps } from "../../shared/ipc"
 import type { DocumentId, Workspace } from "../../shared/schemas"
+import { type LibraryMessageKey, libraryMessages } from "../messages/library"
 import type { PreparedSummary } from "./pdfDocumentFeatures"
 
-const labels: Readonly<Record<PreparationUpdate["step"], string>> = {
-  pdf_check: "PDF 확인",
-  register: "문서 등록",
-  layout: "페이지 구성",
-  text_extract: "텍스트 추출",
-  anchors: "앵커 생성",
-  metadata: "메타정보",
-  quality: "품질 검사",
-  ready: "보드 준비 완료",
-}
+/** The catalog key naming each preparation step. */
+export const preparationStepLabels: Readonly<Record<PreparationUpdate["step"], LibraryMessageKey>> =
+  {
+    pdf_check: "prep.step.pdf_check",
+    register: "prep.step.register",
+    layout: "prep.step.layout",
+    text_extract: "prep.step.text_extract",
+    anchors: "prep.step.anchors",
+    metadata: "prep.step.metadata",
+    quality: "prep.step.quality",
+    ready: "prep.step.ready",
+  }
 
-export function completedPreparation(summary: PreparedSummary): readonly PreparationUpdate[] {
+export function completedPreparation(
+  summary: PreparedSummary,
+  locale: Locale,
+): readonly PreparationUpdate[] {
   return preparationSteps.map((step) => ({
     step,
     state: step === "quality" && summary.needsOcr ? "warning" : "complete",
-    message: labels[step],
+    message: libraryMessages[locale][preparationStepLabels[step]],
   }))
 }
 

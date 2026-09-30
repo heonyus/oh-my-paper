@@ -2,6 +2,8 @@ import { ExternalLink, FileText, Link2 } from "lucide-react"
 import { type JSX, useEffect, useState } from "react"
 import type { KnowledgeNode } from "../../shared/knowledgeSchemas"
 import type { KnowledgeClientOps } from "../lib/knowledgeTypes"
+import { useTranslator } from "../lib/locale"
+import { libraryMessages } from "../messages/library"
 import type { DocumentRecord } from "../types"
 
 type SavedPaper = {
@@ -95,9 +97,10 @@ export function LibrarySavedPapers({
   readonly onOpenExternal: ((url: string) => void) | undefined
   readonly active?: boolean | undefined
 }): JSX.Element | null {
+  const t = useTranslator(libraryMessages)
   const [papers, setPapers] = useState<readonly SavedPaper[]>([])
   const [truncated, setTruncated] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
   const [reloadToken, setReloadToken] = useState(0)
 
   useEffect(() => {
@@ -123,43 +126,36 @@ export function LibrarySavedPapers({
         if (!isCurrent || requestToken !== reloadToken) return
         setPapers(nodes.filter((node) => !linkedToLocalDocument(node, documents)).map(savedPaper))
         setTruncated(nextTruncated)
-        setError(null)
+        setFailed(false)
       })
       .catch(() => {
         if (!isCurrent || requestToken !== reloadToken) return
-        setError("저장한 논문을 불러오지 못했습니다. 다시 시도하세요.")
+        setFailed(true)
       })
     return () => {
       isCurrent = false
     }
   }, [active, clientOps, documents, reloadToken])
 
-  if (papers.length === 0 && !error) return null
+  if (papers.length === 0 && !failed) return null
   return (
-    <section className="library-saved-papers" aria-label="저장한 논문">
+    <section className="library-saved-papers" aria-label={t("saved.label")}>
       <div className="library-saved-papers-heading">
         <div>
-          <span className="library-eyebrow">저장한 메타데이터</span>
-          <h2>저장한 논문</h2>
+          <span className="library-eyebrow">{t("saved.eyebrow")}</span>
+          <h2>{t("saved.label")}</h2>
         </div>
-        <span>
-          {papers.length}
-          {truncated ? "+" : ""}개
-        </span>
+        <span>{t("saved.count", { count: `${papers.length}${truncated ? "+" : ""}` })}</span>
       </div>
-      {error ? (
+      {failed ? (
         <div className="library-saved-papers-error" role="alert">
-          <p>{error}</p>
+          <p>{t("saved.loadFailed")}</p>
           <button type="button" onClick={() => setReloadToken((value) => value + 1)}>
-            다시 불러오기
+            {t("saved.reload")}
           </button>
         </div>
       ) : null}
-      {truncated ? (
-        <p className="library-saved-papers-note">
-          저장한 논문이 많아 처음 1,000개까지만 표시합니다.
-        </p>
-      ) : null}
+      {truncated ? <p className="library-saved-papers-note">{t("saved.truncated")}</p> : null}
       <ul>
         {papers.map((paper) => (
           <li key={paper.node.id}>
@@ -171,7 +167,7 @@ export function LibrarySavedPapers({
               <p>
                 {[paper.authors.slice(0, 3).join(", "), paper.year, paper.venue]
                   .filter(Boolean)
-                  .join(" · ") || "논문 정보 확인 필요"}
+                  .join(" · ") || t("saved.noDetails")}
               </p>
               {paper.abstract ? <small>{paper.abstract}</small> : null}
             </div>
@@ -179,7 +175,7 @@ export function LibrarySavedPapers({
               {paper.landingUrl && onOpenExternal ? (
                 <button
                   type="button"
-                  aria-label={`${paper.node.title} 원문 열기`}
+                  aria-label={t("saved.openSource", { title: paper.node.title })}
                   onClick={() => {
                     if (paper.landingUrl) onOpenExternal(paper.landingUrl)
                   }}
@@ -190,7 +186,7 @@ export function LibrarySavedPapers({
               {onOpenNode ? (
                 <button
                   type="button"
-                  aria-label={`${paper.node.title} 논문 정보 열기`}
+                  aria-label={t("saved.openDetails", { title: paper.node.title })}
                   onClick={() => onOpenNode(paper.node.id)}
                 >
                   <Link2 size={15} aria-hidden="true" />

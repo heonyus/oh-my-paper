@@ -1,8 +1,10 @@
 import { FileText } from "lucide-react"
 import { type JSX, memo, type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react"
 import type { Sha256 } from "../../shared/schemas"
+import { useTranslator } from "../lib/locale"
 import type { Thumbnail } from "../lib/thumbnailCache"
 import { documentThumbnails } from "../lib/thumbnailLoader"
+import { libraryMessages } from "../messages/library"
 import type { DocumentRecord } from "../types"
 
 /** Whether the element is within 120px of the viewport; always true without IntersectionObserver. */
@@ -47,6 +49,7 @@ export const DocumentThumbnail = memo(function DocumentThumbnail({
   readonly document: DocumentRecord
 }): JSX.Element {
   const { id, hash, title } = document
+  const t = useTranslator(libraryMessages)
   const host = useRef<HTMLDivElement>(null)
   const near = useNearViewport(host)
   const [loaded, setLoaded] = useState<LoadedThumbnail | null>(null)
@@ -73,7 +76,7 @@ export const DocumentThumbnail = memo(function DocumentThumbnail({
       {url && thumbnail ? (
         <img
           srcSet={`${url} ${thumbnail.density}x`}
-          alt={`${title} 첫 페이지 미리보기`}
+          alt={t("doc.thumbnail", { title })}
           decoding="async"
           onLoad={() => setShownUrl(url)}
         />

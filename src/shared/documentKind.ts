@@ -1,3 +1,4 @@
+import type { Catalog, Locale } from "./i18n/locale"
 import type { DocumentKind } from "./schemas"
 
 const patterns: Readonly<Record<Exclude<DocumentKind, "document">, RegExp>> = {
@@ -20,6 +21,7 @@ export function detectDocumentKind(text: string, pageCount: number): DocumentKin
   return "document"
 }
 
+/** Korean names the AI prompts use; the screen names a kind with `documentKindName`. */
 export const documentKindLabels: Readonly<Record<DocumentKind, string>> = {
   research_paper: "연구 논문",
   report: "보고서",
@@ -27,4 +29,30 @@ export const documentKindLabels: Readonly<Record<DocumentKind, string>> = {
   contract: "계약·정책",
   presentation: "프레젠테이션",
   document: "PDF 문서",
+}
+
+const ko = {
+  research_paper: "논문",
+  report: "보고서",
+  manual: "매뉴얼",
+  contract: "계약서",
+  presentation: "발표 자료",
+  document: "문서",
+} as const satisfies Readonly<Record<DocumentKind, string>>
+
+const en: Readonly<Record<keyof typeof ko, string>> = {
+  research_paper: "Paper",
+  report: "Report",
+  manual: "Manual",
+  contract: "Contract",
+  presentation: "Slides",
+  document: "Document",
+}
+
+/** The short names the library shows for each kind. */
+export const documentKindMessages: Catalog<typeof ko> = { ko, en }
+
+/** A document kind as the library names it, in the app's language. */
+export function documentKindName(kind: DocumentKind, locale: Locale): string {
+  return documentKindMessages[locale][kind]
 }
