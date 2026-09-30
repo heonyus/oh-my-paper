@@ -68,9 +68,10 @@ export function revealWorldRectHorizontally(
   rect: { readonly x: number; readonly width: number },
   padding: number,
 ): Viewport {
+  const left = viewport.x + rect.x * viewport.zoom
   const right = viewport.x + (rect.x + rect.width) * viewport.zoom
-  const overflow = Math.max(0, right - (availableWidth - padding))
-  return overflow > 0 ? { ...viewport, x: viewport.x - overflow } : viewport
+  const shift = left < padding ? padding - left : Math.min(0, availableWidth - padding - right)
+  return shift !== 0 ? { ...viewport, x: viewport.x + shift } : viewport
 }
 
 export function fitWorldRectHorizontally(

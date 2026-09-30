@@ -13,6 +13,7 @@ import { activeDocumentAst } from "./documentAstRuntime"
 import type { DetectedStructure } from "./structureDetector"
 
 export const CARD_WIDTH = 300
+export const CARD_PAGE_GAP = 32
 export const DEFAULT_RESEARCH_CARD_HEIGHT = 420
 export const SHORT_TRANSLATION_CARD_HEIGHT = 180
 export const MINIMIZED_CARD_HEIGHT = 32
@@ -21,6 +22,32 @@ export function initialResearchCardHeight(card: BoardCard): number {
   return card.kind === "translation" && card.anchor.quote.trim().length <= 120
     ? SHORT_TRANSLATION_CARD_HEIGHT
     : DEFAULT_RESEARCH_CARD_HEIGHT
+}
+
+/**
+ * AI cards open in the gutter left of the page: the right side already holds the research
+ * sidebar and page translations.
+ */
+export function cardPlacementBesidePage(page: SourceFragment, source: SourceFragment): Point {
+  return {
+    x: page.x - CARD_PAGE_GAP - CARD_WIDTH,
+    y: Math.max(page.y, source.y - 18),
+  }
+}
+
+/** Curve from the quoted source to whichever card edge faces it. */
+export function connectorPath(card: BoardCard): string {
+  const source = card.anchor.fragments[0]
+  const sourceLeft = source ? source.x : card.anchor.x
+  const sourceRight = source ? source.x + source.width : card.anchor.x
+  const cardWidth = card.width ?? CARD_WIDTH
+  const startY = card.anchor.y
+  const endY = card.y + 28
+  if (card.x + cardWidth / 2 < (sourceLeft + sourceRight) / 2) {
+    const endX = card.x + cardWidth
+    return `M ${sourceLeft} ${startY} C ${sourceLeft - 90} ${startY}, ${endX + 90} ${endY}, ${endX} ${endY}`
+  }
+  return `M ${sourceRight} ${startY} C ${sourceRight + 90} ${startY}, ${card.x - 90} ${endY}, ${card.x} ${endY}`
 }
 
 export const CARD_COPY = {
@@ -146,10 +173,7 @@ export function createStructureCard(input: StructureCardInput): BoardCard {
     body: "",
     sourceKey,
     loading: true,
-    placement: {
-      x: fragment.x + fragment.width + 32,
-      y: Math.max(pageWorld.y, fragment.y - 18),
-    },
+    placement: cardPlacementBesidePage(pageWorld, fragment),
     anchor: ast ? addAstRangesToAnchor(ast, anchor) : anchor,
   })
 }

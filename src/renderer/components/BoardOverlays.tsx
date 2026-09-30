@@ -7,6 +7,7 @@ import {
   Trash2,
 } from "lucide-react"
 import type { CSSProperties, JSX } from "react"
+import { connectorPath } from "../lib/board"
 import type { HighlightFragment } from "../lib/boardHighlights"
 import type { SelectionAction } from "../lib/selectionActions"
 import type { BoardCard } from "../types"
@@ -103,11 +104,9 @@ export function HighlightToolbar({
 export function ConnectorLayer({ cards }: { readonly cards: readonly BoardCard[] }): JSX.Element {
   return (
     <svg className="connector-layer" aria-hidden="true">
-      {cards.map((card) => {
-        const endY = card.y + 28
-        const path = `M ${card.anchor.x} ${card.anchor.y} C ${card.anchor.x + 90} ${card.anchor.y}, ${card.x - 90} ${endY}, ${card.x} ${endY}`
-        return <path key={card.id} d={path} />
-      })}
+      {cards.map((card) => (
+        <path key={card.id} d={connectorPath(card)} />
+      ))}
     </svg>
   )
 }
