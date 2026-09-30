@@ -1,23 +1,6 @@
 import { X } from "lucide-react"
-import {
-  type JSX,
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react"
-import { GITHUB_REPO_URL } from "../../shared/githubStar"
-import { markStarOpened } from "../star/starInviteRules"
-import {
-  FEATURE_TIPS,
-  type FeatureTip,
-  nextTip,
-  readTipState,
-  type TipView,
-  writeTipState,
-} from "./tipCatalog"
+import { type JSX, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { type FeatureTip, nextTip, readTipState, type TipView, writeTipState } from "./tipCatalog"
 
 const TIP_WIDTH = 320
 const EDGE = 12
@@ -37,13 +20,23 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
 }
 
-/** The looping example; it disappears quietly when the clip is missing or cannot play. */
-function TipClip({
+/**
+ * The example clip; it disappears quietly when the clip is missing or cannot play. With reduced
+ * motion it waits for play instead of starting on its own; `controls: false` keeps a thumbnail
+ * that another control opens.
+ */
+export function TipClip({
   src,
   title,
+  loop = true,
+  controls = true,
+  onEnded,
 }: {
   readonly src: string
   readonly title: string
+  readonly loop?: boolean
+  readonly controls?: boolean
+  readonly onEnded?: () => void
 }): JSX.Element | null {
   const [failed, setFailed] = useState(false)
   const reduced = prefersReducedMotion()
@@ -53,18 +46,19 @@ function TipClip({
       className="feature-tip-clip"
       src={src}
       autoPlay={!reduced}
-      controls={reduced}
+      controls={reduced && controls}
       muted
-      loop
+      loop={loop}
       playsInline
       preload="auto"
       aria-label={`${title} 사용 예시`}
       onError={() => setFailed(true)}
+      onEnded={onEnded}
     />
   )
 }
 
-function TipKeys({ tip }: { readonly tip: FeatureTip }): JSX.Element | null {
+export function TipKeys({ tip }: { readonly tip: FeatureTip }): JSX.Element | null {
   if (!tip.keys) return null
   return (
     <p className="feature-tip-keys">
@@ -221,90 +215,6 @@ export function FeatureTips({
       >
         <X size={14} />
       </button>
-    </div>
-  )
-}
-
-/**
- * Every tip in one place, reachable from the header's 사용법 button. The first-run page opens it
- * with the engine download's progress (`status`) and, once that is done, a `primary` action.
- */
-export function TipsGallery({
-  onClose,
-  status,
-  primary,
-}: {
-  readonly onClose: () => void
-  readonly status?: ReactNode
-  readonly primary?: { readonly label: string; readonly onClick: () => void } | undefined
-}): JSX.Element {
-  const closeRef = useRef<HTMLButtonElement>(null)
-  const [reset, setReset] = useState(false)
-
-  useEffect(() => {
-    closeRef.current?.focus()
-    const onKey = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") onClose()
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [onClose])
-
-  return (
-    <div className="tips-gallery-backdrop">
-      <section
-        className="tips-gallery"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="tips-gallery-title"
-      >
-        <header>
-          <div>
-            <h2 id="tips-gallery-title">사용법</h2>
-            <p>기능마다 짧은 영상으로 봅니다.</p>
-          </div>
-          <button ref={closeRef} type="button" aria-label="사용법 닫기" onClick={onClose}>
-            <X size={16} />
-          </button>
-        </header>
-        {status}
-        <ul>
-          {FEATURE_TIPS.map((tip) => (
-            <li key={tip.id}>
-              <TipClip src={tip.clip} title={tip.title} />
-              <h3>{tip.title}</h3>
-              <p>{tip.body}</p>
-              <TipKeys tip={tip} />
-            </li>
-          ))}
-        </ul>
-        <footer>
-          <a
-            className="tips-gallery-star"
-            href={GITHUB_REPO_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={markStarOpened}
-          >
-            ⭐ GitHub에서 별 달기
-          </a>
-          <button
-            type="button"
-            disabled={reset}
-            onClick={() => {
-              writeTipState({ seen: [], off: false })
-              setReset(true)
-            }}
-          >
-            {reset ? "기능을 처음 열 때 다시 보여줍니다" : "팁 다시 보기"}
-          </button>
-          {primary ? (
-            <button type="button" className="tips-gallery-primary" onClick={primary.onClick}>
-              {primary.label}
-            </button>
-          ) : null}
-        </footer>
-      </section>
     </div>
   )
 }
