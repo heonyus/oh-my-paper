@@ -18,6 +18,20 @@ describe("DocumentOcrSettings", () => {
 
   it("says a background install will switch the engine on by itself", () => {
     render(<DocumentOcrSettings status={{ ...missing, installing: true }} />)
-    expect(screen.getByText("설치 중 · 끝나면 자동으로 켜집니다")).toBeVisible()
+    expect(screen.getByText("설치 중")).toBeVisible()
+    expect(screen.getByText(/설치가 끝나면 자동으로 켜집니다/)).toBeVisible()
+  })
+
+  it("shows how far the install is and how long is left", () => {
+    render(
+      <DocumentOcrSettings
+        status={{ ...missing, installing: true, installProgress: { percent: 42, etaSeconds: 150 } }}
+      />,
+    )
+    expect(screen.getByText("설치 중 42% · 약 3분 남음")).toBeVisible()
+    expect(screen.getByRole("progressbar", { name: "OCR 엔진 설치 진행률" })).toHaveAttribute(
+      "value",
+      "42",
+    )
   })
 })

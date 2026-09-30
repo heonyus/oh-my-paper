@@ -1,5 +1,13 @@
 import { spawn, spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -25,8 +33,98 @@ const mlxReadinessMarker = join(mlxRuntimeRoot, ".ready-mlx-v1.6")
 const huggingfaceHub = "huggingface_hub==2.0.0"
 // Beside the runtime folders, matching paddleInstallPaths() in src/electron/paddleInstallState.ts.
 const installLock = join(dirname(runtimeRoot), "paddle-vl-install.pid")
+const installProgress = join(dirname(runtimeRoot), "paddle-vl-install.progress.json")
 
 const children = new Set()
+
+/** Share of the install each part takes; on Apple silicon the model download is the long pole. */
+const weights = appleAcceleration
+  ? { paddle: 5, paddleocr: 10, layout: 5, mlx: 5, model: 65, pipeline: 10 }
+  : { paddle: 15, paddleocr: 25, layout: 15, pipeline: 45 }
+const finished = new Set()
+const model = { total: 1_930_000_000, bytes: 0, samples: [] }
+let installStarted = Date.now()
+
+function directoryBytes(path) {
+  let entries
+  try {
+    entries = readdirSync(path, { withFileTypes: true })
+  } catch {
+    return 0
+  }
+  let total = 0
+  for (const entry of entries) {
+    const child = join(path, entry.name)
+    if (entry.isDirectory()) total += directoryBytes(child)
+    else if (entry.isFile()) {
+      try {
+        total += statSync(child).size
+      } catch {
+        // Moved while counting (a finished download); the next sample sees it.
+      }
+    }
+  }
+  return total
+}
+
+function progressPercent() {
+  let sum = 0
+  let total = 0
+  for (const [key, weight] of Object.entries(weights)) {
+    total += weight
+    if (finished.has(key)) sum += weight
+    else if (key === "model") sum += weight * Math.min(1, model.bytes / model.total)
+  }
+  // 100 means ready, which the readiness marker says, not this file.
+  return Math.min(99, Math.floor((sum / total) * 100))
+}
+
+/** Seconds left: from the last 30 s of download rate while the model downloads, else elapsed time. */
+function secondsLeft(percent) {
+  if (appleAcceleration && !finished.has("model") && model.samples.length >= 2) {
+    const first = model.samples[0]
+    const last = model.samples.at(-1)
+    const rate = (last.bytes - first.bytes) / ((last.at - first.at) / 1000)
+    // The pipeline step still follows the download.
+    if (rate > 0) return Math.round((model.total - model.bytes) / rate + 15)
+  }
+  const elapsed = (Date.now() - installStarted) / 1000
+  if (percent < 3 || elapsed < 10) return null
+  return Math.round((elapsed * (100 - percent)) / percent)
+}
+
+/** What doctor and 설정 read while the install runs; removed with the lock. */
+function writeProgress() {
+  if (appleAcceleration && !finished.has("model")) {
+    model.bytes = directoryBytes(mlxModelDirectory)
+    model.samples = [...model.samples, { at: Date.now(), bytes: model.bytes }].slice(-16)
+  }
+  const percent = progressPercent()
+  try {
+    writeFileSync(
+      installProgress,
+      `${JSON.stringify({ percent, etaSeconds: secondsLeft(percent), updatedAt: new Date().toISOString() })}\n`,
+    )
+  } catch {
+    // Progress is best effort; the install itself does not depend on it.
+  }
+}
+
+/** The model's real size from the Hub, so the percentage tracks bytes rather than a guess. */
+async function measureModel() {
+  if (process.env.HF_HUB_OFFLINE === "1") return
+  try {
+    const response = await fetch(
+      `https://huggingface.co/api/models/${mlxModelRepository}?blobs=true`,
+      { signal: AbortSignal.timeout(10_000) },
+    )
+    const body = await response.json()
+    const total = (body.siblings ?? []).reduce((sum, file) => sum + (file.size ?? 0), 0)
+    if (total > 0) model.total = total
+  } catch {
+    // Offline or rate limited: keep the estimate.
+  }
+}
 
 function say(line) {
   process.stdout.write(`${line}\n`)
@@ -64,11 +162,13 @@ function run(lane, command, args, env = process.env) {
   })
 }
 
-async function step(lane, title, command, args, env) {
+async function step(lane, title, command, args, { env, key } = {}) {
   const started = Date.now()
   say(`[${lane}] ▶ ${title}`)
   await run(lane, command, args, env)
   say(`[${lane}] ✔ ${title} (${Math.round((Date.now() - started) / 1000)}초)`)
+  if (key) finished.add(key)
+  writeProgress()
 }
 
 function stopChildren() {
@@ -107,7 +207,10 @@ function takeLock() {
   }
   process.on("exit", () => {
     try {
-      if (readFileSync(installLock, "utf8").trim() === String(process.pid)) rmSync(installLock)
+      if (readFileSync(installLock, "utf8").trim() === String(process.pid)) {
+        rmSync(installProgress, { force: true })
+        rmSync(installLock)
+      }
     } catch {
       // Already gone.
     }
@@ -140,24 +243,29 @@ async function environments() {
 }
 
 async function paddleLane() {
-  await step("paddle", paddlePackage, "uv", [
-    "pip",
-    "install",
-    "--python",
-    python,
-    ...paddleSource,
+  await step(
+    "paddle",
     paddlePackage,
-  ])
-  await step("paddle", "PaddleOCR", "uv", [
-    "pip",
-    "install",
-    "--python",
-    python,
-    "paddleocr[doc-parser]==3.7.0",
-    "pydantic>=2.13,<3",
-    "pypdfium2>=5.13,<6",
-    "typer>=0.27,<1",
-  ])
+    "uv",
+    ["pip", "install", "--python", python, ...paddleSource, paddlePackage],
+    { key: "paddle" },
+  )
+  await step(
+    "paddle",
+    "PaddleOCR",
+    "uv",
+    [
+      "pip",
+      "install",
+      "--python",
+      python,
+      "paddleocr[doc-parser]==3.7.0",
+      "pydantic>=2.13,<3",
+      "pypdfium2>=5.13,<6",
+      "typer>=0.27,<1",
+    ],
+    { key: "paddleocr" },
+  )
   await step(
     "paddle",
     `레이아웃 모델 ${layoutModel}`,
@@ -166,19 +274,18 @@ async function paddleLane() {
       "-c",
       "import os; from paddlex import create_model; create_model(os.environ['OH_MY_PAPER_LAYOUT_MODEL'])",
     ],
-    { ...process.env, OH_MY_PAPER_LAYOUT_MODEL: layoutModel },
+    { env: { ...process.env, OH_MY_PAPER_LAYOUT_MODEL: layoutModel }, key: "layout" },
   )
 }
 
 async function mlxLane() {
-  await step("mlx", "MLX-VLM", "uv", [
-    "pip",
-    "install",
-    "--python",
-    mlxPython,
-    "mlx-vlm==0.6.17",
-    "jinja2==3.1.6",
-  ])
+  await step(
+    "mlx",
+    "MLX-VLM",
+    "uv",
+    ["pip", "install", "--python", mlxPython, "mlx-vlm==0.6.17", "jinja2==3.1.6"],
+    { key: "mlx" },
+  )
 }
 
 /**
@@ -204,13 +311,17 @@ async function modelLane() {
       "--local-dir",
       mlxModelDirectory,
     ],
-    { ...process.env, HF_HUB_DISABLE_XET: "1" },
+    { env: { ...process.env, HF_HUB_DISABLE_XET: "1" }, key: "model" },
   )
 }
 
 async function main() {
   takeLock()
   const started = Date.now()
+  installStarted = started
+  writeProgress()
+  const ticker = setInterval(writeProgress, 2_000)
+  if (appleAcceleration) void measureModel()
   await environments()
   if (appleAcceleration) {
     await Promise.all([paddleLane(), mlxLane(), modelLane()])
@@ -223,15 +334,22 @@ async function main() {
         "-c",
         "import os; from paddleocr import PaddleOCRVL; PaddleOCRVL(pipeline_version='v1.6', vl_rec_backend='mlx-vlm-server', vl_rec_server_url='http://127.0.0.1:9/', vl_rec_api_model_name=os.environ['OH_MY_PAPER_MLX_MODEL_DIR'], use_doc_orientation_classify=False, use_doc_unwarping=False, use_chart_recognition=False, use_seal_recognition=False, use_ocr_for_image_block=False)",
       ],
-      { ...process.env, OH_MY_PAPER_MLX_MODEL_DIR: mlxModelDirectory },
+      { env: { ...process.env, OH_MY_PAPER_MLX_MODEL_DIR: mlxModelDirectory }, key: "pipeline" },
     )
   } else {
     await paddleLane()
-    await step("paddle", "문서 분석 파이프라인", python, [
-      "-c",
-      "from paddleocr import PaddleOCRVL; PaddleOCRVL(pipeline_version='v1.6', use_doc_orientation_classify=False, use_doc_unwarping=False, use_chart_recognition=False, use_seal_recognition=False, use_ocr_for_image_block=False)",
-    ])
+    await step(
+      "paddle",
+      "문서 분석 파이프라인",
+      python,
+      [
+        "-c",
+        "from paddleocr import PaddleOCRVL; PaddleOCRVL(pipeline_version='v1.6', use_doc_orientation_classify=False, use_doc_unwarping=False, use_chart_recognition=False, use_seal_recognition=False, use_ocr_for_image_block=False)",
+      ],
+      { key: "pipeline" },
+    )
   }
+  clearInterval(ticker)
   writeFileSync(readinessMarker, "PaddleOCR-VL-1.6 + PP-DocLayoutV3\n", { mode: 0o600 })
   say(`oh-my-paper PaddleOCR-VL runtime: ${runtimeRoot}`)
   if (appleAcceleration) say(`oh-my-paper PaddleOCR-VL MLX runtime: ${mlxRuntimeRoot}`)
@@ -243,8 +361,12 @@ async function main() {
     ])
 }
 
-main().catch((error) => {
-  stopChildren()
-  say(`설치 실패: ${error instanceof Error ? error.message : String(error)}`)
-  process.exit(1)
-})
+// Exit explicitly so a slow model-size request cannot hold the finished install open.
+main().then(
+  () => process.exit(0),
+  (error) => {
+    stopChildren()
+    say(`설치 실패: ${error instanceof Error ? error.message : String(error)}`)
+    process.exit(1)
+  },
+)

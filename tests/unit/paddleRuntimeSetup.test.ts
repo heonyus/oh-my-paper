@@ -19,6 +19,7 @@ if [ "$1" = "venv" ]; then
   exit 0
 fi
 echo "start $*" >> "$log"
+[ -f "$FAKE_PROGRESS" ] && echo "progress $(cat "$FAKE_PROGRESS")" >> "$log"
 sleep 0.4
 echo "end $*" >> "$log"
 `
@@ -70,6 +71,8 @@ describe("PaddleOCR-VL runtime setup", () => {
         ...process.env,
         PATH: `${bin}${delimiter}${inheritedPath}`,
         FAKE_UV_LOG: join(root, "uv.log"),
+        FAKE_PROGRESS: join(root, "paddle-vl-install.progress.json"),
+        HF_HUB_OFFLINE: "1",
         OH_MY_PAPER_PADDLE_VL_RUNTIME: join(root, "paddle-vl-runtime"),
         OH_MY_PAPER_PADDLE_VL_MLX_RUNTIME: join(root, "paddle-vl-mlx-runtime"),
       }
@@ -87,7 +90,15 @@ describe("PaddleOCR-VL runtime setup", () => {
         readFile(join(root, "paddle-vl-runtime", ".ready-v1.6-layout-v2"), "utf8"),
       ).resolves.toContain("PaddleOCR-VL-1.6")
       await expect(readFile(join(root, "paddle-vl-install.pid"))).rejects.toThrow()
+      await expect(readFile(join(root, "paddle-vl-install.progress.json"))).rejects.toThrow()
       const calls = await readFile(join(root, "uv.log"), "utf8")
+      // Progress is on disk while the steps run and grows as they finish.
+      const percents = [...calls.matchAll(/progress \{"percent":(\d+)/g)].map((match) =>
+        Number(match[1]),
+      )
+      expect(percents.length).toBeGreaterThan(0)
+      expect(Math.max(...percents)).toBeGreaterThan(0)
+      expect(percents).toEqual([...percents].sort((a, b) => a - b))
       // CPU wheels come from PyPI rather than Paddle's own index.
       expect(calls).toContain("start pip install")
       expect(calls).not.toContain("paddlepaddle.org.cn")

@@ -17,7 +17,7 @@ import {
 import type { DocumentId, DocumentRecord } from "../shared/schemas"
 import { resolveDocumentPath } from "./documentService"
 import { buildOfflineSubprocessEnv } from "./offlineSubprocessEnvironment"
-import { paddleInstallRunning } from "./paddleInstallState"
+import { paddleInstallRunning, readPaddleInstallProgress } from "./paddleInstallState"
 import {
   createPaddleVlmServer,
   type PaddleVlmConnection,
@@ -150,10 +150,13 @@ export class PaddlePageParserService {
       this.#runtimeInstalled(),
       this.#vlmServer.acceleration(),
     ])
-    const installing = !configured && paddleInstallRunning(this.options.home ?? homedir())
+    const home = this.options.home ?? homedir()
+    const installing = !configured && paddleInstallRunning(home)
+    const installProgress = installing ? readPaddleInstallProgress(home) : null
     return documentOcrProviderStatusSchema.parse({
       configured,
       ...(installing ? { installing } : {}),
+      ...(installProgress ? { installProgress } : {}),
       provider: "paddle",
       model: "PaddleOCR-VL-1.6",
       acceleration: this.#accelerationFailed ? null : acceleration,

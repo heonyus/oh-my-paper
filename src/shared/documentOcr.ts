@@ -11,6 +11,13 @@ export const documentOcrProviderStatusSchema = z.object({
   acceleration: z.enum(["vllm", "mlx"]).nullable().default(null),
   /** A background setup is still downloading or installing the runtime. */
   installing: z.boolean().optional(),
+  /** How far that setup is, when it has reported progress. */
+  installProgress: z
+    .object({
+      percent: z.number().min(0).max(100),
+      etaSeconds: z.number().nonnegative().nullable(),
+    })
+    .optional(),
 })
 
 export type DocumentOcrProviderStatus = z.infer<typeof documentOcrProviderStatusSchema>

@@ -41,6 +41,15 @@ export function useAppWorkspace() {
   const [tool, setTool] = useState<BoardTool>("select")
   const [provider, setProvider] = useState<ProviderStatus>(initialProviderStatus)
   const [ocrStatus, setOcrStatus] = useState<DocumentOcrProviderStatus>(initialOcrProviderStatus)
+  const ocrInstalling = ocrStatus.installing === true
+  // A background OCR install reports progress; follow it until the engine is ready.
+  useEffect(() => {
+    if (!ocrInstalling) return
+    const timer = window.setInterval(() => {
+      window.ohmypaper.documentOcrStatus().then(setOcrStatus, () => undefined)
+    }, 3_000)
+    return () => window.clearInterval(timer)
+  }, [ocrInstalling])
   const [credentialsChecked, setCredentialsChecked] = useState(false)
   const [bootstrapError, setBootstrapError] = useState<string | null>(null)
   const activeId = history.workspace?.activeDocumentId ?? null
