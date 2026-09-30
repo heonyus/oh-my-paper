@@ -1,0 +1,84 @@
+/* GitHub star invitation: one quiet card in the Library corner, below tips and dialogs.
+   It reuses the feature tips' entrance (`feature-tip-in`). */
+
+.star-invite {
+  position: fixed;
+  left: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(300px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow:
+    0 1px 2px rgb(23 37 31 / 8%),
+    0 24px 56px -24px rgb(23 37 31 / 40%);
+  animation: feature-tip-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.star-invite h2 {
+  margin: 0;
+  font-size: var(--type-toolbar-size);
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.star-invite p {
+  margin: 0;
+  font-size: var(--type-compact-size);
+  line-height: 1.55;
+  color: var(--ink-muted);
+  word-break: keep-all;
+}
+
+.star-invite-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.star-invite-actions button,
+.star-invite-actions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--type-compact-size);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.star-invite-actions .star-invite-never {
+  border-color: transparent;
+  color: var(--ink-muted);
+}
+
+.star-invite-actions .star-invite-star {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--surface);
+  font-weight: 650;
+}
+
+.star-invite :focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .star-invite {
+    animation: none;
+  }
+}

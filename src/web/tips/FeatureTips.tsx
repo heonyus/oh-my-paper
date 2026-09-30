@@ -1,5 +1,7 @@
 import { X } from "lucide-react"
 import { type JSX, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { GITHUB_REPO_URL } from "../../shared/githubStar"
+import { markStarOpened } from "../star/starInviteRules"
 import {
   FEATURE_TIPS,
   type FeatureTip,
@@ -257,6 +259,15 @@ export function TipsGallery({ onClose }: { readonly onClose: () => void }): JSX.
           ))}
         </ul>
         <footer>
+          <a
+            className="tips-gallery-star"
+            href={GITHUB_REPO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={markStarOpened}
+          >
+            ⭐ GitHub에서 별 달기
+          </a>
           <button
             type="button"
             disabled={reset}

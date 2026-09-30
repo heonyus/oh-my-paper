@@ -20,6 +20,7 @@ import {
 } from "../shared/documentAnalysis"
 import { documentAstRequestSchema, documentAstResultSchema } from "../shared/documentAstIpc"
 import { documentPageParseRequestSchema } from "../shared/documentPageModel"
+import { githubStarStatusSchema } from "../shared/githubStar"
 import {
   citationLookupRequestSchema,
   documentImportUrlRequestSchema,
@@ -44,6 +45,7 @@ import { workspacePatchRequestSchema, workspacePatchSavedSchema } from "../share
 import { createClaudeRoutes } from "./claudeRoutes"
 import type { WebServerConfig } from "./config"
 import { createDocumentFileRoute } from "./documentFileRoute"
+import { readGithubStarAnswer } from "./githubStarStore"
 import { streamParsedPage } from "./pageParseStream"
 import type { WebServices } from "./services"
 import { importPdfBytes, importPdfFromUrl, readWorkspace } from "./services"
@@ -325,6 +327,11 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
           }
           case "documentOcrStatus": {
             sendJson(res, 200, await services.ocrStatus())
+            return
+          }
+          case "githubStarStatus": {
+            const answer = await readGithubStarAnswer(config.dataDir)
+            sendJson(res, 200, githubStarStatusSchema.parse({ answer }))
             return
           }
           case "documentAnalysisStatus": {

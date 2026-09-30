@@ -7,6 +7,7 @@ import { LibraryHome } from "../renderer/components/LibraryHome"
 import { appShellStyle } from "../renderer/lib/uiFontScale"
 import { useAppWorkspace } from "../renderer/lib/useAppWorkspace"
 import { type DocumentId, documentIdSchema } from "../shared/schemas"
+import { StarInvite } from "./star/StarInvite"
 import { FeatureTips, TipsGallery } from "./tips/FeatureTips"
 import { WebOnboarding } from "./WebOnboarding"
 
@@ -321,6 +322,11 @@ export function ReaderApp(): JSX.Element {
           visitKey={`${researchOpen}:${libraryVisible}:${app.activeDocument?.id ?? ""}:${app.noteOpen}`}
         />
       )}
+      <StarInvite
+        active={libraryVisible && !tipsOpen && !settingsOpen}
+        documents={workspace.documents}
+        readerNotes={workspace.readerNotes}
+      />
       {settingsOpen ? (
         <Suspense fallback={<p role="status">설정을 여는 중…</p>}>
           <AppSettingsDialog

@@ -298,9 +298,30 @@
 
 .tips-gallery > footer {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
+  gap: 8px 12px;
   padding: 12px 22px 18px;
   border-top: 1px solid var(--line);
+}
+
+.tips-gallery > footer .tips-gallery-star {
+  margin-right: auto;
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+  text-decoration: none;
+}
+
+.tips-gallery > footer .tips-gallery-star:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+.tips-gallery > footer .tips-gallery-star:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 .tips-gallery > footer button {

@@ -25,6 +25,20 @@ a terminal install that explains itself, and short per-feature tutorials.
   `팁 끄기` (all tips). Seen tips are a per-browser convenience in localStorage; losing it only
   means a tip shows again. The header `?` (사용법) lists every tip with its clip and can show them
   again. Recordings for tips and the README video hide tips and use the quiet note companion.
+- GitHub star invitation (owner request, 2026-09-29): asking, never starring. The app never stars
+  on anyone's behalf and uses no GitHub API or credential; every star action only opens
+  `https://github.com/heonyus/oh-my-paper` in the browser (a new tab in the web app). The wizard
+  asks once, after the usage tour: `oh-my-paper가 도움이 된다면 GitHub에서 ⭐ 하나 부탁드려요` with
+  `⭐ GitHub 열고 별 달기` / `괜찮아요, 건너뛸게요` (Ctrl+C counts as skipping). The answer is kept in
+  the data folder (`github-star.json`), so neither `oh-my-paper onboard` nor `oh-my-paper` asks
+  again; runs without a terminal on both ends, or with `CI` set, skip it silently. In the browser
+  one small card (`oh-my-paper가 도움이 되고 있나요?`) may appear in the Library's bottom-left corner
+  after local activity on at least three different days (a paper imported or a note written that
+  day), never in the reader, never as a modal, and hidden while 사용법 or 설정 is open. It offers
+  `⭐ 별 달기`, `나중에` and `다시 보지 않기`. Each appearance, like `나중에`, keeps it away for
+  14 days; after `별 달기` or `다시 보지 않기` it never returns, and it never appears when the
+  wizard answer was to open GitHub. The 사용법 gallery footer keeps a permanent
+  `⭐ GitHub에서 별 달기` link. The card's state is a per-browser convenience in localStorage.
 
 ## 2026-09-28 Learning core: reading that stays with the reader (current)
 
