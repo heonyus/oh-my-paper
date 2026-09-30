@@ -5,7 +5,7 @@ import {
   type AiRole,
   createAiJobId,
 } from "../../shared/documentAiJobs"
-import { documentKindLabels } from "../../shared/documentKind"
+import type { Locale } from "../../shared/i18n/locale"
 import {
   AI_CONTEXT_MAX_CHARACTERS,
   type AiRequest,
@@ -14,6 +14,7 @@ import {
 } from "../../shared/ipc"
 import type { DocumentInsight } from "../../shared/schemas"
 import type { AiDeltaHandler, AiRequestRunner, DocumentRecord } from "../types"
+import { currentLocale } from "./locale"
 import { cachedPaperOverviewContext } from "./pdfSearch"
 import { usesWholePaper, wholePaperCharacterBudget, wholePaperText } from "./wholePaperContext"
 
@@ -58,13 +59,21 @@ export function groundedAiRequest(
   localOverview: string,
   request: Omit<AiRequest, "documentId">,
   wholePaper = "",
+  language: Locale = currentLocale(),
 ): AiRequest {
-  const kindLine = `문서 유형: ${documentKindLabels[document.kind]}. 이 유형에 맞는 용어와 분석 기준을 사용하세요.`
-  // The full text supersedes the page-1 overview and any summary cached from it.
-  if (wholePaper) {
-    const paperContext = `${kindLine}\n\n${wholePaper}`.slice(0, PAPER_CONTEXT_MAX_CHARACTERS)
-    return { ...request, documentId: document.id, paperContext }
+  // The system prompt names the document's type and the answer language, so the paper context
+  // holds source text only.
+  const { paperContext: requestContext, ...rest } = request
+  const base: AiRequest = {
+    ...rest,
+    documentId: document.id,
+    documentKind: document.kind,
+    language,
   }
+  // The full text supersedes the page-1 overview and any summary cached from it.
+  if (wholePaper)
+    return { ...base, paperContext: wholePaper.slice(0, PAPER_CONTEXT_MAX_CHARACTERS) }
+  if (paperContextModeForAction(request.action) === "minimal") return base
   const contextLimit =
     request.action === "translation" ||
     request.action === "page_translation" ||
@@ -73,21 +82,15 @@ export function groundedAiRequest(
       : request.action === "figure" || request.action === "table"
         ? 6_000
         : AI_CONTEXT_MAX_CHARACTERS
-  const contextParts = [
-    kindLine,
-    request.paperContext,
-    summary ? `캐시된 논문 요약:\n${summary}` : "",
-    localOverview ? `로컬 원문 개요:\n${localOverview}` : "",
+  const paperContext = [
+    requestContext,
+    summary ? `Cached summary of the document:\n${summary}` : "",
+    localOverview ? `Local overview of the source:\n${localOverview}` : "",
   ]
-  const paperContext = (
-    paperContextModeForAction(request.action) === "minimal"
-      ? contextParts.slice(0, 1)
-      : contextParts
-  )
     .filter(Boolean)
     .join("\n\n")
     .slice(0, contextLimit)
-  return { ...request, documentId: document.id, paperContext }
+  return paperContext ? { ...base, paperContext } : base
 }
 
 function frameEmitter(onDelta: AiDeltaHandler | undefined): {

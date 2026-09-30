@@ -100,7 +100,8 @@ export function parsedTranslationResponse(
   if (!shortEnglishSelection(selectedText)) return { title, body: value.trim() }
   let parsed: unknown
   try {
-    parsed = JSON.parse(value)
+    // Models sometimes wrap the JSON in a code fence despite being told not to.
+    parsed = JSON.parse(value.trim().replace(/^```(?:json)?\s*|\s*```$/gu, ""))
   } catch {
     parsed = null
   }

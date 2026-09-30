@@ -42,7 +42,7 @@ function flatten(messages: readonly Message[]): string {
 
 function requestMessages(request: AiRequest): readonly Message[] {
   return [
-    { role: "system", content: systemPromptFor(request.action) },
+    { role: "system", content: systemPromptFor(request.action, request) },
     ...(request.history ?? []),
     { role: "user", content: userInputFor(request) },
   ]

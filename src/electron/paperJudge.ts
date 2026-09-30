@@ -1,4 +1,5 @@
 import { z } from "zod"
+import type { Locale } from "../shared/i18n/locale"
 import { type AgentCompletion, answerLanguage, parseJsonObject } from "./agentCompletion"
 import type { PaperCandidate } from "./paperCandidates"
 import type { SearchBrief } from "./paperSearchBrief"
@@ -45,7 +46,7 @@ export const judgeJsonSchema = {
   additionalProperties: false,
 } as const
 
-function judgePrompt(question: string, wantsNextQueries: boolean): string {
+function judgePrompt(question: string, wantsNextQueries: boolean, language?: Locale): string {
   return [
     "You screen academic search results for a researcher. Judge each candidate paper against",
     "the request and its criteria using its title and abstract. Be strict: topical word overlap",
@@ -54,7 +55,7 @@ function judgePrompt(question: string, wantsNextQueries: boolean): string {
     'Return ONLY JSON: {"judgments": [{"id": string, "score": 0-3, "reason": string}], "nextQueries": string[]}',
     "- Judge every candidate id exactly once.",
     "- score 3: directly addresses the request. 2: closely related and useful. 1: tangential. 0: unrelated.",
-    `- reason: for scores 2-3, one short sentence in ${answerLanguage(question)} naming what this`,
+    `- reason: for scores 2-3, one short sentence in ${answerLanguage(question, language)} naming what this`,
     "  paper contributes to the request. Empty string for scores 0-1.",
     wantsNextQueries
       ? "- nextQueries: 0-3 new short English keyword queries (2-5 words) for important aspects the relevant papers suggest but the searches so far missed (use terminology seen in relevant papers). Empty if coverage looks complete."
@@ -148,6 +149,7 @@ export async function judgeCandidates(
     readonly brief: SearchBrief
     readonly candidates: readonly (readonly [string, PaperCandidate])[]
     readonly wantsNextQueries: boolean
+    readonly language?: Locale | undefined
   },
   complete: AgentCompletion,
   signal?: AbortSignal,
@@ -159,7 +161,10 @@ export async function judgeCandidates(
   try {
     const { text } = await complete(
       [
-        { role: "system", content: judgePrompt(input.question, input.wantsNextQueries) },
+        {
+          role: "system",
+          content: judgePrompt(input.question, input.wantsNextQueries, input.language),
+        },
         { role: "user", content: judgeInput(input.question, input.brief, input.candidates) },
       ],
       { signal, jsonSchema: judgeJsonSchema },

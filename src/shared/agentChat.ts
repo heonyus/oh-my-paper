@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { localeSchema } from "./i18n/locale"
 import { documentIdSchema } from "./ids"
 
 export const AGENT_QUESTION_MAX_CHARACTERS = 2_000
@@ -41,6 +42,8 @@ export const agentAskRequestSchema = z
     contextDocIds: z.array(documentIdSchema).max(AGENT_CONTEXT_DOC_MAX).default([]),
     history: z.array(agentMessageSchema).max(AGENT_HISTORY_MAX_MESSAGES).default([]),
     mode: agentModeSchema.default("quick"),
+    /** The app's language; answers follow it. Without it they follow the question's language. */
+    language: localeSchema.optional(),
   })
   .readonly()
 

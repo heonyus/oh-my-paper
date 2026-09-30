@@ -83,10 +83,10 @@ describe("AI completion budget", () => {
     })
   })
 
-  it("keeps automatic overview responses short and low-latency", () => {
-    expect(completionTokenLimit({ ...request, action: "keywords" })).toBe(224)
-    expect(completionTokenLimit({ ...request, action: "three_line_summary" })).toBe(192)
-    expect(completionTokenLimit({ ...request, action: "paper_summary" })).toBe(384)
+  it("gives overview answers room for their own length targets", () => {
+    expect(completionTokenLimit({ ...request, action: "keywords" })).toBe(512)
+    expect(completionTokenLimit({ ...request, action: "three_line_summary" })).toBe(450)
+    expect(completionTokenLimit({ ...request, action: "paper_summary" })).toBe(900)
   })
 
   it("uses the OpenRouter-compatible output limit field", () => {
@@ -159,7 +159,7 @@ describe("AI completion budget", () => {
         action: "keywords",
       }),
     ).toMatchObject({
-      max_tokens: 224,
+      max_tokens: 512,
       reasoning: { effort: "low", exclude: true },
       temperature: 0,
     })

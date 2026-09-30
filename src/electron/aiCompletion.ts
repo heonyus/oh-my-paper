@@ -12,13 +12,14 @@ import {
 } from "../shared/providerModels"
 
 const readingTokenLimits: Readonly<Partial<Record<AiRequest["action"], number>>> = {
-  keywords: 224,
-  three_line_summary: 192,
-  paper_summary: 384,
+  // Room for the prompts' own length targets; Korean takes more tokens per character.
+  keywords: 512,
+  three_line_summary: 450,
+  paper_summary: 900,
   citation_assessment: 768,
   note_tutor: 700,
-  explanation: 1_024,
-  infographic: 896,
+  explanation: 1_536,
+  infographic: 1_024,
   section: 1_536,
   figure: 1_280,
   table: 1_280,

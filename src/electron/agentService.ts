@@ -136,6 +136,7 @@ async function discover(
         brief: { ...brief, queries: [...ranQueries] },
         candidates: batch,
         wantsNextQueries,
+        language: request.language,
       },
       deps.complete,
       signal,

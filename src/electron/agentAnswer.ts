@@ -1,4 +1,5 @@
 import type { AgentContextDoc, AgentMessage, AgentMode, AgentPaper } from "../shared/agentChat"
+import type { Locale } from "../shared/i18n/locale"
 import { type AgentCompletionMessage, answerLanguage } from "./agentCompletion"
 import type { SearchBrief } from "./paperSearchBrief"
 
@@ -12,10 +13,10 @@ const sharedRules = [
   "- Use Markdown. Do not add a bibliography; the app shows the paper cards itself.",
 ]
 
-function quickSystemPrompt(question: string): string {
+function quickSystemPrompt(question: string, language?: Locale): string {
   return [
     "You are oh-my-paper's research agent: you find, explain and discuss academic papers.",
-    `Answer in ${answerLanguage(question)}.`,
+    `Answer in ${answerLanguage(question, language)}.`,
     ...sharedRules,
     "- Be concise: a short direct answer, then the most relevant papers with one line each on what they contribute. Group them when there are clear themes.",
     "- If the request was vague, state in one short line how you interpreted it.",
@@ -23,10 +24,10 @@ function quickSystemPrompt(question: string): string {
   ].join("\n")
 }
 
-function deepSystemPrompt(question: string): string {
+function deepSystemPrompt(question: string, language?: Locale): string {
   return [
     "You are oh-my-paper's deep research agent. Write a literature review report from the screened papers below.",
-    `Write the whole report in ${answerLanguage(question)}, including headings.`,
+    `Write the whole report in ${answerLanguage(question, language)}, including headings.`,
     ...sharedRules,
     "Structure the report with these sections (translate the headings):",
     "1. Summary: 3-5 sentences answering the request directly.",
@@ -89,14 +90,15 @@ export function answerMessages(input: {
   readonly contextDocs: readonly AgentContextDoc[]
   readonly papers: readonly AnswerPaper[]
   readonly searchNote: string
+  readonly language?: Locale | undefined
 }): AgentCompletionMessage[] {
   return [
     {
       role: "system",
       content:
         input.mode === "deep"
-          ? deepSystemPrompt(input.question)
-          : quickSystemPrompt(input.question),
+          ? deepSystemPrompt(input.question, input.language)
+          : quickSystemPrompt(input.question, input.language),
     },
     ...input.history.map((message) => ({ role: message.role, content: message.content })),
     { role: "user", content: answerInput(input) },

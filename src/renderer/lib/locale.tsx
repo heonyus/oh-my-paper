@@ -54,6 +54,13 @@ type LocaleState = {
   readonly setPreference: (preference: LanguagePreference) => void
 }
 
+/** The language in use, for code outside React such as AI request builders and caches. */
+let activeLocale: Locale = browserLocale()
+
+export function currentLocale(): Locale {
+  return activeLocale
+}
+
 // Outside the provider (tests, isolated renders) the browser's language still applies.
 const LocaleContext = createContext<LocaleState>({
   locale: browserLocale(),
@@ -78,6 +85,7 @@ export function LocaleProvider({
     setState(next)
   }, [])
   const locale = preference === "auto" ? browserLocale() : preference
+  activeLocale = locale
   useEffect(() => {
     document.documentElement.lang = locale
   }, [locale])

@@ -5,6 +5,7 @@ import {
   type AgentMessage,
   type AgentMode,
 } from "../shared/agentChat"
+import type { Locale } from "../shared/i18n/locale"
 import {
   type AgentCompletion,
   answerLanguage,
@@ -62,7 +63,7 @@ export const searchBriefJsonSchema = {
   additionalProperties: false,
 } as const
 
-function plannerPrompt(mode: AgentMode, today: Date, question: string): string {
+function plannerPrompt(mode: AgentMode, today: Date, question: string, language?: Locale): string {
   const year = today.getUTCFullYear()
   const queryCount = mode === "deep" ? "4-6" : "3-4"
   return [
@@ -73,7 +74,7 @@ function plannerPrompt(mode: AgentMode, today: Date, question: string): string {
     "",
     'Return ONLY a JSON object: {"interpretation": string, "queries": string[],',
     '"semanticQuery": string, "criteria": string[], "yearFrom": int, "yearTo": int}',
-    `- interpretation: one sentence in ${answerLanguage(question)} stating which papers you will look for.`,
+    `- interpretation: one sentence in ${answerLanguage(question, language)} stating which papers you will look for.`,
     `- queries: ${queryCount} short English keyword queries (2-5 words each) using precise academic`,
     "  terminology: canonical method/task names, common synonyms and alternative phrasings. Cover",
     "  distinct plausible interpretations with separate queries. No filler words like 'paper' or",
@@ -149,6 +150,7 @@ export async function planSearchBrief(
     readonly contextDocs: readonly AgentContextDoc[]
     readonly mode: AgentMode
     readonly today: Date
+    readonly language?: Locale | undefined
   },
   complete: AgentCompletion,
   signal?: AbortSignal,
@@ -156,7 +158,10 @@ export async function planSearchBrief(
   try {
     const { text } = await complete(
       [
-        { role: "system", content: plannerPrompt(input.mode, input.today, input.question) },
+        {
+          role: "system",
+          content: plannerPrompt(input.mode, input.today, input.question, input.language),
+        },
         { role: "user", content: plannerInput(input) },
       ],
       { signal, jsonSchema: searchBriefJsonSchema },
