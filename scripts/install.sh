@@ -50,13 +50,16 @@ fail() {
 }
 
 # The newest line of the log, as the spinner's dim second line: progress redraws split, color
-# codes dropped, npm package downloads shown by name, cut to the terminal width.
+# codes dropped, npm package downloads shown by name, cut to the terminal width. The log holds
+# localized (Korean) git output and may end mid-character, so the text tools work on bytes and
+# iconv drops any split character; a byte cut never runs wider than the terminal.
 latest() {
-  tail -c 4000 "$LOG" 2>/dev/null | tr '\r' '\n' | grep -v '^[[:space:]]*$' | tail -n 1 |
-    sed -E $'s/\x1b\\[[0-9;]*[A-Za-z]//g' |
-    sed -E -e 's#^npm http cache [^ ]*/([^/ ]+)\.tgz .*#\1#' \
+  tail -n 20 "$LOG" 2>/dev/null |
+    LC_ALL=C tr '\r' '\n' | LC_ALL=C grep -v '^[[:space:]]*$' | tail -n 1 |
+    LC_ALL=C sed -E -e $'s/\x1b\\[[0-9;]*[A-Za-z]//g' \
+      -e 's#^npm http cache [^ ]*/([^/ ]+)\.tgz .*#\1#' \
       -e 's#^npm http fetch [A-Z]+ [0-9]+ [^ ]*/([^/ ]+)\.tgz .*#\1#' |
-    cut -c "1-$1"
+    LC_ALL=C cut -c "1-$1" | iconv -c -f UTF-8 -t UTF-8 2>/dev/null
 }
 
 # Runs a command with a spinner and its latest output line beneath it; the full output goes to
@@ -72,7 +75,7 @@ run() {
     [ "$width" -gt 20 ] || width=20
     while kill -0 "$pid" 2>/dev/null; do
       printf '\r\033[K%s│%s  %s%s%s %s\n\033[K%s│    %s%s\033[1A\r' "$DIM" "$RESET" "$CYAN" \
-        "${frames[i++ % 4]}" "$RESET" "$label" "$DIM" "$(latest "$width")" "$RESET"
+        "${frames[i++ % 4]}" "$RESET" "$label" "$DIM" "$(latest "$width" 2>/dev/null)" "$RESET"
       sleep 0.12
     done
     printf '\r\033[K\n\033[K\033[1A\r'
