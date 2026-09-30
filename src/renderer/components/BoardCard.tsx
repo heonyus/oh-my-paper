@@ -179,6 +179,7 @@ export function BoardCard({
               card={card}
               onChange={(messages) => onChatChange(card.id, messages)}
               onAsk={(question, history, onDelta) => onAsk(card, question, history, onDelta)}
+              onCitation={(citation) => onJump(citation.page)}
             />
           ) : null}
         </div>
