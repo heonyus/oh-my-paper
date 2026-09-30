@@ -1,6 +1,6 @@
 import { Check, FileText, LoaderCircle, TriangleAlert } from "lucide-react"
 import { type JSX, useState } from "react"
-import type { DocumentAnalysisJob } from "../../shared/documentAnalysis"
+import type { DocumentAnalysisJob, DocumentAnalysisSnapshot } from "../../shared/documentAnalysis"
 import type { ImportProgress } from "../../shared/ipc"
 
 type LibraryTask = {
@@ -79,20 +79,34 @@ function importTask(item: ImportProgress): LibraryTask {
   }
 }
 
+/** What the jobs the snapshot only counts are doing, e.g. "3개 분석 대기 중 · 1개 확인 필요". */
+function unlistedDetail(unlisted: DocumentAnalysisSnapshot["unlisted"]): string {
+  return [
+    unlisted.running > 0 ? `${unlisted.running}개 분석 중` : "",
+    unlisted.queued > 0 ? `${unlisted.queued}개 분석 대기 중` : "",
+    unlisted.failed > 0 ? `${unlisted.failed}개 확인 필요` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ")
+}
+
 export function LibraryTaskQueue({
   imports,
   analyses,
   onRetryAnalysis,
 }: {
   readonly imports: readonly ImportProgress[]
-  readonly analyses: readonly DocumentAnalysisJob[]
+  readonly analyses: DocumentAnalysisSnapshot
   readonly onRetryAnalysis?: ((id: DocumentAnalysisJob["id"]) => void) | undefined
 }): JSX.Element | null {
   const [showCompleted, setShowCompleted] = useState(false)
-  const tasks = [...imports.map(importTask), ...analyses.map(analysisTask)]
-  if (tasks.length === 0) return null
-  const active = tasks.filter((task) => task.state === "active").length
-  const failed = tasks.filter((task) => task.state === "failed").length
+  const tasks = [...imports.map(importTask), ...analyses.jobs.map(analysisTask)]
+  const { unlisted } = analyses
+  const unlistedActive = unlisted.queued + unlisted.running
+  const unlistedCount = unlistedActive + unlisted.failed
+  if (tasks.length === 0 && unlistedCount === 0) return null
+  const active = tasks.filter((task) => task.state === "active").length + unlistedActive
+  const failed = tasks.filter((task) => task.state === "failed").length + unlisted.failed
   const expanded = active > 0 || failed > 0 || showCompleted
 
   return (
@@ -167,6 +181,17 @@ export function LibraryTaskQueue({
               </div>
             </li>
           ))}
+          {unlistedCount > 0 ? (
+            <li data-state={unlistedActive > 0 ? "active" : "failed"}>
+              <span className="library-task-icon" aria-hidden="true">
+                <FileText size={14} />
+              </span>
+              <div className="library-task-copy">
+                <strong>외 {unlistedCount}개 문서</strong>
+                <span className="library-task-detail">{unlistedDetail(unlisted)}</span>
+              </div>
+            </li>
+          ) : null}
         </ul>
       ) : null}
     </section>

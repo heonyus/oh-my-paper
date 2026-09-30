@@ -66,8 +66,7 @@ export class DocumentLayoutService {
   }
 
   async #analyze(id: DocumentId, store: WorkspaceStore): Promise<DocumentLayoutResult> {
-    const workspace = await store.read()
-    const document = workspace.documents.find((candidate) => candidate.id === id)
+    const document = await store.findDocument(id)
     if (!document) return { status: "unavailable", reason: "analysis_failed" }
     const cacheDirectory = join(store.root, "layout")
     const cacheFile = join(cacheDirectory, `${id}.json`)
@@ -113,8 +112,7 @@ export class DocumentLayoutService {
         maxBuffer: 16 * 1024 * 1024,
       })
       const layout = documentLayoutSchema.parse(JSON.parse(await readFile(temporaryFile, "utf8")))
-      const currentWorkspace = await store.read()
-      const currentDocument = currentWorkspace.documents.find((candidate) => candidate.id === id)
+      const currentDocument = await store.findDocument(id)
       if (!currentDocument || layout.sourceHash !== currentDocument.hash) {
         await rm(temporaryFile, { force: true })
         return { status: "unavailable", reason: "analysis_failed" }

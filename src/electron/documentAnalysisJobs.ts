@@ -4,6 +4,13 @@ import type {
   DocumentPageParseResult,
 } from "../shared/documentPageModel"
 import type { DocumentRecord } from "../shared/schemas"
+
+/** A job's title within the snapshot's bounds, whatever the PDF's metadata held. */
+function jobTitle(document: DocumentRecord): string {
+  const bounded = (value: string): string => value.trim().slice(0, 512).trim()
+  return bounded(document.title) || bounded(document.name) || "제목 없는 문서"
+}
+
 export function analysisFailureMessage(result: DocumentPageParseResult): string {
   if (result.status === "ready") return ""
   if (result.reason === "runtime_missing") return "로컬 PaddleOCR-VL 설치가 필요합니다"
@@ -14,7 +21,7 @@ export function analysisFailureMessage(result: DocumentPageParseResult): string 
 export function queuedAnalysisJob(document: DocumentRecord): DocumentAnalysisJob {
   return {
     id: document.id,
-    title: document.title,
+    title: jobTitle(document),
     pageCount: document.pageCount,
     completedPages: 0,
     state: "queued",
@@ -31,7 +38,7 @@ export function runningAnalysisJob(input: {
 }): DocumentAnalysisJob {
   return {
     id: input.document.id,
-    title: input.document.title,
+    title: jobTitle(input.document),
     pageCount: input.document.pageCount,
     completedPages: input.completedPages,
     currentPage: input.currentPage,
@@ -50,7 +57,7 @@ export function failedAnalysisJob(
 ): DocumentAnalysisJob {
   return {
     id: document.id,
-    title: document.title,
+    title: jobTitle(document),
     pageCount: document.pageCount,
     completedPages,
     state: "failed",

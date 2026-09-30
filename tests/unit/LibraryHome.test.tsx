@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { LibraryCollectionSidebar } from "../../src/renderer/components/LibraryCollectionSidebar"
 import { LibraryHome } from "../../src/renderer/components/LibraryHome"
+import { snapshotOfAnalysisJobs } from "../../src/shared/documentAnalysis"
 import { documentRecordSchema } from "../../src/shared/schemas"
 
 vi.mock("../../src/renderer/components/DocumentThumbnail", () => ({
@@ -166,7 +167,7 @@ describe("LibraryHome", () => {
         onSelect={vi.fn()}
         onImport={vi.fn()}
         onFileDrop={vi.fn()}
-        analysisJobs={[
+        analysisJobs={snapshotOfAnalysisJobs([
           {
             id: report.id,
             title: report.title,
@@ -186,7 +187,7 @@ describe("LibraryHome", () => {
             completedPages: 0,
             state: "queued",
           },
-        ]}
+        ])}
       />,
     )
 
@@ -208,7 +209,7 @@ describe("LibraryHome", () => {
         onImport={vi.fn()}
         onFileDrop={vi.fn()}
         onRetryAnalysis={onRetryAnalysis}
-        analysisJobs={[
+        analysisJobs={snapshotOfAnalysisJobs([
           {
             id: report.id,
             title: report.title,
@@ -217,7 +218,7 @@ describe("LibraryHome", () => {
             state: "failed",
             message: "문서 구조 분석을 완료하지 못했습니다",
           },
-        ]}
+        ])}
       />,
     )
 

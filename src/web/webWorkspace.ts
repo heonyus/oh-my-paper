@@ -1,7 +1,8 @@
 import type { AiRequest } from "../shared/aiIpc"
 import {
   type DocumentAnalysisSnapshot,
-  documentAnalysisSnapshotSchema,
+  documentAnalysisJobSchema,
+  snapshotOfAnalysisJobs,
 } from "../shared/documentAnalysis"
 import type { ParsedDocumentPage } from "../shared/documentPageModel"
 import type { CitationLookupRequest, CitationLookupResult, ImportResult } from "../shared/ipc"
@@ -75,13 +76,6 @@ function pdfPicker(): Promise<File | null> {
     input.addEventListener("change", () => resolve(input.files?.item(0) ?? null), { once: true })
     input.click()
   })
-}
-
-function base64(bytes: Uint8Array<ArrayBuffer>): string {
-  let binary = ""
-  for (let offset = 0; offset < bytes.length; offset += 32_768)
-    binary += String.fromCharCode(...bytes.subarray(offset, offset + 32_768))
-  return btoa(binary)
 }
 
 export class WebWorkspaceBridge {
@@ -166,8 +160,8 @@ export class WebWorkspaceBridge {
     return resolved
   }
 
-  async readDocument(id: DocumentId): Promise<string> {
-    return base64(await fetchDocumentBytes(await this.#remoteId(id)))
+  async readDocument(id: DocumentId): Promise<Uint8Array> {
+    return fetchDocumentBytes(await this.#remoteId(id))
   }
 
   async page(id: DocumentId, pageNumber: number): Promise<ParsedDocumentPage> {
@@ -193,7 +187,7 @@ export class WebWorkspaceBridge {
   async analysis(): Promise<DocumentAnalysisSnapshot> {
     const documents = await fetchDocuments()
     this.#remember(documents)
-    return documentAnalysisSnapshotSchema.parse(
+    return snapshotOfAnalysisJobs(
       documents
         .filter((document) => document.status !== "ready")
         .map((document) => {
@@ -203,9 +197,10 @@ export class WebWorkspaceBridge {
             pageCount: Math.max(1, document.pageCount),
             completedPages: 0,
           }
-          if (document.status === "queued") return { ...base, state: "queued" }
+          if (document.status === "queued")
+            return documentAnalysisJobSchema.parse({ ...base, state: "queued" })
           if (document.status === "analyzing")
-            return {
+            return documentAnalysisJobSchema.parse({
               ...base,
               state: "running",
               currentPage: 1,
@@ -213,8 +208,12 @@ export class WebWorkspaceBridge {
               engine: "local",
               attempt: 1,
               maxAttempts: 2,
-            }
-          return { ...base, state: "failed", message: "문서 구조 분석에 실패했습니다." }
+            })
+          return documentAnalysisJobSchema.parse({
+            ...base,
+            state: "failed",
+            message: "문서 구조 분석에 실패했습니다.",
+          })
         }),
     )
   }

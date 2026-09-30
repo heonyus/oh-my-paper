@@ -1,5 +1,5 @@
 import { FilePlus2, Search } from "lucide-react"
-import { type JSX, useState } from "react"
+import { type JSX, useCallback, useState } from "react"
 import type { KnowledgeNodeId } from "../../shared/knowledgeSchemas"
 import type { KnowledgeClientOps } from "../lib/knowledgeTypes"
 import type { DocumentId, DocumentRecord } from "../types"
@@ -90,6 +90,13 @@ export function LibraryHomeContent({
   onDeleteDocument,
 }: LibraryHomeContentProps): JSX.Element {
   const [deleteRequestId, setDeleteRequestId] = useState<DocumentId | null>(null)
+  const requestDelete = useCallback(
+    (id: DocumentId) => {
+      onPreview(id)
+      setDeleteRequestId(id)
+    },
+    [onPreview],
+  )
   return (
     <div className="library-home-layout" data-sidebar-collapsed={sidebarCollapsed}>
       <LibraryCollectionSidebar
@@ -186,14 +193,7 @@ export function LibraryHomeContent({
               onViewChange={onViewChange}
               onPreview={onPreview}
               onOpenReader={onOpenReader}
-              onRequestDelete={
-                onDeleteDocument
-                  ? (id) => {
-                      onPreview(id)
-                      setDeleteRequestId(id)
-                    }
-                  : undefined
-              }
+              onRequestDelete={onDeleteDocument ? requestDelete : undefined}
             />
             <LibraryDocumentDetail
               document={selectedDocument}

@@ -22,6 +22,12 @@ function mergeDocument(
   current: DocumentRecord,
   incoming: DocumentRecord,
 ): DocumentRecord {
+  const lastReadPage = mergeField(
+    "document.lastReadPage",
+    base.lastReadPage,
+    current.lastReadPage,
+    incoming.lastReadPage,
+  )
   return {
     id: current.id,
     name: mergeField("document.name", base.name, current.name, incoming.name),
@@ -40,12 +46,8 @@ function mergeDocument(
     doi: mergeField("document.doi", base.doi, current.doi, incoming.doi),
     kind: mergeField("document.kind", base.kind, current.kind, incoming.kind),
     overview: mergeField("document.overview", base.overview, current.overview, incoming.overview),
-    lastReadPage: mergeField(
-      "document.lastReadPage",
-      base.lastReadPage,
-      current.lastReadPage,
-      incoming.lastReadPage,
-    ),
+    // An unread paper has no key at all; an own `undefined` would make every save rewrite it.
+    ...(lastReadPage === undefined ? {} : { lastReadPage }),
     quality: mergeField("document.quality", base.quality, current.quality, incoming.quality),
   }
 }

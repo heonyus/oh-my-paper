@@ -114,12 +114,12 @@ describe("DocumentAnalysisService", () => {
       pageConcurrency: 1,
     })
     const snapshots: unknown[] = []
-    service.subscribe((snapshot) => snapshots.push(...snapshot))
+    service.subscribe((snapshot) => snapshots.push(...snapshot.jobs))
 
     try {
       await service.schedule(document.id)
       await vi.waitFor(() =>
-        expect(service.snapshot().find((job) => job.id === document.id)?.state).toBe("failed"),
+        expect(service.snapshot().jobs.find((job) => job.id === document.id)?.state).toBe("failed"),
       )
       expect(localParser.parse).toHaveBeenCalledTimes(2)
       expect(snapshots).toEqual(
@@ -154,7 +154,7 @@ describe("DocumentAnalysisService", () => {
     try {
       await reopened.resumePending()
       expect(reopened.isReady(document.id)).toBe(true)
-      expect(reopened.snapshot().find((job) => job.id === document.id)).toBeUndefined()
+      expect(reopened.snapshot().jobs.find((job) => job.id === document.id)).toBeUndefined()
       expect(parser.parse).toHaveBeenCalledTimes(callsAfterFirstRun)
     } finally {
       await reopened.dispose()
@@ -196,7 +196,7 @@ describe("DocumentAnalysisService", () => {
     await disposal
 
     expect(parser.parse).toHaveBeenCalledOnce()
-    expect(service.snapshot().every((job) => job.state !== "complete")).toBe(true)
+    expect(service.snapshot().jobs.every((job) => job.state !== "complete")).toBe(true)
     expect(JSON.parse(await readFile(join(root, "document-analysis-queue.json"), "utf8"))).toEqual({
       version: 3,
       parserVersion: HYBRID_PAGE_CACHE_VERSION,
@@ -273,8 +273,8 @@ describe("DocumentAnalysisService", () => {
 
     try {
       await Promise.all([service.schedule(first.id), service.schedule(second.id)])
-      expect(service.snapshot()).toHaveLength(2)
-      expect(service.snapshot().every((job) => job.state === "running")).toBe(true)
+      expect(service.snapshot().jobs).toHaveLength(2)
+      expect(service.snapshot().jobs.every((job) => job.state === "running")).toBe(true)
 
       for (const document of [first, second]) {
         const resolve = resolvers.get(`${document.id}:1`)
@@ -337,7 +337,7 @@ describe("DocumentAnalysisService", () => {
       await Promise.all([service.schedule(first.id), service.schedule(second.id)])
 
       await vi.waitFor(() => {
-        const firstJob = service.snapshot().find((j) => j.id === first.id)
+        const firstJob = service.snapshot().jobs.find((j) => j.id === first.id)
         expect(firstJob?.state).toBe("failed")
         expect(service.isReady(second.id)).toBe(true)
       })
@@ -357,7 +357,7 @@ describe("DocumentAnalysisService", () => {
       ])
 
       await service.schedule(first.id)
-      const snapAfter = service.snapshot()
+      const snapAfter = service.snapshot().jobs
       const firstJobAfter = snapAfter.find((j) => j.id === first.id)
       expect(["queued", "running", "failed"]).toContain(firstJobAfter?.state)
     } finally {
@@ -386,7 +386,7 @@ describe("DocumentAnalysisService", () => {
     const service1 = new DocumentAnalysisService(store, parser, { maxConcurrency: 0 })
     await service1.schedule(failDoc.id)
     await vi.waitFor(() => {
-      const job = service1.snapshot().find((j) => j.id === failDoc.id)
+      const job = service1.snapshot().jobs.find((j) => j.id === failDoc.id)
       expect(job?.state).toBe("failed")
     })
     await service1.dispose()
@@ -489,7 +489,7 @@ describe("DocumentAnalysisService", () => {
       resolvers.get(1)?.(readyPage(paper.hash, 1))
       await new Promise((resolve) => setTimeout(resolve, 50))
 
-      expect(service.snapshot()).toEqual([])
+      expect(service.snapshot().jobs).toEqual([])
       expect(service.isReady(paper.id)).toBe(false)
       expect(resolvers.has(2)).toBe(false)
       expect(
@@ -502,7 +502,7 @@ describe("DocumentAnalysisService", () => {
       })
 
       await service.schedule(paper.id)
-      expect(service.snapshot().map((job) => job.id)).toEqual([paper.id])
+      expect(service.snapshot().jobs.map((job) => job.id)).toEqual([paper.id])
       await vi.waitFor(() => expect(parser.parse).toHaveBeenCalledTimes(2))
       resolvers.get(1)?.(readyPage(paper.hash, 1))
       await vi.waitFor(() => expect(parser.parse).toHaveBeenCalledTimes(3))

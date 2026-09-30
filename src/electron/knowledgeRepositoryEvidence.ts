@@ -18,15 +18,17 @@ import {
   rowToAnchor,
   rowToDocVersion,
 } from "./knowledgeRepositoryRows"
+import { cachedStatement } from "./knowledgeStatements"
 
 export class KnowledgeEvidenceOperations {
   constructor(private readonly db: DatabaseSync) {}
 
   createEvidenceAnchor(input: CreateEvidenceAnchorInput): EvidenceAnchor {
     return withKnowledgeSavepoint(this.db, () => {
-      const rawVersion = this.db
-        .prepare("SELECT * FROM document_versions WHERE id = ?")
-        .get(input.documentVersionId)
+      const rawVersion = cachedStatement(
+        this.db,
+        "SELECT * FROM document_versions WHERE id = ?",
+      ).get(input.documentVersionId)
       if (!rawVersion) {
         throw new Error(`Document version not found: ${input.documentVersionId}`)
       }
@@ -50,28 +52,29 @@ export class KnowledgeEvidenceOperations {
         createdAt: new Date().toISOString(),
       })
 
-      this.db
-        .prepare(`
+      cachedStatement(
+        this.db,
+        `
       INSERT INTO evidence_anchors (id, document_version_id, page, quote, x, y, fragments_json, ast_ranges_json, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `)
-        .run(
-          anchor.id,
-          anchor.documentVersionId,
-          anchor.page,
-          anchor.quote,
-          anchor.x,
-          anchor.y,
-          JSON.stringify(anchor.fragments),
-          anchor.astRanges ? JSON.stringify(anchor.astRanges) : null,
-          anchor.createdAt,
-        )
+    `,
+      ).run(
+        anchor.id,
+        anchor.documentVersionId,
+        anchor.page,
+        anchor.quote,
+        anchor.x,
+        anchor.y,
+        JSON.stringify(anchor.fragments),
+        anchor.astRanges ? JSON.stringify(anchor.astRanges) : null,
+        anchor.createdAt,
+      )
       return anchor
     })
   }
 
   getEvidenceAnchor(id: EvidenceAnchorId): EvidenceAnchor | null {
-    const raw = this.db.prepare("SELECT * FROM evidence_anchors WHERE id = ?").get(id)
+    const raw = cachedStatement(this.db, "SELECT * FROM evidence_anchors WHERE id = ?").get(id)
     if (!raw) return null
     return rowToAnchor(anchorRowSchema.parse(raw))
   }
@@ -88,38 +91,42 @@ export class KnowledgeEvidenceOperations {
         throw new Error(`Document version ${parsed.id} already exists and is immutable`)
       }
 
-      this.db
-        .prepare(`
+      cachedStatement(
+        this.db,
+        `
       INSERT INTO document_versions (id, original_document_id, paper_node_id, hash, metadata_json, created_at)
       VALUES (?, ?, ?, ?, ?, ?)
-    `)
-        .run(
-          parsed.id,
-          parsed.originalDocumentId,
-          parsed.paperNodeId,
-          parsed.hash,
-          JSON.stringify(parsed.metadata),
-          parsed.createdAt,
-        )
+    `,
+      ).run(
+        parsed.id,
+        parsed.originalDocumentId,
+        parsed.paperNodeId,
+        parsed.hash,
+        JSON.stringify(parsed.metadata),
+        parsed.createdAt,
+      )
       return parsed
     })
   }
 
   getDocumentVersion(id: DocumentVersionId): DocumentVersionRecord | null {
-    const raw = this.db.prepare("SELECT * FROM document_versions WHERE id = ?").get(id)
+    const raw = cachedStatement(this.db, "SELECT * FROM document_versions WHERE id = ?").get(id)
     if (!raw) return null
     return rowToDocVersion(docVersionRowSchema.parse(raw))
   }
 
   findDocumentVersionsByHash(hash: string): readonly DocumentVersionRecord[] {
-    const rawRows = this.db.prepare("SELECT * FROM document_versions WHERE hash = ?").all(hash)
+    const rawRows = cachedStatement(this.db, "SELECT * FROM document_versions WHERE hash = ?").all(
+      hash,
+    )
     return rawRows.map((r) => rowToDocVersion(docVersionRowSchema.parse(r)))
   }
 
   findDocumentVersionsByDocId(documentId: string): readonly DocumentVersionRecord[] {
-    const rawRows = this.db
-      .prepare("SELECT * FROM document_versions WHERE original_document_id = ?")
-      .all(documentId)
+    const rawRows = cachedStatement(
+      this.db,
+      "SELECT * FROM document_versions WHERE original_document_id = ?",
+    ).all(documentId)
     return rawRows.map((r) => rowToDocVersion(docVersionRowSchema.parse(r)))
   }
 
@@ -127,9 +134,9 @@ export class KnowledgeEvidenceOperations {
   deleteDocumentVersionsForDocument(documentId: string): readonly DocumentVersionRecord[] {
     return withKnowledgeSavepoint(this.db, () => {
       const versions = this.findDocumentVersionsByDocId(documentId)
-      this.db
-        .prepare("DELETE FROM document_versions WHERE original_document_id = ?")
-        .run(documentId)
+      cachedStatement(this.db, "DELETE FROM document_versions WHERE original_document_id = ?").run(
+        documentId,
+      )
       return versions
     })
   }

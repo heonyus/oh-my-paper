@@ -1,5 +1,8 @@
 import { type JSX, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type { DocumentAnalysisJob } from "../../shared/documentAnalysis"
+import {
+  type DocumentAnalysisSnapshot,
+  emptyDocumentAnalysisSnapshot,
+} from "../../shared/documentAnalysis"
 import type { ImportProgress } from "../../shared/ipc"
 import type { KnowledgeNodeId } from "../../shared/knowledgeSchemas"
 import type { KnowledgeClientOps } from "../lib/knowledgeTypes"
@@ -13,7 +16,8 @@ import {
   type LibraryCollection,
   loadLibraryCollections,
 } from "./library-collections"
-import { documentSearchText, normalizedReadingPage } from "./library-home-formatting"
+import { normalizedReadingPage } from "./library-home-formatting"
+import { useVisibleLibraryDocuments } from "./useVisibleLibraryDocuments"
 
 type LibraryHomeProps = {
   readonly documents: readonly DocumentRecord[]
@@ -31,7 +35,7 @@ type LibraryHomeProps = {
   readonly onFileDrop: (files: readonly File[]) => void
   readonly importLabel?: string | undefined
   readonly importProgress?: readonly ImportProgress[]
-  readonly analysisJobs?: readonly DocumentAnalysisJob[]
+  readonly analysisJobs?: DocumentAnalysisSnapshot
   readonly onRetryAnalysis?: ((id: DocumentId) => void) | undefined
   readonly recentDocumentId?: DocumentId | null | undefined
   readonly recentPage?: number | null | undefined
@@ -61,7 +65,7 @@ export function LibraryHome({
   onFileDrop,
   importLabel = "PDF 가져오기",
   importProgress = [],
-  analysisJobs = [],
+  analysisJobs = emptyDocumentAnalysisSnapshot,
   onRetryAnalysis,
   recentDocumentId,
   recentPage,
@@ -129,25 +133,16 @@ export function LibraryHome({
   const selectedCollection = collections.find(
     (collection) => collection.board.id === selectedCollectionId,
   )
-  const selectedCollectionDocumentIds = collectionDocumentIds(selectedCollection)
-  const visibleDocuments = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase()
-    return [...documents]
-      .sort((left, right) => right.importedAt.localeCompare(left.importedAt))
-      .filter((document) => {
-        if (filter === "recent" && document.id !== recentDocumentId) return false
-        if (filter !== "all" && filter !== "recent" && document.kind !== filter) return false
-        if (selectedCollectionId && !selectedCollectionDocumentIds.has(document.id)) return false
-        return !needle || documentSearchText(document).includes(needle)
-      })
-  }, [
-    documents,
-    filter,
+  const collectionMembers = useMemo(
+    () => (selectedCollectionId ? collectionDocumentIds(selectedCollection) : null),
+    [selectedCollection, selectedCollectionId],
+  )
+  const visibleDocuments = useVisibleLibraryDocuments(documents, {
     query,
+    filter,
     recentDocumentId,
-    selectedCollectionDocumentIds,
-    selectedCollectionId,
-  ])
+    collectionMembers,
+  })
   useEffect(() => {
     if (selectedId && visibleDocuments.some((document) => document.id === selectedId)) return
     setSelectedId(visibleDocuments[0]?.id ?? documents[0]?.id ?? null)

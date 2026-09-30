@@ -139,8 +139,7 @@ export async function readDocumentBytes(id: DocumentId, store: WorkspaceStore): 
 }
 
 export async function resolveDocumentPath(id: DocumentId, store: WorkspaceStore): Promise<string> {
-  const workspace = await store.read()
-  const document = workspace.documents.find((candidate) => candidate.id === id)
+  const document = await store.findDocument(id)
   if (!document) throw new DocumentImportError("read_failed")
   return join(store.documentsDirectory, `${document.hash}.pdf`)
 }

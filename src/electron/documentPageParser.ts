@@ -134,8 +134,7 @@ export class DocumentPageParser {
       return { status: "unavailable", reason: "invalid_page" }
     }
     const store = input.store ?? this.#store
-    const workspace = await store.read()
-    const document = workspace.documents.find((doc) => doc.id === input.documentId)
+    const document = await store.findDocument(input.documentId)
     if (!document) return { status: "unavailable", reason: "unknown_document" }
     if (input.pageNumber > document.pageCount)
       return { status: "unavailable", reason: "invalid_page" }
