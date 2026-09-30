@@ -57,6 +57,7 @@ describe("star invitation rules", () => {
     const base = { activeDays: MIN_ACTIVE_DAYS, wizardAnswer: null, state: FRESH, now: NOW }
     expect(shouldInvite(base)).toBe(true)
     expect(shouldInvite({ ...base, activeDays: MIN_ACTIVE_DAYS - 1 })).toBe(false)
+    expect(shouldInvite({ ...base, wizardAnswer: "starred" })).toBe(false)
     expect(shouldInvite({ ...base, wizardAnswer: "opened" })).toBe(false)
     expect(shouldInvite({ ...base, wizardAnswer: "skipped" })).toBe(true)
     expect(shouldInvite({ ...base, state: closedAs(FRESH, "never") })).toBe(false)
