@@ -12,14 +12,14 @@ import {
   type Catalog,
   FALLBACK_LOCALE,
   isLocale,
+  type LanguagePreference,
   type Locale,
   localeFromTags,
   type MessageParams,
   translator,
 } from "../../shared/i18n/locale"
 
-/** `auto` follows the browser's language; the others pin one. */
-export type LanguagePreference = "auto" | Locale
+export type { LanguagePreference }
 
 const STORAGE_KEY = "ohmypaper:language"
 
@@ -72,18 +72,28 @@ const LocaleContext = createContext<LocaleState>({
 export function LocaleProvider({
   children,
   initialPreference,
+  onPreferenceChange,
 }: {
   readonly children: ReactNode
-  /** Starts on this choice instead of the saved one; tests and previews pin a language with it. */
+  /**
+   * Starts on this choice instead of the one kept in this browser: the language saved with the
+   * app's data, and in tests and previews a pinned one.
+   */
   readonly initialPreference?: LanguagePreference | undefined
+  /** Also keeps a new choice elsewhere, such as with the app's data for the terminal. */
+  readonly onPreferenceChange?: ((preference: LanguagePreference) => void) | undefined
 }): JSX.Element {
   const [preference, setState] = useState<LanguagePreference>(
     () => initialPreference ?? readPreference(),
   )
-  const setPreference = useCallback((next: LanguagePreference): void => {
-    writePreference(next)
-    setState(next)
-  }, [])
+  const setPreference = useCallback(
+    (next: LanguagePreference): void => {
+      writePreference(next)
+      setState(next)
+      onPreferenceChange?.(next)
+    },
+    [onPreferenceChange],
+  )
   const locale = preference === "auto" ? browserLocale() : preference
   activeLocale = locale
   useEffect(() => {

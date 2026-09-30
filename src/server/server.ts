@@ -22,6 +22,7 @@ import {
 import { documentAstRequestSchema, documentAstResultSchema } from "../shared/documentAstIpc"
 import { documentPageParseRequestSchema } from "../shared/documentPageModel"
 import { githubStarStatusSchema } from "../shared/githubStar"
+import { languageStatusSchema } from "../shared/i18n/locale"
 import {
   citationLookupRequestSchema,
   documentImportUrlRequestSchema,
@@ -48,6 +49,7 @@ import { createClaudeRoutes } from "./claudeRoutes"
 import type { WebServerConfig } from "./config"
 import { createDocumentFileRoute } from "./documentFileRoute"
 import { readGithubStarAnswer } from "./githubStarStore"
+import { readSavedLanguage, saveLanguage } from "./languageStore"
 import { streamParsedPage } from "./pageParseStream"
 import type { WebServices } from "./services"
 import { importPdfBytes, importPdfFromUrl, readWorkspace } from "./services"
@@ -345,6 +347,17 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
           case "markWelcomeSeen": {
             await saveWelcomeSeen(config.dataDir)
             sendJson(res, 200, welcomeStatusSchema.parse({ seen: true }))
+            return
+          }
+          case "languageStatus": {
+            const language = readSavedLanguage(config.dataDir) ?? "auto"
+            sendJson(res, 200, languageStatusSchema.parse({ language }))
+            return
+          }
+          case "saveLanguage": {
+            const { language } = await readJson(req, languageStatusSchema)
+            await saveLanguage(config.dataDir, language)
+            sendJson(res, 200, languageStatusSchema.parse({ language }))
             return
           }
           case "githubStarStatus": {

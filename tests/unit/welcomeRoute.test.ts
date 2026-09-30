@@ -5,9 +5,11 @@ import { join } from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { defaultWorkspace } from "../../src/electron/workspaceStore"
 import type { WebServerConfig } from "../../src/server/config"
+import { readSavedLanguage } from "../../src/server/languageStore"
 import { createLocalWebServer } from "../../src/server/server"
 import { createWebServices } from "../../src/server/services"
 import { readWelcomeSeen } from "../../src/server/welcomeStore"
+import { languageStatusSchema } from "../../src/shared/i18n/locale"
 import { documentRecordSchema } from "../../src/shared/schemas"
 import { welcomeStatusSchema } from "../../src/shared/welcome"
 
@@ -91,5 +93,25 @@ describe("welcome routes", () => {
     })
     expect(response.status).toBe(200)
     expect(focus).toHaveBeenCalledWith("aabbccddeeff0011", 3)
+  })
+})
+
+describe("language routes", () => {
+  it("shares the language picked in the app with the terminal", async () => {
+    const { base, root } = await setup()
+    const call = async (method: string, body: unknown = {}) => {
+      const response = await fetch(`${base}/api/rpc/${method}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      })
+      return languageStatusSchema.parse(await response.json())
+    }
+    expect(await call("languageStatus")).toEqual({ language: "auto" })
+    expect(await call("saveLanguage", { language: "en" })).toEqual({ language: "en" })
+    expect(await call("languageStatus")).toEqual({ language: "en" })
+    expect(readSavedLanguage(root)).toBe("en")
+    await call("saveLanguage", { language: "auto" })
+    expect(await call("languageStatus")).toEqual({ language: "auto" })
   })
 })

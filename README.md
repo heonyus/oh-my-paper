@@ -22,7 +22,7 @@ The PDF stays as it is, on your computer.
 </div>
 
 > [!NOTE]
-> **oh-my-paper is in beta.** It is under active development, so expect rough edges and changes between updates. The interface and AI answers are in Korean for now.
+> **oh-my-paper is in beta.** It is under active development, so expect rough edges and changes between updates. The interface and AI answers come in Korean or English: the wizard asks which, and `oh-my-paper language` or the app's settings change it.
 
 ## Install
 
@@ -116,6 +116,7 @@ Scanned PDFs, figures, tables and equations are read on your computer by PaddleO
 | `oh-my-paper onboard` | Run the setup wizard again |
 | `oh-my-paper doctor` | Check the runtime, sign-ins, models, engine and data folder |
 | `oh-my-paper update` | Update to the latest version and rebuild |
+| `oh-my-paper language` | Switch between Korean and English, in the terminal and the app |
 | `oh-my-paper start --no-open` | Start without opening a browser |
 
 The app runs at `http://127.0.0.1:8788` and keeps its data in `~/.ohmypaper`.

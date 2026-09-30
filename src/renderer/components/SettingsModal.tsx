@@ -21,7 +21,7 @@ import "./settings-dialog.css"
 
 type SettingsSection = "general" | "ai" | "reading"
 
-/** The app's language, kept in this browser. Language names read the same in every language. */
+/** The app's language, shared with the terminal. Language names read the same in every language. */
 function LanguageRow(): JSX.Element {
   const t = useTranslator(settingsMessages)
   const { preference, setPreference } = useLocale()

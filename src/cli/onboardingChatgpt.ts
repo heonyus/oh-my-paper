@@ -42,7 +42,7 @@ async function chooseSubscriptionModel(models: readonly CodexModel[]): Promise<{
   const codexModel = await select({
     message: t("chatgpt.pickModel"),
     options: models.map((option) => {
-      const hint = codexModelHint(option.id, cliLocale) ?? option.description
+      const hint = codexModelHint(option.id, cliLocale()) ?? option.description
       return { value: option.id, label: option.label, ...(hint ? { hint } : {}) }
     }),
     initialValue: defaultCodexModel(models),
@@ -52,7 +52,10 @@ async function chooseSubscriptionModel(models: readonly CodexModel[]): Promise<{
   const effortOptions = codexReasoningEffortOptions(codexModel, models)
   const effort = await select({
     message: t("chatgpt.pickEffort"),
-    options: effortOptions.map((option) => ({ value: option.id, label: option.label[cliLocale] })),
+    options: effortOptions.map((option) => ({
+      value: option.id,
+      label: option.label[cliLocale()],
+    })),
     initialValue: effortOptions.some((option) => option.id === DEFAULT_EFFORT)
       ? DEFAULT_EFFORT
       : effortOptions[0]?.id,

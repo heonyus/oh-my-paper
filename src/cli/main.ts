@@ -13,6 +13,7 @@ import {
 } from "../electron/paddleInstallState"
 import { readWebServerConfig, type WebServerConfig } from "../server/config"
 import { checkEnvironment, ensureOcrInstall } from "./environment"
+import { languageCommand } from "./language"
 import { cliLocale } from "./locale"
 import { t } from "./messages"
 import { readOnboardingState, runOnboarding } from "./onboarding"
@@ -96,7 +97,7 @@ async function doctor(config: WebServerConfig): Promise<void> {
     if (report.ocrInstalling) {
       const progress = describePaddleInstallProgress(
         readPaddleInstallProgress(homedir()),
-        cliLocale,
+        cliLocale(),
       )
       log.info(
         `${t("doctor.ocrInstalling", { progress })}\n${gray(t("doctor.log", { path: paddleInstallPaths(homedir()).log }))}`,
@@ -200,7 +201,7 @@ async function update(): Promise<void> {
     log.success(`${t("update.ocrStarted")} ${gray(t("update.ocrStartedHint"))}`)
   else if (ocr === "installing")
     log.info(
-      `${t("update.ocrInstalling")} ${gray(`· ${describePaddleInstallProgress(readPaddleInstallProgress(homedir()), cliLocale)}`)}`,
+      `${t("update.ocrInstalling")} ${gray(`· ${describePaddleInstallProgress(readPaddleInstallProgress(homedir()), cliLocale())}`)}`,
     )
   outro(t("update.done", { version: readPackageVersion() }))
 }
@@ -215,6 +216,7 @@ function help(config: WebServerConfig): void {
       command("oh-my-paper onboard", t("help.onboard")),
       command("oh-my-paper doctor", t("help.doctor")),
       command("oh-my-paper update", t("help.update")),
+      command("oh-my-paper language", t("help.language")),
       command("oh-my-paper start --no-open", t("help.noOpen")),
       "",
     ].join("\n"),
@@ -240,6 +242,9 @@ async function main(): Promise<void> {
       return
     case "update":
       await update()
+      return
+    case "language":
+      await languageCommand(config, rest[0])
       return
     case "-v":
     case "--version":

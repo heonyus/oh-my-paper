@@ -5,6 +5,13 @@ export const LOCALES = ["ko", "en"] as const
 export type Locale = (typeof LOCALES)[number]
 export const localeSchema = z.enum(LOCALES)
 
+/** `auto` follows the computer or browser; the others pin one language. */
+export const languagePreferenceSchema = z.enum(["auto", ...LOCALES])
+export type LanguagePreference = z.infer<typeof languagePreferenceSchema>
+
+/** The language saved for the terminal and the app together. */
+export const languageStatusSchema = z.object({ language: languagePreferenceSchema })
+
 /** Used when nothing names a language the app speaks. */
 export const FALLBACK_LOCALE: Locale = "en"
 
