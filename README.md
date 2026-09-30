@@ -1,242 +1,203 @@
-<p align="center">
-  <img src="assets/branding/ohmypaper-leaf-mark.png" width="96" alt="oh-my-paper leaf mark">
-</p>
+<div align="center">
 
-<h1 align="center">oh-my-paper</h1>
+<img src="assets/branding/ohmypaper-leaf-mark.png" width="88" alt="oh-my-paper">
 
-<p align="center">
-  A local-first spatial workspace for reading research PDFs without flattening the paper.
-</p>
+# oh-my-paper
 
-<p align="center">
-  <a href="https://github.com/heonyus/oh-my-paper/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/heonyus/oh-my-paper/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://github.com/heonyus/oh-my-paper/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/heonyus/oh-my-paper"></a>
-  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/github/license/heonyus/oh-my-paper"></a>
-  <a href="https://github.com/heonyus/oh-my-paper/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/heonyus/oh-my-paper?style=social"></a>
-</p>
+### PDF는 그대로, 번역·설명·노트는 원문 자리에.
 
-<p align="center">
-  <img src="docs/media/oh-my-paper-demo.gif" width="880" alt="Selecting a sentence in a paper, pressing T to get a Korean translation card beside it, then E for an explanation">
-</p>
-<p align="center">
-  <a href="docs/media/oh-my-paper-demo.mp4">▶ Full demo (75 s, mp4)</a> — install, import, translate, explain, notes and the AI overview, recorded from the real app.<br>
-  <sub>Demo paper: Wei et al., “Chain-of-Thought Prompting Elicits Reasoning in Large Language Models”, <a href="https://arxiv.org/abs/2201.11903">arXiv:2201.11903</a>, CC BY 4.0.</sub>
-</p>
+논문을 내 컴퓨터에서 읽는 로컬 우선 리딩 워크스페이스.<br>
+문장을 고르고 키 하나 — 번역·설명·노트가 원문 옆에 붙고, 문서는 이 컴퓨터 밖으로 나가지 않습니다.
 
-oh-my-paper keeps the PDF in place and lets translations, explanations, notes, figures, and
-citations stay connected to the exact page that produced them. Documents stay on your computer,
-but the official app requires Google sign-in through a separate account-only backend.
-The supported target is Apple Silicon macOS (arm64).
+**한국어** · [English](README.en.md)
 
-Version 2.0 is in integration QA, not ready for commercial or public distribution. A blank-reader
-regression is being fixed. Live authentication, search, signing/notarization, and minimum-macOS
-compatibility remain unverified; see [release readiness](docs/release-readiness.md).
+<a href="#-한-줄-설치"><img alt="macOS Apple Silicon" src="https://img.shields.io/badge/macOS-Apple%20Silicon-111?logo=apple&logoColor=white"></a>
+<a href="#-데이터는-어디에-있나요"><img alt="Local-first" src="https://img.shields.io/badge/local--first-PDFs%20stay%20on%20your%20Mac-285644"></a>
+<a href="#-ai-연결"><img alt="AI: ChatGPT, Claude, API" src="https://img.shields.io/badge/AI-ChatGPT%20·%20Claude%20·%20API-7fd1a0"></a>
+<a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/github/license/heonyus/oh-my-paper?color=efc245"></a>
+<a href="https://github.com/heonyus/oh-my-paper/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/heonyus/oh-my-paper?style=social"></a>
 
-## What it does
+<br><br>
 
-- Reads papers as a continuous PDF column on a spatial research board.
-- Keeps translation and explanation cards attached to their source passages.
-- Detects headings, figures, tables, equations, and citations with PDF-aware geometry.
-- Stores the library, notes, highlights, caches, and provider configuration locally.
-- Provides keyword, three-line, full-paper, citation, and follow-up discussion tools.
-- Supports light/dark appearance, scalable UI text, selectable fonts, search, and a minimap.
-- Shows a short looping clip beside each feature the first time you reach it (import, translate,
-  explain, notes, AI overview); the header **?** (사용법) replays them all.
+<img src="docs/media/oh-my-paper-demo.gif" width="880" alt="논문에서 문장을 고르고 T를 누르면 한국어 번역 카드가 옆에 붙고, E를 누르면 설명이 붙는 장면">
 
-## Install
+<sub>▶ <a href="docs/media/oh-my-paper-demo.mp4">전체 데모 영상 (75초)</a> — 설치부터 가져오기·번역·설명·노트·AI 개요까지, 실제 앱을 그대로 녹화했습니다.</sub>
 
-Existing [GitHub Releases](https://github.com/heonyus/oh-my-paper/releases/latest) are historical
-artifacts, not evidence that the current 2.0 checkout is ready to install or distribute.
-Current packaging targets macOS arm64 only. The oldest supported macOS version has not been
-validated. See [Mac packaging](docs/mac-release.md) for local commands and distribution prerequisites.
+</div>
 
-### One-line install (local browser app)
+---
 
-Requirements: an Apple Silicon Mac, git, and Node.js 22+ (`brew install node`).
+## ⚡ 한 줄 설치
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.sh | bash
 ```
 
-The installer clones the app into `~/.oh-my-paper/app`, installs dependencies, builds the web
-app, links an `oh-my-paper` command into `~/.local/bin` (adding it to `PATH` for zsh/bash),
-and starts the setup wizard. The wizard walks through four explained steps — runtime check,
-the optional OCR engine, AI connection, and a short usage tour — then offers to open the app.
-The OCR engine (about 3 GB) starts downloading in the background as soon as it is chosen, from
-Hugging Face and ModelScope at once, so it is mostly done by the time AI is connected; the app
-is usable meanwhile and switches it on once it is ready. `oh-my-paper doctor` shows its progress.
+Apple Silicon Mac, git, Node.js 22 이상(`brew install node`)만 있으면 됩니다. 설치가 끝나면 설정 마법사가 바로 이어집니다.
 
-| Command | What it does |
-|---|---|
-| `oh-my-paper` | Start the app and open the browser (runs the wizard first if nothing is connected) |
-| `oh-my-paper onboard` | Setup wizard: AI connection, OCR engine, usage tour |
-| `oh-my-paper doctor` | Check the runtime, logins, models and data folder |
-| `oh-my-paper update` | Pull the latest version, reinstall and rebuild |
-| `oh-my-paper start --no-open` | Start without opening a browser |
+| 단계 | 하는 일 |
+|:--|:--|
+| **1** 실행 환경 확인 | Node.js, 로그인 런타임, Claude Code, uv가 있는지 봅니다 |
+| **2** 문서 분석 엔진 | PaddleOCR-VL을 **백그라운드로** 받기 시작합니다 (약 3GB) |
+| **3** AI 연결 | ChatGPT 구독 · Claude 구독 · API 키 중 하나를 고릅니다 |
+| **4** 사용법 | 단축키와 첫걸음을 보여 주고 앱을 엽니다 |
 
-AI connection choices, all selectable with arrow keys and Enter:
+엔진은 AI를 연결하고 사용법을 보는 동안 받아집니다. HuggingFace와 ModelScope에서 16MB 조각으로 **동시에** 받고 SHA-256으로 확인합니다. 그동안에도 논문은 바로 열어 읽을 수 있고, 먼저 가져온 논문은 엔진이 준비되면 알아서 분석됩니다.
 
-- **ChatGPT 구독 (OpenAI)** — sign in with your ChatGPT account in the browser, or with a
-  device code on another device; no API key. The model list comes from the bundled Codex
-  runtime for your account, so new models appear without an app update. GPT-6 Luna is the
-  default whenever the account offers it.
-- **Claude 구독 (Anthropic)** — reuses the local Claude Code login (default Claude Haiku 4.5).
-- **API 키** — OpenRouter, OpenAI, Gemini or Groq.
+## ✨ 이렇게 읽습니다
 
-### Run from source
+<table>
+<tr>
+<td width="50%" valign="top">
+<img src="docs/media/features/translate.gif" alt="문장을 드래그하고 T를 눌러 번역 카드를 붙이는 장면"><br>
+<b>문장을 고르고, 키 하나</b><br>
+드래그하면 메뉴가 뜹니다. <kbd>T</kbd> 번역 · <kbd>E</kbd> 설명 · <kbd>C</kbd> 노트에 담기 · <kbd>H</kbd> 하이라이트. 결과는 원문 옆 카드로 붙습니다.
+</td>
+<td width="50%" valign="top">
+<img src="docs/media/features/page-translation.gif" alt="원문 페이지 옆에 한국어로 번역된 페이지가 나란히 뜨는 장면"><br>
+<b>페이지를 통째로 번역</b><br>
+원문 옆에 한국어 페이지를 나란히 띄웁니다. 원본 배치 · 원문 · 대조 · 함께 읽기 네 가지로 보고, 문단을 누르면 원문 자리로 돌아갑니다.
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+<img src="docs/media/features/explain.gif" alt="수식이 있는 문장을 고르고 E를 눌러 설명을 받는 장면"><br>
+<b>그림·수식 설명</b><br>
+어려운 문장이나 수식을 고르고 <kbd>E</kbd>. 앞뒤 맥락까지 읽고 풀어서 설명합니다.
+</td>
+<td width="50%" valign="top">
+<img src="docs/media/features/note.gif" alt="노트에 문장을 쓰면 근거 문단이 옆에 나타나는 장면"><br>
+<b>내 말로 남기는 노트</b><br>
+쓰는 문장마다 근거가 된 문단을 찾아 옆에 보여 줍니다. <kbd>C</kbd>로 담으면 인용이 함께 들어갑니다.
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+<img src="docs/media/features/overview.gif" alt="AI 개요 패널에 키워드와 3줄 요약이 뜨는 장면"><br>
+<b>AI 개요</b><br>
+키워드, 3줄 요약, 전체 요약을 한 번에 봅니다. 질문하면 근거 페이지와 함께 답합니다.
+</td>
+<td width="50%" valign="top">
+<img src="docs/media/features/import.gif" alt="라이브러리에 PDF를 가져오는 장면"><br>
+<b>끌어다 놓으면 끝</b><br>
+PDF를 라이브러리에 놓으면 바로 열립니다. 제목·저자 같은 논문 정보와 페이지 구조(그림·표·수식)는 뒤에서 정리됩니다.
+</td>
+</tr>
+</table>
 
-Requirements: Node.js 22+ and npm, on macOS or Windows. The optional OCR runtime needs
-[`uv`](https://docs.astral.sh/uv/) on `PATH`; on Windows with an NVIDIA GPU it can also recognize
-pages through WSL (see [GPU acceleration](#gpu-acceleration-for-paddleocr-vl)). Desktop app
-packages are built for Apple Silicon macOS only.
+앱 안에서도 헤더의 **?** (사용법)를 누르면 이 영상들을 하나씩 크게 볼 수 있습니다.
+
+## 🌿 왜 oh-my-paper인가요
+
+- **원문을 망가뜨리지 않습니다.** 텍스트만 뽑아 보여 주지 않고, PDF를 연속 페이지 그대로 둔 채 그 위에 번역·설명·노트를 얹습니다.
+- **근거가 따라다닙니다.** 카드와 노트는 자기를 만든 문단에 붙어 있고, 누르면 그 자리로 돌아갑니다.
+- **문서는 내 컴퓨터에.** PDF, 노트, 하이라이트, 캐시, 페이지 분석까지 모두 로컬입니다. AI 요청은 내가 누를 때만, 내가 연결한 곳으로만 갑니다.
+- **이미 있는 구독으로.** ChatGPT나 Claude 구독이 있으면 API 키 없이 바로 씁니다.
+
+## 🤖 AI 연결
+
+| 방식 | 필요한 것 | 기본 모델 |
+|:--|:--|:--|
+| **ChatGPT 구독** | ChatGPT 계정 로그인 (브라우저 또는 다른 기기에서 코드 입력) · API 키 불필요 | GPT-6 Luna (계정에 열려 있으면) |
+| **Claude 구독** | 이 컴퓨터의 Claude Code 로그인 · API 키 불필요 · 본인 컴퓨터에서 개인용으로만 | Claude Haiku 4.5 |
+| **API 키** | OpenRouter · OpenAI · Gemini · Groq 중 하나의 키 | 공급자별 기본 모델 |
+
+모델 목록은 계정에서 바로 받아 오므로, 새 모델이 나오면 앱을 업데이트하지 않아도 보입니다. 설정 › AI에서 언제든 바꿀 수 있습니다.
+
+## 🔬 문서 분석 엔진
+
+스캔 PDF와 그림·표·수식은 **PaddleOCR-VL-1.6**이 이 컴퓨터에서 읽습니다. Apple Silicon에서는 MLX로 가속합니다.
+
+- 마법사에서 기본으로 설치되며, 백그라운드에서 받는 동안 진행률이 설정 화면과 `oh-my-paper doctor`에 나옵니다 (예: `설치 중 42% · 약 1분 남음`).
+- 끝나면 앱을 다시 켜지 않아도 자동으로 켜집니다.
+- 나중에 설치하려면 `npm run setup:paddle-vl`을 실행하세요 (Python 3.12와 [`uv`](https://docs.astral.sh/uv/) 필요).
+
+## 🧭 명령어
+
+| 명령 | 하는 일 |
+|:--|:--|
+| `oh-my-paper` | 앱을 시작하고 브라우저를 엽니다 (연결된 AI가 없으면 마법사부터) |
+| `oh-my-paper onboard` | 설정 마법사: 문서 분석 엔진, AI 연결, 사용법 |
+| `oh-my-paper doctor` | 런타임, 로그인, 모델, 엔진 설치 진행률, 데이터 폴더 점검 |
+| `oh-my-paper update` | 최신 버전을 받아 다시 설치·빌드합니다 (진행 과정이 흐리게 흘러갑니다) |
+| `oh-my-paper start --no-open` | 브라우저를 열지 않고 시작합니다 |
+
+앱 주소는 `http://127.0.0.1:8788`, 데이터는 `~/.ohmypaper`에 있습니다.
+
+## 🔒 데이터는 어디에 있나요
+
+| 무엇 | 어디 |
+|:--|:--|
+| PDF, 라이브러리, 노트, 하이라이트, 카드 | 내 컴퓨터 |
+| 페이지 분석 (PDF.js · PaddleOCR-VL) | 내 컴퓨터 |
+| 번역·설명·요약 요청 | 누른 뒤에만, 내가 연결한 AI로 |
+| 계정 로그인 (데스크톱 앱의 계정 모드만) | Google과 별도 계정 서버 |
+
+PDF를 가져오거나 여는 것만으로는 아무 데도 보내지 않습니다. 저장한 API 키는 암호화되어 PDF 화면에 노출되지 않고, 저장소에 커밋되거나 oh-my-paper 서버로 가지 않습니다. 구독·API·계정 인프라에는 각자의 요금과 한도가 있습니다.
+
+## 🛠 개발자용
+
+<details>
+<summary><b>소스에서 실행</b></summary>
+
+Node.js 22 이상과 npm이 필요합니다 (macOS 또는 Windows).
 
 ```bash
 git clone https://github.com/heonyus/oh-my-paper.git
 cd oh-my-paper
 npm ci
 npm run build:web
-npm run cli          # same as the oh-my-paper command
+npm run cli          # oh-my-paper 명령과 같습니다
 ```
 
-`npm run start:web` still starts the app (running the wizard first when nothing is connected)
-and `npm run setup` reruns the wizard. Non-interactive shells skip the wizard and start the
-server directly.
+`npm run start:web`도 앱을 시작하고(연결된 AI가 없으면 마법사부터), `npm run setup`은 마법사를 다시 띄웁니다. 대화형이 아닌 셸에서는 마법사를 건너뛰고 바로 서버를 켭니다. 브라우저 앱은 저장된 선택이 없고 `claude` CLI가 있으면 Claude 구독 모드로 시작합니다.
 
-Open `http://127.0.0.1:8788`. If AI is not connected yet, the browser shows a short
-guided connect screen (Claude 구독, ChatGPT 로그인 or API 키) instead of the library.
-Without a saved choice, the browser app starts in Claude 구독 mode whenever the `claude`
-CLI is installed.
-
-Reader translation, explanation, summary, chat and research answers use the connected
-subscription or API model. The official `@openai/codex` runtime is an application
-dependency; the local server starts it when needed — you do not install or start
-`@bitkyc08/opencodex` for this path. A separate app-owned profile retains the ChatGPT
-connection across restarts; **로그아웃** disconnects that profile only.
-
-For stronger page structure analysis — scanned PDFs, figures, tables, equations —
-install the optional local parser. It requires Python 3.12 and `uv`, and model
-downloads can be large:
+선택적인 로컬 런타임:
 
 ```bash
-npm run setup:paddle-vl
-```
-
-Optional local runtimes:
-
-```bash
+npm run setup:paddle-vl   # PaddleOCR-VL (+ Apple Silicon에서는 MLX-VLM)
 npm run setup:layout
 npm run setup:mineru
-npm run setup:paddle-vl
 ```
 
-Provider subscriptions, optional APIs/OCR, and account infrastructure have separate
-costs and limits; there is no zero-charge guarantee.
+</details>
 
-### Desktop app (Electron)
+<details>
+<summary><b>GPU 가속 (Windows · NVIDIA)</b></summary>
 
-The desktop shell additionally builds the Electron main/preload entries:
+PaddleOCR-VL은 로컬 GPU 서버를 쓰면 훨씬 빠릅니다 (RTX 3060 Ti에서 페이지당 약 2초, 프로세스 안에서는 수십 초).
+
+- **Apple Silicon:** `npm run setup:paddle-vl`이 MLX-VLM 서버까지 설치합니다.
+- **Windows + NVIDIA:** `npm run setup:paddle-vl`이 WSL(`uv`가 있는 Ubuntu) 안에 vLLM 서버를 설치합니다. `npm run setup:paddle-vllm`은 그 부분만 다시 설치합니다. WSL 안에서 약 13GB, 분석 중 GPU 메모리 약 4.6GB를 씁니다.
+
+앱은 분석할 문서가 있을 때 서버를 켜고, 10분 동안 쉬면 끕니다. WSL 부팅 후 첫 시작은 2분쯤 걸립니다.
+
+</details>
+
+<details>
+<summary><b>데스크톱 앱 (Electron)과 계정 설정</b></summary>
 
 ```bash
 npm run build
 npm run dev
 ```
 
-The build above is required because the development launcher loads the Electron
-main/preload entry from `dist-electron`; rerun it after main/preload changes. The
-launcher starts Vite and Electron; it does not provision the backend or configure
-Google. Electron's main process loads `.env` via `dotenv/config`; inherited
-environment values take precedence.
+개발 런처는 `dist-electron`에서 main/preload를 불러오므로 main/preload를 바꾼 뒤에는 다시 빌드하세요. 런처는 Vite와 Electron만 켜고, 백엔드나 Google 설정은 하지 않습니다. Electron main은 `.env`를 `dotenv/config`로 읽고, 이미 있는 환경 변수가 우선합니다.
 
-For the explicitly authorized owner-only Mac installation, main can instead read
-`local-access.json` in that installation's user-data directory: `{ "version": 1,
-"mode": "local", "accountId": "<locally generated UUID>" }`. It opens the existing
-collection as `이 Mac · 로컬` without a Google session or server privileges. This file
-is not bundled or supplied through renderer IPC; profiles without it still require
-the account bindings below. AI connections remain separate and explicit.
+소유자 전용 Mac 설치는 사용자 데이터 폴더의 `local-access.json`(`{ "version": 1, "mode": "local", "accountId": "<로컬에서 만든 UUID>" }`)으로 Google 세션 없이 `이 Mac · 로컬` 컬렉션을 엽니다. 이 파일은 번들되지 않고 렌더러 IPC로도 전달되지 않습니다.
 
-For account-managed profiles, fill the three non-secret bindings in `.env` (see
-`.env.example`) using an authorized account service:
+계정 모드 프로필은 `.env`에 비밀이 아닌 값 세 개를 채웁니다 (`.env.example` 참고):
 
-- `OH_MY_PAPER_ACCOUNT_SERVICE_ORIGIN`: account API HTTPS origin.
-- `OH_MY_PAPER_ACCOUNT_ISSUER`: expected session issuer, matching the backend's `APP_ISSUER`.
-- `OH_MY_PAPER_GOOGLE_CLIENT_ID`: Google Desktop OAuth client ID accepted by the backend's `GOOGLE_CLIENT_IDS`.
+- `OH_MY_PAPER_ACCOUNT_SERVICE_ORIGIN`: 계정 API의 HTTPS 오리진
+- `OH_MY_PAPER_ACCOUNT_ISSUER`: 백엔드 `APP_ISSUER`와 같은 세션 발급자
+- `OH_MY_PAPER_GOOGLE_CLIENT_ID`: 백엔드 `GOOGLE_CLIENT_IDS`가 받아들이는 Google 데스크톱 OAuth 클라이언트 ID
 
-Both origins must have no path, trailing slash, query, fragment, or credentials. Google setup needs
-a Desktop OAuth client and appropriate consent-screen configuration. The account backend needs
-its own database and signing key; those secrets never belong in the desktop `.env`.
-See [account-service prerequisites](docs/account-service.md#deployment-prerequisites-and-unverified-gates).
-Missing or invalid account bindings leave the desktop app locked (`service_not_configured`).
-After verified online authentication, the session policy permits up to seven days of bounded offline
-local use, subject to lease expiry and known revocation. This is not a guest mode.
+값이 없거나 잘못되면 데스크톱 앱은 잠긴 상태(`service_not_configured`)로 남습니다. 온라인 인증을 마친 세션은 최대 7일까지 오프라인으로 쓸 수 있습니다. 게스트 모드는 없습니다. 자세한 전제는 [계정 서비스 문서](docs/account-service.md#deployment-prerequisites-and-unverified-gates)에 있습니다. `.env`는 커밋하지 마세요.
 
-Keep `.env` uncommitted. Packaged apps need separately supplied trusted main-process bindings;
-the development `.env` is not bundled. Synthetic test issuers belong only to dedicated test launchers,
-never a production login bypass. The local account-service HTTP fixture is not a valid production
-desktop HTTPS binding.
+</details>
 
-## Local processing
-
-PDF rendering, library storage, notes, highlights, search, and built-in structure
-detection work locally. Page structure analysis runs on-device through PDF.js and
-PaddleOCR-VL; importing or opening a PDF never sends it anywhere by itself.
-
-### GPU acceleration for PaddleOCR-VL
-
-PaddleOCR-VL recognizes pages far faster through a local GPU server (about 2 seconds per page on
-an RTX 3060 Ti, against tens of seconds in-process):
-
-- **Apple silicon:** `npm run setup:paddle-vl` also installs an MLX-VLM server.
-- **Windows with an NVIDIA GPU:** `npm run setup:paddle-vl` also installs a vLLM server inside WSL
-  (an Ubuntu distribution with `uv`). `npm run setup:paddle-vllm` reinstalls just that part. It
-  takes about 13 GB inside WSL and about 4.6 GB of GPU memory while documents are analyzed.
-
-The app starts the server when a document needs analysis and stops it after ten idle minutes; the
-first start after WSL boots takes about two minutes. Documents open right away, and page structure
-appears as analysis reaches each page.
-
-## Optional AI providers
-
-### Desktop and existing API connections
-
-Google app identity does not grant AI access. Configure a separate connection under **Settings → AI**:
-
-- ChatGPT subscription mode uses the official local Codex App Server runtime, separate login, and
-  an app-owned profile with OS-keyring credentials. It does not copy another app's login or silently
-  fall back to a paid API. A working runtime and eligible user subscription are prerequisites;
-  live login, inference, cancellation, and usage reporting still need verification.
-- Claude subscription mode (browser app only, personal use) runs the locally installed Claude
-  Code CLI headlessly with its existing login; the default model is `claude-haiku-4-5`. Anthropic
-  does not allow third-party products to offer claude.ai login without approval, so this mode
-  is for the owner's own Mac and must not be shipped to other users.
-- API mode uses your own provider keys. Gemini, Groq, OpenAI and OpenRouter are separate
-  choices. PDF structure analysis stays local through PDF.js and
-  PaddleOCR-VL and does not need a hosted OCR key.
-
-See [subscription authentication](docs/subscription-auth.md) for the implementation boundary.
-
-Provider keys saved in the app are encrypted with Electron `safeStorage`. They are never exposed to
-the PDF renderer, committed to Git, or sent to a oh-my-paper server.
-
-The environment example contains only non-secret account bindings. Configure personal provider
-credentials in the app; never commit keys, tokens, or account-service signing material.
-
-## Privacy boundary
-
-| Action | Default location |
-|---|---|
-| PDF files and workspace | Your computer |
-| Notes, highlights, and generated cards | Your computer |
-| PDF.js structure detection | Your computer |
-| PaddleOCR-VL / MinerU parsing | Your computer |
-| Google identity and app session validation | Google and the separate account backend |
-| AI request after an explicit click | The provider you configured |
-
-Importing or opening a PDF does not automatically run AI/OCR. Network AI work begins only after an
-explicit action and only when a provider has been configured.
-The account backend handles identity and sessions, not PDFs, note bodies, provider credentials, or
-AI requests. There is no automatic document synchronization; notes remain real local Markdown files.
-
-## Development
+<details>
+<summary><b>검증과 기여</b></summary>
 
 ```bash
 npm ci
@@ -245,24 +206,22 @@ npm run build
 npm run make
 ```
 
-The renderer has no direct filesystem, database, secret, or network authority. Electron IPC and
-external data boundaries are parsed with Zod.
+렌더러에는 파일 시스템·데이터베이스·비밀·네트워크 권한이 없고, Electron IPC와 외부 데이터 경계는 Zod로 검사합니다. PR 전에 [CONTRIBUTING.md](CONTRIBUTING.md)를 읽어 주세요. 보안 문제는 [SECURITY.md](SECURITY.md)의 방법으로 비공개 제보해 주세요. 제품 설계 규칙은 [DESIGN.md](DESIGN.md)에 있습니다.
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Report security issues
-privately as described in [SECURITY.md](SECURITY.md).
+</details>
 
-## Project status
+## 📍 프로젝트 상태
 
-The 2.0 integration is still under QA. Useful contributions include reproducible synthetic PDF
-fixtures, Apple Silicon packaging checks, local parser improvements, accessibility, and source-faithful
-translation geometry. Windows, Linux, and Intel Mac releases are outside the current target.
-The [active product plan](.omo/plans/README.md) describes intended work; the coordinator's
-[execution record](.omo/evidence/ohmypaper-local-product/2026-09-06/execution.md) tracks QA evidence.
-Neither feature descriptions nor passing simulated tests establish release readiness.
+2.0은 통합 QA 중이고, 아직 상용·공개 배포 단계가 아닙니다. 지금 패키징 대상은 Apple Silicon macOS(arm64)이고, 지원하는 가장 오래된 macOS 버전은 아직 확인하지 않았습니다. 예전 [GitHub Releases](https://github.com/heonyus/oh-my-paper/releases)는 지난 기록일 뿐 현재 2.0이 배포 준비됐다는 뜻이 아닙니다. 자세한 내용은 [출시 준비 상태](docs/release-readiness.md)와 [Mac 패키징](docs/mac-release.md)을 보세요.
 
-If oh-my-paper helps your research, [star the repository](https://github.com/heonyus/oh-my-paper) so
-other researchers can find it.
+재현 가능한 합성 PDF 픽스처, Apple Silicon 패키징 확인, 로컬 파서 개선, 접근성, 원문 좌표에 맞는 번역 배치 같은 기여를 환영합니다.
 
-## License
+---
 
-[MIT](LICENSE)
+<div align="center">
+
+oh-my-paper가 연구에 도움이 됐다면 ⭐ 하나로 다른 연구자들도 찾을 수 있게 해 주세요.
+
+[MIT](LICENSE) · 데모 논문: Wei et al., “Chain-of-Thought Prompting Elicits Reasoning in Large Language Models”, [arXiv:2201.11903](https://arxiv.org/abs/2201.11903), CC BY 4.0
+
+</div>
