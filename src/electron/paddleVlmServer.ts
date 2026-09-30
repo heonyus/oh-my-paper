@@ -5,7 +5,6 @@ import { createConnection, createServer } from "node:net"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import { z } from "zod"
-import { backgroundCommand } from "./backgroundPriority"
 import { buildOfflineSubprocessEnv } from "./offlineSubprocessEnvironment"
 
 export type PaddleVlmBackend = "mlx-vlm-server" | "vllm-server"
@@ -122,8 +121,15 @@ function processGone(process: ChildProcess): boolean {
   return process.exitCode !== null || process.pid === undefined
 }
 
+/**
+ * How long a live server may take to open its port. It usually takes 5–10 s, but the first
+ * start after an update or reboot reads the model and libraries from a cold disk while the
+ * worker loads too, and giving up means recognizing on the CPU for the rest of the session.
+ */
+const READY_TIMEOUT_MS = 120_000
+
 async function waitUntilReady(process: ChildProcess, port: number): Promise<void> {
-  const deadline = Date.now() + 30_000
+  const deadline = Date.now() + READY_TIMEOUT_MS
   while (Date.now() < deadline) {
     if (processGone(process)) throw new PaddleVlmLaunchError("process")
     if (await loopbackReady(port)) return
@@ -197,22 +203,27 @@ export class ApplePaddleVlmServer implements PaddleVlmServer {
     }
     const port = await reserveLoopbackPort()
     const apiKey = randomUUID()
-    const [command, args] = backgroundCommand(python, [
-      "-m",
-      "mlx_vlm.server",
-      "--host",
-      "127.0.0.1",
-      "--port",
-      String(port),
-      "--model",
-      model,
-      "--log-level",
-      "ERROR",
-    ])
-    const server = spawn(command, args, {
-      env: paddleVlmServerEnvironment(home, apiKey),
-      stdio: "ignore",
-    })
+    // Full priority, unlike the worker: the server is mostly GPU work, and at utility QoS it
+    // came up too slowly after an update and left the whole session recognizing on the CPU.
+    const server = spawn(
+      python,
+      [
+        "-m",
+        "mlx_vlm.server",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        String(port),
+        "--model",
+        model,
+        "--log-level",
+        "ERROR",
+      ],
+      {
+        env: paddleVlmServerEnvironment(home, apiKey),
+        stdio: "ignore",
+      },
+    )
     this.#process = server
     server.once("error", (error) => console.warn("[paddle-vlm] MLX-VLM server failed", error))
     server.once("exit", () => {
