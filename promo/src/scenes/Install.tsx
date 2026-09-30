@@ -27,7 +27,7 @@ const INSTALL: readonly Line[] = [
   { at: 68, text: "◆  2/4  내려받기", tone: "step" },
   { at: 76, text: "│  ✔ 저장소 복제", tone: "ok" },
   { at: 82, text: "◆  3/4  설치와 빌드", tone: "step" },
-  { at: 96, text: "│  ✔ 의존성 설치 (Codex 로그인 런타임 포함)", tone: "ok" },
+  { at: 96, text: "│  ✔ 의존성 설치", tone: "ok" },
   { at: 106, text: "│  ✔ 웹 앱 빌드", tone: "ok" },
   { at: 112, text: "◆  4/4  명령어 연결", tone: "step" },
   { at: 116, text: "│  ✔ ~/.local/bin/oh-my-paper", tone: "ok" },

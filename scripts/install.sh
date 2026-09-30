@@ -49,12 +49,14 @@ fail() {
 }
 
 # The newest line of the log, as the spinner's dim second line: progress redraws split, color
-# codes dropped, npm package downloads shown by name, cut to the terminal width. The log holds
+# codes dropped, npm package downloads shown by name, cut to the terminal width. The Codex CLI,
+# by far the largest download, is left out so its name does not linger there. The log holds
 # localized (Korean) git output and may end mid-character, so the text tools work on bytes and
 # iconv drops any split character; a byte cut never runs wider than the terminal.
 latest() {
   tail -n 20 "$LOG" 2>/dev/null |
-    LC_ALL=C tr '\r' '\n' | LC_ALL=C grep -v '^[[:space:]]*$' | tail -n 1 |
+    LC_ALL=C tr '\r' '\n' | LC_ALL=C grep -v -i -e '^[[:space:]]*$' -e '@openai/codex' -e '@openai%2fcodex' |
+    tail -n 1 |
     LC_ALL=C sed -E -e $'s/\x1b\\[[0-9;]*[A-Za-z]//g' \
       -e 's#^npm http cache [^ ]*/([^/ ]+)\.tgz .*#\1#' \
       -e 's#^npm http fetch [A-Z]+ [0-9]+ [^ ]*/([^/ ]+)\.tgz .*#\1#' |
@@ -117,7 +119,7 @@ fi
 
 step "3/4  설치와 빌드"
 printf '%s│%s  %s처음에는 몇 분 걸립니다%s\n' "$DIM" "$RESET" "$DIM" "$RESET"
-run "의존성 설치 (Codex 로그인 런타임 포함)" npm --prefix "$APP_DIR" ci --no-audit --no-fund \
+run "의존성 설치" npm --prefix "$APP_DIR" ci --no-audit --no-fund \
   --loglevel=http --foreground-scripts
 run "웹 앱 빌드" npm --prefix "$APP_DIR" run build:web
 
