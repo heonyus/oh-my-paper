@@ -37,13 +37,6 @@ export type RankedCitation = {
   readonly tier: ReadingTier
 }
 
-export const readingTierLabel: Readonly<Record<ReadingTier, string>> = {
-  deep_read: "정독",
-  skim: "훑어보기",
-  abstract_only: "초록만",
-  pass: "패스",
-}
-
 export function rankCitationAssessments(
   candidates: readonly CitationTriageCandidate[],
 ): readonly RankedCitation[] {

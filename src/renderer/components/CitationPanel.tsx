@@ -7,7 +7,9 @@ import {
   parseCitationAssessment,
   rankCitationAssessments,
 } from "../lib/citationTriage"
+import { useTranslator } from "../lib/locale"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
+import { citationMessages } from "../messages/citations"
 import type { AiDeltaHandler, AiRequestRunner, DocumentRecord } from "../types"
 import { CitationItem } from "./CitationItem"
 import type { CitationAnalysisState, CompleteCitationAnalysis } from "./citationPanelTypes"
@@ -27,6 +29,7 @@ export function CitationPanel({
     result: CitationAssessmentResult,
   ) => void
 }): JSX.Element {
+  const t = useTranslator(citationMessages)
   const [states, setStates] = useState<Readonly<Record<string, CitationAnalysisState>>>({})
   const [batchRunning, setBatchRunning] = useState(false)
   const ranked = useMemo(
@@ -61,7 +64,7 @@ export function CitationPanel({
       if (lookup.status !== "found") {
         setStates((current) => ({
           ...current,
-          [entry.key]: { status: "error", message: "검증 가능한 논문을 찾지 못했습니다." },
+          [entry.key]: { status: "error", message: t("citation.notFound") },
         }))
         return
       }
@@ -87,7 +90,7 @@ export function CitationPanel({
     } catch {
       setStates((current) => ({
         ...current,
-        [entry.key]: { status: "error", message: "메타데이터 또는 AI 판독에 실패했습니다." },
+        [entry.key]: { status: "error", message: t("citation.failed") },
       }))
     }
   }
@@ -122,21 +125,22 @@ export function CitationPanel({
   }
 
   return (
-    <section className="sidebar-mode-panel citation-panel" aria-label="인용 논문 판독">
+    <section className="sidebar-mode-panel citation-panel" aria-label={t("citation.panelLabel")}>
       <header className="mode-panel-head">
         <div>
           <Quote size={18} />
-          <h2>인용</h2>
+          <h2>{t("citation.heading")}</h2>
         </div>
         <button
           type="button"
           disabled={batchRunning || citations.length === 0}
           onClick={() => void analyzeAll()}
         >
-          <ScanSearch size={14} /> {batchRunning ? "판독 중" : "전체 판독"}
+          <ScanSearch size={14} />{" "}
+          {batchRunning ? t("citation.analyzingAll") : t("citation.analyzeAll")}
         </button>
       </header>
-      <p className="citation-policy">정독 5% · 훑어보기 15% · 초록만 25% · 패스 다수</p>
+      <p className="citation-policy">{t("citation.policy")}</p>
       {ordered.length > 0 ? (
         <div className="citation-list">
           {ordered.map((entry) => {
@@ -157,7 +161,7 @@ export function CitationPanel({
           })}
         </div>
       ) : (
-        <p className="mode-empty">이 PDF에서 구조화된 참고문헌을 찾지 못했습니다.</p>
+        <p className="mode-empty">{t("citation.empty")}</p>
       )}
     </section>
   )

@@ -1,0 +1,149 @@
+import type { Catalog } from "../../shared/i18n/locale"
+
+const ko = {
+  // View
+  "research.label": "리서치 에이전트",
+  "research.answerFailed": "답변을 만들지 못했습니다",
+
+  // Chat history rail
+  "rail.label": "리서치 채팅 기록",
+  "rail.new": "새 채팅",
+  "rail.empty": "아직 대화가 없습니다",
+  "rail.group.previous_7_days": "지난 7일",
+  "rail.group.previous_30_days": "지난 30일",
+  "rail.group.older": "이전",
+
+  // Thread
+  "thread.heroTitle": "무엇을 배우고 싶으세요?",
+  "thread.deep": "딥리서치",
+  "thread.related": "관련 연구",
+  "thread.relatedHint": '"{title}" 관련 최신 논문',
+  "thread.relatedEmpty": "라이브러리에 논문을 추가하면 추천이 생깁니다",
+  "thread.deepBadge": "딥리서치 보고서",
+  "thread.trace": "검색 과정 {count}단계",
+  "thread.deepStarting": "딥리서치를 시작하는 중…",
+  "thread.analyzing": "질문을 분석하는 중…",
+  "thread.cancelled": "검색을 취소했습니다. 질문을 다시 보내면 처음부터 찾습니다.",
+
+  // Composer
+  "composer.attached": "첨부된 논문",
+  "composer.remove": "{title} 제거",
+  "composer.placeholder": "대충 물어봐도 찾아드려요… '@'로 논문을 컨텍스트에 추가",
+  "composer.placeholderDeep":
+    "딥리서치할 주제를 편하게 적어주세요. 여러 번 찾아보고 보고서로 정리합니다",
+  "composer.inputLabel": "리서치 질문 입력",
+  "composer.attach": "논문을 컨텍스트에 추가",
+  "composer.library": "내 라이브러리 논문",
+  "composer.libraryEmpty": "라이브러리가 비어 있습니다",
+  "composer.deep": "딥리서치",
+  "composer.deepTitle":
+    "여러 라운드로 논문을 찾고 인용·추천을 따라간 뒤 보고서를 씁니다. 1~4분 걸립니다.",
+  "composer.cancel": "검색 취소",
+  "composer.startDeep": "딥리서치 시작",
+  "composer.send": "질문 보내기",
+
+  // Paper cards
+  "paper.relevance.3": "핵심",
+  "paper.relevance.2": "관련",
+  "paper.relevance.1": "약한 관련",
+  "paper.citedBy": "인용 {count}",
+  "paper.open": "리더에서 열기",
+  "paper.importing": "가져오는 중…",
+  "paper.importFailed": "가져오지 못했습니다",
+  "paper.site": "원문 사이트",
+
+  // Agent steps
+  "step.context": "라이브러리 첨부 논문 {count}편 불러옴",
+  "step.planRunning": "질문 이해 · 검색 계획 세우는 중…",
+  "step.planFailed": "검색 계획을 세우지 못해 질문 그대로 검색합니다",
+  "step.planDetail": "검색 계획: {detail}",
+  "step.planDone": "검색어 {count}개 준비",
+  "step.searchRunning": "{query} 검색 중…",
+  "step.searchFailed": "{query} 검색 실패",
+  "step.searchDone": "{query} — 새 논문 {count}편",
+  "step.fallbackRunning": "{query} — 보조 검색 중…",
+  "step.fallbackFailed": "{query} — 보조 검색 실패",
+  "step.fallbackDone": "{query} — 보조 검색 {count}편",
+  "step.judgeRunning": "후보 {count}편의 관련성 판정 중…",
+  "step.judgeFailed": "관련성 판정 실패",
+  "step.judgeDone": "관련 논문 {count}편 확인",
+  "step.expandRunning": "관련 논문의 추천·참고문헌·피인용 따라가는 중…",
+  "step.expandFailed": "인용·추천 확장 실패",
+  "step.expandDone": "인용·추천에서 새 논문 {count}편",
+  "step.composeRunning": "찾은 논문을 근거로 답변 작성 중…",
+  "step.composeFailed": "답변 작성 실패",
+  "step.composeDetail": "답변 완성 · {detail}",
+  "step.composeDone": "답변 완성",
+} as const
+
+const en: Readonly<Record<keyof typeof ko, string>> = {
+  "research.label": "Research agent",
+  "research.answerFailed": "Couldn't write an answer",
+
+  "rail.label": "Research chat history",
+  "rail.new": "New chat",
+  "rail.empty": "No chats yet",
+  "rail.group.previous_7_days": "Previous 7 days",
+  "rail.group.previous_30_days": "Previous 30 days",
+  "rail.group.older": "Older",
+
+  "thread.heroTitle": "What do you want to learn?",
+  "thread.deep": "Deep research",
+  "thread.related": "Related work",
+  "thread.relatedHint": 'Recent papers related to "{title}"',
+  "thread.relatedEmpty": "Add papers to your library to get suggestions",
+  "thread.deepBadge": "Deep research report",
+  "thread.trace": "Search steps: {count}",
+  "thread.deepStarting": "Starting deep research…",
+  "thread.analyzing": "Reading the question…",
+  "thread.cancelled": "Search cancelled. Send the question again to start over.",
+
+  "composer.attached": "Attached papers",
+  "composer.remove": "Remove {title}",
+  "composer.placeholder": "Ask anything, even roughly… Type '@' to add a paper as context",
+  "composer.placeholderDeep":
+    "Describe a topic in your own words. It searches several times and writes a report",
+  "composer.inputLabel": "Research question",
+  "composer.attach": "Add a paper as context",
+  "composer.library": "Papers in my library",
+  "composer.libraryEmpty": "Your library is empty",
+  "composer.deep": "Deep research",
+  "composer.deepTitle":
+    "Searches in several rounds, follows citations and recommendations, then writes a report. Takes 1–4 minutes.",
+  "composer.cancel": "Cancel search",
+  "composer.startDeep": "Start deep research",
+  "composer.send": "Send question",
+
+  "paper.relevance.3": "Key",
+  "paper.relevance.2": "Related",
+  "paper.relevance.1": "Loosely related",
+  "paper.citedBy": "Cited by {count}",
+  "paper.open": "Open in reader",
+  "paper.importing": "Importing…",
+  "paper.importFailed": "Couldn't import",
+  "paper.site": "Source site",
+
+  "step.context": "Loaded attached library papers: {count}",
+  "step.planRunning": "Reading the question · planning searches…",
+  "step.planFailed": "Couldn't plan searches, so searching the question as written",
+  "step.planDetail": "Search plan: {detail}",
+  "step.planDone": "Search queries ready: {count}",
+  "step.searchRunning": "Searching {query}…",
+  "step.searchFailed": "Couldn't search {query}",
+  "step.searchDone": "{query} — new papers: {count}",
+  "step.fallbackRunning": "{query} — backup search…",
+  "step.fallbackFailed": "{query} — backup search failed",
+  "step.fallbackDone": "{query} — backup search: {count}",
+  "step.judgeRunning": "Judging the relevance of candidates ({count})…",
+  "step.judgeFailed": "Couldn't judge relevance",
+  "step.judgeDone": "Relevant papers: {count}",
+  "step.expandRunning": "Following recommendations, references and citing papers…",
+  "step.expandFailed": "Couldn't follow citations and recommendations",
+  "step.expandDone": "New papers from citations and recommendations: {count}",
+  "step.composeRunning": "Writing the answer from the papers found…",
+  "step.composeFailed": "Couldn't write the answer",
+  "step.composeDetail": "Answer ready · {detail}",
+  "step.composeDone": "Answer ready",
+}
+
+export const researchViewMessages: Catalog<typeof ko> = { ko, en }

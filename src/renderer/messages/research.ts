@@ -1,0 +1,118 @@
+import type { Catalog } from "../../shared/i18n/locale"
+
+const ko = {
+  // Research sidebar
+  "sidebar.label": "연구 사이드바",
+  "sidebar.collapsedLabel": "연구 사이드바 접힘",
+  "sidebar.expand": "연구 사이드바 펼치기",
+  "sidebar.collapse": "연구 사이드바 접기",
+  "sidebar.resize": "연구 사이드바 너비 조절",
+  "sidebar.modes": "연구 사이드바 모드",
+  "sidebar.pin": "연구 사이드바 고정",
+  "sidebar.unpin": "연구 사이드바 고정 해제",
+  "sidebar.pinShort": "고정",
+  "sidebar.unpinShort": "고정 해제",
+  "sidebar.pinned": "고정됨",
+  "sidebar.noDocument": "열려 있는 논문이 없습니다.",
+  "sidebar.openAi": "AI 개요 열기",
+  "sidebar.modeButton": "{label} 모드",
+  "sidebar.mode.ai": "AI",
+  "sidebar.mode.translation": "번역",
+  "sidebar.mode.explanation": "AI 설명",
+  "sidebar.mode.infographic": "AI 카드",
+  "sidebar.mode.note": "메모",
+  "sidebar.mode.sticky": "포스트잇",
+  "sidebar.mode.highlight": "하이라이트",
+  "sidebar.mode.citations": "인용",
+  "sidebar.mode.scholar": "논문 탐색",
+
+  // AI overview
+  "overview.label": "AI 논문 개요",
+  "overview.keywords": "키워드 사전",
+  "overview.threeLines": "3줄 요약",
+  "overview.summary": "요약",
+  "overview.failed": "요청을 완료하지 못했습니다. 다시 시도해주세요.",
+  "overview.checkSettings": "AI 설정을 확인해주세요.",
+
+  // Overview sections
+  "insight.copy": "{title} 복사",
+  "insight.save": "{title} 보드에 저장",
+  "insight.regenerate": "{title} 다시 생성",
+  "insight.collapseLabel": "{title} 접기",
+  "insight.expandLabel": "{title} 전체 내용 펼치기",
+  "insight.collapse": "접기",
+  "insight.more": "더 보기",
+
+  // Paper discussion
+  "discussion.label": "논문 토론",
+  "discussion.you": "나",
+  "discussion.imageAlt": "첨부 이미지",
+  "discussion.imageAttached": "이미지 첨부",
+  "discussion.imageFailed": "이미지를 첨부하지 못했습니다",
+  "discussion.stopped": "중단되었습니다.",
+  "discussion.stoppedMark": "*(중단됨)*",
+  "discussion.providerError": "AI provider 설정을 확인한 뒤 다시 보내주세요.",
+  "discussion.inputLabel": "논문 토론 질문",
+  "discussion.submit": "토론 질문 보내기",
+
+  // Local writing suggestions
+  "suggestions.unavailable": "로컬 제안을 사용할 수 없습니다.",
+  "suggestions.failed": "로컬 모델 실행에 실패했습니다.",
+} as const
+
+const en: Readonly<Record<keyof typeof ko, string>> = {
+  "sidebar.label": "Research sidebar",
+  "sidebar.collapsedLabel": "Research sidebar, collapsed",
+  "sidebar.expand": "Expand research sidebar",
+  "sidebar.collapse": "Collapse research sidebar",
+  "sidebar.resize": "Resize research sidebar",
+  "sidebar.modes": "Research sidebar modes",
+  "sidebar.pin": "Pin research sidebar",
+  "sidebar.unpin": "Unpin research sidebar",
+  "sidebar.pinShort": "Pin",
+  "sidebar.unpinShort": "Unpin",
+  "sidebar.pinned": "Pinned",
+  "sidebar.noDocument": "No paper is open.",
+  "sidebar.openAi": "Open AI overview",
+  "sidebar.modeButton": "{label} mode",
+  "sidebar.mode.ai": "AI",
+  "sidebar.mode.translation": "Translation",
+  "sidebar.mode.explanation": "AI explanations",
+  "sidebar.mode.infographic": "AI cards",
+  "sidebar.mode.note": "Notes",
+  "sidebar.mode.sticky": "Sticky notes",
+  "sidebar.mode.highlight": "Highlights",
+  "sidebar.mode.citations": "Citations",
+  "sidebar.mode.scholar": "Find papers",
+
+  "overview.label": "AI paper overview",
+  "overview.keywords": "Keyword glossary",
+  "overview.threeLines": "Three-line summary",
+  "overview.summary": "Summary",
+  "overview.failed": "The request didn't finish. Please try again.",
+  "overview.checkSettings": "Check your AI settings.",
+
+  "insight.copy": "Copy {title}",
+  "insight.save": "Save {title} to the board",
+  "insight.regenerate": "Regenerate {title}",
+  "insight.collapseLabel": "Collapse {title}",
+  "insight.expandLabel": "Show all of {title}",
+  "insight.collapse": "Show less",
+  "insight.more": "Show more",
+
+  "discussion.label": "Paper discussion",
+  "discussion.you": "You",
+  "discussion.imageAlt": "Attached image",
+  "discussion.imageAttached": "Image attached",
+  "discussion.imageFailed": "Couldn't attach the image",
+  "discussion.stopped": "Stopped.",
+  "discussion.stoppedMark": "*(stopped)*",
+  "discussion.providerError": "Check your AI provider settings, then send again.",
+  "discussion.inputLabel": "Question about this paper",
+  "discussion.submit": "Send question",
+
+  "suggestions.unavailable": "Local suggestions are unavailable.",
+  "suggestions.failed": "The local model failed to run.",
+}
+
+export const researchMessages: Catalog<typeof ko> = { ko, en }

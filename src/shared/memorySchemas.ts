@@ -1,4 +1,6 @@
 import { z } from "zod"
+import { type Locale, translator } from "./i18n/locale"
+import { memoryMessages } from "./memoryMessages"
 
 export const memoryIdSchema = z.string().uuid().brand("MemoryId")
 export const memoryDerivationKeySchema = z.string().min(1).max(512).brand("MemoryDerivationKey")
@@ -166,29 +168,35 @@ export type MemoryCreateResult =
       readonly forgottenAt: string
     }>
 
-export function memoryStateLabel(state: MemoryState): string {
+/** Korean unless the caller passes the app's language. */
+export function memoryStateLabel(state: MemoryState, locale: Locale = "ko"): string {
+  const t = translator(memoryMessages, locale)
   switch (state) {
     case "pending":
-      return "검토 대기"
+      return t("memory.state.pending")
     case "accepted":
-      return "승인됨"
+      return t("memory.state.accepted")
     case "rejected":
-      return "거부됨"
+      return t("memory.state.rejected")
     case "invalidated":
-      return "출처 변경으로 무효화"
+      return t("memory.state.invalidated")
     default:
       return assertNever(state)
   }
 }
 
-export function memoryOriginLabel(origin: MemoryOrigin): string {
+/** Korean unless the caller passes the app's language. */
+export function memoryOriginLabel(origin: MemoryOrigin, locale: Locale = "ko"): string {
+  const t = translator(memoryMessages, locale)
   switch (origin.kind) {
     case "user":
-      return "사용자 확인"
+      return t("memory.origin.user")
     case "navigation":
-      return "사실 탐색 기록"
+      return t("memory.origin.navigation")
     case "local_inference":
-      return origin.modelVersion ? `로컬 추론 · ${origin.modelVersion}` : "로컬 추론"
+      return origin.modelVersion
+        ? t("memory.origin.localInferenceModel", { model: origin.modelVersion })
+        : t("memory.origin.localInference")
     default:
       return assertNever(origin.kind)
   }

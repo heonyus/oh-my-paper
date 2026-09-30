@@ -1,7 +1,9 @@
 import { ArrowUp, AtSign, FileText, Square, Telescope, X } from "lucide-react"
 import { type JSX, useEffect, useRef, useState } from "react"
+import { useTranslator } from "../../renderer/lib/locale"
 import type { AgentMode } from "../../shared/agentChat"
 import type { DocumentId, DocumentRecord } from "../../shared/schemas"
+import { researchViewMessages } from "./messages"
 
 export function ResearchComposer({
   documents,
@@ -24,6 +26,7 @@ export function ResearchComposer({
   readonly onSend: (question: string) => void
   readonly onCancel: () => void
 }): JSX.Element {
+  const t = useTranslator(researchViewMessages)
   const [value, setValue] = useState("")
   const [pickerOpen, setPickerOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -50,14 +53,14 @@ export function ResearchComposer({
   return (
     <div className="research-composer" ref={rootRef}>
       {attached.length > 0 ? (
-        <ul className="research-chips" aria-label="첨부된 논문">
+        <ul className="research-chips" aria-label={t("composer.attached")}>
           {attached.map((document) => (
             <li key={document.id} className="research-chip">
               <FileText size={12} aria-hidden="true" />
               <span>{document.title}</span>
               <button
                 type="button"
-                aria-label={`${document.title} 제거`}
+                aria-label={t("composer.remove", { title: document.title })}
                 onClick={() => onDetach(document.id)}
               >
                 <X size={12} aria-hidden="true" />
@@ -69,12 +72,8 @@ export function ResearchComposer({
       <textarea
         value={value}
         rows={2}
-        placeholder={
-          mode === "deep"
-            ? "딥리서치할 주제를 편하게 적어주세요. 여러 번 찾아보고 보고서로 정리합니다"
-            : "대충 물어봐도 찾아드려요… '@'로 논문을 컨텍스트에 추가"
-        }
-        aria-label="리서치 질문 입력"
+        placeholder={mode === "deep" ? t("composer.placeholderDeep") : t("composer.placeholder")}
+        aria-label={t("composer.inputLabel")}
         onChange={(event) => setValue(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -88,16 +87,16 @@ export function ResearchComposer({
           <button
             type="button"
             className="research-attach"
-            aria-label="논문을 컨텍스트에 추가"
+            aria-label={t("composer.attach")}
             aria-expanded={pickerOpen}
             onClick={() => setPickerOpen((open) => !open)}
           >
             <AtSign size={15} aria-hidden="true" />
           </button>
           {pickerOpen ? (
-            <ul className="research-picker" aria-label="내 라이브러리 논문">
+            <ul className="research-picker" aria-label={t("composer.library")}>
               {documents.length === 0 ? (
-                <li className="research-picker-empty">라이브러리가 비어 있습니다</li>
+                <li className="research-picker-empty">{t("composer.libraryEmpty")}</li>
               ) : (
                 documents.map((document) => (
                   <li key={document.id}>
@@ -121,18 +120,18 @@ export function ResearchComposer({
             className="research-mode-toggle"
             aria-pressed={mode === "deep"}
             disabled={sending}
-            title="여러 라운드로 논문을 찾고 인용·추천을 따라간 뒤 보고서를 씁니다. 1~4분 걸립니다."
+            title={t("composer.deepTitle")}
             onClick={() => onModeChange(mode === "deep" ? "quick" : "deep")}
           >
             <Telescope size={14} aria-hidden="true" />
-            딥리서치
+            {t("composer.deep")}
           </button>
         </div>
         {sending ? (
           <button
             type="button"
             className="research-send research-cancel"
-            aria-label="검색 취소"
+            aria-label={t("composer.cancel")}
             onClick={onCancel}
           >
             <Square size={13} aria-hidden="true" />
@@ -141,7 +140,7 @@ export function ResearchComposer({
           <button
             type="button"
             className="research-send"
-            aria-label={mode === "deep" ? "딥리서치 시작" : "질문 보내기"}
+            aria-label={mode === "deep" ? t("composer.startDeep") : t("composer.send")}
             disabled={value.trim().length === 0}
             onClick={send}
           >

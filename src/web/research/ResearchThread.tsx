@@ -1,14 +1,19 @@
 import { Flame, LibraryBig, Telescope } from "lucide-react"
 import { type JSX, useLayoutEffect, useRef } from "react"
 import { MarkdownContent } from "../../renderer/components/MarkdownContent"
+import { useTranslator } from "../../renderer/lib/locale"
 import type { AgentMode, AgentPaper, AgentStep, AgentThread } from "../../shared/agentChat"
 import type { DocumentId, DocumentRecord } from "../../shared/schemas"
+import { researchViewMessages } from "./messages"
 import { ResearchComposer } from "./ResearchComposer"
 import { type PaperOpenState, paperKey, ResearchPaperCard } from "./ResearchPaperCard"
 import { AgentStepList } from "./ResearchSteps"
 
 export type { PaperOpenState } from "./ResearchPaperCard"
 
+// The example questions are sent to the research agent as written, so they stay in Korean
+// until the agent's prompts speak the reader's language.
+const trendingExample = "최신 LLM 메모리 시스템 연구 동향을 정리해줘"
 const deepExample = "LLM이 긴 문서를 RAG 없이 기억하게 하는 연구들 정리해줘"
 /** Follow new steps only while the reader is already at the bottom of the thread. */
 const stickToBottomPx = 160
@@ -46,6 +51,7 @@ export function ResearchThread({
   readonly onSend: (question: string, mode?: AgentMode) => void
   readonly onOpenInReader: (paper: AgentPaper) => void
 }): JSX.Element {
+  const t = useTranslator(researchViewMessages)
   const related = documents[0]?.title
   const messagesRef = useRef<HTMLOListElement>(null)
   const pinnedRef = useRef(true)
@@ -77,17 +83,17 @@ export function ResearchThread({
   if (!thread) {
     return (
       <div className="research-hero">
-        <h1>무엇을 배우고 싶으세요?</h1>
+        <h1>{t("thread.heroTitle")}</h1>
         {composer}
         <div className="research-suggestions">
           <button
             type="button"
             className="research-suggestion"
-            onClick={() => onSend("최신 LLM 메모리 시스템 연구 동향을 정리해줘")}
+            onClick={() => onSend(trendingExample)}
           >
             <Flame size={14} aria-hidden="true" />
             <strong>Trending</strong>
-            <span>"최신 LLM 메모리 시스템 연구 동향을 정리해줘"</span>
+            <span>"{trendingExample}"</span>
           </button>
           <button
             type="button"
@@ -95,7 +101,7 @@ export function ResearchThread({
             onClick={() => onSend(deepExample, "deep")}
           >
             <Telescope size={14} aria-hidden="true" />
-            <strong>딥리서치</strong>
+            <strong>{t("thread.deep")}</strong>
             <span>"{deepExample}"</span>
           </button>
           <button
@@ -105,11 +111,9 @@ export function ResearchThread({
             onClick={() => onSend(`"${related ?? ""}"와 관련된 최신 연구를 찾아줘`)}
           >
             <LibraryBig size={14} aria-hidden="true" />
-            <strong>관련 연구</strong>
+            <strong>{t("thread.related")}</strong>
             <span>
-              {related
-                ? `"${related}" 관련 최신 논문`
-                : "라이브러리에 논문을 추가하면 추천이 생깁니다"}
+              {related ? t("thread.relatedHint", { title: related }) : t("thread.relatedEmpty")}
             </span>
           </button>
         </div>
@@ -139,12 +143,12 @@ export function ResearchThread({
               <>
                 {message.mode === "deep" ? (
                   <p className="research-mode-badge">
-                    <Telescope size={12} aria-hidden="true" /> 딥리서치 보고서
+                    <Telescope size={12} aria-hidden="true" /> {t("thread.deepBadge")}
                   </p>
                 ) : null}
                 {message.steps && message.steps.length > 0 ? (
                   <details className="research-trace">
-                    <summary>검색 과정 {message.steps.length}단계</summary>
+                    <summary>{t("thread.trace", { count: message.steps.length })}</summary>
                     <AgentStepList steps={message.steps} />
                   </details>
                 ) : null}
@@ -175,7 +179,7 @@ export function ResearchThread({
               <AgentStepList steps={liveSteps} />
             ) : (
               <p className="research-thinking">
-                {mode === "deep" ? "딥리서치를 시작하는 중…" : "질문을 분석하는 중…"}
+                {mode === "deep" ? t("thread.deepStarting") : t("thread.analyzing")}
               </p>
             )}
           </li>
@@ -187,9 +191,7 @@ export function ResearchThread({
         ) : null}
         {cancelled ? (
           <li className="research-message research-assistant" role="status">
-            <p className="research-thinking">
-              검색을 취소했습니다. 질문을 다시 보내면 처음부터 찾습니다.
-            </p>
+            <p className="research-thinking">{t("thread.cancelled")}</p>
           </li>
         ) : null}
       </ol>

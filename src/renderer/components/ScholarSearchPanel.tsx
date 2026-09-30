@@ -1,5 +1,6 @@
 import { BookmarkPlus, Search, X } from "lucide-react"
 import { type JSX, useEffect, useRef, useState } from "react"
+import type { MessageParams } from "../../shared/i18n/locale"
 import type {
   ScholarlyProviderState,
   ScholarlySearchItem,
@@ -10,6 +11,7 @@ import {
   ScholarlySearchStreamError,
   scholarlySearchStream,
 } from "../../web/localScholarlySearchStream"
+import { useTranslator } from "../lib/locale"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
 import { rankForUserQuery } from "../lib/scholarlyQueryRanking"
 import {
@@ -17,23 +19,14 @@ import {
   scholarlyQueryForDocument,
   scholarlySearchBasis,
 } from "../lib/scholarlySearchRelevance"
+import { scholarMessages } from "../messages/scholar"
 import type { DocumentRecord } from "../types"
-import { ScholarSearchSteps, upsertStep } from "./ScholarSearchSteps"
+import { providerErrorLabel, ScholarSearchSteps, upsertStep } from "./ScholarSearchSteps"
 
 const providerLabels: Readonly<Record<ScholarlyProviderState["provider"], string>> = {
   crossref: "Crossref",
   arxiv: "arXiv",
   openalex: "OpenAlex",
-}
-
-const providerErrorLabels: Readonly<Record<string, string>> = {
-  rate_limited: "요청 한도 초과",
-  timeout: "시간 초과",
-  oversized: "응답 초과",
-  cancelled: "취소됨",
-  network: "네트워크 오류",
-  http_error: "HTTP 오류",
-  malformed_response: "응답 형식 오류",
 }
 
 type SearchPhase = "idle" | "loading" | "cancelled"
@@ -42,13 +35,17 @@ type SaveState =
   | { readonly status: "saved" | "duplicate" }
   | { readonly status: "error"; readonly message: string }
 
-function providerStateLabel(state: ScholarlyProviderState): string {
+function providerStateLabel(
+  state: ScholarlyProviderState,
+  t: (key: keyof typeof scholarMessages.ko, params?: MessageParams) => string,
+): string {
   const name = providerLabels[state.provider]
   if (state.status === "success") {
-    return `${name} ${state.resultCount}건${state.freshness === "cached" ? "(캐시)" : ""}`
+    return state.freshness === "cached"
+      ? t("scholar.providerCountCached", { name, count: state.resultCount })
+      : t("scholar.providerCount", { name, count: state.resultCount })
   }
-  const kind = providerErrorLabels[state.error.kind] ?? state.error.kind
-  return `${name} ${kind}`
+  return t("scholar.providerError", { name, error: providerErrorLabel(t, state.error.kind) })
 }
 
 function itemKey(item: ScholarlySearchItem): string {
@@ -62,6 +59,7 @@ export function ScholarSearchPanel({
   readonly document: DocumentRecord
   readonly citations?: readonly CitationIndexEntry[]
 }): JSX.Element {
+  const t = useTranslator(scholarMessages)
   const [result, setResult] = useState<ScholarlySearchResult | null>(null)
   const [phase, setPhase] = useState<SearchPhase>("idle")
   const [error, setError] = useState<string | null>(null)
@@ -96,7 +94,7 @@ export function ScholarSearchPanel({
     if (phase === "loading") return
     const activeQuery = searchQuery.trim()
     if (!activeQuery) {
-      setError("검색어가 없어 검색할 수 없습니다.")
+      setError(t("scholar.emptyQuery"))
       return
     }
     const controller = new AbortController()
@@ -143,21 +141,21 @@ export function ScholarSearchPanel({
             controller.signal,
           )
           if (decision.choiceId === "none" || decision.choiceId === "unknown") {
-            setDecisionNote("기본 규칙으로 추천을 정렬했습니다.")
+            setDecisionNote(t("scholar.defaultOrder"))
             pushStep({
               id: "judge",
               kind: "judge",
               status: "done",
               found: candidateCount,
-              detail: "Jev 판정: 뚜렷한 후보 없음 · 기본 규칙 순서 유지",
+              detail: t("scholar.judgeNone"),
             })
           } else {
             const index = Number.parseInt(decision.choiceId.replace("candidate-", ""), 10)
             const chosen = ranked[index]
             setDecisionChoice(chosen?.item.title ?? null)
             const note = chosen
-              ? `Jev 보조 판정: ${chosen.item.title}`
-              : "기본 규칙으로 추천을 정렬했습니다."
+              ? t("scholar.judgeChosen", { title: chosen.item.title })
+              : t("scholar.defaultOrder")
             setDecisionNote(note)
             pushStep({
               id: "judge",
@@ -171,8 +169,8 @@ export function ScholarSearchPanel({
           if (controller.signal.aborted) throw cause
           const note =
             cause instanceof Error
-              ? `Jev 보조 판정을 사용할 수 없어 기본 규칙을 적용했습니다: ${cause.message}`
-              : "Jev 보조 판정을 사용할 수 없어 기본 규칙을 적용했습니다."
+              ? t("scholar.judgeUnavailableReason", { reason: cause.message })
+              : t("scholar.judgeUnavailable")
           setDecisionNote(note)
           pushStep({
             id: "judge",
@@ -183,7 +181,7 @@ export function ScholarSearchPanel({
           })
         }
       } else {
-        setDecisionNote("규칙 기반 추천")
+        setDecisionNote(t("scholar.ruleBased"))
       }
       if (!controller.signal.aborted) {
         setResult(data)
@@ -197,8 +195,11 @@ export function ScholarSearchPanel({
       if (cause instanceof ScholarlySearchStreamError) {
         setError(
           cause.kind === "request_failed"
-            ? `검색 요청에 실패했습니다 (${cause.status ?? "연결 실패"}): ${cause.message}`
-            : `검색 중 오류가 발생했습니다: ${cause.message}`,
+            ? t("scholar.requestFailed", {
+                status: cause.status ?? t("scholar.connectionFailed"),
+                message: cause.message,
+              })
+            : t("scholar.searchError", { message: cause.message }),
         )
       } else if (cause instanceof Error) {
         setError(cause.message)
@@ -225,7 +226,7 @@ export function ScholarSearchPanel({
         ...current,
         [key]: {
           status: "error",
-          message: "이 브라우저에서는 라이브러리 저장을 사용할 수 없습니다.",
+          message: t("scholar.saveUnavailable"),
         },
       }))
       return
@@ -249,28 +250,28 @@ export function ScholarSearchPanel({
     }
   }
 
-  const title = phase === "idle" && !result ? "논문 탐색" : "관련 논문"
+  const title = phase === "idle" && !result ? t("scholar.titleFind") : t("scholar.titleRelated")
   return (
-    <section className="scholar-search-panel" aria-label="관련 논문 탐색">
+    <section className="scholar-search-panel" aria-label={t("scholar.panelLabel")}>
       <header className="scholar-search-header">
         <div>
           <h2 className="scholar-search-heading">{title}</h2>
           <label className="scholar-search-query" htmlFor="scholar-search-query">
             {searchQuery.trim() !== (query ?? "").trim()
-              ? "검색어"
+              ? t("scholar.basis.query")
               : basis === "title"
-                ? "확인된 제목"
+                ? t("scholar.basis.title")
                 : basis === "doi"
-                  ? "확인된 DOI"
+                  ? t("scholar.basis.doi")
                   : basis === "topic"
-                    ? "본문·참고문헌 주제"
-                    : "검색어"}
+                    ? t("scholar.basis.topic")
+                    : t("scholar.basis.query")}
             <input
               id="scholar-search-query"
-              aria-label="관련 논문 검색어"
+              aria-label={t("scholar.queryInput")}
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="검색어를 입력하세요"
+              placeholder={t("scholar.placeholder")}
             />
           </label>
         </div>
@@ -281,11 +282,11 @@ export function ScholarSearchPanel({
             disabled={phase === "loading" || searchQuery.trim().length === 0}
           >
             <Search aria-hidden="true" size={14} />
-            {phase === "loading" ? "검색 중" : "검색 실행"}
+            {phase === "loading" ? t("scholar.searching") : t("scholar.search")}
           </button>
           {phase === "loading" ? (
-            <button type="button" onClick={cancel} aria-label="논문 검색 취소">
-              <X aria-hidden="true" size={14} /> 취소
+            <button type="button" onClick={cancel} aria-label={t("scholar.cancelLabel")}>
+              <X aria-hidden="true" size={14} /> {t("scholar.cancel")}
             </button>
           ) : null}
         </div>
@@ -294,7 +295,7 @@ export function ScholarSearchPanel({
         <ScholarSearchSteps steps={steps} />
       ) : steps.length > 0 ? (
         <details className="scholar-search-log">
-          <summary>검색 과정</summary>
+          <summary>{t("scholar.log")}</summary>
           <ScholarSearchSteps steps={steps} />
         </details>
       ) : null}
@@ -305,16 +306,16 @@ export function ScholarSearchPanel({
       ) : null}
       {phase === "cancelled" ? (
         <p className="scholar-search-providers" role="status">
-          검색이 취소되었습니다.
+          {t("scholar.cancelled")}
         </p>
       ) : null}
       {result && (result.status === "failed" || result.status === "cancelled") ? (
         <div>
           <p className="scholar-search-error" role="alert">
-            {result.status === "cancelled" ? "검색이 취소되었습니다." : "검색에 실패했습니다."}
+            {result.status === "cancelled" ? t("scholar.cancelled") : t("scholar.failed")}
           </p>
           <p className="scholar-search-providers">
-            {result.providers.map(providerStateLabel).join(" · ")}
+            {result.providers.map((state) => providerStateLabel(state, t)).join(" · ")}
           </p>
         </div>
       ) : null}
@@ -323,7 +324,7 @@ export function ScholarSearchPanel({
           {result.status === "partial" || decisionNote ? (
             <p className="scholar-search-providers">
               {result.status === "partial"
-                ? result.providers.map(providerStateLabel).join(" · ")
+                ? result.providers.map((state) => providerStateLabel(state, t)).join(" · ")
                 : null}
               {result.status === "partial" && decisionNote ? " · " : null}
               {decisionNote}
@@ -331,9 +332,7 @@ export function ScholarSearchPanel({
           ) : null}
           {recommendations.length === 0 ? (
             <p className="mode-empty">
-              {customQuery === null
-                ? "현재 논문과 겹치는 확인 가능한 관련 결과가 없습니다."
-                : "검색 결과가 없습니다. 다른 표현으로 검색하거나 리서치 탭에서 질문해 보세요."}
+              {customQuery === null ? t("scholar.emptyRelated") : t("scholar.emptyResults")}
             </p>
           ) : (
             <ul className="scholar-search-list">
@@ -358,18 +357,20 @@ export function ScholarSearchPanel({
                       >
                         <BookmarkPlus aria-hidden="true" size={14} />
                         {saveState?.status === "saved"
-                          ? "저장됨"
+                          ? t("scholar.saved")
                           : saveState?.status === "duplicate"
-                            ? "이미 저장됨"
-                            : "메타데이터 저장"}
+                            ? t("scholar.duplicate")
+                            : t("scholar.saveMetadata")}
                       </button>
                     </div>
                     <p className="scholar-search-meta">
                       {item.authors.slice(0, 3).join(", ")}
-                      {item.authors.length > 3 ? " 외" : ""} · {item.year ?? "연도 미상"} ·{" "}
-                      {item.venue || item.provider}
+                      {item.authors.length > 3 ? ` ${t("scholar.etAl")}` : ""} ·{" "}
+                      {item.year ?? t("scholar.unknownYear")} · {item.venue || item.provider}
                     </p>
-                    <p className="scholar-search-reason">추천 근거: {reasons.join(" · ")}</p>
+                    <p className="scholar-search-reason">
+                      {t("scholar.reasons", { reasons: reasons.join(" · ") })}
+                    </p>
                     {saveState?.status === "error" ? (
                       <p className="scholar-search-error" role="alert">
                         {saveState.message}

@@ -3,9 +3,9 @@ import type { DocumentId } from "../../shared/schemas"
 
 export type ThreadGroupKey = "previous_7_days" | "previous_30_days" | "older"
 
+/** The rail names each group from its key in the reader's language. */
 export type ThreadGroup = {
   readonly key: ThreadGroupKey
-  readonly label: string
   readonly threads: readonly AgentThread[]
 }
 
@@ -33,14 +33,9 @@ export function groupThreads(
   for (const thread of sorted) {
     groups[threadGroupKey(thread.updatedAt, now)].push(thread)
   }
-  const labels: Record<ThreadGroupKey, string> = {
-    previous_7_days: "지난 7일",
-    previous_30_days: "지난 30일",
-    older: "이전",
-  }
   return (Object.keys(groups) as ThreadGroupKey[])
     .filter((key) => groups[key].length > 0)
-    .map((key) => ({ key, label: labels[key], threads: groups[key] }))
+    .map((key) => ({ key, threads: groups[key] }))
 }
 
 export function createThread(

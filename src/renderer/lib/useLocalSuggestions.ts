@@ -5,6 +5,8 @@ import {
   type LocalInferenceApi,
   type LocalInferenceSuggestResult,
 } from "../../shared/localInference"
+import { researchMessages } from "../messages/research"
+import { useTranslator } from "./locale"
 
 export type UseLocalSuggestionsOptions = {
   readonly api: LocalInferenceApi | null
@@ -36,7 +38,9 @@ export function useLocalSuggestions(
   const [revision, setRevision] = useState(0)
   const [localSuggestions, setLocalSuggestions] = useState<readonly string[]>([])
   const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // A catalog key, so the message follows the app's language without re-running the request.
+  const [error, setError] = useState<"suggestions.unavailable" | "suggestions.failed" | null>(null)
+  const t = useTranslator(researchMessages)
   const cursorAtEnd = options.cursorAtEnd ?? true
 
   useEffect(() => {
@@ -96,7 +100,7 @@ export function useLocalSuggestions(
         if (disposed || result === undefined || result.revision !== revisionRef.current) return
         applyResult(result)
       } catch (_error) {
-        if (!disposed) setError("로컬 제안을 사용할 수 없습니다.")
+        if (!disposed) setError("suggestions.unavailable")
       } finally {
         if (!disposed) setPending(false)
       }
@@ -107,7 +111,7 @@ export function useLocalSuggestions(
         setLocalSuggestions(result.suggestions)
         setError(null)
       } else if (result.status === "unavailable" && result.reason === "execution_failed") {
-        setError("로컬 모델 실행에 실패했습니다.")
+        setError("suggestions.failed")
       }
     }
   }, [
@@ -124,7 +128,7 @@ export function useLocalSuggestions(
     deterministicSuggestions,
     localSuggestions,
     pending,
-    error,
+    error: error === null ? null : t(error),
     revision,
   }
 }

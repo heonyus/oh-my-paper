@@ -8,13 +8,18 @@ import type { CitationIndexEntry } from "./pdfCitationIndex"
 /** Left of the paper, like every other AI card. */
 const SIDEBAR_CARD_X = paperOrigin.x - CARD_PAGE_GAP - CARD_WIDTH
 
+/**
+ * `sourceTitle` names the insight whatever language `title` is shown in, so saving it again
+ * updates the same card; it defaults to `title`.
+ */
 export function saveSidebarInsight(
   cards: readonly BoardCard[],
   document: DocumentRecord,
   title: string,
   body: string,
+  sourceTitle: string = title,
 ): readonly BoardCard[] {
-  const sourceKey = `sidebar:${title}`
+  const sourceKey = `sidebar:${sourceTitle}`
   const existing = cards.find((card) => card.sourceKey === sourceKey)
   if (existing) {
     return cards.map((card) => (card.id === existing.id ? { ...card, body } : card))
