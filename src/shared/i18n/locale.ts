@@ -1,6 +1,9 @@
+import { z } from "zod"
+
 /** The languages oh-my-paper speaks. The first one listed in a catalog is its source. */
 export const LOCALES = ["ko", "en"] as const
 export type Locale = (typeof LOCALES)[number]
+export const localeSchema = z.enum(LOCALES)
 
 /** Used when nothing names a language the app speaks. */
 export const FALLBACK_LOCALE: Locale = "en"

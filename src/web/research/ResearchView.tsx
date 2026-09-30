@@ -1,5 +1,5 @@
 import { type JSX, useEffect, useRef, useState } from "react"
-import { useTranslator } from "../../renderer/lib/locale"
+import { currentLocale, useTranslator } from "../../renderer/lib/locale"
 import {
   type AgentMode,
   type AgentPaper,
@@ -97,6 +97,7 @@ export function ResearchView({
           contextDocIds: withUser.contextDocIds,
           history,
           mode: requestedMode,
+          language: currentLocale(),
         },
         (step) => {
           const index = steps.findIndex((existing) => existing.id === step.id)

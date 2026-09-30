@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { parsedPageParserSchema } from "./documentPageModel"
+import { localeSchema } from "./i18n/locale"
 import { pageStructureKindSchema } from "./pageStructure"
 import { providerKindSchema } from "./providerModels"
 import { documentIdSchema } from "./schemas"
@@ -7,7 +8,7 @@ import { documentIdSchema } from "./schemas"
 const cacheIdentitySchema = z.object({
   id: documentIdSchema,
   pageNumber: z.number().int().positive(),
-  targetLanguage: z.literal("ko"),
+  targetLanguage: localeSchema,
   provider: providerKindSchema,
   model: z.string().trim().min(1).max(160),
   parser: parsedPageParserSchema.optional(),

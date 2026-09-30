@@ -16,7 +16,7 @@ const request = aiRequestSchema.parse({
 
 describe("research prompt routing contract", () => {
   it("resolves a non-empty distinct instruction for every parsed AI action", () => {
-    const prompts = aiActionSchema.options.map(systemPromptFor)
+    const prompts = aiActionSchema.options.map((action) => systemPromptFor(action))
 
     expect(prompts.every((prompt) => prompt.trim().length > 0)).toBe(true)
     expect(new Set(prompts)).toHaveLength(aiActionSchema.options.length)

@@ -55,9 +55,12 @@ describe("paper-grounded request", () => {
 
     expect(request.documentId).toBe(documentFixture.id)
     expect(request.paperContext).toContain("현재 질문과 관련된 평가 문맥")
-    expect(request.paperContext).toContain("캐시된 논문 요약")
-    expect(request.paperContext).toContain("로컬 원문 개요")
-    expect(request.paperContext).toContain("문서 유형: 연구 논문")
+    expect(request.paperContext).toContain("Cached summary of the document")
+    expect(request.paperContext).toContain("Local overview of the source")
+    // The type and the answer language go to the system prompt, not the source context.
+    expect(request.paperContext).not.toContain("문서 유형")
+    expect(request.documentKind).toBe(documentFixture.kind)
+    expect(request.language).toBe("ko")
     expect(request.sectionContext).toBe("모델 성능 평가 절")
   })
 
@@ -79,10 +82,10 @@ describe("paper-grounded request", () => {
       wholePaper,
     )
 
-    expect(request.paperContext).toContain("문서 유형: 연구 논문")
+    expect(request.documentKind).toBe(documentFixture.kind)
     expect(request.paperContext).toContain(wholePaper)
     expect(request.paperContext?.length).toBeGreaterThan(8_000)
-    expect(request.paperContext).not.toContain("캐시된 논문 요약")
+    expect(request.paperContext).not.toContain("Cached summary of the document")
     expect(request.paperContext).not.toContain("Abstract only")
     expect(request.paperContext).not.toContain("page-1 overview")
     expect(request.sourceEvidence).toContain("Page 9: variables")

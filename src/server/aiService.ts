@@ -123,7 +123,7 @@ export class WebAiService {
       : { role: "user", content: input }
 
     return [
-      { role: "system", content: systemPromptForRequest(request.action, model) },
+      { role: "system", content: systemPromptForRequest(request.action, model, request) },
       ...(request.history ?? []),
       userMessage,
     ]

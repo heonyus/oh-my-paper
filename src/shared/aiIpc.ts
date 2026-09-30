@@ -6,7 +6,8 @@ import {
   aiPrioritySchema,
   aiRoleSchema,
 } from "./documentAiJobs"
-import { documentIdSchema } from "./schemas"
+import { localeSchema } from "./i18n/locale"
+import { documentIdSchema, documentKindSchema } from "./schemas"
 
 export const aiActionSchema = z.enum([
   "keywords",
@@ -51,6 +52,10 @@ export const aiRequestSchema = z.object({
   imageDataUrl: z.string().startsWith("data:image/").max(8_000_000).optional(),
   pageTranslationModel: z.string().trim().min(1).max(160).optional(),
   history: z.array(aiHistoryMessageSchema).max(24).optional(),
+  /** The language answers are written in; Korean when absent, as before. */
+  language: localeSchema.optional(),
+  /** The document's type, so the system prompt can name it; the paper context stays source only. */
+  documentKind: documentKindSchema.optional(),
 })
 export const aiResultSchema = z.object({
   text: z.string().min(1),

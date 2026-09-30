@@ -1,6 +1,7 @@
 import type { ProviderStatus } from "../../shared/ipc"
 import type { CachedPageTranslationBlock } from "../../shared/pageTranslationCache"
 import type { DocumentId } from "../../shared/schemas"
+import { currentLocale } from "./locale"
 import type { PageTranslationBlock } from "./pageTranslationSource"
 
 const sessionCache = new Map<string, readonly PageTranslationBlock[]>()
@@ -12,7 +13,7 @@ export function pageTranslationCacheIdentity(
   parser?: CachedPageTranslationBlock["sourceParser"],
   parserConfigVersion?: string,
 ): string {
-  return `v10:${documentId}:${page}:ko:${provider.provider}:${provider.model}:${parser ?? "unknown"}:${parserConfigVersion ?? "unknown"}`
+  return `v10:${documentId}:${page}:${currentLocale()}:${provider.provider}:${provider.model}:${parser ?? "unknown"}:${parserConfigVersion ?? "unknown"}`
 }
 
 function pageTranslationCachePrefix(
@@ -20,7 +21,7 @@ function pageTranslationCachePrefix(
   page: number,
   provider: ProviderStatus,
 ): string {
-  return `v10:${documentId}:${page}:ko:${provider.provider}:${provider.model}:`
+  return `v10:${documentId}:${page}:${currentLocale()}:${provider.provider}:${provider.model}:`
 }
 
 function request(
@@ -33,7 +34,7 @@ function request(
   return {
     id: documentId,
     pageNumber: page,
-    targetLanguage: "ko" as const,
+    targetLanguage: currentLocale(),
     provider: provider.provider,
     model: provider.model,
     ...(parser === undefined ? {} : { parser }),
@@ -77,7 +78,7 @@ export function cachedTranslationForPassage(
 ): string | null {
   const target = comparable(passage)
   if (target.length < 12) return null
-  const prefix = `v10:${documentId}:${page}:ko:`
+  const prefix = `v10:${documentId}:${page}:${currentLocale()}:`
   for (const [identity, blocks] of sessionCache) {
     if (!identity.startsWith(prefix)) continue
     const parts = blocks

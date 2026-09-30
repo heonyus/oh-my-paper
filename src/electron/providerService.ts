@@ -97,7 +97,7 @@ export class ProviderService {
         }
       : { role: "user", content: input }
     const messages: ChatCompletionMessageParam[] = [
-      { role: "system", content: systemPromptForRequest(request.action, model) },
+      { role: "system", content: systemPromptForRequest(request.action, model, request) },
       ...(request.history ?? []),
       userMessage,
     ]
@@ -142,7 +142,7 @@ export class ProviderService {
         }
       : { role: "user", content: input }
     const messages: ChatCompletionMessageParam[] = [
-      { role: "system", content: systemPromptForRequest(request.action, model) },
+      { role: "system", content: systemPromptForRequest(request.action, model, request) },
       ...(request.history ?? []),
       userMessage,
     ]

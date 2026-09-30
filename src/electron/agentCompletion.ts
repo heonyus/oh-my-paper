@@ -1,3 +1,4 @@
+import type { Locale } from "../shared/i18n/locale"
 export type AgentCompletionMessage = {
   readonly role: "system" | "user" | "assistant"
   readonly content: string
@@ -32,6 +33,9 @@ export function writesKorean(text: string): boolean {
   return /[ㄱ-ㆎ가-힣]/u.test(text)
 }
 
-export function answerLanguage(text: string): string {
+/** The app's language when the request names one, else the language of the question. */
+export function answerLanguage(text: string, language?: Locale): string {
+  if (language === "ko") return "Korean"
+  if (language === "en") return "English"
   return writesKorean(text) ? "Korean" : "the same language as the user's question"
 }
