@@ -1,5 +1,6 @@
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
+import { LocaleProvider } from "../renderer/lib/locale"
 import { installLocalReaderApi } from "./localReaderApi"
 import { ReaderApp } from "./ReaderApp"
 import "../shared/brand.css"
@@ -34,6 +35,8 @@ installLocalReaderApi()
 
 createRoot(root).render(
   <StrictMode>
-    <ReaderApp />
+    <LocaleProvider>
+      <ReaderApp />
+    </LocaleProvider>
   </StrictMode>,
 )

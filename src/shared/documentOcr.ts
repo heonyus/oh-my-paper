@@ -1,4 +1,5 @@
 import { z } from "zod"
+import type { Locale } from "./i18n/locale"
 
 export const MISTRAL_OCR_MODEL = "mistral-ocr-4-1"
 export const documentOcrKeySchema = z.string().trim().min(20).max(512)
@@ -25,10 +26,20 @@ export type DocumentOcrProviderStatus = z.infer<typeof documentOcrProviderStatus
 /** `42% · 약 3분 남음`, the same words in doctor, 설정 and the first-run page. */
 export function formatOcrInstallProgress(
   progress: DocumentOcrProviderStatus["installProgress"] | null,
+  locale: Locale = "ko",
 ): string {
-  if (!progress) return "준비 중"
+  const en = locale === "en"
+  if (!progress) return en ? "getting ready" : "준비 중"
   const { percent, etaSeconds } = progress
   if (etaSeconds === null) return `${percent}%`
-  const left = etaSeconds < 60 ? "1분 안에 끝남" : `약 ${Math.ceil(etaSeconds / 60)}분 남음`
+  const minutes = Math.ceil(etaSeconds / 60)
+  const left =
+    etaSeconds < 60
+      ? en
+        ? "under a minute left"
+        : "1분 안에 끝남"
+      : en
+        ? `about ${minutes} min left`
+        : `약 ${minutes}분 남음`
   return `${percent}% · ${left}`
 }

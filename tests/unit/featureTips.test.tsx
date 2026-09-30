@@ -1,8 +1,13 @@
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { translator } from "../../src/shared/i18n/locale"
+import { webMessages } from "../../src/web/messages"
 import { FeatureTips } from "../../src/web/tips/FeatureTips"
 import { TipsGallery } from "../../src/web/tips/TipsGallery"
 import { FEATURE_TIPS, nextTip, readTipState } from "../../src/web/tips/tipCatalog"
+
+/** Tips name catalog keys; the screen shows their Korean wording in these tests. */
+const t = translator(webMessages, "ko")
 
 function anchorWith(className: string): HTMLElement {
   const element = document.createElement("button")
@@ -82,7 +87,7 @@ describe("feature tips", () => {
     render(<TipsGallery onClose={vi.fn()} />)
 
     for (const tip of FEATURE_TIPS) {
-      expect(screen.getByRole("heading", { name: tip.title })).toBeVisible()
+      expect(screen.getByRole("heading", { name: t(tip.title) })).toBeVisible()
     }
     fireEvent.click(screen.getByRole("button", { name: "팁 다시 보기" }))
     expect(readTipState()).toEqual({ seen: [], off: false })
@@ -93,15 +98,15 @@ describe("feature tips", () => {
     const [first, second] = FEATURE_TIPS
     if (!first || !second) throw new Error("the catalog needs two tips")
 
-    fireEvent.click(screen.getByRole("button", { name: `${first.title} 크게 보기` }))
-    expect(screen.getByRole("heading", { name: first.title })).toBeVisible()
+    fireEvent.click(screen.getByRole("button", { name: `${t(first.title)} 크게 보기` }))
+    expect(screen.getByRole("heading", { name: t(first.title) })).toBeVisible()
     expect(screen.getAllByLabelText(/사용 예시$/)).toHaveLength(1)
     expect(screen.getByText(`1 / ${FEATURE_TIPS.length}`)).toBeVisible()
 
     fireEvent.click(screen.getByRole("button", { name: "다음 영상" }))
-    expect(screen.getByRole("heading", { name: second.title })).toBeVisible()
+    expect(screen.getByRole("heading", { name: t(second.title) })).toBeVisible()
     fireEvent.keyDown(window, { key: "ArrowLeft" })
-    expect(screen.getByRole("heading", { name: first.title })).toBeVisible()
+    expect(screen.getByRole("heading", { name: t(first.title) })).toBeVisible()
     fireEvent.keyDown(window, { key: "ArrowLeft" })
     expect(screen.getByText(`${FEATURE_TIPS.length} / ${FEATURE_TIPS.length}`)).toBeVisible()
 
@@ -122,7 +127,7 @@ describe("feature tips", () => {
     expect(screen.getByText(`1 / ${FEATURE_TIPS.length}`)).toBeVisible()
     fireEvent.click(screen.getByRole("button", { name: "모두 보기" }))
     for (const tip of FEATURE_TIPS) {
-      expect(screen.getByRole("heading", { name: tip.title })).toBeVisible()
+      expect(screen.getByRole("heading", { name: t(tip.title) })).toBeVisible()
     }
   })
 })

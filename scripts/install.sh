@@ -15,6 +15,31 @@ APP_DIR="${OH_MY_PAPER_HOME:-$HOME/.oh-my-paper/app}"
 BIN_DIR="${OH_MY_PAPER_BIN_DIR:-$HOME/.local/bin}"
 LOG="$(mktemp -t oh-my-paper-install.XXXXXX)"
 
+# The installer's language: OH_MY_PAPER_LANG, then the POSIX locale variables, then macOS's
+# preferred language; English otherwise. Exported so the setup wizard speaks the same language.
+ui_lang() {
+  local tag
+  for tag in "${OH_MY_PAPER_LANG:-}" "${LC_ALL:-}" "${LC_MESSAGES:-}" "${LANG:-}"; do
+    case "$tag" in
+      "" | C | C.* | POSIX) continue ;;
+      ko*) echo ko && return ;;
+      *) echo en && return ;;
+    esac
+  done
+  if [ "$(uname -s)" = Darwin ]; then
+    tag="$(defaults read -g AppleLanguages 2>/dev/null | LC_ALL=C tr -d ' "(),\n' | cut -c1-2)"
+    [ "$tag" = ko ] && echo ko && return
+  fi
+  echo en
+}
+UI_LANG="$(ui_lang)"
+export OH_MY_PAPER_LANG="$UI_LANG"
+
+# The Korean or the English wording, by the installer's language.
+m() {
+  if [ "$UI_LANG" = ko ]; then printf '%s' "$1"; else printf '%s' "$2"; fi
+}
+
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
   BOLD=$'\033[1m' DIM=$'\033[2m' GREEN=$'\033[32m' YELLOW=$'\033[33m' RED=$'\033[31m'
   CYAN=$'\033[36m' RESET=$'\033[0m'
@@ -44,7 +69,7 @@ warn() { printf '%s│%s  %s▲%s %s\n' "$DIM" "$RESET" "$YELLOW" "$RESET" "$1";
 fail() {
   printf '%s│%s  %s✖%s %s\n' "$DIM" "$RESET" "$RED" "$RESET" "$1"
   [ -n "${2:-}" ] && printf '%s│%s    %s→ %s%s\n' "$DIM" "$RESET" "$DIM" "$2" "$RESET"
-  printf '%s└%s  설치를 멈췄습니다. 로그: %s\n' "$DIM" "$RESET" "$LOG"
+  printf '%s└%s  %s %s\n' "$DIM" "$RESET" "$(m '설치를 멈췄습니다. 로그:' 'Installation stopped. Log:')" "$LOG"
   exit 1
 }
 
@@ -85,29 +110,29 @@ run() {
     ok "$label"
   else
     printf '%s\n' "$(tail -n 12 "$LOG" | sed "s/^/${DIM}│${RESET}    /")"
-    fail "$label 실패"
+    fail "$label $(m '실패' 'failed')"
   fi
 }
 
 banner
-printf '%s┌%s  %soh-my-paper 설치%s  %s(%s)%s\n' "$DIM" "$RESET" "$BOLD" "$RESET" "$DIM" "$APP_DIR" "$RESET"
+printf '%s┌%s  %s%s%s  %s(%s)%s\n' "$DIM" "$RESET" "$BOLD" "$(m 'oh-my-paper 설치' 'Installing oh-my-paper')" "$RESET" "$DIM" "$APP_DIR" "$RESET"
 
-step "1/4  시스템 확인"
+step "1/4  $(m '시스템 확인' 'System check')"
 os="$(uname -s)" arch="$(uname -m)"
 if [ "$os" = "Darwin" ] && [ "$arch" = "arm64" ]; then
   ok "macOS · Apple Silicon"
 else
-  warn "$os/$arch — 지원 대상은 Apple Silicon Mac입니다. 계속하지만 OCR 엔진은 동작하지 않을 수 있습니다"
+  warn "$os/$arch — $(m '지원 대상은 Apple Silicon Mac입니다. 계속하지만 OCR 엔진은 동작하지 않을 수 있습니다' 'Apple Silicon Macs are supported. Continuing, but the OCR engine may not work')"
 fi
-command -v git >/dev/null 2>&1 || fail "git이 없습니다" "xcode-select --install"
+command -v git >/dev/null 2>&1 || fail "$(m 'git이 없습니다' 'git is not installed')" "xcode-select --install"
 ok "git $(git --version | awk '{print $3}')"
 if ! command -v node >/dev/null 2>&1; then
-  fail "Node.js가 없습니다 (22 이상 필요)" "brew install node  또는  https://nodejs.org"
+  fail "$(m 'Node.js가 없습니다 (22 이상 필요)' 'Node.js is not installed (22 or later needed)')" "brew install node  $(m '또는' 'or')  https://nodejs.org"
 fi
 node_major="$(node -p 'process.versions.node.split(".")[0]')"
-[ "$node_major" -ge 22 ] || fail "Node.js $(node -v) — 22 이상이 필요합니다" "brew upgrade node"
+[ "$node_major" -ge 22 ] || fail "Node.js $(node -v) — $(m '22 이상이 필요합니다' '22 or later is needed')" "brew upgrade node"
 ok "Node.js $(node -v)"
-command -v npm >/dev/null 2>&1 || fail "npm이 없습니다" "Node.js를 다시 설치하세요"
+command -v npm >/dev/null 2>&1 || fail "$(m 'npm이 없습니다' 'npm is not installed')" "$(m 'Node.js를 다시 설치하세요' 'Reinstall Node.js')"
 
 # Brings an existing install up to the published branch: a fast-forward, or, when the published
 # history was replaced (the repository was cleaned up and pushed anew) and nothing in the install
@@ -119,21 +144,21 @@ sync_app() {
   git -C "$APP_DIR" reset --hard "origin/$BRANCH"
 }
 
-step "2/4  내려받기"
+step "2/4  $(m '내려받기' 'Download')"
 if [ -d "$APP_DIR/.git" ]; then
-  run "최신 버전으로 업데이트" sync_app
+  run "$(m '최신 버전으로 업데이트' 'Update to the latest version')" sync_app
 else
   mkdir -p "$(dirname "$APP_DIR")"
-  run "저장소 복제" git clone --progress --depth 1 --branch "$BRANCH" "$REPO" "$APP_DIR"
+  run "$(m '저장소 복제' 'Clone the repository')" git clone --progress --depth 1 --branch "$BRANCH" "$REPO" "$APP_DIR"
 fi
 
-step "3/4  설치와 빌드"
-printf '%s│%s  %s처음에는 몇 분 걸립니다%s\n' "$DIM" "$RESET" "$DIM" "$RESET"
-run "의존성 설치" npm --prefix "$APP_DIR" ci --no-audit --no-fund \
+step "3/4  $(m '설치와 빌드' 'Install and build')"
+printf '%s│%s  %s%s%s\n' "$DIM" "$RESET" "$DIM" "$(m '처음에는 몇 분 걸립니다' 'The first run takes a few minutes')" "$RESET"
+run "$(m '의존성 설치' 'Install dependencies')" npm --prefix "$APP_DIR" ci --no-audit --no-fund \
   --loglevel=http --foreground-scripts
-run "웹 앱 빌드" npm --prefix "$APP_DIR" run build:web
+run "$(m '웹 앱 빌드' 'Build the web app')" npm --prefix "$APP_DIR" run build:web
 
-step "4/4  명령어 연결"
+step "4/4  $(m '명령어 연결' 'Link the command')"
 mkdir -p "$BIN_DIR"
 chmod +x "$APP_DIR/bin/oh-my-paper"
 ln -sf "$APP_DIR/bin/oh-my-paper" "$BIN_DIR/oh-my-paper"
@@ -149,20 +174,21 @@ case ":$PATH:" in
     line="export PATH=\"$BIN_DIR:\$PATH\""
     if [ -n "$rc" ] && ! grep -Fqs "$line" "$rc"; then
       printf '\n# oh-my-paper\n%s\n' "$line" >>"$rc"
-      ok "PATH에 추가했습니다 ($rc) — 새 터미널부터 적용됩니다"
+      ok "$(m "PATH에 추가했습니다 ($rc) — 새 터미널부터 적용됩니다" "Added to PATH ($rc) — takes effect in new terminals")"
     elif [ -z "$rc" ]; then
-      warn "PATH에 추가하세요: $line"
+      warn "$(m 'PATH에 추가하세요:' 'Add this to your PATH:') $line"
     fi
     export PATH="$BIN_DIR:$PATH"
     ;;
 esac
 
-printf '%s└%s  %s설치 완료%s\n' "$DIM" "$RESET" "$GREEN" "$RESET"
+printf '%s└%s  %s%s%s\n' "$DIM" "$RESET" "$GREEN" "$(m '설치 완료' 'Installed')" "$RESET"
 rm -f "$LOG"
 
 if [ -z "${OH_MY_PAPER_NO_ONBOARD:-}" ] && [ -r /dev/tty ] && [ -w /dev/tty ]; then
   # stdin is the piped script under `curl | bash`, so the wizard reads the terminal directly.
   exec "$BIN_DIR/oh-my-paper" onboard </dev/tty
 fi
-printf '\n  다음: %soh-my-paper onboard%s  → 설정 마법사\n       %soh-my-paper%s          → 앱 시작\n\n' \
-  "$BOLD" "$RESET" "$BOLD" "$RESET"
+printf '\n  %s %soh-my-paper onboard%s  → %s\n       %soh-my-paper%s          → %s\n\n' \
+  "$(m '다음:' 'Next:')" "$BOLD" "$RESET" "$(m '설정 마법사' 'setup wizard')" \
+  "$BOLD" "$RESET" "$(m '앱 시작' 'start the app')"

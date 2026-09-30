@@ -4,11 +4,13 @@ import leafMarkUrl from "../../assets/branding/ohmypaper-leaf-mark.png"
 import { Topbar } from "../renderer/components/AppChrome"
 import { AppStatusOverlays } from "../renderer/components/AppStatusOverlays"
 import { LibraryHome } from "../renderer/components/LibraryHome"
+import { useTranslator } from "../renderer/lib/locale"
 import { prefetchWhenIdle } from "../renderer/lib/prefetchWhenIdle"
 import { appShellStyle } from "../renderer/lib/uiFontScale"
 import { useAppWorkspace } from "../renderer/lib/useAppWorkspace"
 import { analysedPaperCount } from "../shared/documentAnalysis"
 import { type DocumentId, documentIdSchema } from "../shared/schemas"
+import { webMessages } from "./messages"
 import { StarInvite } from "./star/StarInvite"
 import { FeatureTips } from "./tips/FeatureTips"
 import { TipsGallery } from "./tips/TipsGallery"
@@ -32,6 +34,7 @@ const ResearchView = lazy(() =>
 
 export function ReaderApp(): JSX.Element {
   const app = useAppWorkspace()
+  const t = useTranslator(webMessages)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [researchOpen, setResearchOpen] = useState(false)
   const [tipsOpen, setTipsOpen] = useState(false)
@@ -93,14 +96,14 @@ export function ReaderApp(): JSX.Element {
       <main className="loading-screen" aria-live="polite">
         {app.bootstrapError ? (
           <div role="alert">
-            <h1>보관함을 열지 못했습니다</h1>
+            <h1>{t("shell.openFailed")}</h1>
             <p>{app.bootstrapError}</p>
             <button type="button" onClick={() => window.location.reload()}>
-              다시 열기
+              {t("shell.reopen")}
             </button>
           </div>
         ) : (
-          <p>oh-my-paper를 여는 중…</p>
+          <p>{t("shell.opening")}</p>
         )}
       </main>
     )
@@ -108,14 +111,14 @@ export function ReaderApp(): JSX.Element {
   if (!app.credentialsChecked)
     return (
       <main className="loading-screen" aria-live="polite">
-        <p>AI 연결을 확인하는 중…</p>
+        <p>{t("shell.checkingAi")}</p>
       </main>
     )
 
   if (credentialsReady && welcome.state === "loading")
     return (
       <main className="loading-screen" aria-live="polite">
-        <p>oh-my-paper를 여는 중…</p>
+        <p>{t("shell.opening")}</p>
       </main>
     )
 
@@ -138,7 +141,7 @@ export function ReaderApp(): JSX.Element {
   if (openImportState === "loading")
     return (
       <main className="loading-screen" aria-live="polite">
-        <p>논문을 가져오는 중…</p>
+        <p>{t("shell.importing")}</p>
       </main>
     )
 
@@ -146,9 +149,9 @@ export function ReaderApp(): JSX.Element {
     return (
       <main className="loading-screen" aria-live="polite">
         <div role="alert">
-          <h1>논문을 가져오지 못했습니다</h1>
-          <p>링크가 공개 PDF를 제공하지 않거나 내려받기에 실패했습니다.</p>
-          <a href="/">라이브러리로 돌아가기</a>
+          <h1>{t("shell.importFailed")}</h1>
+          <p>{t("shell.importFailedDetail")}</p>
+          <a href="/">{t("shell.backToLibrary")}</a>
         </div>
       </main>
     )
@@ -188,12 +191,12 @@ export function ReaderApp(): JSX.Element {
           type="button"
           className="web-reader-brand"
           onClick={() => app.setLibraryOpen(true)}
-          aria-label="oh-my-paper 라이브러리"
+          aria-label={t("shell.brand")}
         >
           <img src={leafMarkUrl} alt="" width={30} height={30} />
           <span>oh-my-paper</span>
         </button>
-        <nav aria-label="주 메뉴">
+        <nav aria-label={t("shell.mainMenu")}>
           <button
             type="button"
             aria-current={libraryVisible ? "page" : undefined}
@@ -203,7 +206,7 @@ export function ReaderApp(): JSX.Element {
             }}
           >
             <Library size={16} aria-hidden="true" />
-            라이브러리
+            {t("shell.library")}
           </button>
           <button
             type="button"
@@ -214,7 +217,7 @@ export function ReaderApp(): JSX.Element {
             }}
           >
             <BookOpen size={16} aria-hidden="true" />
-            리더
+            {t("shell.reader")}
           </button>
           <button
             type="button"
@@ -222,15 +225,15 @@ export function ReaderApp(): JSX.Element {
             onClick={() => setResearchOpen(true)}
           >
             <Sparkles size={16} aria-hidden="true" />
-            리서치
+            {t("shell.research")}
           </button>
         </nav>
         <div className="web-reader-header-actions">
           <button
             type="button"
             className="web-reader-help"
-            aria-label="사용법"
-            title="사용법"
+            aria-label={t("shell.help")}
+            title={t("shell.help")}
             onClick={() => {
               setTipsFromStart(false)
               setTipsOpen(true)
@@ -241,7 +244,7 @@ export function ReaderApp(): JSX.Element {
           <button
             type="button"
             className="web-reader-settings"
-            aria-label="설정"
+            aria-label={t("shell.settings")}
             onClick={() => setSettingsOpen(true)}
           >
             <Settings size={18} aria-hidden="true" />
@@ -250,7 +253,7 @@ export function ReaderApp(): JSX.Element {
       </header>
       <div className="web-reader-main-area">
         {researchOpen ? (
-          <Suspense fallback={<p role="status">리서치를 여는 중…</p>}>
+          <Suspense fallback={<p role="status">{t("shell.openingResearch")}</p>}>
             <ResearchView
               workspace={workspace}
               onWorkspaceChange={(update) =>
@@ -277,7 +280,7 @@ export function ReaderApp(): JSX.Element {
             className="reader-workspace"
             data-outline-open={app.outlineOpen}
             data-note-open={app.noteOpen && Boolean(app.activeDocument)}
-            aria-label="리더"
+            aria-label={t("shell.reader")}
           >
             <Topbar
               documents={workspace.documents}
@@ -296,7 +299,7 @@ export function ReaderApp(): JSX.Element {
               noteOpen={app.noteOpen}
               onToggleNote={() => app.setNoteOpen((open) => !open)}
             />
-            <Suspense fallback={<p role="status">논문을 여는 중…</p>}>
+            <Suspense fallback={<p role="status">{t("shell.openingPaper")}</p>}>
               <ReaderWorkspace
                 key={app.activeDocument?.id ?? "empty"}
                 document={app.activeDocument}
@@ -362,7 +365,7 @@ export function ReaderApp(): JSX.Element {
         readerNotes={workspace.readerNotes}
       />
       {settingsOpen ? (
-        <Suspense fallback={<p role="status">설정을 여는 중…</p>}>
+        <Suspense fallback={<p role="status">{t("shell.openingSettings")}</p>}>
           <AppSettingsDialog
             open
             status={app.provider}

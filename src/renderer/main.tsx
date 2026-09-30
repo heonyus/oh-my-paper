@@ -1,6 +1,7 @@
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 import { AccountRoot } from "./AccountRoot"
+import { LocaleProvider } from "./lib/locale"
 import "pdfjs-dist/web/pdf_viewer.css"
 import "../shared/brand.css"
 import "./styles.css"
@@ -28,6 +29,8 @@ if (!root) throw new Error("oh-my-paper root element is missing")
 
 createRoot(root).render(
   <StrictMode>
-    <AccountRoot />
+    <LocaleProvider>
+      <AccountRoot />
+    </LocaleProvider>
   </StrictMode>,
 )

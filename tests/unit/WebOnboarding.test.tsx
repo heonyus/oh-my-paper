@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { LocaleProvider } from "../../src/renderer/lib/locale"
 import { WebOnboarding } from "../../src/web/WebOnboarding"
 
 const status = {
@@ -107,6 +108,28 @@ describe("WebOnboarding", () => {
     expect(screen.getByRole("button", { name: /ChatGPT 구독.*GPT-6 Luna/ })).toBeVisible()
     expect(screen.getByRole("button", { name: /^API 키 OpenRouter/ })).toBeVisible()
     expect(screen.queryByRole("button", { name: /Claude 구독/ })).toBeNull()
+  })
+
+  it("speaks English when the reader picked it", async () => {
+    const saved = new Map([["ohmypaper:language", "en"]])
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => saved.get(key) ?? null,
+      setItem: (key: string, value: string) => saved.set(key, value),
+      removeItem: (key: string) => saved.delete(key),
+    })
+    try {
+      render(
+        <LocaleProvider>
+          <WebOnboarding status={{ ...providerStatusProp }} onDone={vi.fn()} />
+        </LocaleProvider>,
+      )
+
+      expect(screen.getByRole("heading", { name: "Connect an AI" })).toBeVisible()
+      expect(screen.getByRole("button", { name: /ChatGPT subscription.*GPT-6 Luna/ })).toBeVisible()
+      expect(document.documentElement.lang).toBe("en")
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 
   it("connects an existing Claude Code login with Haiku 4.5", async () => {
