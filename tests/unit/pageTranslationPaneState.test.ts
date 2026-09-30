@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest"
 import { isPlaceholderPageTranslation } from "../../src/renderer/lib/pageTranslationJson"
 import {
   mergePageTranslations,
+  pageTranslationFailureMessage,
   reusablePageTranslations,
 } from "../../src/renderer/lib/pageTranslationPaneState"
 import type { PageTranslationBlock } from "../../src/renderer/lib/pageTranslationSource"
+import { PaperAiJobError } from "../../src/renderer/lib/usePaperAiRequest"
 
 const blocks: readonly PageTranslationBlock[] = [
   { id: "p1-b1", kind: "heading", source: "Results", translation: "" },
@@ -92,5 +94,22 @@ describe("reusablePageTranslations", () => {
       isPlaceholderPageTranslation("제공된 입력에 번역할 원문 텍스트가 포함되어 있지 않습니다."),
     ).toBe(true)
     expect(isPlaceholderPageTranslation("그 외에는")).toBe(false)
+  })
+})
+
+describe("pageTranslationFailureMessage", () => {
+  it("names the cause of a failed AI job so the reader knows what to do", () => {
+    expect(pageTranslationFailureMessage(new PaperAiJobError("timeout"))).toBe(
+      "AI 응답이 제한 시간 안에 오지 않았습니다.",
+    )
+    expect(pageTranslationFailureMessage(new PaperAiJobError("auth"))).toContain("로그인")
+    expect(pageTranslationFailureMessage(new PaperAiJobError("rate_limited"))).toContain("한도")
+    expect(pageTranslationFailureMessage(new PaperAiJobError("provider_error"))).toBe(
+      "AI 응답을 받지 못했습니다.",
+    )
+  })
+
+  it("adds nothing for an error that is not an AI job failure", () => {
+    expect(pageTranslationFailureMessage(new Error("missing page translation block b0"))).toBeNull()
   })
 })

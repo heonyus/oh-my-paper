@@ -61,6 +61,24 @@ describe("Claude CLI environment", () => {
     expect(haiku).not.toContain("--effort")
   })
 
+  it("turns thinking off with a zero budget and drops the effort level the CLI would refuse", () => {
+    const args = buildClaudeCompletionArgs({
+      model: "claude-sonnet-5",
+      effort: "medium",
+      thinking: false,
+      systemPrompt: "system",
+    })
+
+    expect(args).not.toContain("--effort")
+    expect(buildClaudeEnv({ PATH: "/usr/bin" }, { thinking: false })).toMatchObject({
+      MAX_THINKING_TOKENS: "0",
+    })
+    // A budget set in the app's own environment never reaches a turn that thinks.
+    expect(buildClaudeEnv({ PATH: "/usr/bin", MAX_THINKING_TOKENS: "0" })).not.toHaveProperty(
+      "MAX_THINKING_TOKENS",
+    )
+  })
+
   it("keeps turns tool-less unless tools are named", () => {
     const plain = buildClaudeCompletionArgs({ model: "claude-sonnet-5-5", systemPrompt: "system" })
     expect(plain[plain.indexOf("--tools") + 1]).toBe("")

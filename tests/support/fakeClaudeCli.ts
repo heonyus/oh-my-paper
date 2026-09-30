@@ -4,6 +4,9 @@ import { join } from "node:path"
 /**
  * Writes an executable stand-in for the `claude` CLI. The `--model` argument picks the
  * behaviour so tests stay hermetic even though the real CLI only inherits an allowlisted env.
+ * Like the real CLI, `MAX_THINKING_TOKENS=0` turns thinking off, and an `--effort` flag is then
+ * refused; `fake-slow-thinker` thinks without answering while thinking is on, as Haiku 4.5 did
+ * for over a minute on a two-sentence page translation.
  */
 export async function writeFakeClaudeCli(
   root: string,
@@ -38,6 +41,18 @@ process.stdin.on("end", () => {
     setTimeout(() => undefined, 60_000)
     return
   }
+  const thinking = process.env.MAX_THINKING_TOKENS !== "0"
+  if (!thinking && args.includes("--effort")) {
+    const effort = args[args.indexOf("--effort") + 1]
+    out({ type: "assistant", error: "invalid_request", message: {} })
+    out({ type: "result", is_error: true, result: "Effort '" + effort + "' isn't available with thinking turned off on this model", api_error_status: 400 })
+    return
+  }
+  if (model === "fake-slow-thinker" && thinking) {
+    const tick = setInterval(() => out({ type: "system", subtype: "thinking_tokens" }), 20)
+    setTimeout(() => { clearInterval(tick); process.exit(0) }, 20_000)
+    return
+  }
   if (args.includes("--json-schema")) {
     const schema = JSON.parse(args[args.indexOf("--json-schema") + 1])
     const answer = { translations: [{ id: "b0", markdown: "번역" }] }
@@ -49,7 +64,7 @@ process.stdin.on("end", () => {
     return
   }
   if (model === "fake-echo") {
-    delta(JSON.stringify({ types: message.content.map((block) => block.type), args }))
+    delta(JSON.stringify({ types: message.content.map((block) => block.type), args, thinking }))
     out({ type: "result", is_error: false, result: "" })
     return
   }

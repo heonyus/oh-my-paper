@@ -1,6 +1,7 @@
 import type { DocumentPageParseProgress } from "../../shared/documentPageModel"
 import { isPlaceholderPageTranslation } from "./pageTranslationJson"
 import type { PageTranslationBlock } from "./pageTranslationSource"
+import { PaperAiJobError } from "./usePaperAiRequest"
 
 export type TranslationStatus =
   | "waiting"
@@ -26,6 +27,23 @@ export function parserStageMessage(stage: DocumentPageParseProgress["stage"]): s
   }
   const unreachable: never = stage
   return unreachable
+}
+
+/** Why a page's translation failed, when an AI job says so; null adds nothing to the notice. */
+export function pageTranslationFailureMessage(error: unknown): string | null {
+  if (!(error instanceof PaperAiJobError)) return null
+  switch (error.code) {
+    case "timeout":
+      return "AI 응답이 제한 시간 안에 오지 않았습니다."
+    case "auth":
+      return "AI 연결이 끊겼습니다. 설정에서 로그인 상태를 확인해 주세요."
+    case "rate_limited":
+      return "AI 사용 한도에 도달했습니다. 잠시 후 다시 시도해 주세요."
+    case "queue_full":
+      return "다른 AI 요청이 많아 시작하지 못했습니다. 잠시 후 다시 시도해 주세요."
+    default:
+      return "AI 응답을 받지 못했습니다."
+  }
 }
 
 export function nextTextSize(size: TextSize): TextSize {

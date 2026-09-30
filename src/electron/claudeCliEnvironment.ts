@@ -94,18 +94,28 @@ const INHERITED_ENV_KEYS = [
   "CLAUDE_CODE_GIT_BASH_PATH",
 ] as const
 
-export function buildClaudeEnv(source: NodeJS.ProcessEnv = process.env): Record<string, string> {
+export function buildClaudeEnv(
+  source: NodeJS.ProcessEnv = process.env,
+  options: { readonly thinking?: boolean | undefined } = {},
+): Record<string, string> {
   const env: Record<string, string> = {}
   for (const key of INHERITED_ENV_KEYS) {
     const value = source[key]
     if (value !== undefined) env[key] = value
   }
-  return { ...env, DISABLE_AUTOUPDATER: "1" }
+  // The CLI has no thinking flag; a zero thinking budget is how it turns thinking off.
+  const thinking = options.thinking === false ? { MAX_THINKING_TOKENS: "0" } : {}
+  return { ...env, ...thinking, DISABLE_AUTOUPDATER: "1" }
 }
 
 export type ClaudeCompletionArgsOptions = {
   readonly model: string
   readonly effort?: ClaudeEffort | undefined
+  /**
+   * False runs the turn without extended thinking, and so without `--effort`, which the CLI
+   * refuses once thinking is off. Pair it with `buildClaudeEnv`'s own `thinking` option.
+   */
+  readonly thinking?: boolean | undefined
   readonly systemPrompt: string
   /** Enforced output schema; the CLI answers through its StructuredOutput tool. */
   readonly jsonSchema?: Readonly<Record<string, unknown>> | undefined
@@ -117,7 +127,9 @@ export type ClaudeCompletionArgsOptions = {
 
 export function buildClaudeCompletionArgs(options: ClaudeCompletionArgsOptions): string[] {
   const effort =
-    options.effort && claudeModelSupportsEffort(options.model) ? ["--effort", options.effort] : []
+    options.effort && options.thinking !== false && claudeModelSupportsEffort(options.model)
+      ? ["--effort", options.effort]
+      : []
   const tools = options.tools?.join(",") ?? ""
   return [
     "-p",

@@ -39,6 +39,7 @@ export function PageTranslationPane({
   const {
     blocks,
     status,
+    failure,
     progress,
     totalChunks,
     parserStage,
@@ -311,6 +312,7 @@ export function PageTranslationPane({
             {status === "failed" ? (
               <div className="page-translation-message" role="alert">
                 <p>페이지 번역을 완료하지 못했습니다.</p>
+                {failure ? <p>{failure}</p> : null}
                 <button type="button" onClick={() => void regenerate()}>
                   다시 시도
                 </button>
