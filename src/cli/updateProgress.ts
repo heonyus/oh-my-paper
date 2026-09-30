@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process"
+import { spawn, spawnSync } from "node:child_process"
 
 /** Plain text of one output line: no color codes, no surrounding space. */
 export function plainLine(line: string): string {
@@ -112,4 +112,32 @@ export function runStreaming(
     })
     child.on("close", (code) => resolve({ ok: code === 0, lines }))
   })
+}
+
+export type StepResult = { readonly ok: boolean; readonly lines: readonly string[] }
+
+function gitIn(cwd: string, args: readonly string[]): string {
+  return spawnSync("git", args, { cwd, encoding: "utf8" }).stdout?.trim() ?? ""
+}
+
+/**
+ * Brings the checkout in `cwd` up to its upstream: a fast-forward, as `git pull --ff-only` did.
+ * When the published history was replaced (the repository was cleaned up and pushed anew), a
+ * fast-forward is impossible; if nothing in the checkout was edited, it moves to the new history
+ * instead, and `replaced` says so.
+ */
+export async function syncToUpstream(
+  cwd: string,
+  onLine: (line: string) => void,
+): Promise<StepResult & { readonly replaced: boolean }> {
+  const run = (args: readonly string[]) => runStreaming("git", args, { cwd, onLine })
+  const fetched = await run(["fetch", "--progress", "origin"])
+  if (!fetched.ok) return { ...fetched, replaced: false }
+  const upstream = gitIn(cwd, ["rev-parse", "--abbrev-ref", "@{upstream}"]) || "origin/main"
+  const forward = await run(["merge", "--ff-only", upstream])
+  if (forward.ok) return { ok: true, lines: [...fetched.lines, ...forward.lines], replaced: false }
+  const edited = gitIn(cwd, ["status", "--porcelain", "--untracked-files=no"]) !== ""
+  if (edited) return { ...forward, replaced: false }
+  const reset = await run(["reset", "--hard", upstream])
+  return { ok: reset.ok, lines: [...forward.lines, ...reset.lines], replaced: reset.ok }
 }

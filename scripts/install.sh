@@ -109,9 +109,19 @@ node_major="$(node -p 'process.versions.node.split(".")[0]')"
 ok "Node.js $(node -v)"
 command -v npm >/dev/null 2>&1 || fail "npm이 없습니다" "Node.js를 다시 설치하세요"
 
+# Brings an existing install up to the published branch: a fast-forward, or, when the published
+# history was replaced (the repository was cleaned up and pushed anew) and nothing in the install
+# was edited, the new history itself.
+sync_app() {
+  git -C "$APP_DIR" fetch --progress origin "$BRANCH" || return 1
+  git -C "$APP_DIR" merge --ff-only "origin/$BRANCH" && return 0
+  [ -z "$(git -C "$APP_DIR" status --porcelain --untracked-files=no)" ] || return 1
+  git -C "$APP_DIR" reset --hard "origin/$BRANCH"
+}
+
 step "2/4  내려받기"
 if [ -d "$APP_DIR/.git" ]; then
-  run "최신 버전으로 업데이트" git -C "$APP_DIR" pull --ff-only --progress
+  run "최신 버전으로 업데이트" sync_app
 else
   mkdir -p "$(dirname "$APP_DIR")"
   run "저장소 복제" git clone --progress --depth 1 --branch "$BRANCH" "$REPO" "$APP_DIR"

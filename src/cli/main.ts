@@ -26,6 +26,8 @@ import {
   npmSummary,
   plainLine,
   runStreaming,
+  type StepResult,
+  syncToUpstream,
 } from "./updateProgress"
 import { packageVersion, readPackageVersion } from "./version"
 
@@ -95,16 +97,16 @@ async function doctor(config: WebServerConfig): Promise<void> {
 
 type UpdateStep = {
   readonly title: string
-  readonly command: string
-  readonly args: readonly string[]
+  readonly run: (onLine: (line: string) => void) => Promise<StepResult>
   readonly summary: (lines: readonly string[]) => string | null
+  /** Lists the commits that arrived once the step is done. */
+  readonly listsCommits?: boolean
 }
 
 function gitOutput(args: readonly string[]): string {
   return spawnSync("git", args, { cwd: appRoot, encoding: "utf8" }).stdout.trim()
 }
 
-/** Each step streams its output as a dim rolling log, then leaves one summary line. */
 async function update(): Promise<void> {
   process.stdout.write(`${banner(packageVersion())}\n`)
   intro(inverse(" 업데이트 "))
@@ -116,20 +118,29 @@ async function update(): Promise<void> {
       .split("\n")
       .filter(Boolean)
   }
+  let replaced = false
+  const npm = (args: readonly string[]) => (onLine: (line: string) => void) =>
+    runStreaming("npm", args, { cwd: appRoot, onLine })
   const steps: readonly UpdateStep[] = [
     {
       title: "최신 코드 받기",
-      command: "git",
-      args: ["pull", "--ff-only", "--progress"],
-      summary: () => gitSummary(before, gitOutput(["rev-parse", "HEAD"]), newCommits().length),
+      run: async (onLine) => {
+        const result = await syncToUpstream(appRoot, onLine)
+        replaced = result.replaced
+        return result
+      },
+      summary: () =>
+        replaced
+          ? "저장소 기록이 새로 정리되어 최신 버전으로 맞췄습니다"
+          : gitSummary(before, gitOutput(["rev-parse", "HEAD"]), newCommits().length),
+      listsCommits: true,
     },
     {
       title: "의존성 설치",
-      command: "npm",
-      args: ["ci", "--no-audit", "--no-fund", "--loglevel=http", "--foreground-scripts"],
+      run: npm(["ci", "--no-audit", "--no-fund", "--loglevel=http", "--foreground-scripts"]),
       summary: npmSummary,
     },
-    { title: "웹 앱 빌드", command: "npm", args: ["run", "build:web"], summary: buildSummary },
+    { title: "웹 앱 빌드", run: npm(["run", "build:web"]), summary: buildSummary },
   ]
   // clack divides by the width to erase the rolling log, so a terminal that reports none gets
   // only the step lines.
@@ -137,12 +148,9 @@ async function update(): Promise<void> {
   const rolling = columns > 0
   for (const step of steps) {
     const task = taskLog({ title: `${step.title}…`, limit: 5 })
-    const result = await runStreaming(step.command, step.args, {
-      cwd: appRoot,
-      onLine: (line) => {
-        const shown = rolling ? describeUpdateLine(line) : null
-        if (shown) task.message(fitLine(shown, columns))
-      },
+    const result = await step.run((line) => {
+      const shown = rolling ? describeUpdateLine(line) : null
+      if (shown) task.message(fitLine(shown, columns))
     })
     if (!result.ok) {
       task.error(`${step.title} 실패`, { showLog: false })
@@ -158,7 +166,7 @@ async function update(): Promise<void> {
     }
     const summary = step.summary(result.lines)
     task.success(summary ? `${step.title} ${gray(`· ${summary}`)}` : step.title)
-    if (step.command === "git") {
+    if (step.listsCommits && !replaced) {
       const commits = newCommits()
       if (commits.length > 0) {
         const width = columns || 80
