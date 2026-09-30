@@ -1,6 +1,6 @@
 import type { Point, SourceFragment } from "../../shared/schemas"
 import { cardPlacementBesidePage } from "./board"
-import { rectsToElementSpace } from "./selectionGeometry"
+import { mergeSelectionFragments, rectsToElementSpace } from "./selectionGeometry"
 
 export type BoardTextSelection = {
   readonly page: number
@@ -52,7 +52,9 @@ export function captureNativeBoardTextSelection(
       rect.top < pageRect.bottom &&
       rect.top + rect.height > pageRect.top,
   )
-  const fragments = rectsToElementSpace(selectionRects, renderedWorld, worldSize)
+  const fragments = mergeSelectionFragments(
+    rectsToElementSpace(selectionRects, renderedWorld, worldSize),
+  )
   const pageWorld = rectsToElementSpace(
     [{ left: pageRect.left, top: pageRect.top, width: pageRect.width, height: pageRect.height }],
     renderedWorld,

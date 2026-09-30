@@ -1,4 +1,5 @@
 import { type FormEvent, type JSX, useState } from "react"
+import { withinCardChatLimits } from "../lib/cardChatLimits"
 import type { AiDeltaHandler, BoardCard } from "../types"
 import { ChatComposer } from "./ChatComposer"
 import { MarkdownContent } from "./MarkdownContent"
@@ -24,7 +25,7 @@ export function BoardCardChat({
     event.preventDefault()
     const question = input.trim()
     if (!question || sending) return
-    const withQuestion: BoardCard["chat"] = [...card.chat, { role: "user", content: question }]
+    const withQuestion = withinCardChatLimits([...card.chat, { role: "user", content: question }])
     onChange(withQuestion)
     setInput("")
     setStreamedAnswer("")
@@ -33,13 +34,15 @@ export function BoardCardChat({
       const answer = await onAsk(question, withQuestion, (delta) =>
         setStreamedAnswer((current) => current + delta),
       )
-      onChange([...withQuestion, { role: "assistant", content: answer }])
+      onChange(withinCardChatLimits([...withQuestion, { role: "assistant", content: answer }]))
       setStreamedAnswer("")
     } catch {
-      onChange([
-        ...withQuestion,
-        { role: "assistant", content: "AI 설정을 확인한 뒤 다시 보내주세요." },
-      ])
+      onChange(
+        withinCardChatLimits([
+          ...withQuestion,
+          { role: "assistant", content: "AI 설정을 확인한 뒤 다시 보내주세요." },
+        ]),
+      )
     } finally {
       setSending(false)
     }
