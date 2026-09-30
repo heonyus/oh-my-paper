@@ -55,7 +55,7 @@ describe("bibliography IPC", () => {
     const result = await client.getPaper(knowledgeNodeIdSchema.parse(paperNode.id))
 
     // Then
-    expect(result.metadata.citationKey).toBe("lee2026synthetic")
+    expect(result.metadata.citationKey).toBe("park2026synthetic")
     expect(ipc.handlers.size).toBe(Object.values(bibliographyChannels).length)
     dispose()
     expect(ipc.handlers.size).toBe(0)

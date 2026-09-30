@@ -1,7 +1,8 @@
 # Scholarly search core
 
-Task 21 exposes a main-process TypeScript function, `searchScholarly`, and a separate Electron
-IPC adapter for explicit read-only metadata search. Importing or opening a PDF does not call it.
+The scholarly search core is a main-process TypeScript function, `searchScholarly`, with a
+separate Electron IPC adapter for explicit read-only metadata search. Importing or opening a PDF
+does not call it.
 
 ## Contract
 

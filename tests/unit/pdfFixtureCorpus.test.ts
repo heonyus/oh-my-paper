@@ -64,8 +64,8 @@ describe("synthetic document fixture corpus", () => {
   })
 
   it("recreates byte-identical valid fixtures and records their SHA-256 values", async () => {
-    const firstDirectory = path.join(process.cwd(), ".omo/test-artifacts/document-fixtures-a")
-    const secondDirectory = path.join(process.cwd(), ".omo/test-artifacts/document-fixtures-b")
+    const firstDirectory = path.join(process.cwd(), "test-results/artifacts/document-fixtures-a")
+    const secondDirectory = path.join(process.cwd(), "test-results/artifacts/document-fixtures-b")
     const first = await buildDocumentFixtureCorpus(firstDirectory)
     const second = await buildDocumentFixtureCorpus(secondDirectory)
 

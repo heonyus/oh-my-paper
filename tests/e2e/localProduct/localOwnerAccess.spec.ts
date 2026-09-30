@@ -18,7 +18,10 @@ test("explicit local owner opens production workspace and preserves papers and n
     }),
     { mode: 0o600 },
   )
-  const output = join(process.cwd(), ".omo/evidence/ohmypaper-local-product/2026-09-08-local-owner")
+  const output = join(
+    process.cwd(),
+    "test-results/evidence/ohmypaper-local-product/2026-09-08-local-owner",
+  )
   await mkdir(output, { recursive: true })
   const { OH_MY_PAPER_LOCAL_OWNER_EXECUTABLE: executable } = process.env
   let paperHash = ""

@@ -49,7 +49,7 @@ describe("Deterministic PDF Fixture Generator", () => {
   })
 
   it("writes the fixture to disk deterministically and creates output directory if needed", async () => {
-    const tempDir = path.resolve(process.cwd(), ".omo/test-artifacts/fixture-test")
+    const tempDir = path.resolve(process.cwd(), "test-results/artifacts/fixture-test")
     const targetFile = path.join(tempDir, "output-fixture.pdf")
 
     const result = await writeFixturePdf(targetFile)

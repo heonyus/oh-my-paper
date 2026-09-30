@@ -17,6 +17,7 @@ playwright-report/
 .venv-layout/
 .omo/
 .omc/
+.claude/
 .omx/runtime/
 recording-review-*/
 AGENTS.md

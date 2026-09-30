@@ -12,7 +12,7 @@ test("Reader keeps global navigation and identifies the retained paper", async (
     await browserWindow.evaluate((window) => window.setContentSize(1440, 960))
     const output = join(
       process.cwd(),
-      ".omo/evidence/ohmypaper-local-product/2026-09-08-reader-navigation",
+      "test-results/evidence/ohmypaper-local-product/2026-09-08-reader-navigation",
     )
     await mkdir(output, { recursive: true })
     await expect(page.getByRole("region", { name: "PDF 라이브러리" })).toBeVisible()

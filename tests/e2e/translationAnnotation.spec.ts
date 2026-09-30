@@ -14,7 +14,7 @@ test("saving a translation annotation leaves only its source highlight and sideb
   const bytes = await readFile(fixture)
   const hash = createHash("sha256").update(bytes).digest("hex")
   const id = hash.slice(0, 16)
-  const evidence = join(process.cwd(), ".omo", "evidence", "translation-annotation")
+  const evidence = join(process.cwd(), "test-results", "evidence", "translation-annotation")
   await Promise.all([mkdir(documents, { recursive: true }), mkdir(evidence, { recursive: true })])
   await copyFile(fixture, join(documents, `${hash}.pdf`))
   await writeFile(

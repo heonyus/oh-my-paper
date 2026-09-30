@@ -15,7 +15,7 @@ const current = bibliographyPaperSchema.parse({
     updatedAt: "2026-09-06T00:00:00.000Z",
   },
   metadata: {
-    citationKey: "lee2026existing",
+    citationKey: "park2026existing",
     authors: ["Minji Park"],
     year: 2026,
     doi: "10.1000/shared",

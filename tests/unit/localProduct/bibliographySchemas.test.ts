@@ -9,7 +9,7 @@ describe("bibliography schemas", () => {
   it("parses bounded native paper metadata", () => {
     // Given
     const input = {
-      citationKey: "lee2026evidence",
+      citationKey: "park2026evidence",
       authors: ["Minji Park"],
       year: 2026,
       doi: "10.1000/example",

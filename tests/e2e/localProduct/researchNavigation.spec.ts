@@ -7,7 +7,10 @@ import { seedSixScreenWorkspace } from "./sixScreenWorkflowSetup"
 
 test("research navigation preserves library context and keeps secondary tools reachable", async () => {
   const qa = await launchSimulatedAuthenticatedApplication()
-  const output = join(process.cwd(), ".omo/evidence/ohmypaper-local-product/2026-09-08-paper-graph")
+  const output = join(
+    process.cwd(),
+    "test-results/evidence/ohmypaper-local-product/2026-09-08-paper-graph",
+  )
   await mkdir(output, { recursive: true })
   try {
     const page = await qa.application.firstWindow()

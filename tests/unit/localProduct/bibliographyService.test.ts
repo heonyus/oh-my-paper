@@ -99,7 +99,7 @@ describe("BibliographyService", () => {
     })
 
     // Then
-    expect(first.metadata.citationKey).toBe("lee2024retrieval")
+    expect(first.metadata.citationKey).toBe("park2024retrieval")
     expect(second.metadata.citationKey).toBe(first.metadata.citationKey)
     expect(second.node.body).toBe("Reader-linked abstract")
     expect(second.node.metadata).toMatchObject({
@@ -138,7 +138,7 @@ describe("BibliographyService", () => {
       paper(
         `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
         `Existing ${index}`,
-        index === 100 ? { citationKey: "lee2024retrieval" } : {},
+        index === 100 ? { citationKey: "park2024retrieval" } : {},
       ),
     )
     const service = new BibliographyService(
@@ -159,7 +159,7 @@ describe("BibliographyService", () => {
     })
 
     // Then
-    expect(updated.metadata.citationKey).toBe("lee2024retrieval111111")
+    expect(updated.metadata.citationKey).toBe("park2024retrieval111111")
   })
 
   it("exports selected papers as local BibTeX", () => {
@@ -170,7 +170,7 @@ describe("BibliographyService", () => {
         year: 2026,
         venue: "Clinical AI",
         doi: "10.1000/example",
-        citationKey: "lee2026evidence",
+        citationKey: "park2026evidence",
         readingState: "read",
       }),
     ])
@@ -181,7 +181,7 @@ describe("BibliographyService", () => {
 
     // Then
     expect(exported.fileName).toBe("references.bib")
-    expect(exported.content).toContain("@article{lee2026evidence,")
+    expect(exported.content).toContain("@article{park2026evidence,")
     expect(exported.content).toContain("author = {Minji Park and Jane Kim}")
     expect(exported.content).toContain("title = {Evidence \\{Agents\\}}")
   })

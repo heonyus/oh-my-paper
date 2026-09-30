@@ -24,7 +24,7 @@ test("all workspace tabs retain readable bounded controls across appearance size
   const { OH_MY_PAPER_LAYOUT_PHASE: phase = "after" } = process.env
   const output = join(
     process.cwd(),
-    ".omo/evidence/ohmypaper-local-product/2026-09-10-layout",
+    "test-results/evidence/ohmypaper-local-product/2026-09-10-layout",
     phase,
   )
   await mkdir(output, { recursive: true })

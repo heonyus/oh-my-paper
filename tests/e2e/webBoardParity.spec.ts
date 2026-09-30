@@ -109,7 +109,7 @@ test("web reader keeps the full research board and page-adjacent translation", a
   )
 
   await page.goto("http://127.0.0.1:4174/")
-  const evidence = join(process.cwd(), ".omo", "evidence", "web-board-parity")
+  const evidence = join(process.cwd(), "test-results", "evidence", "web-board-parity")
   await mkdir(evidence, { recursive: true })
   await expect(page.getByRole("region", { name: "PDF 라이브러리" })).toBeVisible()
   await expect(page.getByRole("region", { name: "PDF 준비 진행" })).toHaveCount(0)

@@ -9,7 +9,10 @@ test("paper graph traverses real IPC and HTTP adapter with bounded fixture metad
   const qa = await launchSimulatedAuthenticatedApplication({
     environment: { OH_MY_PAPER_QA_SCHOLARLY_FIXTURE: "1" },
   })
-  const output = join(process.cwd(), ".omo/evidence/ohmypaper-local-product/2026-09-08-paper-graph")
+  const output = join(
+    process.cwd(),
+    "test-results/evidence/ohmypaper-local-product/2026-09-08-paper-graph",
+  )
   await mkdir(output, { recursive: true })
   try {
     const page = await qa.application.firstWindow()
