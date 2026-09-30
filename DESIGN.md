@@ -16,14 +16,16 @@ a terminal install that explains itself, and short per-feature tutorials.
 - ChatGPT models come from the bundled Codex runtime (`model/list`) for the signed-in account;
   a first connection saves GPT-6 Luna when the account lists it, otherwise the runtime's default
   model (owner request, 2026-09-30). The bundled list is only a fallback.
-- Terminal: `scripts/install.sh` (curl one-liner) clones, installs, builds, links
-  `oh-my-paper` and starts the wizard. The wizard has four explained steps (runtime, AI
-  connection, optional OCR, usage tour). The AI step lists ChatGPT first and preselects it; only a
-  connection this app saved moves the cursor to `지금 연결 유지` (a Claude Code login on the
-  machine alone does not). The OCR step (owner request, 2026-09-30) defaults to Yes and never
-  blocks: the setup runs detached, logs to `~/.ohmypaper/paddle-vl-install.log`, holds a pid lock
-  so only one install runs, and `doctor` and 설정 show `설치 중` until the readiness marker
-  switches the engine on without a restart.
+- Terminal: `scripts/install.sh` (curl one-liner) clones, installs, builds, links `oh-my-paper` and
+  starts the wizard. The wizard has four explained steps (runtime, optional OCR, AI connection,
+  usage tour); OCR comes before AI so its download overlaps the sign-in. The AI step lists ChatGPT
+  first and preselects it; only a connection this app saved moves the cursor to `지금 연결 유지` (a Claude
+  Code login on the machine alone does not). The OCR step (owner request, 2026-09-30) defaults to
+  Yes and never blocks: the setup runs detached, fetches the model in ranges from Hugging Face and
+  ModelScope at once (SHA-256 checked), a paper imported meanwhile waits for the engine instead of
+  failing, logs to `~/.ohmypaper/paddle-vl-install.log`, holds a pid lock so only one install runs,
+  and `doctor` and 설정 show `설치 중` until the readiness marker switches the engine on without a
+  restart.
 - Feature tips: the first time a screen shows a feature's control, one small anchored tip
   explains it with a muted looping clip recorded from the real app (`/tutorials/<id>.mp4`), a
   one-line description and its keys. At most one tip per visit to a screen, shown after the

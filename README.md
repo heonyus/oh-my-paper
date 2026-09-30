@@ -61,9 +61,10 @@ curl -fsSL https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/in
 The installer clones the app into `~/.oh-my-paper/app`, installs dependencies, builds the web
 app, links an `oh-my-paper` command into `~/.local/bin` (adding it to `PATH` for zsh/bash),
 and starts the setup wizard. The wizard walks through four explained steps — runtime check,
-AI connection, the optional OCR engine, and a short usage tour — then offers to open the app.
-The OCR engine downloads in the background (about 3 GB), so the app is usable meanwhile and
-switches it on once it is ready; `oh-my-paper doctor` shows whether it is still installing.
+the optional OCR engine, AI connection, and a short usage tour — then offers to open the app.
+The OCR engine (about 3 GB) starts downloading in the background as soon as it is chosen, from
+Hugging Face and ModelScope at once, so it is mostly done by the time AI is connected; the app
+is usable meanwhile and switches it on once it is ready. `oh-my-paper doctor` shows its progress.
 
 | Command | What it does |
 |---|---|
