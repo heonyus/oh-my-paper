@@ -1,6 +1,12 @@
 import { AlertCircle, CheckCircle2, Info, Loader2 } from "lucide-react"
 import type { JSX } from "react"
-import { codexModelChoices, codexReasoningEffortOptions } from "../../shared/codexTypes"
+import {
+  codexModelChoices,
+  codexModelHint,
+  codexReasoningEffortOptions,
+} from "../../shared/codexTypes"
+import { useLocale, useTranslator } from "../lib/locale"
+import { subscriptionMessages } from "../messages/subscription"
 import { SubscriptionUsage } from "./SubscriptionUsage"
 import { isCodexReasoningEffort, useCodexSettings } from "./useCodexSettings"
 
@@ -9,6 +15,8 @@ export function CodexSettings({
 }: {
   readonly onConnectionChange?: (() => Promise<void>) | undefined
 }): JSX.Element {
+  const t = useTranslator(subscriptionMessages)
+  const { locale } = useLocale()
   const {
     status,
     models,
@@ -30,23 +38,23 @@ export function CodexSettings({
   } = useCodexSettings({ onConnectionChange })
   const account = status?.account?.type === "chatgpt" ? status.account : null
   return (
-    <section className="settings-group codex-settings-card" aria-label="ChatGPT 구독">
+    <section className="settings-group codex-settings-card" aria-label={t("sub.chatgpt")}>
       <div className="codex-card-header">
         <div className="codex-card-titles">
-          <h4>ChatGPT 구독 연결</h4>
-          <p className="settings-help">구독에 포함된 Codex 사용량을 이용합니다.</p>
+          <h4>{t("sub.chatgpt.title")}</h4>
+          <p className="settings-help">{t("sub.chatgpt.help")}</p>
         </div>
         <span className="settings-badge" data-status={badgeStatus} role="status">
           <i />
           {pendingLogin
-            ? "로그인 진행 중…"
+            ? t("sub.signingIn")
             : status === null
-              ? "확인 중…"
+              ? t("sub.checking")
               : isConnected
-                ? `연결됨${account?.email ? ` · ${account.email}` : ""}`
+                ? `${t("sub.connected")}${account?.email ? ` · ${account.email}` : ""}`
                 : isError
-                  ? `사용 불가: ${status.error}`
-                  : "로그인 필요"}
+                  ? t("sub.unavailable", { error: status.error ?? "" })
+                  : t("sub.signInNeeded")}
         </span>
       </div>
       {pendingLogin ? (
@@ -54,38 +62,41 @@ export function CodexSettings({
           <Info size={15} />
           <span>
             {pendingLogin.userCode
-              ? `브라우저에서 승인을 완료한 뒤 기기 코드 ${pendingLogin.userCode}를 입력하세요.`
-              : "브라우저에서 승인을 완료한 뒤 돌아오세요."}{" "}
+              ? t("sub.chatgpt.enterCode", { code: pendingLogin.userCode })
+              : t("sub.chatgpt.comeBack")}{" "}
             <a href={pendingLogin.authUrl} target="_blank" rel="noreferrer">
-              로그인 페이지 다시 열기
+              {t("sub.reopenSignIn")}
             </a>
           </span>
         </div>
       ) : null}
       <div className="settings-row">
         <span>
-          <strong>구독 모델</strong>
-          <small>질의응답, 요약, 리더 해설에 사용됩니다.</small>
+          <strong>{t("sub.chatgpt.model")}</strong>
+          <small>{t("sub.chatgpt.modelDetail")}</small>
         </span>
         <select
-          aria-label="구독 모델"
+          aria-label={t("sub.chatgpt.model")}
           value={selectedModel}
           onChange={(event) => void updateModel(event.currentTarget.value)}
         >
-          {codexModelChoices(models, selectedModel).map((opt) => (
-            <option key={opt.id} value={opt.id}>
-              {opt.description ? `${opt.label} — ${opt.description}` : opt.label}
-            </option>
-          ))}
+          {codexModelChoices(models, selectedModel, locale).map((opt) => {
+            const hint = codexModelHint(opt.id, locale) ?? opt.description
+            return (
+              <option key={opt.id} value={opt.id}>
+                {hint ? `${opt.label} — ${hint}` : opt.label}
+              </option>
+            )
+          })}
         </select>
       </div>
       <div className="settings-row">
         <span>
-          <strong>추론 수준 (Thinking)</strong>
-          <small>복잡한 수식과 심층 검증에 사용할 CoT 사고 깊이</small>
+          <strong>{t("sub.chatgpt.effort")}</strong>
+          <small>{t("sub.chatgpt.effortDetail")}</small>
         </span>
         <select
-          aria-label="추론 수준"
+          aria-label={t("sub.chatgpt.effortLabel")}
           value={selectedEffort}
           onChange={(event) => {
             const next = event.currentTarget.value
@@ -94,7 +105,7 @@ export function CodexSettings({
         >
           {codexReasoningEffortOptions(selectedModel, models).map((opt) => (
             <option key={opt.id} value={opt.id}>
-              {opt.label}
+              {opt.label[locale]}
             </option>
           ))}
         </select>
@@ -103,10 +114,7 @@ export function CodexSettings({
       {status?.available === false ? (
         <div className="settings-alert-banner" data-variant="warning">
           <AlertCircle size={15} />
-          <span>
-            앱 내부에 설치된 OpenAI 로그인 런타임을 사용할 수 없습니다. CLI를 따로 실행할 필요는
-            없으며, 앱을 업데이트한 뒤 다시 확인하세요.
-          </span>
+          <span>{t("sub.chatgpt.runtimeMissing")}</span>
         </div>
       ) : null}
       {message ? (
@@ -126,7 +134,7 @@ export function CodexSettings({
           disabled={busy}
           onClick={() => void refresh()}
         >
-          상태 새로고침
+          {t("sub.refresh")}
         </button>
         {pendingLogin ? (
           <button
@@ -135,7 +143,7 @@ export function CodexSettings({
             disabled={busy}
             onClick={() => void cancelLogin()}
           >
-            로그인 취소
+            {t("sub.cancelSignIn")}
           </button>
         ) : isConnected ? (
           <button
@@ -144,7 +152,7 @@ export function CodexSettings({
             disabled={busy}
             onClick={() => void logout()}
           >
-            로그아웃
+            {t("sub.chatgpt.signOut")}
           </button>
         ) : (
           <div className="codex-login-buttons">
@@ -154,7 +162,7 @@ export function CodexSettings({
               disabled={busy || !status?.available}
               onClick={() => void startLogin("chatgptDeviceCode")}
             >
-              기기 코드로 로그인
+              {t("sub.chatgpt.deviceCode")}
             </button>
             <button
               type="button"
@@ -163,7 +171,7 @@ export function CodexSettings({
               onClick={() => void startLogin("chatgpt")}
             >
               {busy ? <Loader2 size={14} className="settings-spinner" /> : null}
-              {busy ? "로그인 준비 중…" : "ChatGPT로 로그인"}
+              {busy ? t("sub.preparingSignIn") : t("sub.chatgpt.signIn")}
             </button>
           </div>
         )}

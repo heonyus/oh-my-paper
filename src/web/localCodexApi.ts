@@ -1,14 +1,23 @@
 import { z } from "zod"
+import { browserLocale } from "../renderer/lib/locale"
+import { subscriptionMessages } from "../renderer/messages/subscription"
 import {
   codexAccountStatusSchema,
   codexLoginCompletedEventSchema,
   codexLoginStartResultSchema,
   codexModelListSchema,
 } from "../shared/codexTypes"
+import { isLocale, type Locale, translator } from "../shared/i18n/locale"
 import type { OhMyPaperApi } from "../shared/ipc"
 import { localRpc } from "./localTransport"
 
 const okSchema = z.object({ ok: z.literal(true) })
+
+/** The app's language as the page last declared it; this runs outside React's locale context. */
+function pageLocale(): Locale {
+  const lang = document.documentElement.lang
+  return isLocale(lang) ? lang : browserLocale()
+}
 
 export function createLocalCodexApi(): OhMyPaperApi["codex"] {
   return {
@@ -30,7 +39,8 @@ export function createLocalCodexApi(): OhMyPaperApi["codex"] {
           listener(codexLoginCompletedEventSchema.parse(value))
         } catch (error) {
           if (!(error instanceof SyntaxError) && !(error instanceof z.ZodError)) throw error
-          listener({ success: false, error: "로그인 상태 응답을 읽지 못했습니다. 새로고침하세요." })
+          const t = translator(subscriptionMessages, pageLocale())
+          listener({ success: false, error: t("sub.chatgpt.loginUnreadable") })
         }
       }
       return () => events.close()

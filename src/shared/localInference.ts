@@ -1,4 +1,5 @@
 import { z } from "zod"
+import type { Locale } from "./i18n/locale"
 
 export const LOCAL_INFERENCE_LIMITS = Object.freeze({
   contextTokens: 2_048,
@@ -142,11 +143,24 @@ export type LocalInferenceApi = {
   readonly cancel: (requestId: string) => Promise<void>
 }
 
-export function buildDeterministicWritingSuggestions(input: {
-  readonly title: string
-  readonly body: string
-}): readonly string[] {
+/** The fixed suggestions shown whether or not a local model runs, in `locale`. */
+export function buildDeterministicWritingSuggestions(
+  input: {
+    readonly title: string
+    readonly body: string
+  },
+  locale: Locale = "ko",
+): readonly string[] {
   const hasBody = input.body.trim().length > 0
+  if (locale === "en") {
+    return [
+      hasBody
+        ? `Condense the core claim of ${input.title.trim() || "this concept"} into one sentence.`
+        : "State the core claim in one sentence.",
+      "Link the source passages that support it.",
+      "If the comparison conditions are not known, leave them as unknown.",
+    ]
+  }
   return [
     hasBody
       ? `${input.title.trim() || "이 개념"}의 핵심 주장을 한 문장으로 압축하세요.`

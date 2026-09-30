@@ -3,19 +3,12 @@ import { useEffect, useState } from "react"
 /** The typeface translations are set in on the mirrored page. */
 export type TranslationFont = "auto" | "serif" | "sans"
 
+/** The choices in settings order; their names and details are in `settingsMessages`. */
 export const translationFontOptions = [
-  {
-    value: "auto",
-    label: "원문 따라가기",
-    detail: "본문은 명조, 제목은 고딕처럼 원문 글꼴을 따릅니다",
-  },
-  { value: "serif", label: "명조", detail: "나눔명조 · Noto Serif KR" },
-  { value: "sans", label: "고딕", detail: "화면 글꼴과 같은 고딕" },
-] as const satisfies readonly {
-  readonly value: TranslationFont
-  readonly label: string
-  readonly detail: string
-}[]
+  { value: "auto" },
+  { value: "serif" },
+  { value: "sans" },
+] as const satisfies readonly { readonly value: TranslationFont }[]
 
 const storageKey = "ohmypaper:translation-font:v1"
 const changeEvent = "ohmypaper:translation-font"

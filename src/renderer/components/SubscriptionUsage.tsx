@@ -4,12 +4,15 @@ import type {
   CodexRateLimitSnapshot,
   CodexRateLimitWindow,
 } from "../../shared/codexTypes"
+import { useTranslator } from "../lib/locale"
+import { subscriptionMessages } from "../messages/subscription"
 
 export function SubscriptionUsage({
   status,
 }: {
   readonly status: CodexAccountStatus
 }): JSX.Element {
+  const t = useTranslator(subscriptionMessages)
   const limits = status.rateLimits
   const snapshots: ReadonlyArray<readonly [string, CodexRateLimitSnapshot]> =
     limits?.rateLimitsByLimitId
@@ -18,20 +21,27 @@ export function SubscriptionUsage({
         ? [["account", limits.rateLimits]]
         : []
   return (
-    <fieldset className="settings-help" aria-label="구독 사용량">
-      <p>플랜: {status.account?.type === "chatgpt" ? status.account.planType : "확인되지 않음"}</p>
+    <fieldset className="settings-help" aria-label={t("sub.usage")}>
+      <p>
+        {t("sub.usage.plan", {
+          plan:
+            status.account?.type === "chatgpt"
+              ? status.account.planType
+              : t("sub.usage.planUnknown"),
+        })}
+      </p>
       {snapshots.length === 0 ? (
-        <p>사용량 정보를 제공받지 못했습니다.</p>
+        <p>{t("sub.usage.none")}</p>
       ) : (
         snapshots.map(([id, snapshot]) => (
           <div key={id}>
-            <strong>{snapshot.limitName ?? snapshot.limitId ?? "계정 한도"}</strong>
-            <UsageWindow label="단기" value={snapshot.primary} />
-            <UsageWindow label="장기" value={snapshot.secondary} />
+            <strong>{snapshot.limitName ?? snapshot.limitId ?? t("sub.usage.accountLimit")}</strong>
+            <UsageWindow label={t("sub.usage.shortTerm")} value={snapshot.primary} />
+            <UsageWindow label={t("sub.usage.longTerm")} value={snapshot.secondary} />
           </div>
         ))
       )}
-      <p>같은 계정의 다른 앱과 한도를 공유합니다. 한도에 도달해도 API로 자동 전환하지 않습니다.</p>
+      <p>{t("sub.usage.shared")}</p>
     </fieldset>
   )
 }
@@ -43,11 +53,14 @@ function UsageWindow({
   readonly label: string
   readonly value?: CodexRateLimitWindow | null | undefined
 }): JSX.Element | null {
+  const t = useTranslator(subscriptionMessages)
   if (!value) return null
   return (
     <p>
-      {label} · {Math.max(0, 100 - value.usedPercent)}% 남음
-      {value.resetsAt ? ` · ${new Date(value.resetsAt * 1000).toLocaleString()} 갱신` : ""}
+      {t("sub.usage.left", { window: label, percent: Math.max(0, 100 - value.usedPercent) })}
+      {value.resetsAt
+        ? ` · ${t("sub.usage.resets", { time: new Date(value.resetsAt * 1000).toLocaleString() })}`
+        : ""}
     </p>
   )
 }

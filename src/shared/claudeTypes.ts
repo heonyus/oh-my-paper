@@ -1,9 +1,11 @@
 import { z } from "zod"
+import type { Locale } from "./i18n/locale"
 
 export const DEFAULT_CLAUDE_MODEL = "claude-haiku-4-5"
 
+/** The models on offer by name; `claudeModelChoices` marks the default in the reader's language. */
 export const CLAUDE_MODEL_OPTIONS = [
-  { id: "claude-haiku-4-5", label: "Claude Haiku 4.5 (기본)" },
+  { id: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
   { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5" },
   { id: "claude-opus-5-5", label: "Claude Opus 5.5" },
   { id: "claude-fable-5-1", label: "Claude Fable 5.1" },
@@ -11,13 +13,21 @@ export const CLAUDE_MODEL_OPTIONS = [
   { id: "claude-opus-5", label: "Claude Opus 5" },
 ] as const
 
+const DEFAULT_MARK: Readonly<Record<Locale, string>> = { ko: "기본", en: "default" }
+const SAVED_MARK: Readonly<Record<Locale, string>> = { ko: "저장된 모델", en: "saved model" }
+
 /** The model choices, keeping a saved model that is no longer listed so the select shows it. */
 export function claudeModelChoices(
   selected: string,
+  locale: Locale = "ko",
 ): ReadonlyArray<{ readonly id: string; readonly label: string }> {
+  const choices = CLAUDE_MODEL_OPTIONS.map(({ id, label }) => ({
+    id,
+    label: id === DEFAULT_CLAUDE_MODEL ? `${label} (${DEFAULT_MARK[locale]})` : label,
+  }))
   return CLAUDE_MODEL_OPTIONS.some((option) => option.id === selected)
-    ? CLAUDE_MODEL_OPTIONS
-    : [...CLAUDE_MODEL_OPTIONS, { id: selected, label: `${selected} (저장된 모델)` }]
+    ? choices
+    : [...choices, { id: selected, label: `${selected} (${SAVED_MARK[locale]})` }]
 }
 
 export const claudeEffortSchema = z.enum(["low", "medium", "high", "xhigh", "max"])
@@ -25,12 +35,15 @@ export type ClaudeEffort = z.infer<typeof claudeEffortSchema>
 
 export const DEFAULT_CLAUDE_EFFORT: ClaudeEffort = "medium"
 
-export const CLAUDE_EFFORT_OPTIONS: ReadonlyArray<{ id: ClaudeEffort; label: string }> = [
-  { id: "low", label: "낮음 (빠름)" },
-  { id: "medium", label: "보통 (기본)" },
-  { id: "high", label: "높음" },
-  { id: "xhigh", label: "매우 높음" },
-  { id: "max", label: "최대" },
+export const CLAUDE_EFFORT_OPTIONS: ReadonlyArray<{
+  id: ClaudeEffort
+  label: Readonly<Record<Locale, string>>
+}> = [
+  { id: "low", label: { ko: "낮음 (빠름)", en: "Low (fast)" } },
+  { id: "medium", label: { ko: "보통 (기본)", en: "Medium (default)" } },
+  { id: "high", label: { ko: "높음", en: "High" } },
+  { id: "xhigh", label: { ko: "매우 높음", en: "Very high" } },
+  { id: "max", label: { ko: "최대", en: "Max" } },
 ]
 
 export function isClaudeEffort(value: string): value is ClaudeEffort {
