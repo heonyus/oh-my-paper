@@ -44,6 +44,38 @@ describe("AiOverviewPanel", () => {
     expect(onSave).toHaveBeenCalledWith("3줄 요약", "1. 문제\n2. 방법\n3. 결과")
   })
 
+  it("shows keywords as tags that open their definition", async () => {
+    render(
+      <AiOverviewPanel
+        document={documentFixture}
+        currentPage={1}
+        provider={{ configured: true, provider: "openai", model: "gpt-5" }}
+        onAiRequest={vi.fn(async () => "unused")}
+        onSave={vi.fn()}
+        cachedInsights={[
+          {
+            documentId: documentFixture.id,
+            kind: "keywords",
+            value:
+              "# 핵심 용어\n\n- **circEWS**: 순환부전 조기 경보 시스템.\n- **AUPRC**: 정밀도-재현율 곡선 아래 면적.",
+            updatedAt: "2026-09-30T00:00:00.000Z",
+          },
+        ]}
+      />,
+    )
+
+    const tag = screen.getByRole("button", { name: "circEWS" })
+    expect(screen.getByRole("button", { name: "AUPRC" })).toBeInTheDocument()
+    expect(screen.queryByText("핵심 용어")).not.toBeInTheDocument()
+    expect(screen.queryByText("순환부전 조기 경보 시스템.")).not.toBeInTheDocument()
+
+    await userEvent.click(tag)
+    expect(tag).toHaveAttribute("aria-pressed", "true")
+    expect(screen.getByText("순환부전 조기 경보 시스템.")).toBeInTheDocument()
+    await userEvent.click(tag)
+    expect(screen.queryByText("순환부전 조기 경보 시스템.")).not.toBeInTheDocument()
+  })
+
   it("restores cached insights without another provider request", () => {
     const onAiRequest = vi.fn(async () => "unused")
     render(

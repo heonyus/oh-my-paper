@@ -91,6 +91,40 @@
 .insight-muted {
   color: var(--ink-muted);
 }
+.keyword-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.keyword-tag-list button {
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--type-toolbar-size);
+  font-weight: 600;
+  line-height: 1.5;
+  word-break: normal;
+  cursor: pointer;
+}
+.keyword-tag-list button:hover {
+  border-color: var(--action);
+  color: var(--action);
+}
+.keyword-tag-list button[aria-pressed="true"] {
+  border-color: var(--action);
+  background: var(--action-subtle);
+  color: var(--action);
+}
+.keyword-definition:not(:empty) {
+  margin-top: 10px;
+  color: var(--ink-muted);
+}
 .insight-progress {
   position: relative;
   display: block;
