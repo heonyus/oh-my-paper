@@ -32,6 +32,19 @@ describe("update progress", () => {
     ).toBe(true)
   })
 
+  it("leaves the Codex CLI download out of the progress line", () => {
+    expect(
+      describeUpdateLine(
+        "npm http fetch GET 200 https://registry.npmjs.org/@openai/codex/-/codex-0.159.2-darwin-arm64.tgz 5234ms (cache miss)",
+      ),
+    ).toBeNull()
+    expect(
+      describeUpdateLine(
+        "npm http cache @openai/codex@https://registry.npmjs.org/@openai/codex/-/codex-0.159.2.tgz 0ms (cache hit)",
+      ),
+    ).toBeNull()
+  })
+
   it("passes other lines through without color codes and drops blank ones", () => {
     expect(describeUpdateLine("\u001b[32m✓\u001b[39m 1234 modules transformed.")).toBe(
       "✓ 1234 modules transformed.",

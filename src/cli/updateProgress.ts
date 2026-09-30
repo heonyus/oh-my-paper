@@ -16,12 +16,19 @@ function tarballName(url: string): string {
 }
 
 /**
+ * The Codex CLI the ChatGPT sign-in runs on. It is by far the largest download, so its name
+ * lingered in the progress line and read as if a separate program were being installed.
+ */
+const CODEX_PACKAGE = /@openai(?:\/|%2f)codex/i
+
+/**
  * What the dim progress log shows for a line of `npm ci --loglevel=http`: a package name for each
- * download or cache read instead of its registry URL. Other lines pass through.
+ * download or cache read instead of its registry URL, and nothing for the Codex CLI. Other lines
+ * pass through.
  */
 export function describeUpdateLine(line: string): string | null {
   const text = plainLine(line)
-  if (!text) return null
+  if (!text || CODEX_PACKAGE.test(text)) return null
   const cached = NPM_CACHE.exec(text)
   if (cached) return `${tarballName(cached[1] ?? "")} · 캐시`
   const fetch = NPM_FETCH.exec(text)
