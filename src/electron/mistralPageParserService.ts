@@ -96,8 +96,7 @@ export class MistralPageParserService {
 
   async parse(input: ParseInput): Promise<DocumentPageParseResult> {
     if (input.signal?.aborted) return { status: "unavailable", reason: "execution_failed" }
-    const workspace = await input.store.read()
-    const document = workspace.documents.find((candidate) => candidate.id === input.documentId)
+    const document = await input.store.findDocument(input.documentId)
     if (!document) return { status: "unavailable", reason: "unknown_document" }
     if (input.pageNumber > document.pageCount)
       return { status: "unavailable", reason: "invalid_page" }

@@ -3,7 +3,7 @@ import { join } from "node:path"
 import type { DocumentAnalysisService } from "../electron/documentAnalysisService"
 import type { PaddlePageParserService } from "../electron/paddlePageParserService"
 import type { WorkspaceStore } from "../electron/workspaceStore"
-import { type DocumentId, sha256Schema } from "../shared/schemas"
+import { type DocumentId, documentIdSchema, sha256Schema } from "../shared/schemas"
 
 type DocumentDeletionServices = {
   readonly store: WorkspaceStore
@@ -22,13 +22,16 @@ export async function deleteLibraryDocument(
   services: DocumentDeletionServices,
   id: DocumentId,
 ): Promise<boolean> {
-  const workspace = await services.store.read()
-  const document = workspace.documents.find((candidate) => candidate.id === id)
+  const document = await services.store.findDocument(id)
   if (!document) return false
   await services.analysis.forget(id)
   services.paddle.forget(document.hash)
   const removed = await services.store.deleteDocument(id)
   if (!removed) return false
+  // Layouts are kept per document, not per content; citation lookups are shared and stay.
+  await rm(join(services.store.root, "layout", `${documentIdSchema.parse(id)}.json`), {
+    force: true,
+  })
   if (services.store.repository.findDocumentVersionsByHash(removed.hash).length > 0) return true
   const hash = sha256Schema.parse(removed.hash)
   await Promise.all([

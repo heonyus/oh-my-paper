@@ -162,7 +162,7 @@ export function bindViewerEventBridge(params: EventBridgeParams): {
 
   let analyzedPages = 0
   const unsubscribeAnalysis = params.subscribeDocumentAnalysis?.((snapshot) => {
-    const job = snapshot.find((candidate) => candidate.id === params.document.id)
+    const job = snapshot.jobs.find((candidate) => candidate.id === params.document.id)
     if (!job) return
     const completed = job.state === "complete" ? job.pageCount : job.completedPages
     if (completed <= analyzedPages) return

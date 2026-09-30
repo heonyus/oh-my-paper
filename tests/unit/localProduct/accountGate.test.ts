@@ -104,6 +104,10 @@ describe("global account gate", () => {
     await expect(invoke(gate.handlers, ipcChannels.workspaceSave)).resolves.toBe("saved")
     expect(gate.authorize).toHaveBeenCalledWith({ kind: "dirty_save", accountId })
 
+    gate.ipc.handle(ipcChannels.workspaceSavePatch, () => "patched")
+    await expect(invoke(gate.handlers, ipcChannels.workspaceSavePatch)).resolves.toBe("patched")
+    expect(gate.authorize).toHaveBeenLastCalledWith({ kind: "dirty_save", accountId })
+
     gate.ipc.handle(accountRecoverySaveChannel, () => "recovered")
     await expect(invoke(gate.handlers, accountRecoverySaveChannel)).resolves.toBe("recovered")
     expect(gate.authorize).toHaveBeenLastCalledWith({ kind: "dirty_save", accountId })

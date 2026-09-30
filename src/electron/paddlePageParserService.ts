@@ -159,8 +159,7 @@ export class PaddlePageParserService {
 
   async parse(input: PaddlePageParseInput): Promise<DocumentPageParseResult> {
     const { documentId, pageNumber, store } = input
-    const workspace = await store.read()
-    const document = workspace.documents.find((candidate) => candidate.id === documentId)
+    const document = await store.findDocument(documentId)
     if (!document) return { status: "unavailable", reason: "unknown_document" }
     if (pageNumber > document.pageCount) return { status: "unavailable", reason: "invalid_page" }
     const directory = pageDirectory(store, document)

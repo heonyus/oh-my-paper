@@ -1,17 +1,12 @@
 import {
   type DocumentAnalysisJob,
   type DocumentAnalysisSnapshot,
-  documentAnalysisSnapshotSchema,
+  snapshotOfAnalysisJobs,
 } from "../shared/documentAnalysis"
-import type { DocumentPageParseResult } from "../shared/documentPageModel"
 import type { DocumentId, DocumentRecord } from "../shared/schemas"
-import {
-  analysisFailureMessage,
-  failedAnalysisJob,
-  queuedAnalysisJob,
-  runningAnalysisJob,
-} from "./documentAnalysisJobs"
-import { type DocumentAnalysisPageParser, parseAnalysisPage } from "./documentAnalysisPageRunner"
+import { failedAnalysisJob, queuedAnalysisJob, runningAnalysisJob } from "./documentAnalysisJobs"
+import type { DocumentAnalysisPageParser } from "./documentAnalysisPageRunner"
+import { analyseDocumentPages } from "./documentAnalysisRun"
 import { DocumentAnalysisStateStore } from "./documentAnalysisStateStore"
 import { HYBRID_PAGE_CACHE_VERSION } from "./hybridPageParser"
 import type { WorkspaceStore } from "./workspaceStore"
@@ -30,7 +25,8 @@ export class DocumentAnalysisService {
   readonly #maxConcurrency: number
   readonly #pageConcurrency: number
   readonly #stateStore: DocumentAnalysisStateStore
-  readonly #ready: Promise<void>
+  /** Whether the saved state was read; an unread state is neither resumed nor overwritten. */
+  readonly #ready: Promise<boolean>
   #disposePromise: Promise<void> | null = null
   #disposed = false
 
@@ -56,7 +52,7 @@ export class DocumentAnalysisService {
   }
 
   snapshot(): DocumentAnalysisSnapshot {
-    return documentAnalysisSnapshotSchema.parse([...this.#jobs.values()])
+    return snapshotOfAnalysisJobs(this.#jobs.values())
   }
 
   subscribe(listener: (snapshot: DocumentAnalysisSnapshot) => void): () => void {
@@ -68,14 +64,23 @@ export class DocumentAnalysisService {
     return this.#readyDocuments.has(documentId)
   }
 
+  /** Queues every library document not analysed yet, in one pass and one state write. */
   async resumePending(): Promise<void> {
-    const [loaded] = await Promise.allSettled([this.#ready])
-    if (loaded?.status !== "fulfilled") return
-    const workspace = await this.store.read()
-    for (const document of workspace.documents) {
-      if (this.#readyDocuments.has(document.id)) continue
-      await Promise.allSettled([this.schedule(document.id)])
-    }
+    if (!(await this.#ready) || this.#disposed) return
+    const documents = await this.store.listDocuments()
+    if (this.#disposed) return
+    const unready = documents.filter(
+      ({ id }) =>
+        !this.#readyDocuments.has(id) &&
+        !this.#forgotten.has(id) &&
+        !this.#jobs.has(id) &&
+        !this.#scheduling.has(id),
+    )
+    if (unready.length === 0) return
+    for (const document of unready) this.#enqueue(document)
+    this.#emit()
+    this.#drainQueue()
+    await this.#persist()
   }
 
   schedule(documentId: DocumentId): Promise<void> {
@@ -91,18 +96,14 @@ export class DocumentAnalysisService {
     if (this.#disposed) return
     this.#forgotten.delete(documentId)
     if (this.#jobs.has(documentId)) return
-    const workspace = await this.store.read()
-    if (this.#disposed) return
-    const document = workspace.documents.find((candidate) => candidate.id === documentId)
-    if (!document) return
-    if (this.#readyDocuments.has(documentId)) return
-    this.#pending.add(documentId)
-    await this.#persistPending()
-    if (this.#disposed) return
-    this.#jobs.set(documentId, queuedAnalysisJob(document))
+    const document = await this.store.findDocument(documentId)
+    if (this.#disposed || !document) return
+    if (this.#readyDocuments.has(documentId) || this.#jobs.has(documentId)) return
+    this.#enqueue(document)
     this.#emit()
-    this.#queue.push(document)
     this.#drainQueue()
+    // Resuming queues every unready document again, so the import need not wait for the write.
+    void this.#persist()
   }
 
   async reschedule(documentId: DocumentId): Promise<void> {
@@ -112,7 +113,6 @@ export class DocumentAnalysisService {
     if (current && current.state !== "failed" && current.state !== "complete") return
     if (current) this.#jobs.delete(documentId)
     this.#readyDocuments.delete(documentId)
-    await this.#persistPending()
     await this.schedule(documentId)
   }
 
@@ -125,8 +125,8 @@ export class DocumentAnalysisService {
     this.#pending.delete(documentId)
     this.#readyDocuments.delete(documentId)
     this.#jobs.delete(documentId)
-    await this.#persistPending()
     this.#emit()
+    await this.#persist()
   }
 
   dispose(): Promise<void> {
@@ -139,8 +139,14 @@ export class DocumentAnalysisService {
       this.#ready,
       ...this.#scheduling.values(),
       ...this.#running,
-    ]).then(() => this.#persistPending())
+    ]).then(() => this.#persist())
     return this.#disposePromise
+  }
+
+  #enqueue(document: DocumentRecord): void {
+    this.#pending.add(document.id)
+    this.#jobs.set(document.id, queuedAnalysisJob(document))
+    this.#queue.push(document)
   }
 
   #drainQueue(): void {
@@ -159,107 +165,73 @@ export class DocumentAnalysisService {
   }
 
   async #run(document: DocumentRecord): Promise<void> {
-    let completedPages = 0
-    let failureMessage: string | null = null
-    let nextPage = 1
-    const takePage = (): number | null => {
-      if (failureMessage !== null || nextPage > document.pageCount) return null
-      const pageNumber = nextPage
-      nextPage += 1
-      return pageNumber
-    }
-    try {
-      const workers = Array.from(
-        { length: Math.min(this.#pageConcurrency, document.pageCount) },
-        async () => {
-          for (;;) {
-            const pageNumber = takePage()
-            if (pageNumber === null || this.#disposed || this.#forgotten.has(document.id)) return
-            const result = await this.#parsePage(document, () => completedPages, pageNumber)
-            if (this.#disposed) return
-            if (result.status !== "ready") {
-              failureMessage ??= analysisFailureMessage(result)
-              return
-            }
-            completedPages += 1
-          }
-        },
-      )
-      await Promise.all(workers)
-      if (this.#disposed || this.#forgotten.has(document.id)) return
-      if (failureMessage !== null) {
-        await this.#fail(document, completedPages, failureMessage)
-        return
-      }
-      this.#pending.delete(document.id)
-      this.#readyDocuments.add(document.id)
-      await this.#persistPending()
-      this.#jobs.delete(document.id)
-      this.#emit()
-    } catch {
-      await this.#fail(document, completedPages, "문서 구조 분석 중 로컬 오류가 발생했습니다")
-    }
-  }
-
-  async #parsePage(
-    document: DocumentRecord,
-    completedPages: () => number,
-    pageNumber: number,
-  ): Promise<DocumentPageParseResult> {
-    const maxAttempts = 2
-    return parseAnalysisPage({
-      parser: this.parser,
+    const cancelled = (): boolean => this.#disposed || this.#forgotten.has(document.id)
+    const outcome = await analyseDocumentPages({
       document,
-      pageNumber,
+      parser: this.parser,
       store: this.store,
       signal: this.#abort.signal,
-      maxAttempts,
-      onProgress: (stage, attempt) => {
-        if (this.#disposed || this.#forgotten.has(document.id)) return
-        this.#jobs.set(
-          document.id,
-          runningAnalysisJob({
-            document,
-            completedPages: completedPages(),
-            currentPage: pageNumber,
-            stage,
-            attempt,
-            maxAttempts,
-          }),
-        )
+      pageConcurrency: this.#pageConcurrency,
+      cancelled,
+      onProgress: (progress) => {
+        this.#jobs.set(document.id, runningAnalysisJob({ document, ...progress }))
         this.#emit()
       },
     })
-  }
-
-  async #fail(document: DocumentRecord, completedPages: number, message: string): Promise<void> {
-    if (this.#disposed || this.#forgotten.has(document.id)) return
-    await this.#persistPending()
-    this.#jobs.set(document.id, failedAnalysisJob(document, completedPages, message))
+    if (cancelled()) return
+    if (outcome.status === "failed") {
+      const { completedPages, message } = outcome
+      this.#jobs.set(document.id, failedAnalysisJob(document, completedPages, message))
+      this.#emit()
+      return
+    }
+    this.#pending.delete(document.id)
+    this.#readyDocuments.add(document.id)
+    this.#jobs.delete(document.id)
     this.#emit()
+    void this.#persist()
   }
 
+  /** Tells listeners; a snapshot or listener that throws is logged, never stops the analysis. */
   #emit(): void {
-    if (this.#disposed) return
-    const snapshot = this.snapshot()
-    for (const listener of this.#listeners) listener(snapshot)
-  }
-
-  async #loadState(): Promise<void> {
-    const state = await this.#stateStore.load()
-    for (const id of state.pendingIds) this.#pending.add(id)
-    const workspace = await this.store.read()
-    for (const id of state.readyIds) {
-      const document = workspace.documents.find((candidate) => candidate.id === id)
-      if (!document) continue
-      this.#readyDocuments.add(id)
+    if (this.#disposed || this.#listeners.size === 0) return
+    try {
+      const snapshot = this.snapshot()
+      for (const listener of this.#listeners) {
+        try {
+          listener(snapshot)
+        } catch (error) {
+          console.warn("[document-analysis] a progress listener failed", error)
+        }
+      }
+    } catch (error) {
+      console.warn("[document-analysis] could not build the progress snapshot", error)
     }
   }
 
-  async #persistPending(): Promise<void> {
-    await this.#stateStore.save({
-      pendingIds: [...this.#pending],
-      readyIds: [...this.#readyDocuments],
-    })
+  async #loadState(): Promise<boolean> {
+    try {
+      const state = await this.#stateStore.load()
+      const known = new Set((await this.store.listDocuments()).map((document) => document.id))
+      for (const id of state.pendingIds) if (known.has(id)) this.#pending.add(id)
+      for (const id of state.readyIds) if (known.has(id)) this.#readyDocuments.add(id)
+      return true
+    } catch (error) {
+      console.warn("[document-analysis] could not read the analysis queue", error)
+      return false
+    }
+  }
+
+  /** Saves the queue state; a failed write is logged and never reaches analysis or import. */
+  async #persist(): Promise<void> {
+    if (!(await this.#ready)) return
+    try {
+      await this.#stateStore.save({
+        pendingIds: [...this.#pending],
+        readyIds: [...this.#readyDocuments],
+      })
+    } catch (error) {
+      console.warn("[document-analysis] could not save the analysis queue", error)
+    }
   }
 }

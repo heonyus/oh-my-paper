@@ -1,4 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import {
+  documentAnalysisJobSchema,
+  emptyDocumentAnalysisSnapshot,
+  snapshotOfAnalysisJobs,
+} from "../../src/shared/documentAnalysis"
 
 const mocks = vi.hoisted(() => ({
   analysis: vi.fn(),
@@ -33,11 +38,11 @@ describe("web analysis refresh", () => {
   })
 
   it("does not poll after the initial snapshot when no analysis is active", async () => {
-    mocks.analysis.mockResolvedValue([])
+    mocks.analysis.mockResolvedValue(emptyDocumentAnalysisSnapshot)
     const api = await installedApi()
     const unsubscribe = api.onDocumentAnalysis(vi.fn())
 
-    expect(await api.readDocumentAnalysis()).toEqual([])
+    expect(await api.readDocumentAnalysis()).toEqual(emptyDocumentAnalysisSnapshot)
     await vi.advanceTimersByTimeAsync(10_000)
 
     expect(mocks.analysis).toHaveBeenCalledOnce()
@@ -45,17 +50,17 @@ describe("web analysis refresh", () => {
   })
 
   it("restarts after upload and stops when the active analysis disappears", async () => {
-    const queued = {
+    const queued = documentAnalysisJobSchema.parse({
       id: "aaaaaaaaaaaaaaaa",
       title: "paper.pdf",
       pageCount: 12,
       completedPages: 0,
       state: "queued",
-    }
+    })
     mocks.analysis
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([queued])
-      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce(emptyDocumentAnalysisSnapshot)
+      .mockResolvedValueOnce(snapshotOfAnalysisJobs([queued]))
+      .mockResolvedValueOnce(emptyDocumentAnalysisSnapshot)
     mocks.importPicked.mockResolvedValue({ document: {}, duplicate: false })
     const api = await installedApi()
     const unsubscribe = api.onDocumentAnalysis(vi.fn())
@@ -71,14 +76,14 @@ describe("web analysis refresh", () => {
   })
 
   it("skips active analysis refreshes while the tab is hidden", async () => {
-    const queued = {
+    const queued = documentAnalysisJobSchema.parse({
       id: "aaaaaaaaaaaaaaaa",
       title: "paper.pdf",
       pageCount: 12,
       completedPages: 0,
       state: "queued",
-    }
-    mocks.analysis.mockResolvedValue([queued])
+    })
+    mocks.analysis.mockResolvedValue(snapshotOfAnalysisJobs([queued]))
     const api = await installedApi()
     const unsubscribe = api.onDocumentAnalysis(vi.fn())
     await api.readDocumentAnalysis()

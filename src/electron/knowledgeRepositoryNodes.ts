@@ -9,7 +9,8 @@ import {
 import type { CreateNodeInput, NodeFilter, UpdateNodeInput } from "../shared/knowledgeTypes"
 import { withKnowledgeSavepoint } from "./knowledgeDatabaseTransaction"
 import { executeFindNodes } from "./knowledgeRepositoryQueries"
-import { nodeRowSchema, rowToNode } from "./knowledgeRepositoryRows"
+import { rowToNode } from "./knowledgeRepositoryRows"
+import { cachedStatement } from "./knowledgeStatements"
 
 export type CanonicalNoteProjection = {
   readonly get: (noteId: string) => { readonly body: string } | null
@@ -59,39 +60,46 @@ export class KnowledgeNodeOperations {
         updatedAt: now,
       })
 
-      this.db
-        .prepare(`
+      cachedStatement(
+        this.db,
+        `
       INSERT INTO knowledge_nodes (id, kind, title, body, aliases_json, metadata_json, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `)
-        .run(
-          node.id,
-          node.kind,
-          node.title,
-          node.kind === "note" && this.noteProjection ? "" : node.body,
-          JSON.stringify(node.aliases),
-          JSON.stringify(node.metadata),
-          node.createdAt,
-          node.updatedAt,
-        )
+    `,
+      ).run(
+        node.id,
+        node.kind,
+        node.title,
+        node.kind === "note" && this.noteProjection ? "" : node.body,
+        JSON.stringify(node.aliases),
+        JSON.stringify(node.metadata),
+        node.createdAt,
+        node.updatedAt,
+      )
 
-      this.db
-        .prepare("INSERT INTO knowledge_nodes_fts (id, title, body, aliases) VALUES (?, ?, ?, ?)")
-        .run(
-          node.id,
-          node.title,
-          node.kind === "note" && this.noteProjection ? "" : node.body,
-          node.aliases.join(" "),
-        )
+      cachedStatement(
+        this.db,
+        "INSERT INTO knowledge_nodes_fts (id, title, body, aliases) VALUES (?, ?, ?, ?)",
+      ).run(
+        node.id,
+        node.title,
+        node.kind === "note" && this.noteProjection ? "" : node.body,
+        node.aliases.join(" "),
+      )
 
       return node
     })
   }
 
   getNode(id: KnowledgeNodeId): KnowledgeNode | null {
-    const raw = this.db.prepare("SELECT * FROM knowledge_nodes WHERE id = ?").get(id)
+    const raw = cachedStatement(this.db, "SELECT * FROM knowledge_nodes WHERE id = ?").get(id)
     if (!raw) return null
-    return this.withProjectedBody(rowToNode(nodeRowSchema.parse(raw)))
+    return this.nodeFromRow(raw)
+  }
+
+  /** The node a `knowledge_nodes` row describes, with a canonical note body when one applies. */
+  nodeFromRow(raw: unknown): KnowledgeNode {
+    return this.withProjectedBody(rowToNode(raw))
   }
 
   updateNode(input: UpdateNodeInput): KnowledgeNode {
@@ -120,30 +128,32 @@ export class KnowledgeNodeOperations {
         updatedAt: new Date().toISOString(),
       })
 
-      this.db
-        .prepare(`
+      cachedStatement(
+        this.db,
+        `
       UPDATE knowledge_nodes
       SET title = ?, body = ?, aliases_json = ?, metadata_json = ?, updated_at = ?
       WHERE id = ?
-    `)
-        .run(
-          updated.title,
-          updated.kind === "note" && this.noteProjection ? "" : updated.body,
-          JSON.stringify(updated.aliases),
-          JSON.stringify(updated.metadata),
-          updated.updatedAt,
-          updated.id,
-        )
+    `,
+      ).run(
+        updated.title,
+        updated.kind === "note" && this.noteProjection ? "" : updated.body,
+        JSON.stringify(updated.aliases),
+        JSON.stringify(updated.metadata),
+        updated.updatedAt,
+        updated.id,
+      )
 
-      this.db.prepare("DELETE FROM knowledge_nodes_fts WHERE id = ?").run(updated.id)
-      this.db
-        .prepare("INSERT INTO knowledge_nodes_fts (id, title, body, aliases) VALUES (?, ?, ?, ?)")
-        .run(
-          updated.id,
-          updated.title,
-          updated.kind === "note" && this.noteProjection ? "" : updated.body,
-          updated.aliases.join(" "),
-        )
+      cachedStatement(this.db, "DELETE FROM knowledge_nodes_fts WHERE id = ?").run(updated.id)
+      cachedStatement(
+        this.db,
+        "INSERT INTO knowledge_nodes_fts (id, title, body, aliases) VALUES (?, ?, ?, ?)",
+      ).run(
+        updated.id,
+        updated.title,
+        updated.kind === "note" && this.noteProjection ? "" : updated.body,
+        updated.aliases.join(" "),
+      )
 
       return updated
     })
@@ -158,8 +168,8 @@ export class KnowledgeNodeOperations {
       throw new CanonicalNoteWriteError("delete")
     }
     return withKnowledgeSavepoint(this.db, () => {
-      const res = this.db.prepare("DELETE FROM knowledge_nodes WHERE id = ?").run(id)
-      this.db.prepare("DELETE FROM knowledge_nodes_fts WHERE id = ?").run(id)
+      const res = cachedStatement(this.db, "DELETE FROM knowledge_nodes WHERE id = ?").run(id)
+      cachedStatement(this.db, "DELETE FROM knowledge_nodes_fts WHERE id = ?").run(id)
       return (res.changes ?? 0) > 0
     })
   }
@@ -182,6 +192,12 @@ export class KnowledgeNodeOperations {
       .filter((node) => !filter.kind || node.kind === filter.kind)
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
       .slice(offset, offset + limit)
+  }
+
+  /** The canonical file body a note row is shown with, or null when the row's own body is. */
+  canonicalNoteBody(id: string, kind: string): string | null {
+    if (kind !== "note" || !this.noteProjection) return null
+    return this.noteProjection.get(id)?.body ?? null
   }
 
   private withProjectedBody(node: KnowledgeNode): KnowledgeNode {

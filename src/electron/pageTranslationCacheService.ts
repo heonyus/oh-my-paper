@@ -21,6 +21,9 @@ const cacheEntrySchema = pageTranslationCacheWriteRequestSchema.omit({ id: true 
   translationRulesVersion: z.literal("page-translation-v13"),
 })
 
+/** A cached page file of one configuration and when it was last written (0 when absent). */
+type Candidate = { readonly sourceHash: string; readonly file: string; readonly modified: number }
+
 function isMissingFile(error: unknown): boolean {
   return error instanceof Error && "code" in error && error.code === "ENOENT"
 }
@@ -63,23 +66,19 @@ export class PageTranslationCacheService {
    */
   async #readEarlier(
     request: PageTranslationCacheReadRequest,
-    candidates: readonly { readonly sourceHash: string; readonly file: string }[],
+    candidates: readonly Candidate[],
   ): Promise<PageTranslationCacheResult> {
     const entries = await Promise.all(
       candidates.map(async (candidate) => {
         try {
-          const [text, info] = await Promise.all([
-            readFile(candidate.file, "utf8"),
-            stat(candidate.file),
-          ])
-          const entry = cacheEntrySchema.parse(JSON.parse(text))
+          const entry = cacheEntrySchema.parse(JSON.parse(await readFile(candidate.file, "utf8")))
           if (
             entry.sourceHash !== candidate.sourceHash ||
             entry.pageNumber !== request.pageNumber ||
             entry.targetLanguage !== request.targetLanguage
           )
             return []
-          return [{ entry, modified: info.mtimeMs }]
+          return [{ entry, modified: candidate.modified }]
         } catch (error) {
           if (isMissingFile(error) || error instanceof SyntaxError || error instanceof z.ZodError)
             return []
@@ -99,7 +98,7 @@ export class PageTranslationCacheService {
   }
 
   async write(request: PageTranslationCacheWriteRequest): Promise<void> {
-    const resolved = (await this.#resolveCandidates(request))[0]
+    const resolved = await this.#exactCandidate(request)
     if (!resolved) return
     const entry = cacheEntrySchema.parse({
       pageNumber: request.pageNumber,
@@ -133,11 +132,12 @@ export class PageTranslationCacheService {
     }
   }
 
-  async #resolveCandidates(request: PageTranslationCacheReadRequest) {
-    const workspace = await this.store.read()
-    const document = workspace.documents.find((candidate) => candidate.id === request.id)
-    if (!document) return []
-    const base = join(this.store.root, "page-translations", document.hash)
+  /** Where this exact configuration keeps the page; null when the document is gone. */
+  async #exactCandidate(
+    request: PageTranslationCacheReadRequest,
+  ): Promise<{ readonly sourceHash: string; readonly file: string } | null> {
+    const document = await this.store.findDocument(request.id)
+    if (!document) return null
     const configuration = [
       request.targetLanguage,
       request.provider,
@@ -147,31 +147,45 @@ export class PageTranslationCacheService {
       "page-translation-v13",
     ].join("\0")
     const configurationHash = createHash("sha256").update(configuration).digest("hex")
-    const exact = {
+    const base = join(this.store.root, "page-translations", document.hash)
+    return {
       sourceHash: document.hash,
       file: join(base, configurationHash, `page-${request.pageNumber}.json`),
     }
-    if (request.parser || request.parserConfigVersion) return [exact]
+  }
+
+  /**
+   * The exact configuration's page and, without parser options, the page under every other
+   * configuration of the paper: one listing and one parallel round of stats.
+   */
+  async #resolveCandidates(
+    request: PageTranslationCacheReadRequest,
+  ): Promise<readonly Candidate[]> {
+    const exact = await this.#exactCandidate(request)
+    if (!exact) return []
+    if (request.parser || request.parserConfigVersion) return [{ ...exact, modified: 0 }]
+    const base = dirname(dirname(exact.file))
+    const files = [exact.file]
     try {
-      const directories = await readdir(base, { withFileTypes: true })
-      const others = await Promise.all(
-        directories
-          .filter((entry) => entry.isDirectory() && entry.name !== configurationHash)
-          .map(async (entry) => {
-            const file = join(base, entry.name, `page-${request.pageNumber}.json`)
-            const modified = await stat(file).then(
-              (info) => info.mtimeMs,
-              () => 0,
-            )
-            return { sourceHash: document.hash, file, modified }
-          }),
-      )
-      // The latest translation first: it was cut by the parser closest to the current one.
-      others.sort((left, right) => right.modified - left.modified)
-      return [exact, ...others.map(({ sourceHash, file }) => ({ sourceHash, file }))]
+      for (const entry of await readdir(base, { withFileTypes: true })) {
+        const file = join(base, entry.name, `page-${request.pageNumber}.json`)
+        if (entry.isDirectory() && file !== exact.file) files.push(file)
+      }
     } catch (error) {
-      if (isMissingFile(error)) return [exact]
-      throw error
+      if (!isMissingFile(error)) throw error
     }
+    const [own, ...others] = await Promise.all(
+      files.map(async (file) => ({
+        sourceHash: exact.sourceHash,
+        file,
+        modified: await stat(file).then(
+          (info) => info.mtimeMs,
+          () => 0,
+        ),
+      })),
+    )
+    // The latest translation first: it was cut by the parser closest to the current one.
+    others.sort((left, right) => right.modified - left.modified)
+    return own ? [own, ...others] : others
   }
 }

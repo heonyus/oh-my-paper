@@ -1,4 +1,4 @@
-export const KNOWLEDGE_SCHEMA_VERSION = 2
+export const KNOWLEDGE_SCHEMA_VERSION = 3
 
 export const KNOWLEDGE_SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -42,6 +42,15 @@ CREATE TABLE IF NOT EXISTS knowledge_nodes (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+-- DESC keeps equal timestamps in insertion order, as the unindexed sort returned them.
+CREATE INDEX IF NOT EXISTS idx_nodes_kind_updated ON knowledge_nodes(kind, updated_at DESC);
+-- The paper lookups must repeat these expressions verbatim for SQLite to use the indexes.
+CREATE INDEX IF NOT EXISTS idx_nodes_paper_document_id
+  ON knowledge_nodes(json_extract(metadata_json, '$.documentRecord.id'))
+  WHERE kind = 'paper' AND json_valid(metadata_json);
+CREATE INDEX IF NOT EXISTS idx_nodes_paper_document_hash
+  ON knowledge_nodes(json_extract(metadata_json, '$.documentRecord.hash'))
+  WHERE kind = 'paper' AND json_valid(metadata_json);
 
 CREATE TABLE IF NOT EXISTS document_versions (
   id TEXT PRIMARY KEY,
@@ -54,6 +63,7 @@ CREATE TABLE IF NOT EXISTS document_versions (
 );
 CREATE INDEX IF NOT EXISTS idx_doc_versions_doc_id ON document_versions(original_document_id);
 CREATE INDEX IF NOT EXISTS idx_doc_versions_hash ON document_versions(hash);
+CREATE INDEX IF NOT EXISTS idx_doc_versions_paper_node ON document_versions(paper_node_id);
 
 CREATE TABLE IF NOT EXISTS evidence_anchors (
   id TEXT PRIMARY KEY,
@@ -128,6 +138,7 @@ CREATE TABLE IF NOT EXISTS external_mappings (
   FOREIGN KEY (node_id) REFERENCES knowledge_nodes(id) ON DELETE CASCADE
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ext_mapping_system_id ON external_mappings(system, external_id);
+CREATE INDEX IF NOT EXISTS idx_ext_mapping_node ON external_mappings(node_id);
 
 CREATE TABLE IF NOT EXISTS document_insights (
   document_id TEXT NOT NULL,

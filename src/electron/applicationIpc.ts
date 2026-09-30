@@ -60,6 +60,7 @@ import { registerPageTranslationCacheIpc } from "./registerPageTranslationCacheI
 import { registerProviderIpc } from "./registerProviderIpc"
 import { registerResearchIpc } from "./registerResearchIpc"
 import { registerScholarlyIpc } from "./registerScholarlyIpc"
+import { registerWorkspacePatchIpc } from "./registerWorkspacePatchIpc"
 import { ResearchJobStore } from "./researchJobStore"
 import { registerWorkspaceLifecycle } from "./workspaceLifecycle"
 import type { WorkspaceStore } from "./workspaceStore"
@@ -156,6 +157,7 @@ export function registerApplicationIpc(
       await store.save(workspaceSaveRequestSchema.parse(value)),
     )
   })
+  registerWorkspacePatchIpc(store)
   ipcMain.handle(ipcChannels.documentImport, (event) => chooseAndImport(event, analysis, store))
   ipcMain.handle(ipcChannels.documentImportPath, async (event, value: unknown) => {
     const { path } = documentImportPathRequestSchema.parse(value)
@@ -191,8 +193,8 @@ export function registerApplicationIpc(
   })
   ipcMain.handle(ipcChannels.documentBytes, async (_event, value: unknown) => {
     const request = documentBytesRequestSchema.parse(value)
-    const bytes = await readDocumentBytes(request.id, store)
-    return documentBytesResultSchema.parse(bytes.toString("base64"))
+    // Structured clone sends the Buffer to the renderer as a Uint8Array, not as base64 text.
+    return documentBytesResultSchema.parse(await readDocumentBytes(request.id, store))
   })
   ipcMain.handle(ipcChannels.documentLayout, async (_event, value: unknown) => {
     const request = documentLayoutRequestSchema.parse(value)

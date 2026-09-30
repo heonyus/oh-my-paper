@@ -111,6 +111,7 @@ import {
   workspaceSchema,
 } from "./schemas"
 import type { ScholarlyGraphApi } from "./scholarlyGraphIpc"
+import type { WorkspacePatchRequest, WorkspacePatchResult } from "./workspacePatch"
 
 export const preparationSteps = [
   "pdf_check",
@@ -155,7 +156,9 @@ export const importProgressSchema = z.object({
 })
 
 export const documentBytesRequestSchema = z.object({ id: documentIdSchema })
-export const documentBytesResultSchema = z.string().min(1)
+export const documentBytesResultSchema = z
+  .instanceof(Uint8Array)
+  .refine((bytes) => bytes.byteLength > 0, "empty_document")
 
 export const workspaceReadResultSchema = workspaceSchema
 export const workspaceSaveRequestSchema = workspaceSchema
@@ -301,6 +304,8 @@ export type OhMyPaperApi = {
   readonly collection?: CollectionApi
   readonly readWorkspace: () => Promise<Workspace>
   readonly saveWorkspace: (workspace: Workspace) => Promise<Workspace>
+  /** Saves edits since an acknowledged snapshot; absent where the backend keeps no snapshots. */
+  readonly saveWorkspacePatch?: (request: WorkspacePatchRequest) => Promise<WorkspacePatchResult>
   readonly importDocument: () => Promise<ImportResult>
   readonly importDocumentPath: (path: string) => Promise<ImportResult>
   readonly importDocumentPaths: (paths: readonly string[]) => Promise<readonly ImportResult[]>
@@ -309,7 +314,8 @@ export type OhMyPaperApi = {
   readonly deleteDocument?: (id: DocumentId) => Promise<void>
   readonly getDroppedFilePath: (file: File) => string
   readonly onImportProgress: (listener: (progress: ImportProgress) => void) => () => void
-  readonly readDocument: (id: DocumentId) => Promise<string>
+  /** Returns the stored PDF bytes; aborting stops a download the caller no longer needs. */
+  readonly readDocument: (id: DocumentId, signal?: AbortSignal) => Promise<Uint8Array>
   readonly readDocumentLayout: (id: DocumentId) => Promise<DocumentLayoutResult>
   readonly parseDocumentPage: (
     request: DocumentPageParseRequest,

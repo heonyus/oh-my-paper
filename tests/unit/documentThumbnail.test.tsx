@@ -1,40 +1,42 @@
-import { render, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { DocumentThumbnail } from "../../src/renderer/components/DocumentThumbnail"
-import {
-  clearThumbnailCache,
-  getCachedThumbnail,
-  getThumbnailCacheSize,
-  MAX_THUMBNAIL_CACHE_SIZE,
-  storeCachedThumbnail,
-} from "../../src/renderer/components/documentThumbnailCache"
+import { documentThumbnails } from "../../src/renderer/lib/thumbnailLoader"
 import type { DocumentRecord } from "../../src/renderer/types"
+import type { OhMyPaperApi } from "../../src/shared/ipc"
 import { documentRecordSchema } from "../../src/shared/schemas"
 
 const mockTaskDestroy = vi.fn(async () => {})
 const mockRenderCancel = vi.fn()
 const mockRenderPromise = vi.fn(async () => {})
-const mockGetPage = vi.fn(async () => ({
-  getViewport: () => ({ width: 100, height: 100 }),
-  render: () => ({
-    promise: mockRenderPromise(),
-    cancel: mockRenderCancel,
+type RenderTask = { readonly promise: Promise<void>; readonly cancel: () => void }
+const mockRender = vi.fn(
+  (): RenderTask => ({ promise: mockRenderPromise(), cancel: mockRenderCancel }),
+)
+const mockGetDocument = vi.fn((_source: { readonly data: Uint8Array }) => ({
+  promise: Promise.resolve({
+    getPage: async () => ({
+      getViewport: ({ scale }: { readonly scale: number }) => ({
+        width: 100 * scale,
+        height: 130 * scale,
+      }),
+      render: mockRender,
+    }),
   }),
+  destroy: mockTaskDestroy,
 }))
 
 vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({
   GlobalWorkerOptions: { workerSrc: "" },
-  getDocument: vi.fn(() => ({
-    promise: Promise.resolve({
-      getPage: mockGetPage,
-    }),
-    destroy: mockTaskDestroy,
-  })),
+  getDocument: (source: { readonly data: Uint8Array }) => mockGetDocument(source),
 }))
 
 vi.mock("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url", () => ({
   default: "worker-url",
 }))
+
+const pdfBytes = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d])
+const readDocument = vi.fn<OhMyPaperApi["readDocument"]>(async () => pdfBytes)
 
 const testDoc: DocumentRecord = documentRecordSchema.parse({
   id: "1122334455667788",
@@ -51,97 +53,94 @@ const testDoc: DocumentRecord = documentRecordSchema.parse({
   quality: { textCharacters: 100, needsOcr: false, warnings: [] },
 })
 
-describe("DocumentThumbnail and thumbnail cache", () => {
+const createObjectURL = vi.fn((_image: Blob) => "blob:thumbnail")
+const revokeObjectURL = vi.fn((_url: string) => undefined)
+const replaced: [object, string, PropertyDescriptor | undefined][] = []
+
+/** jsdom has no canvas or object URLs; stand them in for the duration of a test. */
+function replace(target: object, key: string, value: unknown): void {
+  replaced.push([target, key, Object.getOwnPropertyDescriptor(target, key)])
+  Object.defineProperty(target, key, { value, configurable: true, writable: true })
+}
+
+describe("DocumentThumbnail", () => {
   beforeEach(() => {
-    clearThumbnailCache()
+    documentThumbnails.clearMemory()
     vi.clearAllMocks()
-    Object.defineProperty(window, "ohmypaper", {
-      value: {
-        readDocument: vi.fn(async () => "base64data"),
-      },
-      configurable: true,
-      writable: true,
-    })
-    // Provide a mocked getContext and toDataURL for canvas in jsdom
-    HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
-      drawImage: vi.fn(),
-    })) as unknown as typeof HTMLCanvasElement.prototype.getContext
-    HTMLCanvasElement.prototype.toDataURL = vi.fn(() => "data:image/png;base64,sample")
+    replace(window, "ohmypaper", { readDocument })
+    replace(HTMLCanvasElement.prototype, "getContext", () => ({}))
+    replace(HTMLCanvasElement.prototype, "toBlob", (callback: BlobCallback, type?: string) =>
+      callback(new Blob(["thumbnail"], { type: type ?? "image/png" })),
+    )
+    replace(URL, "createObjectURL", createObjectURL)
+    replace(URL, "revokeObjectURL", revokeObjectURL)
   })
 
   afterEach(() => {
-    clearThumbnailCache()
-  })
-
-  it("bounds cached thumbnails and evicts oldest unaccessed entry in LRU order", () => {
-    for (let i = 1; i <= MAX_THUMBNAIL_CACHE_SIZE; i++) {
-      storeCachedThumbnail(`doc-${i}`, {
-        dataUrl: `data:image/png;base64,${i}`,
-        width: 100,
-        height: 100,
-        styleWidth: "100px",
-        styleHeight: "100px",
-      })
+    cleanup()
+    documentThumbnails.clearMemory()
+    for (const [target, key, descriptor] of replaced.splice(0).reverse()) {
+      if (descriptor) Object.defineProperty(target, key, descriptor)
+      else Reflect.deleteProperty(target, key)
     }
-    expect(getThumbnailCacheSize()).toBe(MAX_THUMBNAIL_CACHE_SIZE)
-
-    // Access doc-1 to refresh its recency
-    getCachedThumbnail("doc-1")
-
-    // Insert doc-new
-    storeCachedThumbnail("doc-new", {
-      dataUrl: "data:image/png;base64,new",
-      width: 100,
-      height: 100,
-      styleWidth: "100px",
-      styleHeight: "100px",
-    })
-    expect(getThumbnailCacheSize()).toBe(MAX_THUMBNAIL_CACHE_SIZE)
-
-    // doc-1 should still exist, doc-2 should have been evicted
-    expect(getCachedThumbnail("doc-1")).toBeDefined()
-    expect(getCachedThumbnail("doc-2")).toBeUndefined()
   })
 
-  it("reuses cached thumbnail on remount and avoids repeated decode and getDocument", async () => {
-    const { unmount } = render(<DocumentThumbnail document={testDoc} />)
-
-    await waitFor(() => {
-      expect(window.ohmypaper.readDocument).toHaveBeenCalledTimes(1)
-      expect(mockTaskDestroy).toHaveBeenCalledTimes(1)
-    })
-
-    unmount()
-
-    // Render again for the same document
+  it("renders the first page from PDF bytes into a compact image at a fixed density", async () => {
     render(<DocumentThumbnail document={testDoc} />)
 
-    await waitFor(() => {
-      // Should NOT read or decode the document again because it is cached
-      expect(window.ohmypaper.readDocument).toHaveBeenCalledTimes(1)
-    })
+    const image = await screen.findByRole("img", { name: "Sample Document 첫 페이지 미리보기" })
+    expect(readDocument).toHaveBeenCalledWith(testDoc.id, expect.any(AbortSignal))
+    expect(mockGetDocument.mock.calls[0]?.[0].data).toBe(pdfBytes)
+    expect(image).toHaveAttribute("srcset", "blob:thumbnail 2x")
+    expect(image.closest(".document-thumbnail")).toHaveAttribute("data-rendered", "false")
+
+    fireEvent.load(image)
+    expect(image.closest(".document-thumbnail")).toHaveAttribute("data-rendered", "true")
+    expect(mockTaskDestroy).toHaveBeenCalledTimes(1)
   })
 
-  it("cancels in-flight render task and destroys loading task on unmount", async () => {
-    let unblockRender: () => void = () => {}
-    mockRenderPromise.mockImplementationOnce(
-      () =>
-        new Promise<void>((resolve) => {
-          unblockRender = resolve
-        }),
-    )
-
+  it("reuses the session thumbnail on remount without reading the PDF again", async () => {
     const { unmount } = render(<DocumentThumbnail document={testDoc} />)
+    await screen.findByRole("img")
+    unmount()
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:thumbnail")
 
-    // Wait until readDocument has been called
-    await waitFor(() => {
-      expect(window.ohmypaper.readDocument).toHaveBeenCalled()
-    })
+    render(<DocumentThumbnail document={testDoc} />)
 
-    // Unmount before render promise resolves
+    expect(screen.getByRole("img")).toBeInTheDocument()
+    expect(readDocument).toHaveBeenCalledTimes(1)
+    expect(mockGetDocument).toHaveBeenCalledTimes(1)
+  })
+
+  it("cancels the in-flight render and its download when it unmounts", async () => {
+    let cancelRender: () => void = () => undefined
+    mockRender.mockImplementationOnce(() => ({
+      promise: new Promise<void>((_resolve, reject) => {
+        cancelRender = () => reject(new Error("RenderingCancelledException"))
+      }),
+      cancel: () => {
+        mockRenderCancel()
+        cancelRender()
+      },
+    }))
+    const { unmount } = render(<DocumentThumbnail document={testDoc} />)
+    await waitFor(() => expect(mockRender).toHaveBeenCalled())
+
     unmount()
 
     expect(mockRenderCancel).toHaveBeenCalled()
-    unblockRender()
+    expect(readDocument.mock.calls[0]?.[1]?.aborted).toBe(true)
+    await waitFor(() => expect(mockTaskDestroy).toHaveBeenCalled())
+  })
+
+  it("keeps the file icon when the paper cannot be rendered", async () => {
+    readDocument.mockRejectedValueOnce(new Error("document_file_missing"))
+    const { container } = render(<DocumentThumbnail document={testDoc} />)
+
+    await waitFor(() => expect(readDocument).toHaveBeenCalled())
+    await Promise.resolve()
+
+    expect(screen.queryByRole("img")).not.toBeInTheDocument()
+    expect(container.querySelector(".document-thumbnail svg")).not.toBeNull()
   })
 })

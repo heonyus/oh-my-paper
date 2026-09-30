@@ -15,6 +15,7 @@ export const ipcChannels = {
   documentAst: "document:ast",
   workspaceRead: "workspace:read",
   workspaceSave: "workspace:save",
+  workspaceSavePatch: "workspace:save-patch",
   preparationProgress: "preparation:progress",
   providerSaveKey: "provider:save-key",
   providerSaveConfig: "provider:save-config",

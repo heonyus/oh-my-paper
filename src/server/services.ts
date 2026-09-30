@@ -6,7 +6,7 @@ import { createClaudeWebSearchEngine } from "../electron/claudeWebSearch"
 import { DocumentAnalysisService } from "../electron/documentAnalysisService"
 import { DocumentAstService } from "../electron/documentAstService"
 import { createDocumentPageParser } from "../electron/documentPageParser"
-import { importDocument, readDocumentBytes } from "../electron/documentService"
+import { importDocument } from "../electron/documentService"
 import { PaddlePageParserService } from "../electron/paddlePageParserService"
 import { PageTranslationCacheService } from "../electron/pageTranslationCacheService"
 import { createPaperDiscoverySources } from "../electron/paperDiscoverySources"
@@ -38,6 +38,7 @@ import { createAiJobStreams } from "./aiJobStreams"
 import { createAiModeServices } from "./aiModeServices"
 import type { WebServerConfig } from "./config"
 import { JevDecisionService } from "./decisionService"
+import { scheduleDerivedCacheCleanup } from "./derivedCacheCleanupTask"
 import { deleteLibraryDocument } from "./documentDeletion"
 import { MeaningSearchService } from "./meaningSearchService"
 import { claudeModelOf } from "./subscriptionAi"
@@ -92,7 +93,11 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
     astService: ast,
   })
   const analysis = new DocumentAnalysisService(store, pages, { maxConcurrency: 4 })
-  await analysis.resumePending()
+  // The server listens while the library's unanalysed papers are queued in the background.
+  const resuming = analysis.resumePending().catch((error: unknown) => {
+    console.warn("[document-analysis] could not resume the analysis queue", error)
+  })
+  const cacheCleanup = scheduleDerivedCacheCleanup(store)
   let decisions =
     initialProvider?.provider === "openrouter"
       ? new JevDecisionService(initialProvider.apiKey)
@@ -141,11 +146,11 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
           sources: await discoverySources(),
           complete: (messages, options) => ai.chat(messages, options),
           contextDocs: async (ids): Promise<readonly AgentContextDoc[]> => {
-            if (ids.length === 0) return []
-            const wanted = new Set<string>(ids)
-            const workspace = await store.read()
-            return workspace.documents
-              .filter((document) => wanted.has(document.id))
+            const documents = await Promise.all(
+              [...new Set(ids)].map((id) => store.findDocument(id)),
+            )
+            return documents
+              .filter((document) => document !== null)
               .map((document) => ({
                 documentId: document.id,
                 title: document.title,
@@ -180,7 +185,9 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
     listSavedScholarlyMetadata: () => listScholarlyMetadata(store.repository),
     close: async () => {
       jobs.dispose()
+      await cacheCleanup.stop()
       await analysis.dispose()
+      await resuming
       paddle.dispose()
       subscription.dispose()
       claude.dispose()
@@ -216,10 +223,6 @@ export async function importPdfFromUrl(
   const { downloadRemotePdf } = await import("../shared/remotePdf")
   const { bytes, fileName } = await downloadRemotePdf(url)
   return importPdfBytes(bytes, fileName, services)
-}
-
-export async function readDocumentBase64(id: DocumentId, services: WebServices): Promise<string> {
-  return (await readDocumentBytes(id, services.store)).toString("base64")
 }
 
 export async function readWorkspace(services: WebServices): Promise<Workspace> {
