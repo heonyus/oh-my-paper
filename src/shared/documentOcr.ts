@@ -21,3 +21,14 @@ export const documentOcrProviderStatusSchema = z.object({
 })
 
 export type DocumentOcrProviderStatus = z.infer<typeof documentOcrProviderStatusSchema>
+
+/** `42% · 약 3분 남음`, the same words in doctor, 설정 and the first-run page. */
+export function formatOcrInstallProgress(
+  progress: DocumentOcrProviderStatus["installProgress"] | null,
+): string {
+  if (!progress) return "준비 중"
+  const { percent, etaSeconds } = progress
+  if (etaSeconds === null) return `${percent}%`
+  const left = etaSeconds < 60 ? "1분 안에 끝남" : `약 ${Math.ceil(etaSeconds / 60)}분 남음`
+  return `${percent}% · ${left}`
+}

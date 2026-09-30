@@ -7,6 +7,7 @@ import { LibraryHome } from "../renderer/components/LibraryHome"
 import { appShellStyle } from "../renderer/lib/uiFontScale"
 import { useAppWorkspace } from "../renderer/lib/useAppWorkspace"
 import { type DocumentId, documentIdSchema } from "../shared/schemas"
+import { EngineSetupProgress } from "./EngineSetupProgress"
 import { StarInvite } from "./star/StarInvite"
 import { FeatureTips, TipsGallery } from "./tips/FeatureTips"
 import { useWelcome } from "./useWelcome"
@@ -118,11 +119,13 @@ export function ReaderApp(): JSX.Element {
     return (
       <WebOnboarding
         status={app.provider}
-        onDone={(next) => {
+        ocrStatus={app.ocrStatus}
+        onDone={(next, options) => {
           app.setProvider(next)
           if (welcome.state !== "pending") return
           welcome.finish()
-          setTipsOpen(true)
+          // Clips already watched while the engine downloaded are not shown again.
+          if (!options?.watchedTips) setTipsOpen(true)
         }}
       />
     )
@@ -336,7 +339,10 @@ export function ReaderApp(): JSX.Element {
         onPreparationClose={() => app.setPreparation([])}
       />
       {tipsOpen ? (
-        <TipsGallery onClose={() => setTipsOpen(false)} />
+        <TipsGallery
+          onClose={() => setTipsOpen(false)}
+          status={<EngineSetupProgress status={app.ocrStatus} />}
+        />
       ) : (
         <FeatureTips
           view={researchOpen ? "research" : libraryVisible ? "library" : "reader"}

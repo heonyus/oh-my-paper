@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import type { DocumentOcrProviderStatus } from "../../shared/documentOcr"
+import { type DocumentOcrProviderStatus, formatOcrInstallProgress } from "../../shared/documentOcr"
 
 const accelerationLabels: Readonly<
   Record<NonNullable<DocumentOcrProviderStatus["acceleration"]>, string>
@@ -9,12 +9,9 @@ const accelerationLabels: Readonly<
 }
 
 function installProgress(status: DocumentOcrProviderStatus): string {
-  const progress = status.installProgress
-  if (!progress) return "설치 중"
-  if (progress.etaSeconds === null) return `설치 중 ${progress.percent}%`
-  const left =
-    progress.etaSeconds < 60 ? "1분 안에 끝남" : `약 ${Math.ceil(progress.etaSeconds / 60)}분 남음`
-  return `설치 중 ${progress.percent}% · ${left}`
+  return status.installProgress
+    ? `설치 중 ${formatOcrInstallProgress(status.installProgress)}`
+    : "설치 중"
 }
 
 function readiness(status: DocumentOcrProviderStatus): string {

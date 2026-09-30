@@ -152,7 +152,11 @@ hidden until the user connects ChatGPT subscription login or saves a personal AP
 clicks and never expose credentials. A fresh data folder shows the same page even when
 the terminal wizard already connected AI (owner request, 2026-09-30): it opens on the done
 step (`준비됐습니다 · … 연결됨`), and `시작하기` opens the 사용법 clips once and starts the
-feature tips over. The data folder records this in `welcome.json`; a folder that already
+feature tips over. While the OCR engine still downloads, the connect and ready steps show its
+progress (`문서 분석 엔진 내려받는 중 42% · 약 3분 남음`); the ready step reads `거의
+준비됐습니다` with `사용법 영상 보며 기다리기` (the clips, with the same bar) and a quiet `기다리지
+않고 시작`. When the download finishes the bar turns into `문서 분석 엔진 준비 완료` and the clips
+offer `시작하기`; clips watched there are not shown again in the library. The data folder records this in `welcome.json`; a folder that already
 holds papers counts as welcomed, and a failed status call skips the welcome. Every imported PDF completes page parsing and
 validation before its reader action becomes available. PDF.js supplies digital text
 and geometry, while local PaddleOCR-VL supplies figures, tables and equations. The

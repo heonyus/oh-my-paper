@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
+import { formatOcrInstallProgress } from "../shared/documentOcr"
 
 /**
  * Where a PaddleOCR-VL install records itself. `scripts/setup-paddle-vl-runtime.mjs` holds the
@@ -47,11 +48,7 @@ export function readPaddleInstallProgress(home: string): PaddleInstallProgress |
 
 /** `42% · 약 3분 남음`, the same wording for doctor and 설정. */
 export function describePaddleInstallProgress(progress: PaddleInstallProgress | null): string {
-  if (!progress) return "준비 중"
-  const { percent, etaSeconds } = progress
-  if (etaSeconds === null) return `${percent}%`
-  const left = etaSeconds < 60 ? "1분 안에 끝남" : `약 ${Math.ceil(etaSeconds / 60)}분 남음`
-  return `${percent}% · ${left}`
+  return formatOcrInstallProgress(progress)
 }
 
 /** Whether the process named in a lock file is still alive. */
