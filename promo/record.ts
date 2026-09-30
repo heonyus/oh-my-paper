@@ -42,6 +42,47 @@ const APP_URL = process.env.APP_URL ?? "http://127.0.0.1:8805"
 const DEMO_PDF = process.env.DEMO_PDF ?? ""
 const ONLY = new Set((process.env.SCENES ?? "").split(",").filter(Boolean))
 const NAME = process.env.OUT_NAME ?? "main"
+/** The app's language on camera: `ko` (default) or `en`. */
+const LOCALE = process.env.LOCALE === "en" ? "en" : "ko"
+
+/** Controls the recorder finds by their accessible names, and what it shows or types, per language. */
+const TEXT = {
+  ko: {
+    zoomOut: "축소",
+    copyCard: "카드 내용 복사",
+    mainMenu: "주 메뉴",
+    hideMinimap: "미니맵 숨기기",
+    closeCard: "카드 닫기",
+    noteBody: "내 노트 본문",
+    captionImport: "PDF를 끌어다 놓거나 가져오기",
+    captionImportReady: "제목·저자를 읽고, 페이지 구조부터 분석합니다",
+    captionOpen: "원문 그대로, 연속 페이지로 읽기",
+    captionTranslate: "문장을 고르고",
+    captionExplain: "어려운 문장은",
+    captionPageTranslation: "페이지를 통째로 번역",
+    captionNote: "노트에 담고, 내 말로",
+    captionOverview: "AI 개요",
+    noteText: "예시에 중간 추론 단계를 넣기만 해도, 큰 모델은 산수 문제를 훨씬 잘 푼다.",
+  },
+  en: {
+    zoomOut: "Zoom out",
+    copyCard: "Copy card content",
+    mainMenu: "Main menu",
+    hideMinimap: "Hide minimap",
+    closeCard: "Close card",
+    noteBody: "My note text",
+    captionImport: "Drop in a PDF, or import one",
+    captionImportReady: "Title and authors first, then the page layout",
+    captionOpen: "The original, page after page",
+    captionTranslate: "Select a sentence",
+    captionExplain: "Hard sentences, explained",
+    captionPageTranslation: "Translate a whole page",
+    captionNote: "Into your notes, in your words",
+    captionOverview: "AI overview",
+    noteText:
+      "Just adding intermediate reasoning steps to the examples makes large models far better at arithmetic.",
+  },
+}[LOCALE]
 const VIEWPORT = { w: 1440, h: 900 }
 const FPS = 30
 const frameDir = join(here, "public", "frames")
@@ -55,14 +96,15 @@ const context = await browser.newContext({
   viewport: { width: VIEWPORT.w, height: VIEWPORT.h },
   deviceScaleFactor: 2,
   colorScheme: "light",
-  locale: "ko-KR",
+  locale: LOCALE === "en" ? "en-US" : "ko-KR",
 })
 // Recordings show the product, not its first-run tips.
-await context.addInitScript(() => {
+await context.addInitScript((language) => {
+  window.localStorage.setItem("ohmypaper:language", language)
   window.localStorage.setItem("ohmypaper:feature-tips:v1", JSON.stringify({ seen: [], off: true }))
   // Meaning search would download its embedding model into the recording profile.
   window.localStorage.setItem("ohmypaper:note-companion", "quiet")
-})
+}, LOCALE)
 const page = await context.newPage()
 page.on("crash", () => console.error("✖ page crashed"))
 page.on("close", () => console.error("✖ page closed"))
@@ -342,7 +384,7 @@ async function framePageTranslation(): Promise<void> {
     if (!page1 || !pane) return
     const width = pane.x + pane.w - page1.x
     if (width > room - 48) {
-      await clickSelector('button[aria-label="축소"]', 450)
+      await clickSelector(`button[aria-label="${TEXT.zoomOut}"]`, 450)
       // The pane keeps its old place until the zoomed page is drawn.
       await sleep(1500)
       continue
@@ -363,10 +405,10 @@ async function waitForCard(kind: string, timeoutMs = 150_000): Promise<Box | nul
   await page
     .waitForFunction(
       (cardKind) =>
-        [...document.querySelectorAll(`.board-card[data-kind="${cardKind}"]`)].some((card) =>
-          card.querySelector('button[aria-label="카드 내용 복사"]'),
+        [...document.querySelectorAll(`.board-card[data-kind="${cardKind.kind}"]`)].some((card) =>
+          card.querySelector(`button[aria-label="${cardKind.copy}"]`),
         ),
-      kind,
+      { kind, copy: TEXT.copyCard },
       { timeout: timeoutMs, polling: 250 },
     )
     .catch(() => console.error(`  ${kind} card did not finish in time`))
@@ -422,7 +464,7 @@ const readerShown = () =>
 async function showLibrary(): Promise<void> {
   if (await libraryShown()) return
   await page
-    .locator('nav[aria-label="주 메뉴"] button')
+    .locator(`nav[aria-label="${TEXT.mainMenu}"] button`)
     .first()
     .click()
     .catch(() => undefined)
@@ -435,7 +477,7 @@ async function showLibrary(): Promise<void> {
 
 async function hideMinimap(): Promise<void> {
   await page
-    .locator('button[aria-label="미니맵 숨기기"]')
+    .locator(`button[aria-label="${TEXT.hideMinimap}"]`)
     .first()
     .click({ timeout: 800 })
     .catch(() => undefined)
@@ -445,13 +487,13 @@ async function hideMinimap(): Promise<void> {
 async function clearCards(): Promise<void> {
   // Cards can be stacked, so the close buttons are pressed in the page rather than by pointer.
   for (let i = 0; i < 30; i++) {
-    const closed = await page.evaluate(() => {
+    const closed = await page.evaluate((label) => {
       const button = document.querySelector<HTMLButtonElement>(
-        '.board-card button[aria-label="카드 닫기"]',
+        `.board-card button[aria-label="${label}"]`,
       )
       button?.click()
       return Boolean(button)
-    })
+    }, TEXT.closeCard)
     if (!closed) break
     await sleep(300)
   }
@@ -478,7 +520,7 @@ await sleep(800)
 await startCapture()
 await sleep(800)
 
-await scene("import", "PDF를 끌어다 놓거나 가져오기", undefined, async () => {
+await scene("import", TEXT.captionImport, undefined, async () => {
   if (!DEMO_PDF) return undefined
   const chooser = page.waitForEvent("filechooser")
   const button = await clickSelector(".library-empty button, .library-import-button")
@@ -487,7 +529,13 @@ await scene("import", "PDF를 끌어다 놓거나 가져오기", undefined, asyn
   return union(button, await boxOf(".library-home"))
 })
 
-await scene("open", "원문 그대로, 연속 페이지로 읽기", undefined, async () => {
+// The paper settles in the library while its pages are read.
+await scene("import-ready", TEXT.captionImportReady, undefined, async () => {
+  await sleep(5800)
+  return (await boxOf(".library-home")) ?? undefined
+})
+
+await scene("open", TEXT.captionOpen, undefined, async () => {
   await clickSelector(".library-reader-action")
   await page.locator(".textLayer span").first().waitFor({ timeout: 60_000 })
   await hideMinimap()
@@ -500,7 +548,7 @@ await scene("open", "원문 그대로, 연속 페이지로 읽기", undefined, a
   return undefined
 })
 
-await scene("translate", "문장을 고르고", ["T"], async () => {
+await scene("translate", TEXT.captionTranslate, ["T"], async () => {
   const sentence = await linePair("Experiments on three large")
   if (!sentence) return undefined
   await drag(sentence.from, sentence.to)
@@ -512,7 +560,7 @@ await scene("translate", "문장을 고르고", ["T"], async () => {
   return union(sentence.box, menu, card)
 })
 
-await scene("explain", "어려운 문장은", ["E"], async () => {
+await scene("explain", TEXT.captionExplain, ["E"], async () => {
   const sentence = await linePair("We explore how generating")
   if (!sentence) return undefined
   await drag(sentence.from, sentence.to)
@@ -523,7 +571,7 @@ await scene("explain", "어려운 문장은", ["E"], async () => {
   return union(sentence.box, card)
 })
 
-await scene("page-translation", "페이지를 통째로 번역", undefined, async () => {
+await scene("page-translation", TEXT.captionPageTranslation, undefined, async () => {
   await clickSelector(".topbar-translation-action")
   await page
     .locator(".page-translation-pane")
@@ -538,19 +586,18 @@ await scene("page-translation", "페이지를 통째로 번역", undefined, asyn
   return union(await boxOf('.page[data-page-number="1"]'), await boxOf(".page-translation-pane"))
 })
 
-await scene("note", "노트에 담고, 내 말로", ["C"], async () => {
+await scene("note", TEXT.captionNote, ["C"], async () => {
   const sentence = await linePair("naturally in suf")
   if (!sentence) return undefined
   await drag(sentence.from, sentence.to)
   await sleep(700)
   await press("c")
   await page
-    .locator('[aria-label="내 노트 본문"]')
+    .locator(`[aria-label="${TEXT.noteBody}"]`)
     .waitFor({ timeout: 15_000 })
     .catch(() => undefined)
   await sleep(1000)
-  const text = "예시에 중간 추론 단계를 넣기만 해도, 큰 모델은 산수 문제를 훨씬 잘 푼다."
-  for (const char of text) {
+  for (const char of TEXT.noteText) {
     await page.keyboard.type(char)
     await sleep(60)
   }
@@ -558,8 +605,8 @@ await scene("note", "노트에 담고, 내 말로", ["C"], async () => {
   return union(sentence.box, await boxOf(".note-pane"))
 })
 
-await scene("overview", "AI 개요", undefined, async () => {
-  await clickSelector('button[aria-label="AI 개요 열기"]').catch(() => undefined)
+await scene("overview", TEXT.captionOverview, undefined, async () => {
+  await clickSelector('button[data-research-mode="ai"]').catch(() => undefined)
   await page
     .locator(".ai-overview-panel")
     .first()

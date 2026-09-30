@@ -18,6 +18,8 @@ type TipProps = {
   readonly cuts: readonly Cut[]
   /** Consecutive shots that make up one tip, e.g. a request and its answer. */
   readonly sceneIds: readonly string[]
+  /** The recording lists to take the shots from; the English clips use `timelines-en.json`. */
+  readonly lists?: readonly string[] | undefined
 }
 
 /**
@@ -106,7 +108,8 @@ export function Root(): JSX.Element {
         durationInFrames={150}
         defaultProps={{ cuts: [], sceneIds: ["translate", "translate-result"] } as TipProps}
         calculateMetadata={async ({ props }) => {
-          const cuts = [...(await loadCuts()), ...(await loadCuts("tip-timelines.json"))]
+          const lists = props.lists ?? ["timelines.json", "tip-timelines.json"]
+          const cuts = (await Promise.all(lists.map((list) => loadCuts(list)))).flat()
           const shots = tipCuts({ ...props, cuts })
           const total = shots.reduce((sum, { scene }) => sum + frames(scene.end - scene.start), 0)
           return { props: { ...props, cuts }, durationInFrames: Math.max(1, total) }

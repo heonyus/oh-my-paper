@@ -1,5 +1,6 @@
 /** First-use tips: one short looping clip per feature, shown once beside the control it explains. */
 
+import type { Locale } from "../../shared/i18n/locale"
 import type { WebMessageKey } from "../messages"
 
 export type TipView = "library" | "reader" | "research"
@@ -88,6 +89,21 @@ export const FEATURE_TIPS: readonly FeatureTip[] = [
     clip: "/tutorials/explain.mp4",
   },
 ]
+
+/**
+ * Translating an English paper into English leaves it as it is, so the English screen has no
+ * translation clips: selecting shows an explanation instead, and page translation keeps Korean.
+ */
+const ENGLISH_STAND_INS: Readonly<Record<string, string>> = {
+  "/tutorials/translate.mp4": "/tutorials/en/explain.mp4",
+  "/tutorials/page-translation.mp4": "/tutorials/page-translation.mp4",
+}
+
+/** The clip recorded on the screen in `locale`: the English ones live under /tutorials/en. */
+export function localizedClip(clip: string, locale: Locale): string {
+  if (locale !== "en") return clip
+  return ENGLISH_STAND_INS[clip] ?? clip.replace(/^\/tutorials\//u, "/tutorials/en/")
+}
 
 const STORAGE_KEY = "ohmypaper:feature-tips:v1"
 
