@@ -1,4 +1,5 @@
 import type { Point, SourceFragment } from "../../shared/schemas"
+import { cardPlacementBesidePage } from "./board"
 import { rectsToElementSpace } from "./selectionGeometry"
 
 export type BoardTextSelection = {
@@ -63,10 +64,7 @@ export function captureNativeBoardTextSelection(
     page: Number(input.pageElement.getAttribute("data-page-number") ?? "1"),
     quote,
     fragments,
-    cardPosition: {
-      x: firstFragment.x + firstFragment.width + 32,
-      y: Math.max(pageWorld.y, firstFragment.y - 18),
-    },
+    cardPosition: cardPlacementBesidePage(pageWorld, firstFragment),
     context: { before: "", after: "" },
   }
 }

@@ -79,6 +79,18 @@ describe("board viewport", () => {
     expect(next.y).toBe(20)
   })
 
+  it("pans right to reveal a card opened left of the paper", () => {
+    const next = revealWorldRectHorizontally(
+      { x: 88, y: 36, zoom: 0.9 },
+      1152,
+      { x: -332, width: 300 },
+      16,
+    )
+
+    expect(next.x + -332 * next.zoom).toBeCloseTo(16)
+    expect(next.y).toBe(36)
+  })
+
   it("fits a PDF and its page-adjacent translation into the board width", () => {
     const next = fitWorldRectHorizontally(
       { x: 88, y: 36, zoom: 0.9 },

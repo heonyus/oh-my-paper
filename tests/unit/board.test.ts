@@ -2,6 +2,8 @@ import type { TextItem } from "pdfjs-dist/types/src/display/api"
 import { afterEach, describe, expect, it } from "vitest"
 import { buildSourceDocumentAst } from "../../src/electron/sourceAst"
 import {
+  CARD_WIDTH,
+  connectorPath,
   createBoardCard,
   createPostIt,
   createSelectionCard,
@@ -166,5 +168,51 @@ describe("createBoardCard", () => {
 
     // Then
     expect(loading).toMatchObject({ body: "", loading: true })
+  })
+
+  it("opens a figure card in the gutter left of the page", () => {
+    // Given / When
+    const card = createStructureCard({
+      documentId: documentIdSchema.parse("aabbccddeeff0011"),
+      structure: {
+        id: "figure-2",
+        kind: "figure",
+        page: 3,
+        title: "Figure 2 해설",
+        quote: "Figure 2",
+        bounds: { x: 120, y: 180, width: 220, height: 160 },
+      },
+      pageWorld: { x: 300, y: 64, width: 816, height: 1056 },
+      fragment: { x: 420, y: 244, width: 220, height: 160 },
+      sourceKey: "3:figure:2",
+    })
+
+    // Then
+    expect(card.x + CARD_WIDTH).toBeLessThan(300)
+    expect(card.y).toBe(226)
+  })
+
+  it("draws the connector toward whichever side the card sits on", () => {
+    // Given
+    const anchor = {
+      page: 3,
+      quote: "Figure 2",
+      x: 640,
+      y: 324,
+      fragments: [{ x: 420, y: 244, width: 220, height: 160 }],
+    }
+    const card = (x: number) =>
+      createBoardCard({
+        documentId: documentIdSchema.parse("aabbccddeeff0011"),
+        kind: "infographic",
+        title: "Figure 2 해설",
+        body: "",
+        anchor,
+        placement: { x, y: 226 },
+      })
+
+    // When / Then
+    expect(connectorPath(card(-32))).toBe("M 420 324 C 330 324, 358 254, 268 254")
+    expect(connectorPath(card(1148))).toBe("M 640 324 C 730 324, 1058 254, 1148 254")
   })
 })

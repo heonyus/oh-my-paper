@@ -1,8 +1,12 @@
 import type { CitationAssessmentResult } from "../../shared/citationAssessment"
 import type { CitationPaper } from "../../shared/ipc"
+import { paperOrigin } from "../../shared/uiLayout"
 import type { BoardCard, DocumentRecord } from "../types"
-import { createBoardCard } from "./board"
+import { CARD_PAGE_GAP, CARD_WIDTH, createBoardCard } from "./board"
 import type { CitationIndexEntry } from "./pdfCitationIndex"
+
+/** Left of the paper, like every other AI card. */
+const SIDEBAR_CARD_X = paperOrigin.x - CARD_PAGE_GAP - CARD_WIDTH
 
 export function saveSidebarInsight(
   cards: readonly BoardCard[],
@@ -23,7 +27,7 @@ export function saveSidebarInsight(
       title,
       body,
       sourceKey,
-      placement: { x: 1180, y: 240 + cards.length * 56 },
+      placement: { x: SIDEBAR_CARD_X, y: 240 + cards.length * 56 },
       anchor: {
         page: 1,
         quote: document.title,
@@ -67,7 +71,7 @@ export function saveCitationAssessment(
     title: paper.title,
     body,
     sourceKey,
-    placement: { x: 1180, y: 300 + cards.length * 56 },
+    placement: { x: SIDEBAR_CARD_X, y: 300 + cards.length * 56 },
     anchor: {
       page: context?.page ?? 1,
       quote: context?.text ?? entry.rawText,
