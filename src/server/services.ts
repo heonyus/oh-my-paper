@@ -93,7 +93,10 @@ export async function createWebServices(config: WebServerConfig): Promise<WebSer
     astService: ast,
   })
   const analysis = new DocumentAnalysisService(store, pages, {
-    maxConcurrency: 4,
+    // One paper, two pages at a time: the engine shares the Mac with the reader, so a paper
+    // being read and AI requests stay responsive while the library is analysed.
+    maxConcurrency: 1,
+    pageConcurrency: 2,
     // Papers wait quietly for the OCR engine (still downloading, or not installed) and are
     // analysed once it is ready; reading never waits for it.
     engineReady: async () => (await paddle.status()).configured,

@@ -1,6 +1,7 @@
 import { type ChildProcess, spawn } from "node:child_process"
 import { randomUUID } from "node:crypto"
 import { z } from "zod"
+import { backgroundCommand } from "./backgroundPriority"
 import { appendLogTail, type PaddleVlmConnection } from "./paddleVlmServer"
 
 const workerMessageSchema = z.discriminatedUnion("event", [
@@ -77,11 +78,15 @@ export class PaddleVlWorker {
 
   private constructor(launch: PaddleVlWorkerLaunch) {
     this.#pageTimeoutMs = launch.pageTimeoutMs ?? 300_000
-    this.#process = (launch.spawnProcess ?? spawn)(
+    const [command, args] = backgroundCommand(
       launch.python,
       paddleVlWorkerArguments(launch.script, launch.vlm),
-      { env: launch.env, stdio: ["pipe", "pipe", "pipe"], windowsHide: true },
     )
+    this.#process = (launch.spawnProcess ?? spawn)(command, args, {
+      env: launch.env,
+      stdio: ["pipe", "pipe", "pipe"],
+      windowsHide: true,
+    })
     this.#process.stdout?.setEncoding("utf8")
     this.#process.stdout?.on("data", (chunk: string) => this.#receive(chunk))
     this.#process.stderr?.setEncoding("utf8")
