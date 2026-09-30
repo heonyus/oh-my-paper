@@ -18,7 +18,7 @@ test("simulated-auth six-screen research workflow persists shared evidence and p
   const userDataRoot = join(temporaryRoot, "user-data")
   const evidenceRoot = join(
     process.cwd(),
-    ".omo",
+    "test-results",
     "evidence",
     "ohmypaper-local-product",
     "2026-09-08-paper-graph",

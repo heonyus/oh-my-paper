@@ -2,9 +2,7 @@
 
 As of 2026-09-06, version 2.0 is in integration QA. It is not commercially or publicly ready.
 A blank-reader regression is being fixed; a successful build or simulated UI run does not establish
-that the current reader workflow works. This page describes release limitations, not a second QA
-ledger. The coordinator owns the [execution record](../.omo/evidence/ohmypaper-local-product/2026-09-06/execution.md)
-for the [active product plan](../.omo/plans/README.md).
+that the current reader workflow works. This page describes release limitations.
 
 ## Runtime prerequisites
 

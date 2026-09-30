@@ -195,11 +195,17 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
         element.getAnimations({ subtree: true }).map((animation) => animation.finished),
       )
     })
-    await mkdir(join(process.cwd(), ".omo", "evidence", "document-retrieval"), {
+    await mkdir(join(process.cwd(), "test-results", "evidence", "document-retrieval"), {
       recursive: true,
     })
     await page.screenshot({
-      path: join(process.cwd(), ".omo", "evidence", "document-retrieval", "actual-1536x1024.png"),
+      path: join(
+        process.cwd(),
+        "test-results",
+        "evidence",
+        "document-retrieval",
+        "actual-1536x1024.png",
+      ),
     })
     const browserWindow = await application.browserWindow(page)
     const originalViewport = await browserWindow.evaluate((window) => {
@@ -213,7 +219,13 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
       1240,
     )
     await page.screenshot({
-      path: join(process.cwd(), ".omo", "evidence", "document-retrieval", "actual-1280x800.png"),
+      path: join(
+        process.cwd(),
+        "test-results",
+        "evidence",
+        "document-retrieval",
+        "actual-1280x800.png",
+      ),
     })
     await browserWindow.evaluate((window) => window.setContentSize(920, 640))
     await expect.poll(async () => page.evaluate(() => window.innerWidth)).toBe(920)
@@ -222,7 +234,13 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
       880,
     )
     await page.screenshot({
-      path: join(process.cwd(), ".omo", "evidence", "document-retrieval", "actual-920x640.png"),
+      path: join(
+        process.cwd(),
+        "test-results",
+        "evidence",
+        "document-retrieval",
+        "actual-920x640.png",
+      ),
     })
     await browserWindow.evaluate(
       (window, size) => window.setContentSize(size.width, size.height),
@@ -393,13 +411,13 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
       })
     expect(density).toBeGreaterThanOrEqual(0.95)
     await expect(page.getByText("논문을 보드에 준비하는 중")).toBeHidden({ timeout: 5_000 })
-    await mkdir(join(process.cwd(), ".omo", "evidence", "ohmypaper-board-polish"), {
+    await mkdir(join(process.cwd(), "test-results", "evidence", "ohmypaper-board-polish"), {
       recursive: true,
     })
     await page.screenshot({
       path: join(
         process.cwd(),
-        ".omo",
+        "test-results",
         "evidence",
         "ohmypaper-board-polish",
         "actual-1536x1024.png",
@@ -408,7 +426,7 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
     await minimap.screenshot({
       path: join(
         process.cwd(),
-        ".omo",
+        "test-results",
         "evidence",
         "ohmypaper-board-polish",
         "minimap-actual.png",
@@ -428,7 +446,7 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
     await page.screenshot({
       path: join(
         process.cwd(),
-        ".omo",
+        "test-results",
         "evidence",
         "ohmypaper-board-polish",
         "actual-dark-1536x1024.png",

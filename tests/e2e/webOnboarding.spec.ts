@@ -14,7 +14,7 @@ test("desktop onboarding identifies the product immediately without a header str
   await page.setViewportSize({ width: 1280, height: 900 })
   await openSignedOutHome(page)
   const hero = page.getByRole("region", { name: "oh-my-paper" })
-  const evidence = join(process.cwd(), ".omo", "evidence", "web-onboarding-final")
+  const evidence = join(process.cwd(), "test-results", "evidence", "web-onboarding-final")
   await mkdir(evidence, { recursive: true })
 
   await expect(page.locator(".onboarding-entry")).toHaveCSS("opacity", "1")
@@ -38,7 +38,7 @@ test("mobile onboarding keeps the brand and login action inside the viewport", a
   await expect(page.locator(".onboarding-entry")).toHaveCSS("opacity", "1")
   const buttonBox = await hero.getByRole("button", { name: "Google로 계속" }).boundingBox()
   expect(buttonBox?.height).toBeGreaterThanOrEqual(44)
-  const evidence = join(process.cwd(), ".omo", "evidence", "web-onboarding-final")
+  const evidence = join(process.cwd(), "test-results", "evidence", "web-onboarding-final")
   await mkdir(evidence, { recursive: true })
   await page.screenshot({ path: join(evidence, "mobile.png") })
 
@@ -48,7 +48,7 @@ test("mobile onboarding keeps the brand and login action inside the viewport", a
 test("onboarding introduces the reading workflow as the page scrolls", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   await openSignedOutHome(page)
-  const evidence = join(process.cwd(), ".omo", "evidence", "web-onboarding-scroll")
+  const evidence = join(process.cwd(), "test-results", "evidence", "web-onboarding-scroll")
   await mkdir(evidence, { recursive: true })
 
   const chapters = [

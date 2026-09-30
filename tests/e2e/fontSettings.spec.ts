@@ -31,7 +31,7 @@ test("font settings show every loaded family as a distinct specimen", async () =
       .evaluateAll((options) => options.map((option) => getComputedStyle(option).fontFamily))
     expect(new Set(optionFamilies).size).toBe(5)
     await expect(page.getByRole("button", { name: "100%로 초기화" })).toHaveCount(0)
-    const evidence = join(process.cwd(), ".omo", "evidence", "font-settings")
+    const evidence = join(process.cwd(), "test-results", "evidence", "font-settings")
     await mkdir(evidence, { recursive: true })
     await page.screenshot({ path: join(evidence, "actual.png") })
   } finally {

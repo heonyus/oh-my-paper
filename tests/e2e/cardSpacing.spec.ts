@@ -14,7 +14,7 @@ test("research cards keep prose and chat clear of every card edge", async () => 
   const bytes = await readFile(fixture)
   const hash = createHash("sha256").update(bytes).digest("hex")
   const id = hash.slice(0, 16)
-  const evidence = join(process.cwd(), ".omo", "evidence", "card-spacing")
+  const evidence = join(process.cwd(), "test-results", "evidence", "card-spacing")
   const cardBody =
     "# 한눈에\n\n이 문단은 논문의 핵심 주장을 요약합니다. 과거 분석 경험을 **데이터셋·방법론 제약 조건에 묶어 재사용**합니다.\n\n## 무엇을 말하는가\n\n- 유효한 분석 절차를 보존합니다.\n- 실패한 경로는 안전장치로 기록합니다."
   await Promise.all([mkdir(documents, { recursive: true }), mkdir(evidence, { recursive: true })])

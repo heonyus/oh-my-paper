@@ -15,7 +15,12 @@ test("MinerU paragraphs map to translated cards without visual blocks", async ()
   if (!mineruCommand || !openaiKey) return
   test.setTimeout(120_000)
   const temporaryRoot = await mkdtemp(join(tmpdir(), "ohmypaper-mineru-translation-e2e-"))
-  const evidenceDirectory = join(process.cwd(), ".omo", "evidence", "mineru-page-translation")
+  const evidenceDirectory = join(
+    process.cwd(),
+    "test-results",
+    "evidence",
+    "mineru-page-translation",
+  )
   await mkdir(evidenceDirectory, { recursive: true })
   const application = await electron.launch({
     ...(packagedExecutable ? { executablePath: packagedExecutable } : { args: ["."] }),

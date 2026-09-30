@@ -68,8 +68,8 @@ A hosted UI plus personal local companion can retain credentials and documents o
 
 Personal-use only. Anthropic's Agent SDK documentation states that, unless previously
 approved, third-party developers may not offer claude.ai login or rate limits in their
-products. The owner accepted that constraint for their own Mac; this mode must not be
-advertised or shipped to other users.
+products. It is meant only for use on your own Mac; this mode must not be advertised or
+shipped to other users.
 
 - The loopback server runs the installed `claude` CLI (`CLAUDE_PATH`, `PATH`, then
   `~/.local/bin`, `~/.claude/local`, Homebrew and `/usr/local/bin`). No runtime is bundled.

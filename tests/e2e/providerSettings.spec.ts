@@ -9,7 +9,7 @@ test("provider settings show local Paddle without an OCR key", async () => {
   const temporaryRoot = await mkdtemp(join(tmpdir(), "ohmypaper-provider-settings-"))
   const evidenceRoot = join(
     process.cwd(),
-    ".omo/evidence/ohmypaper-local-product/2026-09-21-local-paddle/settings",
+    "test-results/evidence/ohmypaper-local-product/2026-09-21-local-paddle/settings",
   )
   await mkdir(evidenceRoot, { recursive: true })
   const qa = await launchSimulatedAuthenticatedApplication({

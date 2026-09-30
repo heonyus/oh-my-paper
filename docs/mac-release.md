@@ -24,4 +24,4 @@ Before distributing an artifact, resolve every `BLOCKED` or `UNVERIFIED` line fr
 - Code signing may use a certificate supplied by `CSC_LINK` or `CSC_NAME`, or a suitable Keychain identity. The script reports environment-variable presence by name only and does not inspect values or the Keychain.
 - Notarization requires `build.mac.notarize` plus one complete electron-builder credential set: App Store Connect API variables, or Apple ID/app-specific password/team variables. Presence is configuration evidence, not proof that Apple accepted or stapled an artifact.
 - Set `build.mac.minimumSystemVersion` only after choosing the supported floor. A configured value still does not prove behavior on that macOS version; test the packaged app on the actual oldest supported OS.
-- Inspect the produced arm64 application and both artifacts for signatures, notarization/stapling, architecture, launch behavior, entitlements, and unexpected files. None were produced or inspected in this task.
+- Inspect the produced arm64 application and both artifacts for signatures, notarization/stapling, architecture, launch behavior, entitlements, and unexpected files.

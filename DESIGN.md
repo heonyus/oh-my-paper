@@ -2,8 +2,8 @@
 
 ## 2026-09-29 First run: connect screen, terminal wizard and feature tips (current)
 
-The owner asked for OpenAI subscription login on equal footing with Claude, the latest models,
-a terminal install that explains itself, and short per-feature tutorials.
+First run offers OpenAI subscription login on equal footing with Claude, the latest models, a
+terminal install that explains itself as it goes, and short per-feature tutorials.
 
 - Connect screen (browser, first run): one screen, no separate welcome step. Left: the product
   line `PDF는 그대로, 번역·설명·노트는 원문 자리에.` (the earlier tagline was retired on
@@ -16,12 +16,12 @@ a terminal install that explains itself, and short per-feature tutorials.
   picture below 960px and keeps the choices above the fold at 375px.
 - ChatGPT models come from the bundled Codex runtime (`model/list`) for the signed-in account;
   a first connection saves GPT-6 Luna when the account lists it, otherwise the runtime's default
-  model (owner request, 2026-09-30). The bundled list is only a fallback.
+  model (2026-09-30). The bundled list is only a fallback.
 - Terminal: `scripts/install.sh` (curl one-liner) clones, installs, builds, links `oh-my-paper` and
   starts the wizard. The wizard has four explained steps (runtime, optional OCR, AI connection,
   usage tour); OCR comes before AI so its download overlaps the sign-in. The AI step lists ChatGPT
   first and preselects it; only a connection this app saved moves the cursor to `지금 연결 유지` (a Claude
-  Code login on the machine alone does not). The OCR step (owner request, 2026-09-30) defaults to
+  Code login on the machine alone does not). The OCR step (2026-09-30) defaults to
   Yes and never blocks: the setup runs detached (the wizard says only that it is prepared in the
   background), fetches the model in ranges from Hugging Face and ModelScope at once (SHA-256
   checked), logs to `~/.ohmypaper/paddle-vl-install.log`, holds a pid lock so only one install runs,
@@ -35,7 +35,7 @@ a terminal install that explains itself, and short per-feature tutorials.
   means a tip shows again, and a fresh data folder's welcome clears it. A tip whose clip is
   missing shows without one. The header `?` (사용법) lists every tip with its clip and can show them
   again. Recordings for tips and the README video hide tips and use the quiet note companion.
-- GitHub star invitation (owner request, 2026-09-29; direct star 2026-09-30): the app asks and never
+- GitHub star invitation (2026-09-29; direct star 2026-09-30): the app asks and never
   stars without that choice or with credentials of its own. The wizard asks once, after the usage
   tour: `oh-my-paper가 도움이 된다면 GitHub에서 ⭐ 하나 부탁드려요`. With a `gh` login on the machine the choice is
   `⭐ 별 달기`, which stars through that login (`gh api --method PUT
@@ -54,16 +54,15 @@ a terminal install that explains itself, and short per-feature tutorials.
 
 ## 2026-09-28 Learning core: reading that stays with the reader (current)
 
-This section supersedes the 2026-09-15 reference-family parity and its "context-aware AI
+This section supersedes the 2026-09-15 feature-family scope and its "context-aware AI
 beside the source" framing. The browser shell, Library and Reader navigation, local
 preparation, tokens, accessibility and responsive rules below stay in force. The typography
 specimen is a paper sentence: `어텐션은 모든 토큰이 한 번에 다른 모든 토큰을 보게 합니다.`
-Evidence and code survey: `docs/learning-core-research.md`.
 
 Primary persona: a Korean researcher reading English papers who wants to understand and keep
 them, not only finish them. English is read first; Korean is a check.
 
-**The reader's note (`내 노트`) is the center.** The owner rejected quiz-like mechanics on
+**The reader's note (`내 노트`) is the center.** Quiz-like mechanics were dropped on
 2026-09-28 (spaced-review prompts and graded `내 말로` cards). What stays with the reader is
 what they write themselves, beside the paper, in their own words. The toolbar `노트` button
 opens a note column between the PDF and the research sidebar.
@@ -104,14 +103,14 @@ opens a note column between the PDF and the research sidebar.
     ones fold. Tutor text never enters the note; there is no copy or insert action for it.
   - Privacy: embeddings stay local. While the control is `보통` or `적극적`, the tutor sends the
     settled paragraph, a few earlier lines, the related passages and matching earlier notes to
-    the connected AI provider without a click. The owner chose this on 2026-09-28; `조용히`
+    the connected AI provider without a click (2026-09-28); `조용히`
     sends nothing.
   - Where the local server does not offer meaning search (the Electron shell today), only
     `조용히` is available.
 
 **Existing features, repositioned.**
 - Summary: the AI overview (keywords, three-line summary, summary) loads when the panel opens.
-  The owner removed the `내 3줄` step on 2026-09-29: writing three lines before the overview
+  The `내 3줄` step was removed on 2026-09-29: writing three lines before the overview
   got in the way. Lines written earlier stay untouched in `own-summaries.json`; nothing reads
   them now.
 - Annotation (`C`): sends the passage to the note (above). Memo cards made earlier stay on the
@@ -128,7 +127,7 @@ never block writing or reading.
 **Later, not yet built.** Lines for confirmed evidence chips on hover, a map of the reader's own
 sentences across papers, and a way to attach a chosen PDF passage to an existing sentence.
 
-## 2026-09-15 Browser-first paper reading (shell current; feature parity superseded 2026-09-28)
+## 2026-09-15 Browser-first paper reading (shell current; feature scope superseded 2026-09-28)
 
 This section supersedes the expanded desktop navigation below for the browser
 product.
@@ -143,7 +142,7 @@ The reader retains its compact document/outline/select/pan/undo/zoom toolbar,
 continuous pages, page-adjacent translation, source-linked cards and collapsible
 research sidebar. Avoid duplicate headers and settings for disconnected services.
 
-The ten reference families are Translation, AI Chat, Explanation, Citation, Summary,
+The ten feature families are Translation, AI Chat, Explanation, Citation, Summary,
 Preview, Library, Scholar Deep Search, Auto Highlight and Markup. Each needs real
 behavior and persistence where applicable. Empty, loading, saving, error, cancelled
 and unavailable states must be explicit and actionable. No generated demo data.
@@ -153,13 +152,13 @@ choice, done) that replaces any bare settings gate. Library and reader content s
 hidden until the user connects ChatGPT subscription login or saves a personal API key
 (OpenRouter, OpenAI, Gemini or Groq) with its model; both paths are a handful of
 clicks and never expose credentials. A fresh data folder shows the same page even when
-the terminal wizard already connected AI (owner request, 2026-09-30): it opens on the done
+the terminal wizard already connected AI (2026-09-30): it opens on the done
 step (`준비됐습니다 · … 연결됨`), and `시작하기` opens the 사용법 clips once and starts the
 feature tips over. The first-run page never mentions the OCR engine. The data folder records
 the welcome in `welcome.json`; a folder that already holds papers counts as welcomed, and a
 failed status call skips the welcome.
 
-The OCR engine works unseen (owner request, 2026-09-30). Every imported PDF opens and reads at
+The OCR engine works unseen (2026-09-30). Every imported PDF opens and reads at
 once: PDF.js supplies its digital text and geometry, and translation, explanation and notes use
 that page right away, never waiting for the engine. Local PaddleOCR-VL later adds figures,
 tables, equations, headings and the layout of `원본 배치` in the background, whether the engine
@@ -185,13 +184,13 @@ collapse secondary panels while preserving access to their content. Verify actua
 screens at 375/768/1280px and a normal desktop, both themes and enlarged text.
 
 This is an existing-product conversion; use current components and installed test
-tooling. No new dev-tool dependencies are needed. Reference fidelity concerns the
-reader interaction and quality; copying another product's logo is not authorized.
+tooling. No new dev-tool dependencies are needed. Quality is judged on the reader
+interaction itself.
 There is no accepted functional or accessibility debt at completion.
 
 ## 2026-09-10 Consistent sizing across every workspace
 
-The user requested one consistent design across all tabs, with no overflowing labels or mismatched boxes. Preserve the existing neutral research workspace, leaf branding, shared records and reader behavior. Apply the existing title/body/compact/toolbar typography and spacing tokens consistently to Library, Search, Knowledge, Connections, Reader, Compare, Project, Memory and their settings/dialogs.
+Every tab shares one consistent design, with no overflowing labels or mismatched boxes. Preserve the existing neutral research workspace, leaf branding, shared records and reader behavior. Apply the existing title/body/compact/toolbar typography and spacing tokens consistently to Library, Search, Knowledge, Connections, Reader, Compare, Project, Memory and their settings/dialogs.
 
 Controls grow with their text. Flexible rows and grids must shrink or stack before labels, selected values or actions collide. Korean words wrap as words; long unbroken identifiers and URLs may break within bounded content. Fixed-height controls must not clip 50–200% text. Keep deliberate PDF/graph pan areas and table scrolling, while preventing accidental horizontal overflow of the application, forms and navigation. All actions remain reachable in a 920×640 window, using internal scrolling where needed.
 
@@ -218,7 +217,7 @@ project credential.
 
 The Knowledge list is a continuous 200px side panel aligned directly below shared navigation, matching Library density. Remove the floating rounded-card frame and outer gutters. Use one quiet 13px title, compact labelled create/collapse icon buttons, aligned full-width search and kind controls, and document rows with understated dividers. Do not duplicate filter icons or use a large dark create button in this narrow panel. The user requested no repeated app launches during QA: complete non-window checks first, then inspect the final installed Knowledge panel once in one app session.
 
-The user approved login-free use on this Mac. A main-process profile file explicitly selects local owner access; its absence keeps the existing Google-required behavior. Local access is a separate `local` state, not a fake authenticated Google session or remote administrator role. It opens the current collection without rebinding ownership or creating another document store. Saved notes, PDFs and source links remain in their existing locations. Existing main-process sender/input validation remains mandatory.
+Login-free use is available only on an explicitly authorized Mac. A main-process profile file explicitly selects local owner access; its absence keeps the existing Google-required behavior. Local access is a separate `local` state, not a fake authenticated Google session or remote administrator role. It opens the current collection without rebinding ownership or creating another document store. Saved notes, PDFs and source links remain in their existing locations. Existing main-process sender/input validation remains mandatory.
 
 Show `이 Mac · 로컬` in the shared account area and omit the inapplicable logout action. Library, Reader and Knowledge remain immediately available after startup, including without network or account-service settings. AI/provider setup remains separately available through Settings and never runs automatically. Do not claim Google is connected in local mode; the existing Google flow remains available to account-managed profiles and its unconfigured state is not promoted to a pass. Reopen persistence and real installed-app workspace entry, not a dismissed help dialog, are the acceptance boundary.
 
@@ -240,7 +239,7 @@ Paper graph node colors encode references (muted blue #3b88b0), cited-by (teal #
 
 At 150–200% text, research navigation wraps in a dedicated lower header area, with the brand and account above it. The graph inspector grows to 480px on wide windows; source, save and exploration actions share a persistent footer while article text scrolls independently. Short windows may scroll the footer itself rather than cut off controls. Narrow windows retain the stacked graph and inspector.
 
-The explicit rejection of generic generated UI supersede the decorative treatment of the previous checkpoint. This is a functional paper exploration requirement, not just graph styling. Preserve oh-my-paper branding, local records and all existing reader/knowledge tools.
+Generic generated UI is rejected, superseding the decorative treatment of the previous checkpoint. This is a functional paper exploration requirement, not just graph styling. Preserve oh-my-paper branding, local records and all existing reader/knowledge tools.
 
 - Research graph: a large left graph stage with a 320–360px right article inspector. Circular paper marks, author/year labels, visible selected paper, highlighted incident edges and quiet unrelated nodes. Citation and semantic-related edges are distinct. References and cited-by expand actual external scholarly metadata after an explicit user action; related results identify the provider/method. Do not call title search similarity, fabricate citations or invent counts.
 - A year/citation layout uses observed metadata, with unknown values visibly identified; no invented timeline. Directed citation edges mean source cites target. References, cited-by, related exploration, back/forward, selection, zoom, pan, fit and graph/list modes must be usable. History is bounded and restored without another network request; abandoned requests are cancelled or ignored by generation.
@@ -254,10 +253,10 @@ The explicit rejection of generic generated UI supersede the decorative treatmen
 
 ## 2026-09-08 Non-reader screen layout revision (current)
 
-This revision supersedes the earlier labelled-rail layout for non-reader screens. Use a clear information hierarchy and panel proportions using oh-my-paper branding and real local records. The reference is an interaction/layout target, not permission to fabricate article metadata or citation networks.
+This revision supersedes the earlier labelled-rail layout for non-reader screens. Use a clear information hierarchy and the panel proportions below with oh-my-paper branding and real local records; never fabricate article metadata or citation networks.
 
 - Research flow: top navigation for discovery, library, notes, connections and projects; selection previews an item in place, explicit actions open its PDF or note. The continuous PDF reader retains its working toolbar and navigation. Library collection/list context and exploration history must survive inspection.
-- Layout at 1440px: 72px top chrome; 20–24px outer padding; 200px collection/list sidebar (reduced by the user's latest explicit feedback); flexible primary canvas; roughly 320px selected-record inspector. Collection and graph lists can collapse; the retained reader rail is a 56px icon rail with accessible names/tooltips. Use 12px panel radius, white panel surfaces, subtle borders, 36px minimum controls, and compact 4/8/12/16/24px spacing. At narrow widths panels reflow or scroll within their own bounded area; no clipped controls. Text scaling remains 50–200%.
+- Layout at 1440px: 72px top chrome; 20–24px outer padding; 200px collection/list sidebar; flexible primary canvas; roughly 320px selected-record inspector. Collection and graph lists can collapse; the retained reader rail is a 56px icon rail with accessible names/tooltips. Use 12px panel radius, white panel surfaces, subtle borders, 36px minimum controls, and compact 4/8/12/16/24px spacing. At narrow widths panels reflow or scroll within their own bounded area; no clipped controls. Text scaling remains 50–200%.
 - Tokens: light canvas #f1f2f6, subtle lilac #efedf6 and mint #eaf4f2 atmospheric wash; surface #ffffff; muted surface #f5f6f8; ink #202326; muted ink #62676e; border #dce0e4; primary action #202725; green selection #e3eee8; focus #35765b. Dark equivalents use canvas #181b20, surface #22262d, muted #2a3038, ink #eef0f3, muted ink #b7bfc8, border #3d4651 and high-contrast pale-green actions. Use shared token variables, not decorative per-card colors.
 - Typography: existing bundled user-selected font; body 14px, compact 12px, controls 13px, section title 18px, brand 24px, scaled by existing appearance variables. Korean words remain intact where needed; long document titles wrap, never push panes beyond the viewport.
 - Graph: actual shared relations only, review state visible, graph/list alternatives, root history, pointer pan, zoom and fit. Selecting a node updates the inspector without leaving the graph. Every node can be reached; viewport transforms must not create inaccessible clipped neighbors. Unknown year/citation count is not an invented timeline axis.
@@ -269,9 +268,9 @@ This revision supersedes the earlier labelled-rail layout for non-reader screens
 - Verification: current Electron captures at desktop and narrow sizes, both themes, appearance scaling, synthetic import, graph exploration and fit, preview-to-reader, and note/source persistence. Live OAuth/provider inference remain separately unverified until configured. Existing Electron dependencies are the accepted runtime tooling; do not install unrelated web/SEO instrumentation for this desktop change.
 
 
-## 2026-09-08 six-screen reference implementation
+## 2026-09-08 six-screen layout implementation
 
-The user approved implementation from the six generated desktop concepts: Library, Reader, Knowledge, Connections, Compare and Project. These are layout references, not production data or evidence of working features. Preserve the approved leaf logo and existing semantic palette; do not reproduce generated text mistakes, fabricated papers, source quotes or decorative accent rails. Reuse existing controls and records rather than introducing competing stores.
+Six desktop screens are laid out: Library, Reader, Knowledge, Connections, Compare and Project. The concepts are layouts only, not production data or evidence of working features. Preserve the approved leaf logo and existing semantic palette; do not reproduce generated text mistakes, fabricated papers, source quotes or decorative accent rails. Reuse existing controls and records rather than introducing competing stores.
 
 - Shared navigation: a separately identifiable Library home followed by the five labelled destinations 읽기, 지식, 연결, 비교, 프로젝트. Current location is explicit; search, memory, interchange and AI proposal tools remain reachable as secondary utilities. At normal desktop size use an approximately 88px labelled rail and 220–260px secondary list panes; at high text scale or narrow windows allow bounded scrolling and readable compact navigation without clipping controls.
 - Library: a working import action, collection navigation, retained recent reading position, local PDF thumbnails and paper cards. The continue-reading item is backed by actual reader state. Empty or unavailable files have actionable honest states.
@@ -284,7 +283,7 @@ The user approved implementation from the six generated desktop concepts: Librar
 - Knowledge prioritizes writing: group formatting and view controls in a compact toolbar, reduce empty vertical gaps, and disclose relation creation on demand. Draft-preservation guidance is a quiet status message with no generic retry action. Graph, Compare and Project stack their heading above content in a column shell.
 
 
-This is the current contract, replacing the conflicting historical specifications archived under `.omo/plans/archive/pre-direct-2026-09-05/`. It describes intended behavior; implementation status belongs in the active plan and QA report.
+This is the current contract, replacing earlier conflicting specifications. It describes intended behavior, not implementation status.
 
 ## 1. What the product is
 
@@ -294,9 +293,9 @@ Use plain labels: `라이브러리`, `읽기`, `지식`, `연결`, `비교`, `�
 
 ## 2. Visual direction
 
-Quiet, legible desktop research software. Natural green identity with restrained warmth, not a gold/ivory dashboard. No blue brand accents, repeating dot grid, gradients behind controls, oversized pills, excessive nested cards, or ambient motion inside the reader. Do not copy Anthropic/Apple layouts or logos.
+Quiet, legible desktop research software. Natural green identity with restrained warmth, not a gold/ivory dashboard. No blue brand accents, repeating dot grid, gradients behind controls, oversized pills, excessive nested cards, or ambient motion inside the reader. Layouts, marks and copy are oh-my-paper's own.
 
-Latest reference grammar: use the reference's alignment, crisp hierarchy, near-neutral palette, and spacious layout as inspiration for oh-my-paper's own natural-green system. Keep accents sparse and purposeful; this is not a clone, and the approved leaf mark, bundled readable fonts, and restrained glass navigation remain oh-my-paper-specific.
+Grammar: clean alignment, crisp hierarchy, a near-neutral palette and spacious layout carry oh-my-paper's natural-green system. Keep accents sparse and purposeful; the approved leaf mark, bundled readable fonts and restrained glass navigation are oh-my-paper-specific.
 
 Approved branding: `assets/branding/ohmypaper-leaf-mark.png`. Render the full raster with `object-fit: contain`, stable aspect ratio and clear padding. Never crop the leaf inside a wordmark viewport. The optional onboarding scene is `assets/branding/ohmypaper-onboarding-golden-leaves-v1.jpg`; do not load it in normal reading views.
 
@@ -338,7 +337,7 @@ Original photographic samples remain reference colors, not mandatory control col
 
 ### Glass chrome, 2026-09-06
 
-The user requested Apple-inspired material and geometry, not a clone. Apply glass to navigation, floating tool groups and dialogs; paper, note prose, tables and graph labels retain opaque reading surfaces. Source: [Apple Materials](https://developer.apple.com/design/human-interface-guidelines/materials) and the frontend Apple/redesign references. Do not copy Apple's blue accents, logos, copy or proprietary font files.
+Apply glass materials, following the macOS platform material guidelines, to navigation, floating tool groups and dialogs; paper, note prose, tables and graph labels retain opaque reading surfaces. No blue accents, platform logos, copy or proprietary font files.
 
 Reusable glass recipe: light `rgba(250,252,249,.88)`, dark `rgba(27,38,31,.90)`; 20px background blur with 120% saturation; inset top rim light `rgba(255,255,255,.78)` / dark `rgba(255,255,255,.12)`; outer green-black shadow `0 8px 28px rgba(13,31,22,.10)` / dark `.25`. Quiet floating elevation uses `0 2px 8px rgba(13,31,22,.06)`. No animated blur, full-window blur, fake lens distortion, glitter or moving background.
 

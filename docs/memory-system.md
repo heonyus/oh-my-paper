@@ -1,7 +1,7 @@
 # oh-my-paper memory system
 
-This task adds a local, inspectable semantic-memory store and bounded mounting adapters. It does
-not call an AI provider, access Wiki/llm-wiki, or fetch external content. The host still owns
+The memory system is a local, inspectable semantic-memory store with bounded mounting adapters.
+It does not call an AI provider or fetch external content. The host still owns
 calling the initializer and exposing the adapters from its existing Electron bootstrap.
 
 ## Records and authority
@@ -44,7 +44,7 @@ to an older revision as `invalidated`. The source record itself is untouched. Th
 retrieve, and export boundaries re-check accepted source evidence with the injected main-side
 reader before exposing it; stale or deleted exact-source records are invalidated there. The
 collection subscription hook is still useful for prompt updates, but correctness does not depend
-on a reconciliation event. There is no background watcher or AI maintenance job in this task.
+on a reconciliation event. There is no background watcher or AI maintenance job.
 
 ## Typed Electron seam
 
@@ -92,7 +92,7 @@ also main-owned and must read the local anchor plus immutable document-version h
 unvalidated source-dependent record remains unapproved.
 
 The collection-change invalidation hook is also host-owned and does not require editing the root
-bootstrap in this task. It is an early-update optimization; the read-boundary validation above
+bootstrap. It is an early-update optimization; the read-boundary validation above
 remains authoritative:
 
 ```ts

@@ -76,7 +76,7 @@ test("library is a responsive home that opens existing PDFs", async () => {
     await expect(library).toBeVisible()
     await expect(page.locator('.document-thumbnail[data-rendered="true"]')).toHaveCount(3)
     const electronWindow = await qa.application.browserWindow(page)
-    const evidence = join(process.cwd(), ".omo", "evidence", "library-home")
+    const evidence = join(process.cwd(), "test-results", "evidence", "library-home")
     await mkdir(evidence, { recursive: true })
     await electronWindow.evaluate((browserWindow) => browserWindow.setSize(920, 640))
     await page.waitForTimeout(150)
