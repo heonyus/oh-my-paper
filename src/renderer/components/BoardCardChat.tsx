@@ -1,5 +1,6 @@
 import { type FormEvent, type JSX, useState } from "react"
 import { withinCardChatLimits } from "../lib/cardChatLimits"
+import type { SourceCitation } from "../lib/chatCitations"
 import type { AiDeltaHandler, BoardCard } from "../types"
 import { ChatComposer } from "./ChatComposer"
 import { MarkdownContent } from "./MarkdownContent"
@@ -8,9 +9,12 @@ export function BoardCardChat({
   card,
   onChange,
   onAsk,
+  onCitation,
 }: {
   readonly card: BoardCard
   readonly onChange: (messages: BoardCard["chat"]) => void
+  /** Turns an answer's `[[p.N | …]]` citations into page chips instead of raw markers. */
+  readonly onCitation?: ((citation: SourceCitation) => void) | undefined
   readonly onAsk: (
     question: string,
     history: BoardCard["chat"],
@@ -54,7 +58,10 @@ export function BoardCardChat({
         <div className="card-chat-history" aria-live="polite">
           {card.chat.map((message) => (
             <article key={`${message.role}-${message.content}`} data-role={message.role}>
-              <MarkdownContent source={message.content} />
+              <MarkdownContent
+                source={message.content}
+                onCitation={message.role === "assistant" ? onCitation : undefined}
+              />
             </article>
           ))}
         </div>

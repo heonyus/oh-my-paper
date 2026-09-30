@@ -68,6 +68,12 @@ describe("research prompt routing contract", () => {
     )
   })
 
+  it("spells out the page translation JSON, which ChatGPT mode does not enforce", () => {
+    expect(systemPromptFor("page_translation")).toContain(
+      '{"translations":[{"id":"<input id>","markdown":"<Korean translation>"}]}',
+    )
+  })
+
   it("glosses only a key concept once and keeps field terms in English", () => {
     for (const model of [
       "tencent/hy-mt2-30b-a3b",

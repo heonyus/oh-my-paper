@@ -44,4 +44,25 @@ describe("BoardCardChat", () => {
       { role: "assistant", content: "근거 기반 답변" },
     ])
   })
+
+  it("turns citations in answers into page chips", async () => {
+    const onCitation = vi.fn()
+    const cited = {
+      ...card,
+      chat: [
+        { role: "user" as const, content: "근거는?" },
+        {
+          role: "assistant" as const,
+          content: "성능이 올랐다 [[p.4 | accuracy improves by 3 points]].",
+        },
+      ],
+    }
+    render(
+      <BoardCardChat card={cited} onChange={vi.fn()} onAsk={vi.fn()} onCitation={onCitation} />,
+    )
+
+    expect(screen.queryByText(/\[\[p\.4/)).toBeNull()
+    await userEvent.click(screen.getByRole("button", { name: /p\.4/ }))
+    expect(onCitation).toHaveBeenCalledWith({ page: 4, quote: "accuracy improves by 3 points" })
+  })
 })
