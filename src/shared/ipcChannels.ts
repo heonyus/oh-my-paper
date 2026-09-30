@@ -10,6 +10,7 @@ export const ipcChannels = {
   documentPageParseProgress: "document:page-parse-progress",
   documentAnalysisRead: "document:analysis-read",
   documentAnalysisRetry: "document:analysis-retry",
+  documentReadingFocus: "document:reading-focus",
   documentAnalysisUpdated: "document:analysis-updated",
   documentOcrStatus: "document:ocr-status",
   documentAst: "document:ast",

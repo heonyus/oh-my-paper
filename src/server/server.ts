@@ -17,6 +17,7 @@ import {
 import {
   documentAnalysisRequestSchema,
   documentAnalysisSnapshotSchema,
+  readingFocusSchema,
 } from "../shared/documentAnalysis"
 import { documentAstRequestSchema, documentAstResultSchema } from "../shared/documentAstIpc"
 import { documentPageParseRequestSchema } from "../shared/documentPageModel"
@@ -353,6 +354,12 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
           }
           case "documentAnalysisStatus": {
             sendJson(res, 200, services.analysis.snapshot())
+            return
+          }
+          case "setReadingFocus": {
+            const focus = await readJson(req, readingFocusSchema)
+            services.analysis.focus(focus.id, focus.pageNumber)
+            sendJson(res, 200, { ok: true })
             return
           }
           case "retryDocumentAnalysis": {

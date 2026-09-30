@@ -52,6 +52,24 @@ export const documentAnalysisSnapshotSchema = z
   .readonly()
 export const documentAnalysisRequestSchema = z.object({ id: documentIdSchema })
 
+/**
+ * Papers whose background analysis is done: every paper in the library minus the unfinished
+ * jobs (queued, waiting for the engine, running or failed), listed or only counted.
+ */
+export function analysedPaperCount(snapshot: DocumentAnalysisSnapshot, total: number): number {
+  const listed = snapshot.jobs.filter((job) => job.state !== "complete").length
+  const { queued, running, failed } = snapshot.unlisted
+  return Math.max(0, total - listed - queued - running - failed)
+}
+
+/** The page on screen, so background analysis takes that paper and the pages ahead first. */
+export const readingFocusSchema = z.object({
+  id: documentIdSchema,
+  pageNumber: z.number().int().positive(),
+})
+
+export type ReadingFocus = z.infer<typeof readingFocusSchema>
+
 export type DocumentAnalysisJob = z.infer<typeof documentAnalysisJobSchema>
 export type DocumentAnalysisSnapshot = z.infer<typeof documentAnalysisSnapshotSchema>
 

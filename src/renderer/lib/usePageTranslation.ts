@@ -51,7 +51,7 @@ export function usePageTranslation({
   const [progress, setProgress] = useState(0)
   const [totalChunks, setTotalChunks] = useState(0)
   const [parserStage, setParserStage] =
-    useState<DocumentPageParseProgress["stage"]>("engine-starting")
+    useState<DocumentPageParseProgress["stage"]>("page-rendering")
   const pageStatusRef = useRef<TranslationStatus>(status)
 
   useEffect(() => {
@@ -84,12 +84,18 @@ export function usePageTranslation({
           return
         }
         setStatus("parser-running")
-        setParserStage("engine-starting")
-        // The page later opens will get, so the translation cached from it is found again.
-        const parsedPage = await loadParsedDocumentPage(documentId, currentPage, {
-          awaitStructure: true,
-          signal: abortController.signal,
-        })
+        setParserStage("page-rendering")
+        // Never waits for the OCR engine: the analysed page when there is one, else the PDF's own
+        // text at once. The pane keeps this page while it shows it; an analysis that lands
+        // meanwhile is used the next time the page is shown, reusing every unchanged sentence.
+        const parsedPage =
+          (await loadParsedDocumentPage(documentId, currentPage, {
+            preparedOnly: true,
+            signal: abortController.signal,
+          })) ??
+          (await loadParsedDocumentPage(documentId, currentPage, {
+            signal: abortController.signal,
+          }))
         if (cancelled || abortController.signal.aborted) return
         if (!parsedPage) {
           setStatus("parser-unavailable")

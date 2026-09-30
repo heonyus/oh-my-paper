@@ -35,7 +35,7 @@ import type {
 } from "./codexTypes"
 import type { CollectionApi } from "./collectionIpc"
 import type { DiscoveryApi } from "./discoveryIpc"
-import type { DocumentAnalysisSnapshot } from "./documentAnalysis"
+import type { DocumentAnalysisSnapshot, ReadingFocus } from "./documentAnalysis"
 import {
   type DocumentAstRequest,
   type DocumentAstResult,
@@ -329,6 +329,8 @@ export type OhMyPaperApi = {
     listener: (snapshot: DocumentAnalysisSnapshot) => void,
   ) => () => void
   readonly retryDocumentAnalysis: (id: DocumentId) => Promise<void>
+  /** Tells background analysis which page is being read; hosts without analysis ignore it. */
+  readonly setReadingFocus?: (focus: ReadingFocus) => Promise<void>
   readonly documentOcrStatus: () => Promise<DocumentOcrProviderStatus>
   readonly readPageTranslationCache: (
     request: PageTranslationCacheReadRequest,

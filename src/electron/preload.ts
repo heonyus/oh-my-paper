@@ -4,6 +4,7 @@ import { createClosePreparation } from "../shared/closePreparation"
 import {
   documentAnalysisRequestSchema,
   documentAnalysisSnapshotSchema,
+  readingFocusSchema,
 } from "../shared/documentAnalysis"
 import {
   aiJobCancelRequestSchema,
@@ -168,6 +169,9 @@ const api: OhMyPaperApi = {
       ipcChannels.documentAnalysisRetry,
       documentAnalysisRequestSchema.parse({ id }),
     )
+  },
+  setReadingFocus: async (focus) => {
+    await ipcRenderer.invoke(ipcChannels.documentReadingFocus, readingFocusSchema.parse(focus))
   },
   documentOcrStatus: async () =>
     documentOcrProviderStatusSchema.parse(await ipcRenderer.invoke(ipcChannels.documentOcrStatus)),

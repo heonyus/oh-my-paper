@@ -53,6 +53,16 @@ export function useAppWorkspace() {
   const [credentialsChecked, setCredentialsChecked] = useState(false)
   const [bootstrapError, setBootstrapError] = useState<string | null>(null)
   const activeId = history.workspace?.activeDocumentId ?? null
+  // Background analysis follows the reader: this paper first, the pages ahead of this one next.
+  useEffect(() => {
+    if (!activeId) return
+    const timer = window.setTimeout(() => {
+      window.ohmypaper.setReadingFocus?.({ id: activeId, pageNumber: currentPage })?.catch(() => {
+        // Only an ordering hint; analysis goes on without it.
+      })
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [activeId, currentPage])
   const [outline, setOutline] = useState<{
     readonly documentId: Workspace["activeDocumentId"]
     readonly entries: readonly PdfOutlineEntry[]
