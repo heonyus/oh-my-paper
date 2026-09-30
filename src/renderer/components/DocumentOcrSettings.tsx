@@ -9,7 +9,9 @@ const accelerationLabels: Readonly<
 }
 
 function readiness(status: DocumentOcrProviderStatus): string {
-  if (!status.configured) return "로컬 런타임 설치 필요"
+  if (!status.configured) {
+    return status.installing ? "설치 중 · 끝나면 자동으로 켜집니다" : "로컬 런타임 설치 필요"
+  }
   if (status.acceleration) return `${accelerationLabels[status.acceleration]} 준비됨`
   return "로컬 런타임 준비됨 · 가속 없음"
 }

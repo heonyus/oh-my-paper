@@ -43,7 +43,7 @@ export function LibraryDocumentDetail({
       <section className="library-detail is-empty" aria-label="문서 상세">
         <FileText size={22} aria-hidden="true" />
         <h2>문서를 선택하세요</h2>
-        <p>목록에서 문서를 선택하면 서지 정보와 읽기 상태를 확인할 수 있습니다.</p>
+        <p>목록에서 문서를 선택하면 논문 정보와 읽기 상태를 확인할 수 있습니다.</p>
       </section>
     )
   }

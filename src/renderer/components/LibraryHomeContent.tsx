@@ -170,7 +170,9 @@ export function LibraryHomeContent({
           <div className="library-empty">
             <FilePlus2 size={24} aria-hidden="true" />
             <h2>첫 PDF를 가져오세요</h2>
-            <p>문서를 가져오면 이곳에서 서지 정보와 읽기 상태를 관리할 수 있습니다.</p>
+            <p>
+              문서를 가져오면 이곳에서 제목·저자 같은 논문 정보와 읽기 상태를 관리할 수 있습니다.
+            </p>
             <button type="button" onClick={onImport}>
               {importLabel}
             </button>

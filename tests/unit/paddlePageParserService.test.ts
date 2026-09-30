@@ -288,4 +288,30 @@ describe("Paddle page parser service", () => {
       await cleanup()
     }
   })
+
+  it("reports a background install while the runtime is still missing", async () => {
+    const { root, cleanup } = await fixture(1)
+    const service = new PaddlePageParserService({
+      appPath: root,
+      resourcesPath: root,
+      packaged: true,
+      home: root,
+      python: process.execPath,
+      readinessMarker: join(root, "missing-marker"),
+      vlmServer: fakeVlmServer(),
+    })
+
+    try {
+      await expect(service.status()).resolves.not.toHaveProperty("installing")
+      await mkdir(join(root, ".ohmypaper"), { recursive: true })
+      await writeFile(join(root, ".ohmypaper", "paddle-vl-install.pid"), `${process.pid}\n`)
+      await expect(service.status()).resolves.toMatchObject({
+        configured: false,
+        installing: true,
+      })
+    } finally {
+      service.dispose()
+      await cleanup()
+    }
+  })
 })

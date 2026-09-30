@@ -102,7 +102,7 @@ export function PaperBibliographyPanel({
     } catch (cause) {
       setSaveState({
         kind: "error",
-        message: cause instanceof Error ? cause.message : "서지 정보를 저장하지 못했습니다.",
+        message: cause instanceof Error ? cause.message : "논문 정보를 저장하지 못했습니다.",
       })
     }
   }
@@ -127,7 +127,7 @@ export function PaperBibliographyPanel({
     <section className="bibliography-panel" aria-labelledby="bibliography-heading">
       <header>
         <div>
-          <h2 id="bibliography-heading">서지 정보</h2>
+          <h2 id="bibliography-heading">논문 정보</h2>
           <p>
             인용 키: <code>{paper.metadata.citationKey}</code>
           </p>
@@ -234,7 +234,7 @@ export function PaperBibliographyPanel({
         ) : null}
         {saveState.kind === "saved" ? <p role="status">저장됨</p> : null}
         <button className="bibliography-save" type="submit" disabled={saveState.kind === "saving"}>
-          서지 정보 저장
+          논문 정보 저장
         </button>
       </form>
       {exported ? (

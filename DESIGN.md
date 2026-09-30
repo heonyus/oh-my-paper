@@ -17,7 +17,12 @@ a terminal install that explains itself, and short per-feature tutorials.
   a first connection saves the runtime's default model. The bundled list is only a fallback.
 - Terminal: `scripts/install.sh` (curl one-liner) clones, installs, builds, links
   `oh-my-paper` and starts the wizard. The wizard has four explained steps (runtime, AI
-  connection, optional OCR, usage tour) and never installs OCR by default.
+  connection, optional OCR, usage tour). The AI step lists ChatGPT first and preselects it; only a
+  connection this app saved moves the cursor to `지금 연결 유지` (a Claude Code login on the
+  machine alone does not). The OCR step (owner request, 2026-09-30) defaults to Yes and never
+  blocks: the setup runs detached, logs to `~/.ohmypaper/paddle-vl-install.log`, holds a pid lock
+  so only one install runs, and `doctor` and 설정 show `설치 중` until the readiness marker
+  switches the engine on without a restart.
 - Feature tips: the first time a screen shows a feature's control, one small anchored tip
   explains it with a muted looping clip recorded from the real app (`/tutorials/<id>.mp4`), a
   one-line description and its keys. At most one tip per visit to a screen, shown after the
@@ -25,20 +30,22 @@ a terminal install that explains itself, and short per-feature tutorials.
   `팁 끄기` (all tips). Seen tips are a per-browser convenience in localStorage; losing it only
   means a tip shows again. The header `?` (사용법) lists every tip with its clip and can show them
   again. Recordings for tips and the README video hide tips and use the quiet note companion.
-- GitHub star invitation (owner request, 2026-09-29): asking, never starring. The app never stars
-  on anyone's behalf and uses no GitHub API or credential; every star action only opens
-  `https://github.com/heonyus/oh-my-paper` in the browser (a new tab in the web app). The wizard
-  asks once, after the usage tour: `oh-my-paper가 도움이 된다면 GitHub에서 ⭐ 하나 부탁드려요` with
-  `⭐ GitHub 열고 별 달기` / `괜찮아요, 건너뛸게요` (Ctrl+C counts as skipping). The answer is kept in
+- GitHub star invitation (owner request, 2026-09-29; direct star 2026-09-30): the app asks and never
+  stars without that choice or with credentials of its own. The wizard asks once, after the usage
+  tour: `oh-my-paper가 도움이 된다면 GitHub에서 ⭐ 하나 부탁드려요`. With a `gh` login on the machine the choice is
+  `⭐ 별 달기`, which stars through that login (`gh api --method PUT
+  /user/starred/heonyus/oh-my-paper`); without one, or if that call fails, it is `⭐ GitHub 열고 별 달기`
+  and opens `https://github.com/heonyus/oh-my-paper`. The other choice is `괜찮아요, 건너뛸게요` (Ctrl+C
+  counts as skipping). In-app star actions only open the page in a new tab. The answer is kept in
   the data folder (`github-star.json`), so neither `oh-my-paper onboard` nor `oh-my-paper` asks
   again; runs without a terminal on both ends, or with `CI` set, skip it silently. In the browser
-  one small card (`oh-my-paper가 도움이 되고 있나요?`) may appear in the Library's bottom-left corner
-  after local activity on at least three different days (a paper imported or a note written that
-  day), never in the reader, never as a modal, and hidden while 사용법 or 설정 is open. It offers
-  `⭐ 별 달기`, `나중에` and `다시 보지 않기`. Each appearance, like `나중에`, keeps it away for
-  14 days; after `별 달기` or `다시 보지 않기` it never returns, and it never appears when the
-  wizard answer was to open GitHub. The 사용법 gallery footer keeps a permanent
-  `⭐ GitHub에서 별 달기` link. The card's state is a per-browser convenience in localStorage.
+  one small card (`oh-my-paper가 도움이 되고 있나요?`) may appear in the Library's bottom-left corner after
+  local activity on at least three different days (a paper imported or a note written that day),
+  never in the reader, never as a modal, and hidden while 사용법 or 설정 is open. It offers `⭐ 별 달기`,
+  `나중에` and `다시 보지 않기`. Each appearance, like `나중에`, keeps it away for 14 days; after `별 달기` or `다시
+  보지 않기` it never returns, and it never appears when the wizard answer was to star or to open
+  GitHub. The 사용법 gallery footer keeps a permanent `⭐ GitHub에서 별 달기` link. The card's state is a
+  per-browser convenience in localStorage.
 
 ## 2026-09-28 Learning core: reading that stays with the reader (current)
 

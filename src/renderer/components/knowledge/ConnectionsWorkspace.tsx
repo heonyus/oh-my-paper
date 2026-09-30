@@ -87,7 +87,7 @@ export function ConnectionsWorkspace({
               제목이나 주제로 논문 검색
             </button>
             <p className="connections-source-note">
-              OpenAlex의 공개 서지 정보를 조회합니다. PDF와 개인 노트는 전송하지 않습니다.
+              OpenAlex의 공개 논문 정보를 조회합니다. PDF와 개인 노트는 전송하지 않습니다.
             </p>
           </section>
         )}

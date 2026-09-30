@@ -171,7 +171,7 @@ export function LibrarySavedPapers({
               <p>
                 {[paper.authors.slice(0, 3).join(", "), paper.year, paper.venue]
                   .filter(Boolean)
-                  .join(" · ") || "서지 정보 확인 필요"}
+                  .join(" · ") || "논문 정보 확인 필요"}
               </p>
               {paper.abstract ? <small>{paper.abstract}</small> : null}
             </div>

@@ -17,7 +17,7 @@ import {
   DEFAULT_OPENROUTER_MODEL,
   OPENROUTER_MODEL_OPTIONS,
 } from "../shared/providerModels"
-import { checkEnvironment, installOcrRuntime } from "./environment"
+import { checkEnvironment, startOcrInstallInBackground } from "./environment"
 import { runApiKeyOnboarding } from "./onboardingApi"
 import { runChatgptOnboarding } from "./onboardingChatgpt"
 import { runClaudeOnboarding } from "./onboardingClaude"
@@ -144,6 +144,10 @@ async function offerOcr(report: Awaited<ReturnType<typeof checkEnvironment>>): P
     log.success("PaddleOCR-VL 준비됨")
     return
   }
+  if (report.ocrInstalling) {
+    log.info("백그라운드에서 이미 설치 중입니다 — 끝나면 자동으로 켜집니다")
+    return
+  }
   if (!report.uvAvailable) {
     log.warn(
       "설치에는 uv가 필요합니다 — https://docs.astral.sh/uv/ 설치 후 npm run setup:paddle-vl",
@@ -151,16 +155,17 @@ async function offerOcr(report: Awaited<ReturnType<typeof checkEnvironment>>): P
     return
   }
   const install = await confirm({
-    message: `지금 설치할까요? ${dim("수 GB 다운로드 · 몇 분 소요 · 일반 PDF는 없어도 됩니다")}`,
-    initialValue: false,
+    message: `설치할까요? ${dim("약 3GB · 백그라운드에서 받으니 그동안에도 앱을 쓸 수 있어요")}`,
+    initialValue: true,
   })
   if (isCancel(install) || !install) {
     log.info(gray("건너뛰었습니다 — 나중에 npm run setup:paddle-vl 로 설치할 수 있습니다"))
     return
   }
-  log.step("PaddleOCR-VL 런타임과 모델을 내려받습니다")
-  if (installOcrRuntime()) log.success("OCR 엔진 설치 완료")
-  else log.error("OCR 설치에 실패했습니다 — npm run setup:paddle-vl 로 다시 시도하세요")
+  const logPath = startOcrInstallInBackground()
+  log.success(
+    `백그라운드에서 설치를 시작했어요 — 끝나면 자동으로 켜집니다\n${gray(`진행 상황: oh-my-paper doctor · 로그 ${logPath}`)}`,
+  )
 }
 
 export type OnboardingOutcome = {
@@ -208,6 +213,9 @@ export async function runOnboarding(
     )
     const state = await readOnboardingState(config)
     const saved = await aiModes.loadSettings().catch(() => null)
+    // A Claude Code login on the machine counts as connected, but only a choice saved by this app
+    // should move the cursor off ChatGPT.
+    const choseBefore = await aiModes.hasSavedSettings().catch(() => false)
     if (state.configured) {
       log.info(`현재 연결: ${bold(currentConnection(state, saved?.mode ?? null))}`)
     }
@@ -215,9 +223,6 @@ export async function runOnboarding(
     const choice = await select({
       message: "어떻게 연결할까요?",
       options: [
-        ...(state.configured
-          ? [{ value: "skip" as const, label: "지금 연결 유지", hint: "바꾸지 않고 넘어갑니다" }]
-          : []),
         {
           value: "chatgpt" as const,
           label: "ChatGPT 구독 (OpenAI)",
@@ -235,15 +240,11 @@ export async function runOnboarding(
           label: "API 키",
           hint: "OpenRouter · OpenAI · Gemini · Groq · 쓴 만큼 과금",
         },
-        ...(state.configured
-          ? []
-          : [{ value: "skip" as const, label: "나중에", hint: "앱의 설정 › AI에서 언제든" }]),
+        state.configured
+          ? { value: "skip" as const, label: "지금 연결 유지", hint: "바꾸지 않고 넘어갑니다" }
+          : { value: "skip" as const, label: "나중에", hint: "앱의 설정 › AI에서 언제든" },
       ],
-      initialValue: state.configured
-        ? "skip"
-        : state.claudeConnected && !state.chatgptConnected
-          ? "claude"
-          : "chatgpt",
+      initialValue: state.configured && choseBefore ? "skip" : "chatgpt",
     })
     if (isCancel(choice)) {
       cancel("설정을 멈췄습니다 — 다시 하려면 oh-my-paper onboard")

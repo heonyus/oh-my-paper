@@ -56,7 +56,7 @@ export type StarInviteInput = {
 
 /** Whether the one gentle invitation may appear now. */
 export function shouldInvite({ activeDays, wizardAnswer, state, now }: StarInviteInput): boolean {
-  if (wizardAnswer === "opened" || state.closed !== null) return false
+  if (wizardAnswer === "starred" || wizardAnswer === "opened" || state.closed !== null) return false
   if (state.nextAt !== null && Date.parse(state.nextAt) > now.getTime()) return false
   return state.preview || activeDays >= MIN_ACTIVE_DAYS
 }

@@ -1,10 +1,13 @@
 import { z } from "zod"
 
-/** The project page; people star it there themselves, the app never stars on anyone's behalf. */
+/** The project page. The app stars it only when the person chooses to, with their own `gh` login. */
 export const GITHUB_REPO_URL = "https://github.com/heonyus/oh-my-paper"
 
-/** The setup wizard's answer to its one star invitation: GitHub was opened, or it was skipped. */
-export const githubStarAnswerSchema = z.enum(["opened", "skipped"])
+/**
+ * The setup wizard's answer to its one star invitation: starred with the person's `gh` login,
+ * GitHub was opened, or it was skipped.
+ */
+export const githubStarAnswerSchema = z.enum(["starred", "opened", "skipped"])
 
 export const githubStarStatusSchema = z.object({
   answer: githubStarAnswerSchema.nullable(),
