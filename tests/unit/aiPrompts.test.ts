@@ -48,7 +48,7 @@ describe("research prompt routing contract", () => {
     )
   })
 
-  it("adds English glosses sparingly, after the Korean term", () => {
+  it("glosses only a key concept once and keeps field terms in English", () => {
     for (const model of [
       "tencent/hy-mt2-30b-a3b",
       "tencent/hy-mt2-7b",
@@ -56,9 +56,22 @@ describe("research prompt routing contract", () => {
       undefined,
     ]) {
       const prompt = systemPromptForRequest("page_translation", model)
-      expect(prompt).toContain("`한국어 번역(English term)`")
-      expect(prompt).toContain("at most once or twice per paragraph")
-      expect(prompt).not.toContain("`English term(한국어 번역)`")
+      expect(prompt).toContain("`한국어(English)` at its first appearance in this request")
+      expect(prompt).toContain("stays in English exactly as written")
+      expect(prompt).not.toContain("first appearance in a block")
     }
+  })
+
+  it("gives translations a translator base without the reader's headings and caveats", () => {
+    for (const prompt of [
+      systemPromptFor("translation"),
+      systemPromptFor("page_translation"),
+      systemPromptForRequest("page_translation", "tencent/hy-mt2-7b"),
+    ]) {
+      expect(prompt).toContain("한다체")
+      expect(prompt).not.toContain("descriptive headings")
+      expect(prompt).not.toContain("확인 필요")
+    }
+    expect(systemPromptFor("figure")).toContain("descriptive headings")
   })
 })
