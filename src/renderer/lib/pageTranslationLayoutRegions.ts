@@ -20,11 +20,14 @@ export type RegionTypography = {
   readonly centered?: boolean
 }
 
-/** One source paragraph (or heading) whose translation is typeset in its place. */
+/**
+ * One source paragraph (or heading) whose translation is typeset in its place, or a display
+ * equation typeset from its LaTeX.
+ */
 export type LayoutRegion = {
   readonly id: string
   readonly blockIds: readonly string[]
-  readonly kind: "heading" | "body"
+  readonly kind: "heading" | "body" | "equation"
   readonly rect: PageFraction
   readonly translation: string
   readonly typography?: RegionTypography

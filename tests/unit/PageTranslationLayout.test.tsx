@@ -100,3 +100,33 @@ describe("layout-preserving page translation", () => {
     )
   })
 })
+
+describe("a display equation in the page layout", () => {
+  afterEach(() => {
+    document.body.innerHTML = ""
+  })
+
+  it("typesets the equation's LaTeX as math in its source box", () => {
+    const { container } = render(
+      <PageTranslationLayout
+        documentId={documentId}
+        page={2}
+        regions={[
+          {
+            id: "equation:page:2:block:7",
+            blockIds: ["page:2:block:7"],
+            kind: "equation",
+            rect: { x: 0.2, y: 0.4, width: 0.3, height: 0.05 },
+            translation: "$$\n1. x=\\frac{a}{b} \\tag{3}\n$$",
+          },
+        ]}
+      />,
+    )
+
+    const equation = container.querySelector<HTMLElement>('[data-kind="equation"]')
+    expect(equation?.style.top).toBe("40%")
+    expect(equation?.querySelector(".katex-display .mfrac")).not.toBeNull()
+    expect(equation?.querySelector(".katex-error")).toBeNull()
+    expect(equation?.style.getPropertyValue("--fit-font-size")).toBe("1.6")
+  })
+})
