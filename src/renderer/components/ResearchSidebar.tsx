@@ -2,12 +2,13 @@ import {
   BookMarked,
   ChevronLeft,
   Layers,
+  NotebookPen,
   PanelRightClose,
   Pin,
   PinOff,
   Sparkles,
 } from "lucide-react"
-import { type JSX, useState } from "react"
+import { type JSX, type ReactNode, useEffect, useState } from "react"
 import type { ProviderStatus } from "../../shared/ipc"
 import type { DocumentInsight, DocumentInsightKind } from "../../shared/schemas"
 import { researchSidebarLayout } from "../../shared/uiLayout"
@@ -24,8 +25,10 @@ import { PageTranslationPortal } from "./PageTranslationPortal"
 import { RelatedPapersPanel, type RelatedPapersView } from "./RelatedPapersPanel"
 import { SidebarResizeHandle } from "./SidebarResizeHandle"
 
-/** The paper's overview, the cards on its board, and other papers. */
-type ResearchMode = "ai" | "cards" | "papers"
+/** The paper's overview, the reader's own note, the cards on its board, and other papers. */
+type ResearchMode = "ai" | "note" | "cards" | "papers"
+
+const NOTE_MIN_WIDTH = 420
 
 export function ResearchSidebar({
   document,
@@ -43,6 +46,9 @@ export function ResearchSidebar({
   insights = [],
   onInsightChange,
   onNavigateToSource,
+  notePane,
+  noteOpen = false,
+  onNoteOpenChange,
 }: {
   readonly document: DocumentRecord | null
   readonly currentPage: number
@@ -60,6 +66,10 @@ export function ResearchSidebar({
   readonly insights?: readonly DocumentInsight[] | undefined
   readonly onInsightChange?: ((kind: DocumentInsightKind, value: string) => void) | undefined
   readonly onNavigateToSource?: ((citation: SourceCitation) => void) | undefined
+  /** The reader's note for this paper, shown as the `노트` mode. */
+  readonly notePane?: ReactNode
+  readonly noteOpen?: boolean | undefined
+  readonly onNoteOpenChange?: ((open: boolean) => void) | undefined
 }): JSX.Element {
   const t = useTranslator(researchMessages)
   const [mode, setMode] = useState<ResearchMode>("ai")
@@ -67,6 +77,15 @@ export function ResearchSidebar({
   const [seenCounts, setSeenCounts] = useState<Partial<Record<ResearchMode, number>>>({})
   const [cardFilter, setCardFilter] = useState<BoardIndexFilter>("all")
   const [papersView, setPapersView] = useState<RelatedPapersView>("references")
+  // The note opens pinned, so writing is never interrupted by the pointer leaving the panel.
+  useEffect(() => {
+    if (noteOpen) {
+      setMode("note")
+      setFlyout("pinned")
+      return
+    }
+    setMode((current) => (current === "note" ? "ai" : current))
+  }, [noteOpen])
   const modeLabel = (id: ResearchMode): string => t(`sidebar.mode.${id}`)
   const modes: readonly {
     readonly id: ResearchMode
@@ -75,6 +94,9 @@ export function ResearchSidebar({
     readonly icon: JSX.Element
   }[] = [
     { id: "ai", label: modeLabel("ai"), icon: <Sparkles size={18} /> },
+    ...(notePane
+      ? [{ id: "note" as const, label: modeLabel("note"), icon: <NotebookPen size={18} /> }]
+      : []),
     {
       id: "cards",
       label: modeLabel("cards"),
@@ -133,7 +155,11 @@ export function ResearchSidebar({
           minWidth: researchSidebarLayout.railWidth,
         }}
       >
-        <div className="research-sidebar-flyout" style={{ width }}>
+        <div
+          className="research-sidebar-flyout"
+          // Writing needs room: the note opens at least as wide as a short paragraph line.
+          style={{ width: mode === "note" ? Math.max(width, NOTE_MIN_WIDTH) : width }}
+        >
           {onWidthChange ? (
             <SidebarResizeHandle
               label={t("sidebar.resize")}
@@ -161,6 +187,8 @@ export function ResearchSidebar({
                   onCardsChange(saveSidebarInsight(cards, document, title, body, sourceTitle))
                 }
               />
+            ) : mode === "note" ? (
+              notePane
             ) : mode === "cards" ? (
               <CardIndexPanel
                 cards={cards}
@@ -196,6 +224,7 @@ export function ResearchSidebar({
             type="button"
             onClick={() => {
               setFlyout("hover")
+              onNoteOpenChange?.(false)
               onToggle()
             }}
             aria-label={t("sidebar.collapse")}
@@ -223,6 +252,7 @@ export function ResearchSidebar({
               title={item.label}
               onClick={() => {
                 if (flyout !== "pinned") setFlyout("open")
+                if ((item.id === "note") !== noteOpen) onNoteOpenChange?.(item.id === "note")
                 setMode(item.id)
                 if (item.count) {
                   setSeenCounts((current) => ({ ...current, [item.id]: item.count }))

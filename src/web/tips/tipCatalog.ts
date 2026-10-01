@@ -61,7 +61,7 @@ export const FEATURE_TIPS: readonly FeatureTip[] = [
     id: "note",
     view: "reader",
     needsDocument: true,
-    anchor: [".topbar-note-action"],
+    anchor: ['button[data-research-mode="note"]'],
     placement: "below",
     title: "tip.note.title",
     body: "tip.note.body",

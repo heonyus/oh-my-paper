@@ -4,7 +4,6 @@ import {
   ListTree,
   LogOut,
   MousePointer2,
-  NotebookPen,
   Redo2,
   Undo2,
   ZoomIn,
@@ -40,8 +39,6 @@ type TopbarProps = {
   readonly onRedo: () => void
   readonly outlineOpen: boolean
   readonly onToggleOutline: () => void
-  readonly noteOpen: boolean
-  readonly onToggleNote: () => void
 }
 
 export function Topbar({
@@ -58,8 +55,6 @@ export function Topbar({
   onRedo,
   outlineOpen,
   onToggleOutline,
-  noteOpen,
-  onToggleNote,
 }: TopbarProps): JSX.Element {
   const t = useTranslator(chromeMessages)
   const pageTranslation = usePageTranslationSession()
@@ -106,16 +101,6 @@ export function Topbar({
           onClick={onToggleOutline}
         >
           <ListTree size={17} />
-        </button>
-        <button
-          type="button"
-          className={noteOpen ? "topbar-note-action active" : "topbar-note-action"}
-          aria-label={t(noteOpen ? "topbar.closeNote" : "topbar.openNote")}
-          aria-pressed={noteOpen}
-          onClick={onToggleNote}
-        >
-          <NotebookPen size={16} />
-          <span>{t("topbar.note")}</span>
         </button>
         <div className="tool-cluster">
           <button

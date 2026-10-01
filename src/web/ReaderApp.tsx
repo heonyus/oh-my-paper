@@ -312,7 +312,6 @@ export function ReaderApp(): JSX.Element {
           <section
             className="reader-workspace"
             data-outline-open={app.outlineOpen}
-            data-note-open={app.noteOpen && Boolean(app.activeDocument)}
             aria-label={t("shell.reader")}
           >
             <Topbar
@@ -329,8 +328,6 @@ export function ReaderApp(): JSX.Element {
               onRedo={app.redo}
               outlineOpen={app.outlineOpen}
               onToggleOutline={() => app.setOutlineOpen((open) => !open)}
-              noteOpen={app.noteOpen}
-              onToggleNote={() => app.setNoteOpen((open) => !open)}
             />
             <Suspense fallback={<p role="status">{t("shell.openingPaper")}</p>}>
               <ReaderWorkspace

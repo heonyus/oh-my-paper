@@ -112,8 +112,10 @@ them, not only finish them. English is read first; Korean is a check.
 
 **The reader's note (`내 노트`) is the center.** Quiz-like mechanics were dropped on
 2026-09-28 (spaced-review prompts and graded `내 말로` cards). What stays with the reader is
-what they write themselves, beside the paper, in their own words. The toolbar `노트` button
-opens a note column between the PDF and the research sidebar.
+what they write themselves, beside the paper, in their own words. The note is the research
+sidebar's `노트` mode (2026-10-01; it was a separate column opened from the toolbar). It opens
+pinned; in a narrow sidebar the margin sits at the foot of the note and shows only what answers
+the paragraph being written.
 
 - Editor: a block editor (TipTap) over plain Markdown. `/` opens block choices
   (제목, 소제목, 목록, 번호 목록, 인용, 코드, 구분선), blocks can be dragged by their handle,

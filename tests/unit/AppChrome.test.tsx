@@ -26,8 +26,6 @@ describe("Topbar", () => {
         onRedo={onRedo}
         outlineOpen={false}
         onToggleOutline={onToggleOutline}
-        noteOpen={false}
-        onToggleNote={vi.fn()}
       />,
     )
 
@@ -71,8 +69,6 @@ describe("Topbar", () => {
         onRedo={vi.fn()}
         outlineOpen={false}
         onToggleOutline={vi.fn()}
-        noteOpen={false}
-        onToggleNote={vi.fn()}
       />,
     )
 
