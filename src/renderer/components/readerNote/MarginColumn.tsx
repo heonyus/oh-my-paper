@@ -117,18 +117,29 @@ function SourceCard({
   )
 }
 
+/** A folded remark's first words, with page chips read as their page. */
+function foldedPreview(text: string): string {
+  const plain = text.replace(/\[\[\s*p\.?\s*(\d{1,4})[^\]]*\]\]/gu, "p.$1").replace(/\s+/gu, " ")
+  return plain.length > 70 ? `${plain.slice(0, 70).trimEnd()}…` : plain
+}
+
 function TutorCard({
   tutor,
   expanded,
-  onExpand,
+  onToggle,
+  onPin,
+  onDismiss,
   onCitation,
 }: {
   readonly tutor: TutorEntry
   readonly expanded: boolean
-  readonly onExpand: () => void
+  readonly onToggle: () => void
+  readonly onPin: () => void
+  readonly onDismiss: () => void
   readonly onCitation: (citation: SourceCitation) => void
 }): JSX.Element {
   const t = useTranslator(noteMessages)
+  const done = tutor.status === "done"
   return (
     <article
       className="note-margin-card"
@@ -139,15 +150,29 @@ function TutorCard({
         <span>{t("margin.tutor")}</span>
         {tutor.status === "streaming" ? (
           <span className="note-tutor-typing" role="status" aria-label={t("margin.tutorWriting")} />
-        ) : null}
+        ) : (
+          <span className="note-tutor-actions">
+            <button type="button" aria-expanded={expanded} onClick={onToggle}>
+              {t(expanded ? "margin.fold" : "margin.unfold")}
+            </button>
+            {done ? (
+              <button type="button" onClick={onPin}>
+                {t("margin.pin")}
+              </button>
+            ) : null}
+            <button type="button" onClick={onDismiss}>
+              {t("margin.dismiss")}
+            </button>
+          </span>
+        )}
       </header>
       {expanded ? (
         tutor.text ? (
           <MarkdownContent source={tutor.text} onCitation={onCitation} />
         ) : null
       ) : (
-        <button type="button" className="note-tutor-folded" onClick={onExpand}>
-          {tutor.text.replace(/\[\[[^\]]*\]\]/gu, "").slice(0, 48)}…
+        <button type="button" className="note-tutor-folded" onClick={onToggle}>
+          {foldedPreview(tutor.text)}
         </button>
       )}
     </article>
@@ -166,6 +191,8 @@ export function MarginColumn({
   onAttach,
   onOpen,
   onCitation,
+  onPin,
+  onDismiss,
 }: {
   readonly editor: Editor | null
   readonly slots: MarginSlotRegistry
@@ -174,9 +201,12 @@ export function MarginColumn({
   readonly onAttach: (pos: number, source: ScoredSource) => void
   readonly onOpen: (page: number, text: string) => void
   readonly onCitation: (citation: SourceCitation) => void
+  /** Keeps a remark: it goes into the note, labelled as AI, right under its block. */
+  readonly onPin: (end: number, tutor: TutorEntry) => void
+  readonly onDismiss: (key: string) => void
 }): JSX.Element {
   const [layout, setLayout] = useState<readonly Placement[]>([])
-  const [opened, setOpened] = useState<string | null>(null)
+  const [toggled, setToggled] = useState<ReadonlySet<string>>(() => new Set())
   const latestTutor = tutors.reduce<TutorEntry | null>(
     (latest, tutor) => (!latest || tutor.at > latest.at ? tutor : latest),
     null,
@@ -226,8 +256,17 @@ export function MarginColumn({
             {tutor ? (
               <TutorCard
                 tutor={tutor}
-                expanded={tutor === latestTutor || opened === tutor.key}
-                onExpand={() => setOpened(tutor.key)}
+                // The newest remark opens and older ones fold; the reader can flip either way.
+                expanded={(tutor === latestTutor) !== toggled.has(tutor.key)}
+                onToggle={() =>
+                  setToggled((current) => {
+                    const next = new Set(current)
+                    if (!next.delete(tutor.key)) next.add(tutor.key)
+                    return next
+                  })
+                }
+                onPin={() => onPin(placement.end, tutor)}
+                onDismiss={() => onDismiss(tutor.key)}
                 onCitation={onCitation}
               />
             ) : null}

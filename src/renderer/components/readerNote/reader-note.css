@@ -418,3 +418,21 @@
   stroke: color-mix(in srgb, var(--action) 60%, transparent);
   stroke-width: 1.5;
 }
+.note-tutor-actions {
+  display: inline-flex;
+  gap: 4px;
+}
+.note-margin-card .note-tutor-actions button {
+  padding: 0 6px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+.note-margin-card .note-tutor-actions button:hover {
+  background: var(--action-subtle);
+  color: var(--action);
+}

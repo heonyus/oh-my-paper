@@ -7,7 +7,11 @@ import { useTranslator } from "../../lib/locale"
 import type { ScoredSource } from "../../lib/noteSources"
 import type { EarlierNote } from "../../lib/noteTutor"
 import { useMeaningSearchReady } from "../../lib/useMeaningSearchReady"
-import { type CompanionDensity, useNoteCompanion } from "../../lib/useNoteCompanion"
+import {
+  type CompanionDensity,
+  type TutorEntry,
+  useNoteCompanion,
+} from "../../lib/useNoteCompanion"
 import type { RegisterLiveNote } from "../../lib/useReaderNote"
 import { type NoteMessageKey, noteMessages } from "../../messages/note"
 import type { AiRequestRunner, DocumentRecord } from "../../types"
@@ -124,6 +128,21 @@ export function ReaderNotePane({
     },
     [editor],
   )
+  // Keeping an AI suggestion puts it in the note under its paragraph, labelled as AI.
+  const { dismiss } = companion
+  const pin = useCallback(
+    (end: number, tutor: TutorEntry): void => {
+      if (!editor) return
+      editor
+        .chain()
+        .insertContentAt(end, `> **${t("margin.pinnedLabel")}** ${tutor.text}`, {
+          contentType: "markdown",
+        })
+        .run()
+      dismiss(tutor.key)
+    },
+    [editor, dismiss, t],
+  )
   const open = useCallback(
     (page: number, text: string): void => onNavigateToSource({ page, quote: text.slice(0, 200) }),
     [onNavigateToSource],
@@ -191,6 +210,8 @@ export function ReaderNotePane({
             onAttach={attach}
             onOpen={open}
             onCitation={onNavigateToSource}
+            onPin={pin}
+            onDismiss={dismiss}
           />
         </div>
       </div>

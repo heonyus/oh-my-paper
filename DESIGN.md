@@ -158,7 +158,13 @@ the paragraph being written.
     (`적극적`) apart. The `원문` card and the tutor's remarks show inside the note, right under the
     block they answer (no side column, no footer). The latest paragraph that settles
     during the wait gets its reply when the wait ends, if it is still in the note. The newest reply is open, older
-    ones fold. Tutor text never enters the note; there is no copy or insert action for it.
+    ones fold. Since 2026-10-01 the tutor is labelled `AI 추천` and draws on the whole paper: every parsed
+    paragraph is read into the local model's cache in small turns two seconds after the note opens
+    (nothing when 조용히), and the six closest paragraphs from any page go with the request. Each
+    remark has `접기`/`펼치기`, `고정` and `지우기`. `고정` is the reader's choice to keep it: it goes into
+    the note right under its block as a quote labelled `**AI 추천**`, so AI text never enters the note
+    unlabelled or unasked; `지우기` removes it and that paragraph is not answered again. The setup
+    wizard's OCR step also fetches the local model in the background.
   - Privacy: embeddings stay local. While the control is `보통` or `적극적`, the tutor sends the
     settled paragraph, a few earlier lines, the related passages and matching earlier notes to
     the connected AI provider without a click (2026-09-28); `조용히`

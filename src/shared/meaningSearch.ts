@@ -2,7 +2,8 @@ import { z } from "zod"
 
 /** Local multilingual embeddings: a Korean note sentence can find its English source. */
 export const MEANING_SEARCH_MODEL = "onnx-community/embeddinggemma-300m-ONNX"
-export const MEANING_SEARCH_MAX_CANDIDATES = 200
+/** A whole paper's paragraphs, so the note's suggestions can draw on any page. */
+export const MEANING_SEARCH_MAX_CANDIDATES = 1_500
 
 export const meaningSearchRequestSchema = z
   .object({

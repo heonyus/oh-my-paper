@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/react"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { MeaningSearchRequest, MeaningSearchResult } from "../../shared/meaningSearch"
 import type { DocumentId } from "../../shared/schemas"
 import type { AiRequestRunner } from "../types"
@@ -9,6 +9,7 @@ import {
   confidentSource,
   type NoteSource,
   noteSourceCandidates,
+  paperSourceCandidates,
   relatedSources,
   type ScoredSource,
   sourceSearchText,
@@ -45,7 +46,18 @@ const MIN_MATCH_CHARACTERS = 12
 const MIN_TUTOR_CHARACTERS = 20
 const MAX_TUTOR_ENTRIES = 30
 const EARLIER_NOTE_MINIMUM = 0.5
-const AST_WAIT_MS = 5_000
+/** The page structure only filters citations; a slow one never holds the remark back long. */
+const AST_WAIT_MS = 800
+type Ranked = Pick<MeaningSearchResult, "results">
+const NOTHING_RANKED: Ranked = { results: [] }
+/** Paragraphs read into the local model per turn while the note warms up. */
+const WARM_CHUNK = 24
+/** The warm-up waits until the note has settled open, so 조용히 chosen at once sends nothing. */
+const WARM_DELAY_MS = 2_000
+/** Passages from the whole paper handed to a suggestion. */
+const SUGGESTION_PASSAGES = 6
+/** Earlier notes to compare with; a short list keeps the first remark quick. */
+const EARLIER_NOTES_COMPARED = 60
 /**
  * How long the reader rests before the tutor answers. Notes are often fragments ("…다면", a list
  * item) that never end like a sentence, so a pause in typing is enough; a finished sentence is
@@ -92,6 +104,7 @@ export function useNoteCompanion(editor: Editor | null, options: Options) {
   const [currentKey, setCurrentKey] = useState("")
   const live = useRef(options)
   live.current = options
+  const dismissed = useRef(new Set<string>())
 
   useEffect(() => {
     if (!editor || density === "quiet" || !rank) return
@@ -113,6 +126,24 @@ export function useNoteCompanion(editor: Editor | null, options: Options) {
       )
     const sources = (signal: AbortSignal): Promise<readonly NoteSource[]> =>
       noteSourceCandidates(documentId, live.current.currentPage, pageCount, signal)
+
+    // The whole paper is read into the local model's cache in small turns, so the first
+    // suggestion is quick and the sentence being written never waits behind it.
+    const warm = new AbortController()
+    const warmTimer = window.setTimeout(() => void warmUp().catch(() => undefined), WARM_DELAY_MS)
+    const warmUp = async (): Promise<void> => {
+      const all = await paperSourceCandidates(documentId, pageCount, warm.signal)
+      for (let start = 0; start < all.length && !warm.signal.aborted; start += WARM_CHUNK) {
+        await rank(
+          {
+            query: "paper",
+            candidates: candidatesOf(all.slice(start, start + WARM_CHUNK)),
+            limit: 1,
+          },
+          warm.signal,
+        ).catch(() => undefined)
+      }
+    }
 
     const runMatch = async (key: string): Promise<void> => {
       matchRun?.abort()
@@ -156,7 +187,7 @@ export function useNoteCompanion(editor: Editor | null, options: Options) {
     }
 
     const runTutor = async (key: string, context: string): Promise<void> => {
-      if (tutored.has(key)) return
+      if (tutored.has(key) || dismissed.current.has(key)) return
       if (tutorRun || Date.now() - lastTutorAt < tutorCooldownMs[density]) {
         waiting = { key, context }
         if (!tutorRun) retryWhenCool()
@@ -168,27 +199,32 @@ export function useNoteCompanion(editor: Editor | null, options: Options) {
       tutorRun = controller
       const at = Date.now()
       try {
-        const list = await sources(controller.signal)
-        const ranked = list.length
-          ? await rank({ query: key, candidates: candidatesOf(list), limit: 5 }, controller.signal)
-          : { results: [] }
-        const notes = live.current.earlierNotes
-        const earlier = notes.length
-          ? await rank(
-              { query: key, candidates: noteCandidatesOf(notes.slice(-200)), limit: 2 },
-              controller.signal,
-            )
-          : { results: [] }
+        // Passages, earlier notes and the page structure are gathered at once.
+        const notes = live.current.earlierNotes.slice(-EARLIER_NOTES_COMPARED)
+        // Suggestions may draw on any page, not only the pages around the one in view.
+        const listed = paperSourceCandidates(documentId, pageCount, controller.signal)
+        const [list, ranked, earlier, ast] = await Promise.all([
+          listed,
+          listed.then(
+            (found): Promise<Ranked> =>
+              found.length
+                ? rank({ query: key, candidates: candidatesOf(found), limit: 8 }, controller.signal)
+                : Promise.resolve(NOTHING_RANKED),
+          ),
+          notes.length
+            ? rank({ query: key, candidates: noteCandidatesOf(notes), limit: 2 }, controller.signal)
+            : Promise.resolve(NOTHING_RANKED),
+          waitForDocumentAst(documentId, AST_WAIT_MS, controller.signal),
+        ])
         const earlierMatches = earlier.results
           .filter((result) => result.score >= EARLIER_NOTE_MINIMUM)
           .flatMap((result) => notes.filter((note) => note.id === result.id))
-        const ast = await waitForDocumentAst(documentId, AST_WAIT_MS, controller.signal)
         const pageTexts = ast ? pageTextsWithParsedPages(ast) : []
         let streamed = ""
         const request = noteTutorRequest({
           paragraph: key,
           earlierLines: context,
-          passages: relatedSources(ranked.results, list),
+          passages: relatedSources(ranked.results, list, SUGGESTION_PASSAGES),
           earlierNotes: earlierMatches,
           page: live.current.currentPage,
         })
@@ -250,10 +286,17 @@ export function useNoteCompanion(editor: Editor | null, options: Options) {
       window.clearTimeout(retryTimer)
       matchRun?.abort()
       tutorRun?.abort()
+      window.clearTimeout(warmTimer)
+      warm.abort()
     }
   }, [editor, density, documentId, pageCount, rank])
 
   /** The match only counts while the reader is still in the sentence it was made for. */
   const liveMatch = match && match.key === currentKey ? match : null
-  return { match: liveMatch, tutors, failed }
+  /** Drops a remark; the paragraph it answered is not answered again. */
+  const dismiss = useCallback((key: string): void => {
+    dismissed.current.add(key)
+    setTutors((current) => current.filter((item) => item.key !== key))
+  }, [])
+  return { match: liveMatch, tutors, failed, dismiss }
 }

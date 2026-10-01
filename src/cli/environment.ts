@@ -84,6 +84,26 @@ export function startOcrInstallInBackground(
   return log
 }
 
+/**
+ * Starts fetching the note's local source-matching model (EmbeddingGemma, about 300 MB) detached
+ * from this terminal; the app picks it up from the data folder. Returns its log path.
+ */
+export function startMeaningModelFetchInBackground(home = homedir()): string {
+  const log = join(home, ".ohmypaper", "meaning-model-install.log")
+  mkdirSync(dirname(log), { recursive: true })
+  const output = openSync(log, "w")
+  try {
+    spawn(
+      join(sourceRoot, "node_modules", ".bin", "tsx"),
+      [join(sourceRoot, "scripts", "fetch-meaning-model.ts")],
+      { detached: true, stdio: ["ignore", output, output], env: process.env, cwd: sourceRoot },
+    ).unref()
+  } finally {
+    closeSync(output)
+  }
+  return log
+}
+
 /** Remembers a "no" to the engine in the wizard, so updates and starts do not install it. */
 export function recordOcrDeclined(home = homedir()): void {
   const { declined } = paddleInstallPaths(home)
