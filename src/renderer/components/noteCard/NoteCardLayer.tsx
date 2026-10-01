@@ -1,17 +1,19 @@
 import { NotebookPen, X } from "lucide-react"
 import { type JSX, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
 import { useTranslator } from "../../lib/locale"
 import { NOTE_CARD_MAX_CHARACTERS, type NoteCardTarget } from "../../lib/noteCard"
 import type { NoteCardState } from "../../lib/useNoteCard"
 import { noteMessages } from "../../messages/note"
-import { useCardPosition } from "./useCardPosition"
+import { useCardPlacement } from "./useCardPlacement"
 
 const APPLE = /Mac|iPhone|iPad/u.test(globalThis.navigator?.platform ?? "")
 const SAVE_KEYS = APPLE ? ["⌘", "↵"] : ["Ctrl", "↵"]
 
 /**
- * The note card, floating over whichever screen is open, and the short confirmation after it
- * is added to a note. Reading and scrolling go on underneath while it is open.
+ * The note card and the short confirmation after it is added to a note. On a paper the card is
+ * pinned to the board where it opened and scrolls with the pages; elsewhere it floats on the
+ * screen. It stays faint while the reader is elsewhere and comes forward when pressed.
  */
 export function NoteCardLayer({
   state,
@@ -23,8 +25,8 @@ export function NoteCardLayer({
   const t = useTranslator(noteMessages)
   const card = useRef<HTMLElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
-  const position = useCardPosition(card)
   const { openTarget, saved, focusRequest } = state
+  const position = useCardPlacement(openTarget !== null, openTarget?.kind === "paper")
 
   // Focus returns to where the reader was once the card closes.
   const returnFocus = useRef<HTMLElement | null>(null)
@@ -41,17 +43,18 @@ export function NoteCardLayer({
     }
   }, [isOpen])
   // A card kept from last time continues where its text ends.
+  const placed = position.placed
   useEffect(() => {
     const field = input.current
-    if (!isOpen || focusRequest === 0 || !field) return
-    field.focus()
+    if (!isOpen || !placed || focusRequest === 0 || !field) return
+    field.focus({ preventScroll: true })
     field.setSelectionRange(field.value.length, field.value.length)
-  }, [isOpen, focusRequest])
+  }, [isOpen, placed, focusRequest])
 
   if (!openTarget) {
     if (!saved) return null
     return (
-      <div className="note-card-saved" role="status" style={position.style}>
+      <div className="note-card-saved" role="status">
         <span>
           {saved.target.kind === "paper"
             ? t("card.savedPaper", { page: saved.target.page })
@@ -70,12 +73,26 @@ export function NoteCardLayer({
     )
   }
 
+  if (!placed) return null
   const destination =
     openTarget.kind === "paper"
       ? t("card.paperTarget", { page: openTarget.page, title: openTarget.title })
       : t("card.looseTarget")
-  return (
-    <section ref={card} className="note-card" aria-label={t("card.label")} style={position.style}>
+  const element = (
+    <section
+      ref={card}
+      className="note-card"
+      data-placement={position.world ? "board" : position.style ? "point" : "corner"}
+      aria-label={t("card.label")}
+      style={position.style}
+      onPointerDown={(event) => {
+        // Pressing anywhere on the card brings it forward and back to writing.
+        event.stopPropagation()
+        if (event.target instanceof Element && event.target.closest("button, textarea")) return
+        input.current?.focus({ preventScroll: true })
+      }}
+      onWheel={(event) => event.stopPropagation()}
+    >
       <header className="note-card-head" {...position.handle}>
         <NotebookPen size={15} aria-hidden="true" />
         <span className="note-card-target" title={destination}>
@@ -101,7 +118,7 @@ export function NoteCardLayer({
         onKeyDown={(event) => {
           if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
             event.preventDefault()
-            state.save()
+            state.save(position.pin)
           } else if (event.key === "Escape") {
             event.preventDefault()
             event.stopPropagation()
@@ -120,15 +137,8 @@ export function NoteCardLayer({
             <kbd key={key}>{key}</kbd>
           ))}
         </span>
-        <button
-          type="button"
-          className="primary-action"
-          disabled={!state.draft.trim()}
-          onClick={state.save}
-        >
-          {t("card.save")}
-        </button>
       </footer>
     </section>
   )
+  return position.world ? createPortal(element, position.world) : element
 }

@@ -8,6 +8,8 @@ import { LibraryWorkspace } from "./components/LibraryWorkspace"
 import { NoteCardOverlays } from "./components/noteCard/NoteCardOverlays"
 import { ResearchNavigation } from "./components/ResearchNavigation"
 import { WorkspaceSections } from "./components/WorkspaceSections"
+import { createPinnedNoteCard } from "./lib/board"
+import { useLocale } from "./lib/locale"
 import { noteCardTarget } from "./lib/noteCard"
 import { appShellStyle } from "./lib/uiFontScale"
 import { useAppWorkspace } from "./lib/useAppWorkspace"
@@ -43,6 +45,7 @@ export function App({
   readonly hostedCredentials?: HostedCredentialSettingsProps | undefined
 }): JSX.Element {
   const app = useAppWorkspace()
+  const { locale } = useLocale()
   const workspace = app.workspace
   const {
     preparation,
@@ -96,6 +99,13 @@ export function App({
   const noteCard = useNoteCard(
     noteCardTarget(readerMode && !libraryView ? activeDocument : null, currentPage),
     app.appendToNote,
+    (target, text, at) => {
+      if (target.documentId !== app.activeDocument?.id) return
+      app.updateCards([
+        ...app.activeCards,
+        createPinnedNoteCard(target.documentId, target.page, at, text, locale),
+      ])
+    },
     Boolean(workspace) && provider.configured,
   )
 

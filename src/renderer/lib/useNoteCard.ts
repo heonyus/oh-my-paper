@@ -34,9 +34,18 @@ export type NoteCardSaved = { readonly id: number; readonly target: NoteCardTarg
  * paper at its page, or the loose note). Closing keeps what was written for next time; saving
  * appends it to that note and leaves a short confirmation.
  */
+/** A board point a card added on a paper stays at, as a card the reader can keep reading. */
+export type NoteCardPin = { readonly x: number; readonly y: number }
+
 export function useNoteCard(
   target: NoteCardTarget,
   onAppend: (noteId: DocumentId, card: string) => boolean,
+  /** Leaves an added card on the paper's board where it was written. */
+  onPin: (
+    target: NoteCardTarget & { readonly kind: "paper" },
+    text: string,
+    at: NoteCardPin,
+  ) => void,
   /** False while the app has nothing to write into yet (loading, first-run screens). */
   enabled = true,
 ) {
@@ -62,17 +71,22 @@ export function useNoteCard(
     setFull(false)
     storeDraft(next)
   }, [])
-  const save = useCallback((): void => {
-    const text = draft.trim()
-    if (!openTarget || !text) return
-    if (!onAppend(noteCardNoteId(openTarget), noteCardMarkdown(text, openTarget))) {
-      setFull(true)
-      return
-    }
-    setDraft("")
-    setOpenTarget(null)
-    setSaved({ id: Date.now(), target: openTarget })
-  }, [draft, openTarget, onAppend, setDraft])
+  const save = useCallback(
+    (at: NoteCardPin | null): void => {
+      const text = draft.trim()
+      if (!openTarget || !text) return
+      if (!onAppend(noteCardNoteId(openTarget), noteCardMarkdown(text, openTarget))) {
+        setFull(true)
+        return
+      }
+      setDraft("")
+      setOpenTarget(null)
+      // On a paper the card stays where it was written; elsewhere a short confirmation shows.
+      if (openTarget.kind === "paper" && at) onPin(openTarget, text, at)
+      else setSaved({ id: Date.now(), target: openTarget })
+    },
+    [draft, openTarget, onAppend, onPin, setDraft],
+  )
   const dismissSaved = useCallback(() => setSaved(null), [])
 
   useEffect(() => {

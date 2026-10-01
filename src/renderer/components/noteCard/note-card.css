@@ -6,7 +6,28 @@
   bottom: 24px;
   z-index: 50;
 }
+/* On a paper the card is pinned to the board and moves with the pages. */
+.note-card[data-placement="board"] {
+  position: absolute;
+  right: auto;
+  bottom: auto;
+  z-index: 6;
+  max-height: none;
+}
+/* A card placed at the pointer floats there instead of in the corner. */
+.note-card[data-placement="point"] {
+  right: auto;
+  bottom: auto;
+}
+/* Faint while the reader is elsewhere; pressing it brings it forward. */
+.note-card:not(:focus-within) {
+  opacity: 0.5;
+}
+.note-card:not(:focus-within):hover {
+  opacity: 0.8;
+}
 .note-card {
+  transition: opacity 120ms ease;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto auto;
   width: min(360px, calc(100vw - 32px));

@@ -5,7 +5,8 @@ import { Topbar } from "../renderer/components/AppChrome"
 import { AppStatusOverlays } from "../renderer/components/AppStatusOverlays"
 import { LibraryHome } from "../renderer/components/LibraryHome"
 import { NoteCardOverlays } from "../renderer/components/noteCard/NoteCardOverlays"
-import { useTranslator } from "../renderer/lib/locale"
+import { createPinnedNoteCard } from "../renderer/lib/board"
+import { useLocale, useTranslator } from "../renderer/lib/locale"
 import { noteCardTarget } from "../renderer/lib/noteCard"
 import { prefetchWhenIdle } from "../renderer/lib/prefetchWhenIdle"
 import { appShellStyle } from "../renderer/lib/uiFontScale"
@@ -41,6 +42,7 @@ export function ReaderApp(): JSX.Element {
   const app = useAppWorkspace()
   const t = useTranslator(webMessages)
   const tNote = useTranslator(noteMessages)
+  const { locale } = useLocale()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [researchOpen, setResearchOpen] = useState(false)
   const [tipsOpen, setTipsOpen] = useState(false)
@@ -64,6 +66,13 @@ export function ReaderApp(): JSX.Element {
   const noteCard = useNoteCard(
     noteCardTarget(!researchOpen && !app.libraryView ? app.activeDocument : null, app.currentPage),
     app.appendToNote,
+    (target, text, at) => {
+      if (target.documentId !== app.activeDocument?.id) return
+      app.updateCards([
+        ...app.activeCards,
+        createPinnedNoteCard(target.documentId, target.page, at, text, locale),
+      ])
+    },
     Boolean(workspace) && credentialsReady && welcome.state === "seen",
   )
 
