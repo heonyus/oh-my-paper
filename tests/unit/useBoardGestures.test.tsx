@@ -155,6 +155,26 @@ describe("board pan gestures", () => {
     fireEvent.pointerUp(board, { pointerId: 1 })
   })
 
+  it("scrolls the board under a note left on it, but not under other cards", () => {
+    const { container } = render(<Harness />)
+    const board = screen.getByTestId("board")
+    const note = document.createElement("div")
+    note.className = "board-card"
+    note.dataset["kind"] = "sticky"
+    const explanation = document.createElement("div")
+    explanation.className = "board-card"
+    explanation.dataset["kind"] = "explanation"
+    board.append(note, explanation)
+
+    const overExplanation = new WheelEvent("wheel", { deltaY: 40, bubbles: true, cancelable: true })
+    explanation.dispatchEvent(overExplanation)
+    expect(overExplanation.defaultPrevented).toBe(false)
+    const overNote = new WheelEvent("wheel", { deltaY: 40, bubbles: true, cancelable: true })
+    note.dispatchEvent(overNote)
+    expect(overNote.defaultPrevented).toBe(true)
+    expect(container).toBeTruthy()
+  })
+
   it("preserves native text selection when the pointerup was not a pan", () => {
     render(<Harness />)
     const page = screen.getByTestId("page")
