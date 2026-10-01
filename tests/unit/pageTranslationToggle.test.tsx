@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import {
   closePageTranslation,
   openPageTranslation,
@@ -46,5 +46,29 @@ describe("page translation session", () => {
     expect(result.current.openPages).toEqual([1, 2, 4, 5])
     unmount()
     act(() => setPageTranslationDocument(cleanupDocument))
+  })
+
+  it("reopens a paper with the translations it had open, without automatic translation", () => {
+    const stored = new Map<string, string>()
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value),
+    })
+    const paper = documentIdSchema.parse("4444444444444444")
+    const other = documentIdSchema.parse("5555555555555555")
+    const { result, unmount } = renderHook(() => usePageTranslationSession())
+    act(() => {
+      setPageTranslationDocument(paper)
+      toggleAutomaticPageTranslation()
+      openPageTranslation(3)
+      openPageTranslation(1)
+    })
+    act(() => setPageTranslationDocument(other))
+    expect(result.current.openPages).toEqual([])
+
+    act(() => setPageTranslationDocument(paper))
+    expect(result.current).toMatchObject({ auto: false, documentId: paper, openPages: [1, 3] })
+    unmount()
+    vi.unstubAllGlobals()
   })
 })

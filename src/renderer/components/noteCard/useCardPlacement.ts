@@ -22,14 +22,18 @@ type Drag = {
 }
 
 /**
- * Where an open card sits: placed where the pointer last was when it opens, pinned to the board
- * on a paper, and moved by dragging its header.
+ * Where an open card sits. It first follows the pointer, faint, and a click puts it down there
+ * (pinned to the board on a paper); after that its header drags it. `Esc` while it follows
+ * calls `onCancel`.
  */
-export function useCardPlacement(open: boolean, onPaper: boolean) {
+export function useCardPlacement(open: boolean, onPaper: boolean, onCancel: () => void) {
   const pointer = useRef<ScreenPoint | null>(null)
   const drag = useRef<Drag | null>(null)
   const [placement, setPlacement] = useState<NoteCardPlacement | null>(null)
+  const [following, setFollowing] = useState(false)
   const [world, setWorld] = useState<HTMLElement | null>(null)
+  const cancel = useRef(onCancel)
+  cancel.current = onCancel
 
   useEffect(() => {
     const track = (event: PointerEvent): void => {
@@ -44,15 +48,56 @@ export function useCardPlacement(open: boolean, onPaper: boolean) {
     if (!open) {
       setPlacement(null)
       setWorld(null)
+      setFollowing(false)
       return
     }
     const next = noteCardPlacement(onPaper, pointer.current)
     setPlacement(next)
     setWorld(next.kind === "board" ? boardWorld() : null)
+    setFollowing(true)
   }, [open, onPaper])
 
+  useEffect(() => {
+    if (!following) return
+    const move = (event: PointerEvent): void => {
+      setPlacement(noteCardPlacement(onPaper, { x: event.clientX, y: event.clientY }, true))
+    }
+    // Capture, so the click that puts the card down does nothing underneath it.
+    let putDown = false
+    const put = (event: PointerEvent): void => {
+      if (event.button !== 0) return
+      putDown = true
+      event.preventDefault()
+      event.stopPropagation()
+      setPlacement(noteCardPlacement(onPaper, { x: event.clientX, y: event.clientY }, true))
+      setFollowing(false)
+    }
+    const swallowClick = (event: MouseEvent): void => {
+      event.preventDefault()
+      event.stopPropagation()
+      window.removeEventListener("click", swallowClick, true)
+    }
+    const key = (event: KeyboardEvent): void => {
+      if (event.key !== "Escape") return
+      event.preventDefault()
+      event.stopPropagation()
+      cancel.current()
+    }
+    window.addEventListener("pointermove", move, { passive: true })
+    window.addEventListener("pointerdown", put, true)
+    window.addEventListener("click", swallowClick, true)
+    window.addEventListener("keydown", key, true)
+    return () => {
+      window.removeEventListener("pointermove", move)
+      window.removeEventListener("pointerdown", put, true)
+      window.removeEventListener("keydown", key, true)
+      // The click that ends the putting-down press is swallowed once and removes itself.
+      if (!putDown) window.removeEventListener("click", swallowClick, true)
+    }
+  }, [following, onPaper])
+
   function onPointerDown(event: ReactPointerEvent<HTMLElement>): void {
-    if (event.button !== 0 || !placement) return
+    if (event.button !== 0 || !placement || following) return
     if (event.target instanceof Element && event.target.closest("button")) return
     event.preventDefault()
     drag.current = {
@@ -88,7 +133,9 @@ export function useCardPlacement(open: boolean, onPaper: boolean) {
         : undefined
 
   return {
-    placed: placement !== null,
+    /** Put down where it stays; until then it follows the pointer. */
+    placed: placement !== null && !following,
+    following,
     /** The board point the card sits at, when it is pinned to a board. */
     pin: placement?.kind === "board" && pinnedTo ? { x: placement.x, y: placement.y } : null,
     /** The board to pin the card to, or null when it floats on the screen. */

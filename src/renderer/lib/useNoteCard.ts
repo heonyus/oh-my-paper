@@ -7,32 +7,14 @@ import {
   noteCardNoteId,
 } from "./noteCard"
 
-const DRAFT_KEY = "ohmypaper:note-card-draft"
 const SAVED_VISIBLE_MS = 4_000
-
-function storedDraft(): string {
-  try {
-    return window.localStorage.getItem(DRAFT_KEY) ?? ""
-  } catch {
-    return ""
-  }
-}
-
-function storeDraft(draft: string): void {
-  try {
-    if (draft) window.localStorage.setItem(DRAFT_KEY, draft)
-    else window.localStorage.removeItem(DRAFT_KEY)
-  } catch {
-    // Without storage an unsaved card lasts until the page is closed.
-  }
-}
 
 export type NoteCardSaved = { readonly id: number; readonly target: NoteCardTarget }
 
 /**
  * The note card: `N` or `⌥N` opens it on any screen, aimed at whatever is in view (the open
- * paper at its page, or the loose note). Closing keeps what was written for next time; saving
- * appends it to that note and leaves a short confirmation.
+ * paper at its page, or the loose note). Every card starts empty and closing discards it; saving
+ * appends it to that note.
  */
 /** A board point a card added on a paper stays at, as a card the reader can keep reading. */
 export type NoteCardPin = { readonly x: number; readonly y: number }
@@ -50,7 +32,7 @@ export function useNoteCard(
   enabled = true,
 ) {
   const [openTarget, setOpenTarget] = useState<NoteCardTarget | null>(null)
-  const [draft, setDraftState] = useState(storedDraft)
+  const [draft, setDraftState] = useState("")
   const [full, setFull] = useState(false)
   const [focusRequest, setFocusRequest] = useState(0)
   const [saved, setSaved] = useState<NoteCardSaved | null>(null)
@@ -58,18 +40,22 @@ export function useNoteCard(
   targetRef.current = target
 
   const open = useCallback((): void => {
-    setOpenTarget((current) => current ?? targetRef.current)
+    setOpenTarget((current) => {
+      // Each card starts empty; a second N only brings the open one back to writing.
+      if (current === null) setDraftState("")
+      return current ?? targetRef.current
+    })
     setFocusRequest((request) => request + 1)
     setSaved(null)
   }, [])
   const close = useCallback((): void => {
     setOpenTarget(null)
+    setDraftState("")
     setFull(false)
   }, [])
   const setDraft = useCallback((next: string): void => {
     setDraftState(next)
     setFull(false)
-    storeDraft(next)
   }, [])
   const save = useCallback(
     (at: NoteCardPin | null): void => {
