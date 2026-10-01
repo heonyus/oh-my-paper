@@ -1,6 +1,7 @@
 import type { Node as ProseNode } from "@tiptap/pm/model"
 import type { Editor } from "@tiptap/react"
-import { type JSX, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { type JSX, useEffect, useState } from "react"
+import { createPortal } from "react-dom"
 import type { SourceCitation } from "../../lib/chatCitations"
 import { useTranslator } from "../../lib/locale"
 import { marginSnippet } from "../../lib/marginSnippet"
@@ -9,13 +10,15 @@ import type { SourceMatch, TutorEntry } from "../../lib/useNoteCompanion"
 import { noteMessages } from "../../messages/note"
 import { MarkdownContent } from "../MarkdownContent"
 import { evidenceQuote } from "./evidenceNode"
+import { type MarginSlotRegistry, setMarginSlots } from "./marginSlots"
 
-const CARD_GAP = 8
 const MIN_EARLIER_KEY = 12
 
 type Placement = {
+  /** Where the block starts, and where its slot sits, right after it. */
   readonly pos: number
-  readonly top: number
+  readonly end: number
+  readonly key: string
   readonly source: SourceMatch | null
   readonly tutor: TutorEntry | null
   /** The block has grown past the text the tutor answered. */
@@ -49,9 +52,7 @@ function placements(
   editor: Editor,
   match: SourceMatch | null,
   tutors: readonly TutorEntry[],
-  column: HTMLElement,
 ): readonly Placement[] {
-  const origin = column.getBoundingClientRect().top
   const result: Placement[] = []
   editor.state.doc.descendants((node, pos) => {
     if (!node.isTextblock) return true
@@ -59,11 +60,10 @@ function placements(
     const source = match && match.key === text ? match : null
     const found = tutorFor(text, tutors)
     if (!source && !found) return false
-    const dom = editor.view.nodeDOM(pos)
-    if (!(dom instanceof HTMLElement)) return false
     result.push({
       pos,
-      top: dom.getBoundingClientRect().top - origin,
+      end: pos + node.nodeSize,
+      key: `slot:${found?.tutor.key ?? source?.key ?? pos}`,
       source,
       tutor: found?.tutor ?? null,
       earlier: found?.earlier ?? false,
@@ -155,11 +155,12 @@ function TutorCard({
 }
 
 /**
- * The margin beside the note: the source passage of the sentence being written, and the tutor's
- * remarks on each paragraph. Cards sit beside their block and never take focus.
+ * The note's margin: the source passage of the sentence being written, and the tutor's remarks
+ * on each paragraph, each shown right under its block. Cards never take focus.
  */
 export function MarginColumn({
   editor,
+  slots,
   match,
   tutors,
   onAttach,
@@ -167,17 +168,14 @@ export function MarginColumn({
   onCitation,
 }: {
   readonly editor: Editor | null
+  readonly slots: MarginSlotRegistry
   readonly match: SourceMatch | null
   readonly tutors: readonly TutorEntry[]
   readonly onAttach: (pos: number, source: ScoredSource) => void
   readonly onOpen: (page: number, text: string) => void
   readonly onCitation: (citation: SourceCitation) => void
 }): JSX.Element {
-  const t = useTranslator(noteMessages)
-  const column = useRef<HTMLElement>(null)
-  const cards = useRef(new Map<number, HTMLElement>())
   const [layout, setLayout] = useState<readonly Placement[]>([])
-  const [tops, setTops] = useState<ReadonlyMap<number, number>>(() => new Map())
   const [opened, setOpened] = useState<string | null>(null)
   const latestTutor = tutors.reduce<TutorEntry | null>(
     (latest, tutor) => (!latest || tutor.at > latest.at ? tutor : latest),
@@ -186,49 +184,36 @@ export function MarginColumn({
 
   useEffect(() => {
     if (!editor) return
-    let frame = 0
-    const measure = (): void => {
-      window.cancelAnimationFrame(frame)
-      frame = window.requestAnimationFrame(() => {
-        if (column.current) setLayout(placements(editor, match, tutors, column.current))
-      })
+    let placed = ""
+    const place = (): void => {
+      const next = placements(editor, match, tutors)
+      const signature = next.map((item) => `${item.key}@${item.end}`).join("|")
+      setLayout(next)
+      if (signature === placed) return
+      placed = signature
+      slots.keep(new Set(next.map((item) => item.key)))
+      editor.view.dispatch(
+        setMarginSlots(
+          editor.state.tr,
+          next.map((item) => ({ key: item.key, pos: item.end })),
+        ),
+      )
     }
-    measure()
-    editor.on("update", measure)
-    window.addEventListener("resize", measure)
+    place()
+    editor.on("update", place)
     return () => {
-      window.cancelAnimationFrame(frame)
-      editor.off("update", measure)
-      window.removeEventListener("resize", measure)
+      editor.off("update", place)
     }
-  }, [editor, match, tutors])
-
-  useLayoutEffect(() => {
-    const next = new Map<number, number>()
-    let bottom = Number.NEGATIVE_INFINITY
-    for (const placement of layout) {
-      const top = Math.max(placement.top, bottom + CARD_GAP)
-      next.set(placement.pos, top)
-      bottom = top + (cards.current.get(placement.pos)?.offsetHeight ?? 0)
-    }
-    setTops(next)
-  }, [layout])
+  }, [editor, match, tutors, slots])
 
   return (
-    <aside ref={column} className="note-margin" aria-label={t("margin.label")}>
+    <>
       {layout.map((placement) => {
         const { source, tutor } = placement
-        return (
-          <div
-            key={placement.pos}
-            ref={(element) => {
-              if (element) cards.current.set(placement.pos, element)
-              else cards.current.delete(placement.pos)
-            }}
-            className="note-margin-group"
-            data-earlier={placement.earlier}
-            style={{ top: tops.get(placement.pos) ?? placement.top }}
-          >
+        const target = slots.elements.get(placement.key)
+        if (!target) return null
+        return createPortal(
+          <div className="note-margin-group" data-earlier={placement.earlier}>
             {source ? (
               <SourceCard
                 source={source.source}
@@ -246,9 +231,11 @@ export function MarginColumn({
                 onCitation={onCitation}
               />
             ) : null}
-          </div>
+          </div>,
+          target,
+          placement.key,
         )
       })}
-    </aside>
+    </>
   )
 }

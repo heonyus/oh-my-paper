@@ -156,6 +156,24 @@ describe("ReaderNotePane", () => {
     ).toBeVisible()
     expect(screen.queryByText(/왜 그럴까요/u)).not.toBeInTheDocument()
     expect(onAiRequest).toHaveBeenCalledOnce()
+    // The remark sits in the note right under the paragraph it answers.
+    const slot = screen.getByText(/짚은 방향이 맞아요/u).closest(".note-inline-slot")
+    expect(slot?.previousElementSibling).toHaveTextContent(
+      "사람들은 번역이 보이는 쪽을 더 좋아했다.",
+    )
+  })
+
+  it("answers a note that never ends like a sentence once typing pauses", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const onAiRequest = vi.fn(async () => "그 조건은 논문 2쪽에 나옵니다.")
+    renderPane(onAiRequest)
+    const editor = editorOnPage()
+
+    editor.commands.setContent("<p>한칸의 grid가 5분에서 1시간으로 늘어난다면</p>")
+    editor.commands.setTextSelection(editor.state.doc.content.size - 1)
+    await vi.advanceTimersByTimeAsync(2_000)
+
+    await waitFor(() => expect(onAiRequest).toHaveBeenCalledOnce())
   })
 
   it("answers a paragraph finished during the tutor's wait once the wait ends", async () => {

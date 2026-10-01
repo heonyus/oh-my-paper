@@ -152,8 +152,11 @@ the paragraph being written.
     paper. It never asks questions, never rewrites or completes the reader's text, and uses only
     the supplied passages and notes. Sentences ending in a question mark and sentences whose
     `[[p.N | quote]]` is not on that page are removed before they show; while streaming, only
-    finished sentences that pass appear. One tutor reply per paragraph; `보통` waits 20 s between
-    replies, `적극적` 5 s and also answers settled sentences. The latest paragraph that settles
+    finished sentences that pass appear. One tutor reply per paragraph text; since 2026-10-01 a pause in typing
+    (1.5 s at `보통`, 0.8 s at `적극적`, 0.6 s after a finished sentence) is enough, because notes are
+    often fragments that never end like a sentence, and replies are at least 8 s (`보통`) or 3 s
+    (`적극적`) apart. The `원문` card and the tutor's remarks show inside the note, right under the
+    block they answer (no side column, no footer). The latest paragraph that settles
     during the wait gets its reply when the wait ends, if it is still in the note. The newest reply is open, older
     ones fold. Tutor text never enters the note; there is no copy or insert action for it.
   - Privacy: embeddings stay local. While the control is `보통` or `적극적`, the tutor sends the

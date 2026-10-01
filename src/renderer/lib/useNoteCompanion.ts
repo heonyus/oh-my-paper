@@ -46,13 +46,19 @@ const MIN_TUTOR_CHARACTERS = 20
 const MAX_TUTOR_ENTRIES = 30
 const EARLIER_NOTE_MINIMUM = 0.5
 const AST_WAIT_MS = 5_000
+/**
+ * How long the reader rests before the tutor answers. Notes are often fragments ("…다면", a list
+ * item) that never end like a sentence, so a pause in typing is enough; a finished sentence is
+ * answered sooner.
+ */
 const tutorPauseMs: Readonly<Record<Exclude<CompanionDensity, "quiet">, number>> = {
-  normal: 3_000,
-  active: 1_500,
+  normal: 1_500,
+  active: 800,
 }
+const TUTOR_AFTER_SENTENCE_MS = 600
 const tutorCooldownMs: Readonly<Record<Exclude<CompanionDensity, "quiet">, number>> = {
-  normal: 20_000,
-  active: 5_000,
+  normal: 8_000,
+  active: 3_000,
 }
 
 type Options = {
@@ -227,10 +233,10 @@ export function useNoteCompanion(editor: Editor | null, options: Options) {
         () => void runMatch(key),
         settled ? MATCH_AFTER_SENTENCE_MS : MATCH_AFTER_PAUSE_MS,
       )
-      if (settled && key.length >= MIN_TUTOR_CHARACTERS) {
+      if (key.length >= MIN_TUTOR_CHARACTERS) {
         tutorTimer = window.setTimeout(
           () => void runTutor(key, earlierLines(editor, pos)),
-          tutorPauseMs[density],
+          settled ? TUTOR_AFTER_SENTENCE_MS : tutorPauseMs[density],
         )
       }
     }

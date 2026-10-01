@@ -45,7 +45,7 @@
 }
 .note-sheet {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 232px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
   min-height: 100%;
   padding: 28px 20px 120px 40px;
@@ -197,16 +197,17 @@
   color: var(--ink-muted);
   font-size: var(--type-compact-size);
 }
-.note-margin {
-  position: relative;
-  min-width: 0;
+/* The margin's cards sit in the note right under the block they answer. */
+.note-inline-slot {
+  margin: 6px 0 14px;
+  user-select: none;
+}
+.note-inline-slot:empty {
+  display: none;
 }
 .note-margin-group {
-  position: absolute;
-  inset-inline: 0;
   display: grid;
   gap: 6px;
-  transition: top 140ms ease;
 }
 .note-margin-group[data-earlier="true"] {
   opacity: 0.6;
@@ -267,13 +268,6 @@
   color: var(--ink-muted);
   font-size: var(--type-compact-size);
 }
-@media (prefers-reduced-motion: reduce) {
-  .note-margin-group {
-    transition: none;
-  }
-}
-/* In a narrow sidebar the margin sits at the foot of the note, showing what answers the
-   paragraph being written; earlier answers stay folded away. */
 @container note-pane (max-width: 560px) {
   .note-pane-head {
     padding: 12px 12px 10px 20px;
@@ -284,27 +278,7 @@
     white-space: nowrap;
   }
   .note-sheet {
-    grid-template-columns: minmax(0, 1fr);
     padding: 20px 16px 24px 32px;
-  }
-  .note-margin {
-    position: sticky;
-    bottom: 0;
-    display: grid;
-    gap: 6px;
-    max-height: 45cqh;
-    overflow-y: auto;
-    padding-top: 8px;
-    background: var(--surface);
-  }
-  .note-margin:empty {
-    display: none;
-  }
-  .note-margin-group {
-    position: static;
-  }
-  .note-margin-group[data-earlier="true"] {
-    display: none;
   }
 }
 .note-pane-status {
