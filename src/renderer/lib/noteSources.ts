@@ -47,6 +47,26 @@ export async function noteSourceCandidates(
   return sources.slice(0, MAX_SOURCES)
 }
 
+const MAX_PAPER_SOURCES = 1_500
+
+/** Every parsed paragraph of the paper, for suggestions that may draw on any page. */
+export async function paperSourceCandidates(
+  documentId: DocumentId,
+  pageCount: number,
+  signal?: AbortSignal,
+): Promise<readonly NoteSource[]> {
+  const sources: NoteSource[] = []
+  for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
+    const page = await loadParsedDocumentPage(documentId, pageNumber, {
+      preparedOnly: true,
+      signal,
+    })
+    if (page) sources.push(...pageParagraphs(page))
+    if (sources.length >= MAX_PAPER_SOURCES) break
+  }
+  return sources.slice(0, MAX_PAPER_SOURCES)
+}
+
 /** What is embedded for a source: its section heading, when known, then its text. */
 export function sourceSearchText(source: NoteSource): string {
   return source.heading ? `${source.heading}: ${source.text}` : source.text

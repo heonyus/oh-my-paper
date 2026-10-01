@@ -17,7 +17,12 @@ import {
   DEFAULT_OPENROUTER_MODEL,
   OPENROUTER_MODEL_OPTIONS,
 } from "../shared/providerModels"
-import { checkEnvironment, recordOcrDeclined, startOcrInstallInBackground } from "./environment"
+import {
+  checkEnvironment,
+  recordOcrDeclined,
+  startMeaningModelFetchInBackground,
+  startOcrInstallInBackground,
+} from "./environment"
 import { chooseLanguage } from "./language"
 import { t } from "./messages"
 import { runApiKeyOnboarding } from "./onboardingApi"
@@ -138,6 +143,9 @@ async function reportEnvironment(
 
 async function offerOcr(report: Awaited<ReturnType<typeof checkEnvironment>>): Promise<void> {
   stepTitle(2, t("ocr.title"), t("ocr.detail"))
+  // The note's source-matching model is small and runs only here, so it is fetched alongside.
+  startMeaningModelFetchInBackground()
+  log.success(gray(t("ocr.meaningModel")))
   if (report.ocrReady) {
     log.success(t("ocr.ready"))
     return

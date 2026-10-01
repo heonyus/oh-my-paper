@@ -163,6 +163,29 @@ describe("ReaderNotePane", () => {
     )
   })
 
+  it("keeps a suggestion in the note when kept, labelled as AI, and folds or removes it", async () => {
+    const reply = "저자는 선호와 기억이 반대로 움직였다고 적었어요."
+    const onChange = vi.fn()
+    renderPane(
+      vi.fn(async () => reply),
+      onChange,
+    )
+    const editor = editorOnPage()
+    editor.commands.setContent("<p>사람들은 번역이 보이는 쪽을 더 좋아했다.</p><p></p>")
+    editor.commands.setTextSelection(3)
+    editor.commands.setTextSelection(editor.state.doc.content.size - 1)
+
+    expect(await screen.findByText(reply)).toBeVisible()
+    expect(screen.getByText("AI 추천")).toBeVisible()
+    await userEvent.click(screen.getByRole("button", { name: "접기" }))
+    expect(screen.getByRole("button", { name: "펼치기" })).toHaveAttribute("aria-expanded", "false")
+    await userEvent.click(screen.getByRole("button", { name: "펼치기" }))
+
+    await userEvent.click(screen.getByRole("button", { name: "고정" }))
+    expect(editor.getMarkdown()).toContain(`> **AI 추천** ${reply}`)
+    expect(screen.queryByRole("button", { name: "고정" })).not.toBeInTheDocument()
+  })
+
   it("answers a note that never ends like a sentence once typing pauses", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const onAiRequest = vi.fn(async () => "그 조건은 논문 2쪽에 나옵니다.")

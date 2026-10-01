@@ -40,6 +40,7 @@ const ko = {
   "ocr.ask": "설치할까요?",
   "ocr.askDetail": "{size} · AI를 연결하는 동안 백그라운드로 받아 둡니다",
   "ocr.skipped": "건너뛰었습니다 — 나중에 npm run setup:paddle-vl 로 설치할 수 있습니다",
+  "ocr.meaningModel": "노트 원문 매칭 모델(약 300MB)도 뒤에서 함께 받아 둘게요",
   "ocr.started": "문서 분석 엔진은 뒤에서 준비할게요 — 기다릴 필요 없이 바로 쓰면 됩니다",
   "ocr.startedHint": "궁금하면 oh-my-paper doctor",
 
@@ -269,6 +270,8 @@ const en: Readonly<Record<Key, string>> = {
   "ocr.ask": "Install it?",
   "ocr.askDetail": "{size} · downloads in the background while you connect AI",
   "ocr.skipped": "Skipped — install it later with npm run setup:paddle-vl",
+  "ocr.meaningModel":
+    "The note's source-matching model (about 300 MB) is fetched in the background too",
   "ocr.started":
     "The document engine will be set up in the background — no need to wait, start reading right away",
   "ocr.startedHint": "check on it with oh-my-paper doctor",
