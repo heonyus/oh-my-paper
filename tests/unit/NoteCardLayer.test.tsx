@@ -57,6 +57,8 @@ describe("note card", () => {
     render(<Harness target={onPage4} onAppend={onAppend} onOpenNote={onOpenNote} />)
 
     await userEvent.keyboard("n")
+    // The card follows the pointer until a click puts it down.
+    await userEvent.click(document.body)
     const card = screen.getByRole("region", { name: "노트 카드" })
     expect(card).toHaveTextContent("4쪽 · Attention Paper")
     const input = screen.getByRole("textbox", { name: "노트 카드 내용" })
@@ -84,6 +86,8 @@ describe("note card", () => {
     render(<Harness target={onPage4} onAppend={onAppend} onPin={onPin} />)
 
     await userEvent.keyboard("n")
+    // The card follows the pointer until a click puts it down.
+    await userEvent.click(document.body)
     expect(world).toContainElement(screen.getByRole("region", { name: "노트 카드" }))
     expect(screen.queryByRole("button", { name: "노트에 붙이기" })).not.toBeInTheDocument()
     await userEvent.keyboard("그 자리에 남는 카드{Meta>}{Enter}{/Meta}")
@@ -94,7 +98,7 @@ describe("note card", () => {
     viewport.remove()
   })
 
-  it("leaves typing alone on N, opens on ⌥N, and keeps the draft when closed", async () => {
+  it("leaves typing alone on N, opens on ⌥N, and starts every card empty", async () => {
     render(<Harness target={{ kind: "loose" }} onAppend={vi.fn(() => true)} />)
     const search = screen.getByRole("textbox", { name: "검색" })
 
@@ -104,23 +108,39 @@ describe("note card", () => {
     expect(screen.queryByRole("region", { name: "노트 카드" })).not.toBeInTheDocument()
 
     await userEvent.keyboard("{Alt>}n{/Alt}")
-    expect(screen.getByRole("region", { name: "노트 카드" })).toHaveTextContent("모아 둔 노트")
-    await userEvent.keyboard("떠오른 생각{Escape}")
+    const card = screen.getByRole("region", { name: "노트 카드" })
+    expect(card).toHaveTextContent("모아 둔 노트")
+    expect(card).toHaveAttribute("data-following", "true")
+    await userEvent.click(document.body)
+    expect(card).toHaveAttribute("data-following", "false")
+    expect(screen.getByRole("textbox", { name: "노트 카드 내용" })).toHaveFocus()
+
+    await userEvent.click(screen.getByRole("button", { name: "노트 카드 최소화" }))
+    expect(card).toHaveAttribute("data-minimized", "true")
+    await userEvent.click(screen.getByRole("button", { name: "노트 카드 펼치기" }))
+    await userEvent.type(screen.getByRole("textbox", { name: "노트 카드 내용" }), "떠오른 생각")
+    await userEvent.click(screen.getByRole("button", { name: "닫기" }))
     expect(screen.queryByRole("region", { name: "노트 카드" })).not.toBeInTheDocument()
-    expect(search).toHaveFocus()
 
     await userEvent.keyboard("{Alt>}n{/Alt}")
-    expect(screen.getByRole("textbox", { name: "노트 카드 내용" })).toHaveValue("떠오른 생각")
-    await userEvent.keyboard(" 이어서")
-    expect(screen.getByRole("textbox", { name: "노트 카드 내용" })).toHaveValue(
-      "떠오른 생각 이어서",
-    )
+    await userEvent.click(document.body)
+    expect(screen.getByRole("textbox", { name: "노트 카드 내용" })).toHaveValue("")
+  })
+
+  it("cancels a card that is still following the pointer on Esc", async () => {
+    render(<Harness target={{ kind: "loose" }} onAppend={vi.fn(() => true)} />)
+    await userEvent.keyboard("n")
+    expect(screen.getByRole("region", { name: "노트 카드" })).toBeInTheDocument()
+    await userEvent.keyboard("{Escape}")
+    expect(screen.queryByRole("region", { name: "노트 카드" })).not.toBeInTheDocument()
   })
 
   it("keeps the card open with its text when the note is full", async () => {
     render(<Harness target={onPage4} onAppend={vi.fn(() => false)} />)
 
     await userEvent.keyboard("n")
+    // The card follows the pointer until a click puts it down.
+    await userEvent.click(document.body)
     await userEvent.keyboard("한 줄 더")
     await userEvent.keyboard("{Meta>}{Enter}{/Meta}")
 

@@ -35,12 +35,14 @@ function inside(point: ScreenPoint, rect: DOMRect): boolean {
 export function noteCardPlacement(
   onPaper: boolean,
   pointer: ScreenPoint | null,
+  /** While the card follows the pointer it goes wherever the pointer is. */
+  following = false,
 ): NoteCardPlacement {
   const world = onPaper ? boardWorld() : null
   const viewport = world?.parentElement?.getBoundingClientRect()
   if (world && viewport) {
     const point =
-      pointer && inside(pointer, viewport)
+      pointer && (following || inside(pointer, viewport))
         ? pointer
         : { x: viewport.left + viewport.width / 2, y: viewport.top + viewport.height / 3 }
     const rect = world.getBoundingClientRect()

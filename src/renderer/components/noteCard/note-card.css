@@ -19,14 +19,16 @@
   right: auto;
   bottom: auto;
 }
-/* Faint while the reader is elsewhere; pressing it brings it forward. */
-.note-card:not(:focus-within) {
+/* While it follows the pointer it is faint and lets clicks through; a click puts it down. */
+.note-card[data-following="true"] {
   opacity: 0.5;
+  pointer-events: none;
 }
-.note-card:not(:focus-within):hover {
-  opacity: 0.8;
+.note-card[data-minimized="true"] > :not(.note-card-head) {
+  display: none;
 }
 .note-card {
+  pointer-events: auto;
   transition: opacity 120ms ease;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto auto;

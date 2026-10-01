@@ -1,5 +1,5 @@
-import { NotebookPen, X } from "lucide-react"
-import { type JSX, useEffect, useRef } from "react"
+import { Maximize2, Minus, NotebookPen, X } from "lucide-react"
+import { type JSX, useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { useTranslator } from "../../lib/locale"
 import { NOTE_CARD_MAX_CHARACTERS, type NoteCardTarget } from "../../lib/noteCard"
@@ -26,13 +26,15 @@ export function NoteCardLayer({
   const card = useRef<HTMLElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
   const { openTarget, saved, focusRequest } = state
-  const position = useCardPlacement(openTarget !== null, openTarget?.kind === "paper")
+  const position = useCardPlacement(openTarget !== null, openTarget?.kind === "paper", state.close)
+  const [minimized, setMinimized] = useState(false)
 
   // Focus returns to where the reader was once the card closes.
   const returnFocus = useRef<HTMLElement | null>(null)
   const isOpen = openTarget !== null
   useEffect(() => {
     if (!isOpen) return
+    setMinimized(false)
     returnFocus.current =
       document.activeElement instanceof HTMLElement &&
       !card.current?.contains(document.activeElement)
@@ -73,7 +75,7 @@ export function NoteCardLayer({
     )
   }
 
-  if (!placed) return null
+  if (!position.style && position.following) return null
   const destination =
     openTarget.kind === "paper"
       ? t("card.paperTarget", { page: openTarget.page, title: openTarget.title })
@@ -83,6 +85,8 @@ export function NoteCardLayer({
       ref={card}
       className="note-card"
       data-placement={position.world ? "board" : position.style ? "point" : "corner"}
+      data-following={position.following}
+      data-minimized={minimized}
       aria-label={t("card.label")}
       style={position.style}
       onPointerDown={(event) => {
@@ -98,6 +102,14 @@ export function NoteCardLayer({
         <span className="note-card-target" title={destination}>
           {destination}
         </span>
+        <button
+          type="button"
+          className="note-card-close"
+          aria-label={t(minimized ? "card.expand" : "card.minimize")}
+          onClick={() => setMinimized((value) => !value)}
+        >
+          {minimized ? <Maximize2 size={14} /> : <Minus size={15} />}
+        </button>
         <button
           type="button"
           className="note-card-close"

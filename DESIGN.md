@@ -6,13 +6,13 @@ The owner merged the board's sticky notes (`포스트잇`) into the reader's not
 place a reader's words go, the note, and one quick way to add to it, the note card.
 
 - Note card (`노트 카드`): `N` on any screen where text is not being typed, or `⌥N` (Alt+N)
-  even while typing, opens a small card of note paper (the `--note` surface the sticky notes
-  used) where the pointer is; the header's note button opens it too. On a paper the card is
-  pinned to the board at that point and scrolls and zooms with the pages (the middle of the board
-  when the pointer is elsewhere); on other screens it floats at the pointer. It is not modal:
-  reading, scrolling and selecting go on, the card stays faint (50%) while focus is elsewhere and
-  comes forward when pressed, and it can be dragged by its header. The header names where the card goes; `⌘↵`/`Ctrl+↵` adds it (there is no add button);
-  `Esc` or `닫기` closes it and keeps the unsent text for the next card (per browser). On a paper
+  even while typing, opens a new, empty card of note paper (the `--note` surface the sticky
+  notes used); the header's note button opens it too. The card first follows the pointer, faint
+  (50%) and letting clicks through; a click puts it down there (`Esc` cancels). On a paper it is
+  pinned to the board at that point and scrolls and zooms with the pages; on other screens it
+  floats there. It is not modal; its header drags it and holds minimize and close (closing
+  discards an unsent card). The header names where the card goes; `⌘↵`/`Ctrl+↵` adds it (there is no add button);
+  `Esc` or `닫기` closes it. On a paper
   the added card stays where it was written, as a card on the board in the note-paper style
   (its text is also in the note). Elsewhere a short status (`모아 둔 노트에 붙였어요`, `열기`)
   stays for a few seconds; `열기` opens that note.
@@ -29,6 +29,10 @@ place a reader's words go, the note, and one quick way to add to it, the note ca
 - Sticky notes are no longer made: the board's sticky tool, its `N` key and the research
   sidebar's `포스트잇` mode are gone. Sticky notes already on a board stay there, editable, and
   are listed with the memo cards.
+
+Page translations a paper had open reopen with it (2026-10-01): the open pages are kept per
+paper in this browser and come back from the translation cache. Automatic translation is not
+kept; its consent lasts only while the paper stays open.
 
 The research sidebar rail has three modes (2026-10-01), down from eight:
 

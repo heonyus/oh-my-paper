@@ -10,8 +10,46 @@ type PageTranslationSession = {
 let session: PageTranslationSession = { auto: false, documentId: null, openPages: [] }
 const listeners = new Set<() => void>()
 
+const STORAGE_PREFIX = "ohmypaper:page-translation:"
+
+/**
+ * The pages a paper had its translation open on, as the reader left them. Automatic translation
+ * is not kept: consent to it lasts only while the paper stays open.
+ */
+function storedSession(documentId: DocumentId): PageTranslationSession {
+  try {
+    const raw: unknown = JSON.parse(
+      window.localStorage.getItem(`${STORAGE_PREFIX}${documentId}`) ?? "null",
+    )
+    if (typeof raw !== "object" || raw === null) throw new Error("none")
+    const pages: unknown = Reflect.get(raw, "openPages")
+    return {
+      documentId,
+      auto: false,
+      openPages: Array.isArray(pages)
+        ? pages.filter((page): page is number => Number.isInteger(page) && page > 0)
+        : [],
+    }
+  } catch {
+    return { auto: false, documentId, openPages: [] }
+  }
+}
+
+function storeSession(next: PageTranslationSession): void {
+  if (!next.documentId) return
+  try {
+    window.localStorage.setItem(
+      `${STORAGE_PREFIX}${next.documentId}`,
+      JSON.stringify({ openPages: next.openPages }),
+    )
+  } catch {
+    // Without storage the pages reopen closed; their translations are still cached.
+  }
+}
+
 function publish(next: PageTranslationSession): void {
   session = next
+  storeSession(next)
   for (const listener of listeners) listener()
 }
 
@@ -27,7 +65,9 @@ export function usePageTranslationSession(): PageTranslationSession {
 
 export function setPageTranslationDocument(documentId: DocumentId): void {
   if (session.documentId === documentId) return
-  publish({ auto: false, documentId, openPages: [] })
+  // A paper reopens with the translations it had open, from their cache.
+  session = storedSession(documentId)
+  for (const listener of listeners) listener()
 }
 
 export function toggleAutomaticPageTranslation(): void {
