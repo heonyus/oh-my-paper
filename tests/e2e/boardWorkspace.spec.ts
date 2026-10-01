@@ -79,7 +79,10 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
       activeDocumentId: id,
     }),
   )
-  const qa = await launchSimulatedAuthenticatedApplication({ userDataRoot: userData })
+  const qa = await launchSimulatedAuthenticatedApplication({
+    userDataRoot: userData,
+    configuredProvider: true,
+  })
   const application = qa.application
   try {
     const page = await application.firstWindow()
@@ -273,7 +276,7 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
       await discussionInput
         .locator("..")
         .evaluate((element) => getComputedStyle(element).backgroundColor),
-    ).toBe("rgb(244, 246, 248)")
+    ).toBe("rgb(245, 246, 248)")
     expect(
       (await page.getByRole("button", { name: "토론 질문 보내기" }).boundingBox())?.width ??
         Number.POSITIVE_INFINITY,

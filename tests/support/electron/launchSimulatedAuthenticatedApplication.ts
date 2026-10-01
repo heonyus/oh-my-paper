@@ -16,6 +16,8 @@ export interface SimulatedAuthenticatedApplication {
 export interface SimulatedAuthenticatedLaunchOptions {
   readonly environment?: Readonly<NodeJS.ProcessEnv>
   readonly userDataRoot?: string
+  /** Seed the temporary profile with a synthetic API-mode provider so the app opens unlocked. */
+  readonly configuredProvider?: boolean
 }
 
 export async function launchSimulatedAuthenticatedApplication(
@@ -63,6 +65,7 @@ export async function launchSimulatedAuthenticatedApplication(
         ...options.environment,
         OH_MY_PAPER_QA_ELECTRON_DIRECTORY: electronDirectory,
         OH_MY_PAPER_QA_USER_DATA_ROOT: userDataRoot,
+        ...(options.configuredProvider ? { OH_MY_PAPER_QA_SYNTHETIC_PROVIDER: "1" } : {}),
       },
     })
     return {
