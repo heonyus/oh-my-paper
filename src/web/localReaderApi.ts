@@ -50,6 +50,7 @@ import { createLocalImporter } from "./localImport"
 import { createLocalPageParser } from "./localPageParser"
 import { localRpc, readLocalResponse } from "./localTransport"
 import { saveLocalWorkspacePatch } from "./localWorkspacePatch"
+import { onPageClose } from "./pageClose"
 
 export function installLocalReaderApi(): void {
   const importer = createLocalImporter()
@@ -235,7 +236,7 @@ export function installLocalReaderApi(): void {
       await navigator.clipboard.writeText(text)
     },
     flushWorkspace: async () => {},
-    onBeforeWorkspaceClose: () => () => {},
+    onBeforeWorkspaceClose: onPageClose,
     knowledge: {
       linkEvidence: unavailableWebFeature("knowledge.linkEvidence"),
       proposeRelations: unavailableWebFeature("knowledge.proposeRelations"),

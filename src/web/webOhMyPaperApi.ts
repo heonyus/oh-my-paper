@@ -13,6 +13,7 @@ import type { DocumentId } from "../shared/schemas"
 import { unavailableWebFeature } from "../shared/unavailableWebFeatures"
 import { GEMINI_WEB_MODEL, GROQ_WEB_MODELS } from "../shared/webCredentials"
 import { fetchHostedCredentialStatus, saveHostedCredential, WebApiError } from "./api"
+import { onPageClose } from "./pageClose"
 import { WebWorkspaceBridge } from "./webWorkspace"
 
 let installedUserId: string | null = null
@@ -232,7 +233,7 @@ export function installWebOhMyPaperApi(userId: string): void {
     },
     saveAiMode: unavailableWebFeature("provider.saveAiMode"),
     flushWorkspace: async () => {},
-    onBeforeWorkspaceClose: () => () => {},
+    onBeforeWorkspaceClose: onPageClose,
     knowledge: {
       linkEvidence: unavailableWebFeature("knowledge.linkEvidence"),
       proposeRelations: unavailableWebFeature("knowledge.proposeRelations"),
