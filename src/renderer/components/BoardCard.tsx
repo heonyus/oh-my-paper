@@ -119,12 +119,19 @@ export function BoardCard({
         onMoveEnd={onMoveEnd ?? onMove}
         onMinimize={onMinimize}
         onDelete={onDelete}
+        // The reader's own memos and note cards are never retitled by AI.
         onRegenerateTitle={
-          card.kind === "translation" || card.kind === "note" ? undefined : onRegenerateTitle
+          card.kind === "translation" || card.kind === "note" || card.kind === "sticky"
+            ? undefined
+            : onRegenerateTitle
         }
       />
       {!card.minimized ? (
-        <div className="card-body" onWheel={(event) => event.stopPropagation()}>
+        <div
+          className="card-body"
+          // A note left on the board lets the wheel scroll the pages under it.
+          onWheel={card.kind === "sticky" ? undefined : (event) => event.stopPropagation()}
+        >
           {card.loading ? (
             <span className="card-loading-bar" role="status" aria-label={t("card.generating")} />
           ) : null}

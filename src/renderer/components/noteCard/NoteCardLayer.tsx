@@ -95,7 +95,6 @@ export function NoteCardLayer({
         if (event.target instanceof Element && event.target.closest("button, textarea")) return
         input.current?.focus({ preventScroll: true })
       }}
-      onWheel={(event) => event.stopPropagation()}
     >
       <header className="note-card-head" {...position.handle}>
         <NotebookPen size={15} aria-hidden="true" />

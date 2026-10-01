@@ -239,7 +239,12 @@ export function useBoardGestures({
   }
 
   function handleWheel(event: WheelEvent, currentTarget: HTMLElement): void {
-    if (event.target instanceof Element && event.target.closest(".board-card")) return
+    // Cards keep the wheel for their own scrolling text; a note left on the board does not.
+    if (
+      event.target instanceof Element &&
+      event.target.closest(".board-card:not([data-kind='sticky'])")
+    )
+      return
     // A pan already under way keeps moving the board when a translation slides under the cursor.
     if (
       !event.ctrlKey &&

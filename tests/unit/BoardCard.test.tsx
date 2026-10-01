@@ -254,6 +254,8 @@ describe("BoardCard controls", () => {
       />,
     )
     const editor = screen.getByRole("textbox", { name: "포스트잇 내용" })
+    // The reader's own note is never retitled by AI.
+    expect(screen.queryByRole("button", { name: "카드 제목 다시 생성" })).not.toBeInTheDocument()
 
     fireEvent.change(editor, { target: { value: "**핵심**\n\n$$x=1$$" } })
     fireEvent.keyDown(editor, { key: "Enter", metaKey: true })
