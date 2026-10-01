@@ -203,7 +203,8 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
     if (request) {
       void props
         .onAiRequest(request, (delta) => {
-          if (kind !== "translation") cardStreams.append(card.id, delta)
+          // Half-received HTML would render as raw markup, so infographics wait for the whole body.
+          if (kind !== "translation" && kind !== "infographic") cardStreams.append(card.id, delta)
         })
         .then((body) => {
           updateCardBody(card.id, body)
