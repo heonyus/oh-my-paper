@@ -8,6 +8,7 @@ import { type JSX, useCallback, useEffect, useMemo, useRef } from "react"
 import { useLocale, useTranslator } from "../../lib/locale"
 import { noteMessages } from "../../messages/note"
 import { EvidenceNode } from "./evidenceNode"
+import { ArrowInput, type MarginSlotRegistry, marginSlotsExtension } from "./marginSlots"
 import { SlashMenu } from "./SlashMenu"
 import { SlashMenuStore, slashCommandExtension } from "./slashCommands"
 
@@ -23,11 +24,14 @@ export function ReaderNoteEditor({
   onMarkdownChange,
   onEditorChange,
   onOpenEvidence,
+  marginSlots,
 }: {
   readonly initialMarkdown: string
   readonly onMarkdownChange: (markdown: string) => void
   readonly onEditorChange: (editor: Editor | null) => void
   readonly onOpenEvidence: (page: number, quote: string) => void
+  /** Where the margin's cards show, right under the block they answer. */
+  readonly marginSlots?: MarginSlotRegistry | undefined
 }): JSX.Element {
   const slashMenu = useMemo(() => new SlashMenuStore(), [])
   const saveTimer = useRef<number | undefined>(undefined)
@@ -58,6 +62,8 @@ export function ReaderNoteEditor({
       }),
       Markdown,
       EvidenceNode,
+      ArrowInput,
+      ...(marginSlots ? [marginSlotsExtension(marginSlots)] : []),
       slashCommandExtension(slashMenu, () => language.current.locale),
     ],
     content: initialMarkdown,

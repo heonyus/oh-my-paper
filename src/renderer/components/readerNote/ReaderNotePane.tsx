@@ -14,6 +14,7 @@ import type { AiRequestRunner, DocumentRecord } from "../../types"
 import { evidenceQuote } from "./evidenceNode"
 import { liveNoteAppender } from "./liveNoteAppend"
 import { MarginColumn } from "./MarginColumn"
+import { MarginSlotRegistry } from "./marginSlots"
 import { noteQuoteContent, type PendingNoteQuote } from "./noteQuote"
 import { ReaderNoteEditor } from "./ReaderNoteEditor"
 import { SourceLinkOverlay } from "./SourceLinkOverlay"
@@ -75,6 +76,7 @@ export function ReaderNotePane({
 }): JSX.Element {
   const t = useTranslator(noteMessages)
   const [editor, setEditor] = useState<Editor | null>(null)
+  const [slots] = useState(() => new MarginSlotRegistry())
   const [density, setDensity] = useState(storedDensity)
   const rank = window.ohmypaper.rankByMeaning
   const searchState = useMeaningSearchReady(density !== "quiet")
@@ -179,9 +181,11 @@ export function ReaderNotePane({
             onMarkdownChange={onChange}
             onEditorChange={setEditor}
             onOpenEvidence={(page, quote) => onNavigateToSource({ page, quote })}
+            marginSlots={slots}
           />
           <MarginColumn
             editor={editor}
+            slots={slots}
             match={companion.match}
             tutors={companion.tutors}
             onAttach={attach}

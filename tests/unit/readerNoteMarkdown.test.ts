@@ -3,6 +3,7 @@ import { Markdown } from "@tiptap/markdown"
 import StarterKit from "@tiptap/starter-kit"
 import { afterEach, describe, expect, it } from "vitest"
 import { EvidenceNode, evidenceQuote } from "../../src/renderer/components/readerNote/evidenceNode"
+import { ArrowInput } from "../../src/renderer/components/readerNote/marginSlots"
 import { noteQuoteContent } from "../../src/renderer/components/readerNote/noteQuote"
 
 const editors: Editor[] = []
@@ -12,7 +13,7 @@ afterEach(() => {
 
 function noteEditor(markdown: string): Editor {
   const editor = new Editor({
-    extensions: [StarterKit, Markdown, EvidenceNode],
+    extensions: [StarterKit, Markdown, EvidenceNode, ArrowInput],
     content: markdown,
     contentType: "markdown",
   })
@@ -48,5 +49,20 @@ describe("reader note Markdown", () => {
     expect(editor.getMarkdown()).toBe(
       "내 생각\n\n> Table 1: Execution metrics for document pipelines [[p.3 | Table 1: Execution metrics for document pipelines]]\n\n",
     )
+  })
+
+  it("turns typed arrows into arrows", () => {
+    const editor = noteEditor("논문: 45분 창")
+    const type = (text: string): void => {
+      const { from, to } = editor.state.selection
+      const handled = editor.view.someProp("handleTextInput", (handler) =>
+        handler(editor.view, from, to, text, () => editor.state.tr.insertText(text, from, to)),
+      )
+      if (!handled) editor.view.dispatch(editor.state.tr.insertText(text, from, to))
+    }
+    editor.commands.focus("end")
+    for (const character of " -> 2/3 <-") type(character)
+
+    expect(editor.getMarkdown()).toBe("논문: 45분 창 → 2/3 ←")
   })
 })
