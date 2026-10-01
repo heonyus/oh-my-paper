@@ -7,12 +7,15 @@ place a reader's words go, the note, and one quick way to add to it, the note ca
 
 - Note card (`노트 카드`): `N` on any screen where text is not being typed, or `⌥N` (Alt+N)
   even while typing, opens a small card of note paper (the `--note` surface the sticky notes
-  used) floating over the screen; the header's note button opens it too. It is not modal:
-  reading, scrolling and selecting go on underneath, and the card can be dragged by its header
-  (the place is remembered per browser). The header names where the card goes; `⌘↵`/`Ctrl+↵`
-  or `노트에 붙이기` adds it; `Esc` or `닫기` closes it and keeps the unsent text for the next
-  card (per browser). After adding, a short status (`4쪽 노트에 붙였어요`, `열기`) stays for a
-  few seconds; `열기` opens that note.
+  used) where the pointer is; the header's note button opens it too. On a paper the card is
+  pinned to the board at that point and scrolls and zooms with the pages (the middle of the board
+  when the pointer is elsewhere); on other screens it floats at the pointer. It is not modal:
+  reading, scrolling and selecting go on, the card stays faint (50%) while focus is elsewhere and
+  comes forward when pressed, and it can be dragged by its header. The header names where the card goes; `⌘↵`/`Ctrl+↵` adds it (there is no add button);
+  `Esc` or `닫기` closes it and keeps the unsent text for the next card (per browser). On a paper
+  the added card stays where it was written, as a card on the board in the note-paper style
+  (its text is also in the note). Elsewhere a short status (`모아 둔 노트에 붙였어요`, `열기`)
+  stays for a few seconds; `열기` opens that note.
 - Where a card goes: with a paper on screen, to that paper's note, appended at the end after a
   rule (`---`) and starting with a page chip `[[p.N]]` for the page in view when the card
   opened. A page chip is an evidence chip without a quote: it reads `p.N` and opens the page

@@ -34,12 +34,14 @@ function Harness({
   target,
   onAppend,
   onOpenNote = vi.fn(),
+  onPin = vi.fn(),
 }: {
   readonly target: NoteCardTarget
   readonly onAppend: (noteId: DocumentId, card: string) => boolean
   readonly onOpenNote?: (target: NoteCardTarget) => void
+  readonly onPin?: Parameters<typeof useNoteCard>[2]
 }) {
-  const state = useNoteCard(target, onAppend)
+  const state = useNoteCard(target, onAppend, onPin)
   return (
     <>
       <input aria-label="검색" />
@@ -71,6 +73,27 @@ describe("note card", () => {
     expect(onOpenNote).toHaveBeenCalledWith(onPage4)
   })
 
+  it("pins a card on a paper to the board and leaves it there once added", async () => {
+    const viewport = document.createElement("div")
+    const world = document.createElement("div")
+    world.className = "board-world"
+    viewport.append(world)
+    document.body.append(viewport)
+    const onAppend = vi.fn(() => true)
+    const onPin = vi.fn()
+    render(<Harness target={onPage4} onAppend={onAppend} onPin={onPin} />)
+
+    await userEvent.keyboard("n")
+    expect(world).toContainElement(screen.getByRole("region", { name: "노트 카드" }))
+    expect(screen.queryByRole("button", { name: "노트에 붙이기" })).not.toBeInTheDocument()
+    await userEvent.keyboard("그 자리에 남는 카드{Meta>}{Enter}{/Meta}")
+
+    expect(onAppend).toHaveBeenCalledWith(documentId, "[[p.4]] 그 자리에 남는 카드")
+    expect(onPin).toHaveBeenCalledWith(onPage4, "그 자리에 남는 카드", { x: 0, y: 0 })
+    expect(screen.queryByRole("status")).not.toBeInTheDocument()
+    viewport.remove()
+  })
+
   it("leaves typing alone on N, opens on ⌥N, and keeps the draft when closed", async () => {
     render(<Harness target={{ kind: "loose" }} onAppend={vi.fn(() => true)} />)
     const search = screen.getByRole("textbox", { name: "검색" })
@@ -99,7 +122,7 @@ describe("note card", () => {
 
     await userEvent.keyboard("n")
     await userEvent.keyboard("한 줄 더")
-    await userEvent.click(screen.getByRole("button", { name: "노트에 붙이기" }))
+    await userEvent.keyboard("{Meta>}{Enter}{/Meta}")
 
     expect(screen.getByRole("alert")).toHaveTextContent("노트가 가득 차서 더 붙일 수 없습니다")
     expect(screen.getByRole("textbox", { name: "노트 카드 내용" })).toHaveValue("한 줄 더")

@@ -106,6 +106,34 @@ export function saveTranslationAsAnnotation(card: BoardCard, locale: Locale = "k
     : card
 }
 
+/**
+ * A note card added on a paper, left on the board where it was written so the reader keeps
+ * seeing it there; its text is also in the paper's note.
+ */
+export function createPinnedNoteCard(
+  documentId: DocumentId,
+  page: number,
+  placement: Point,
+  body: string,
+  locale: Locale = "ko",
+): BoardCard {
+  return createBoardCard({
+    documentId,
+    kind: "sticky",
+    title: translator(boardMessages, locale)("default.noteTitle"),
+    body,
+    placement,
+    anchor: {
+      page,
+      // Placed on the board, not on a passage; the index shows no source for it.
+      quote: "노트 카드",
+      x: placement.x,
+      y: placement.y,
+      fragments: [{ x: placement.x, y: placement.y, width: 1, height: 1 }],
+    },
+  })
+}
+
 export function createSelectionCard(
   documentId: DocumentId,
   selection: BoardTextSelection,
