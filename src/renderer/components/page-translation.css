@@ -240,6 +240,16 @@
 .page-translation-layout-region[data-centered="true"] {
   text-align: center;
 }
+/* A display equation, typeset from its LaTeX, centred in its source box. */
+.page-translation-layout-region[data-kind="equation"] {
+  display: flex;
+  flex-direction: column;
+  justify-content: safe center;
+  line-height: 1.2;
+  text-align: center;
+  text-indent: 0;
+  overflow-wrap: normal;
+}
 .page-translation-layout-region[data-kind="heading"] {
   font-weight: 700;
   line-height: 1.1;
@@ -504,6 +514,14 @@
   overflow-x: auto;
   border-radius: 10px;
   background: var(--surface-muted);
+}
+/* In `원본 배치` an equation sits in its source box, not a card: overflowing, it is shrunk. */
+.page-translation-layout-region[data-kind="equation"] .katex-display {
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border-radius: 0;
+  background: none;
 }
 .page-translation-stream,
 .page-translation-state,

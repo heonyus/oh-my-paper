@@ -32,6 +32,8 @@ const fallbackFontSize = { body: 1.6, heading: 2 } as const
 /** A translation keeps at least this share of the source size while space allows. */
 const shrinkInPlace = 0.9
 const shrinkMost = 0.6
+/** A layout model's equation box can be tight; its LaTeX may need much smaller type to fit. */
+const shrinkEquation = 0.4
 /** Page layout labels that belong to the text flow rather than stand in its way. */
 const flowingLabels = new Set(["text", "list", "references", "footnote", "aside_text"])
 /** Masks reach this far past a region, as a fraction of the page, to cover glyph overhang. */
@@ -305,6 +307,24 @@ function fitInBox(
 }
 
 /**
+ * A display equation starts at the body text's size, centred in its source box, and shrinks
+ * until it fits that box both ways.
+ */
+function fitEquation(element: HTMLElement, region: LayoutRegion, max: number): void {
+  element.style.height = `${region.rect.height * 100}%`
+  const fits = (size: number): boolean => {
+    element.style.setProperty("--fit-font-size", String(size))
+    return (
+      element.scrollWidth <= element.clientWidth + 1 &&
+      element.scrollHeight <= element.clientHeight + 1
+    )
+  }
+  const result = fitFontSize(fits, max, max * shrinkEquation)
+  element.style.setProperty("--fit-font-size", String(result.size))
+  element.setAttribute("data-overflow", String(!result.fits))
+}
+
+/**
  * Sets a run of paragraphs as one flow down its column at one size: each keeps the gap the
  * source has before it, so paragraph spacing matches and any space a shorter translation
  * frees gathers at the end of the run. Returns the height the run takes, as a page fraction.
@@ -385,11 +405,20 @@ function useFittedRegions(
       const standalone = regions.filter((region) => !region.typography)
       const paragraphs = regions.filter((region) => region.typography)
       const obstacles = [...regions.map((region) => region.rect), ...pageBlocks.map((b) => b.rect)]
+      const bodySizes = paragraphs
+        .map((region) => region.typography?.fontSize ?? 0)
+        .filter((size) => size > 0)
+        .sort((left, right) => left - right)
+      const bodySize = bodySizes[Math.floor(bodySizes.length / 2)] ?? fallbackFontSize.body
       for (const region of standalone) {
         const element = regionElement(container, region)
+        if (!element) continue
+        if (region.kind === "equation") {
+          fitEquation(element, region, bodySize)
+          continue
+        }
         const max =
           region.size ?? sourceFontSize(pageNumber, region) ?? fallbackFontSize[region.kind]
-        if (!element) continue
         if (region.kind === "heading") fitHeading(element, region, max, container.clientHeight)
         else fitInBox(element, region, max, obstacles)
       }
@@ -531,7 +560,11 @@ export function PageTranslationLayout({
             if (event.key === "Enter" || event.key === " ") focusSource(region)
           }}
         >
-          <MarkdownContent source={literalNumbers(region.translation)} />
+          <MarkdownContent
+            source={
+              region.kind === "equation" ? region.translation : literalNumbers(region.translation)
+            }
+          />
         </article>
       ))}
     </div>

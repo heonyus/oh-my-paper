@@ -3,6 +3,7 @@ import { type JSX, useEffect, useMemo, useRef, useState } from "react"
 import type { ProviderStatus } from "../../shared/ipc"
 import { parsedDocumentPage } from "../lib/documentPageRuntime"
 import { useLocale, useTranslator } from "../lib/locale"
+import { equationRegions } from "../lib/pageTranslationEquations"
 import { type PageTranslationMode, usePageTranslationMode } from "../lib/pageTranslationMode"
 import { nextTextSize, parserStageMessage, type TextSize } from "../lib/pageTranslationPaneState"
 import { paragraphRegions } from "../lib/pageTranslationParagraphs"
@@ -72,10 +73,10 @@ export function PageTranslationPane({
     [blocks, mode],
   )
   const source = usePdfPage(document.id, currentPage)
-  const regions = useMemo(
-    () => paragraphRegions(blocks, parsedDocumentPage(document.id, currentPage), source.runs),
-    [blocks, document.id, currentPage, source.runs],
-  )
+  const regions = useMemo(() => {
+    const parsed = parsedDocumentPage(document.id, currentPage)
+    return [...paragraphRegions(blocks, parsed, source.runs), ...equationRegions(blocks, parsed)]
+  }, [blocks, document.id, currentPage, source.runs])
   const previousGroups = useRef<readonly (readonly (typeof blocks)[number][])[]>([])
   const bilingualGroups = useMemo(() => {
     const groups: (typeof blocks)[number][][] = []
