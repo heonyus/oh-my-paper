@@ -3,6 +3,7 @@ import type {
   ParsedPageBlock,
   ParsedPageLayoutBlock,
 } from "../../shared/documentPageModel"
+import { cutInProportion } from "./pageTranslationCut"
 import { type LayoutRegion, layoutRegions } from "./pageTranslationLayoutRegions"
 import type { PageTranslationBlock } from "./pageTranslationSource"
 import {
@@ -193,6 +194,42 @@ type Placement = {
   readonly startsItem: boolean
 }
 
+/**
+ * A sentence the page breaks across a column — "…outperformed other feature" | "computation
+ * approaches as shown in…" — translated as one piece: each paragraph it runs through shows
+ * the share of the translation that its share of the source is, so no part of the source is
+ * left untranslated. The paragraphs in between count only if the sentence holds their text.
+ */
+function splitAcross(
+  sentence: PageTranslationBlock,
+  start: number,
+  end: number,
+  texts: readonly string[],
+  tail: string,
+): readonly Placement[] {
+  const source = alphanumeric(sentence.source)
+  const middle = texts
+    .slice(start + 1, end)
+    .map((text, offset) => ({ paragraph: start + 1 + offset, text }))
+    .filter(({ text }) => text.length >= 10 && source.includes(text.slice(0, openingLength)))
+  const last = texts[end] ?? ""
+  const later = [
+    ...middle.map(({ paragraph, text }) => ({ paragraph, share: text.length })),
+    { paragraph: end, share: Math.min(source.length, last.indexOf(tail) + tail.length) },
+  ]
+  const first = source.length - later.reduce((sum, { share }) => sum + share, 0)
+  const parts =
+    first > 0
+      ? cutInProportion(sentence.translation, [first, ...later.map(({ share }) => share)])
+      : null
+  if (!parts) return [{ paragraph: start, piece: sentence, startsItem: false }]
+  return parts.map((translation, index) => ({
+    paragraph: index === 0 ? start : (later[index - 1]?.paragraph ?? end),
+    piece: { ...sentence, translation, source: index === 0 ? sentence.source : "" },
+    startsItem: false,
+  }))
+}
+
 function spreadSentence(
   sentence: PageTranslationBlock,
   start: number,
@@ -207,7 +244,10 @@ function spreadSentence(
         break
       }
   const pieces = translationPieces(sentence)
-  if (pieces.length < 2) return [{ paragraph: start, piece: sentence, startsItem: false }]
+  if (pieces.length < 2)
+    return tail && end > start
+      ? splitAcross(sentence, start, end, texts, tail)
+      : [{ paragraph: start, piece: sentence, startsItem: false }]
   if (end === start)
     return pieces.map((piece, index) => ({
       paragraph: start,

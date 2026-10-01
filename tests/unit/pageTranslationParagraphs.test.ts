@@ -697,3 +697,91 @@ describe("a note under a table in a two-column page", () => {
     expect((rect?.x ?? 0) + (rect?.width ?? 0)).toBeGreaterThanOrEqual(579 / 1_191)
   })
 })
+
+describe("a sentence the page breaks across columns", () => {
+  const broken: ParsedDocumentPage = parsedDocumentPageSchema.parse({
+    schemaVersion: "1.0.0",
+    sourceHash: "c".repeat(64),
+    parser: "PDF.js+PaddleOCR-VL-1.6",
+    configVersion: "hybrid-v13",
+    pageNumber: 1,
+    width: 1_191,
+    height: 1_582,
+    blocks: [
+      line(0, 91, 1_300, "• Shapelet features. A shapelet was used to", 470),
+      line(1, 110, 1_317, "construct features. This history of distances", 451),
+      line(2, 110, 1_334, "approach outperformed other feature", 300),
+      // The rest of the list item, hanging at the top of the next column.
+      line(3, 628, 106, "computation approaches as shown in Supplementary", 478),
+      line(4, 628, 123, "Table 17: single distance (distance) and the", 478),
+      line(5, 628, 140, "count of shapelets (count).", 250),
+      line(6, 608, 165, "Supervised learning. We defined a binary task.", 498),
+      line(7, 608, 182, "It ran every five minutes.", 300),
+    ],
+    layout: [
+      {
+        label: "text",
+        order: 0,
+        bounds: bounds(88, 1_297, 495, 54),
+        content:
+          "- Shapelet features. A shapelet was used to construct features. This history of distances approach outperformed other feature",
+      },
+      // The layout model found the continuation's box but returned no text for it.
+      { label: "text", order: 1, bounds: bounds(605, 104, 505, 54), content: "" },
+      {
+        label: "text",
+        order: 2,
+        bounds: bounds(605, 163, 505, 37),
+        content: "Supervised learning. We defined a binary task. It ran every five minutes.",
+      },
+    ],
+  })
+  const item = "page:1:block:0"
+  const next = "page:1:block:6"
+  const place = (block: PageTranslationBlock): PageTranslationBlock => ({
+    ...block,
+    sourcePageWidth: 1_191,
+    sourcePageHeight: 1_582,
+  })
+  const across =
+    "이 거리 기록 방법은 보충 표 17에 나타난 바와 같이 다른 특성 계산 방법보다 성능이 높았다: 단일 거리(distance)와 shapelet의 개수(count)."
+  const regions = paragraphRegions(
+    [
+      sentence(1, item, "Shapelet features.", "Shapelet 기반 특징."),
+      sentence(
+        2,
+        item,
+        "A shapelet was used to construct features.",
+        "shapelet으로 특징을 구성했다.",
+      ),
+      sentence(
+        3,
+        item,
+        "This history of distances approach outperformed other feature computation approaches as shown in Supplementary Table 17: single distance (distance) and the count of shapelets (count).",
+        across,
+      ),
+      sentence(1, next, "Supervised learning.", "지도 학습."),
+      sentence(2, next, "We defined a binary task.", "이진 과제를 정의했다."),
+      sentence(3, next, "It ran every five minutes.", "5분마다 수행했다."),
+    ].map(place),
+    broken,
+  )
+  const byId = new Map(regions.map((region) => [region.id, region]))
+
+  it("translates the part in the next column in that column", () => {
+    expect(byId.get("layout:0")?.translation).toBe(
+      "- Shapelet 기반 특징. shapelet으로 특징을 구성했다. 이 거리 기록 방법은 보충 표 17에 나타난 바와 같이 다른",
+    )
+    expect(byId.get("layout:1")?.translation).toBe(
+      "특성 계산 방법보다 성능이 높았다: 단일 거리(distance)와 shapelet의 개수(count).",
+    )
+    expect(byId.get("layout:2")?.translation).toBe(
+      "**지도 학습.** 이진 과제를 정의했다. 5분마다 수행했다.",
+    )
+  })
+
+  it("continues the list item in the next column without a marker of its own", () => {
+    expect(byId.get("layout:1")?.typography?.bullet).toBe(false)
+    expect(byId.get("layout:1")?.blockIds).toEqual([`${item}:sentence:3`])
+  })
+})
