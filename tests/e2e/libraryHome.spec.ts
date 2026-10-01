@@ -1,4 +1,5 @@
-import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { createHash } from "node:crypto"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { expect, test } from "@playwright/test"
@@ -12,24 +13,31 @@ test("library is a responsive home that opens existing PDFs", async () => {
   const documentsRoot = join(storeRoot, "documents")
   const fixture = join(process.cwd(), "tests", "fixtures", "sample-paper.pdf")
   const bytes = await readFile(fixture)
+  // The store verifies each PDF against its recorded SHA-256, so every synthetic document gets
+  // distinct bytes (the fixture plus a trailing PDF comment) and its real hash.
+  const variant = (id: string, title: string, kind: string) => {
+    const variantBytes = Buffer.concat([bytes, Buffer.from(`\n% synthetic e2e variant ${id}\n`)])
+    const hash = createHash("sha256").update(variantBytes).digest("hex")
+    return { id, hash, title, kind, bytes: variantBytes }
+  }
   const documents = [
-    ["1111111111111111", "1".repeat(64), "MedAgentGym", "research_paper"],
-    ["2222222222222222", "2".repeat(64), "Clinical Data Quality Report", "report"],
-    ["3333333333333333", "3".repeat(64), "Device Setup Guide", "manual"],
+    variant("1111111111111111", "MedAgentGym", "research_paper"),
+    variant("2222222222222222", "Clinical Data Quality Report", "report"),
+    variant("3333333333333333", "Device Setup Guide", "manual"),
   ] as const
   await mkdir(documentsRoot, { recursive: true })
   for (const document of documents)
-    await copyFile(fixture, join(documentsRoot, `${document[1]}.pdf`))
+    await writeFile(join(documentsRoot, `${document.hash}.pdf`), document.bytes)
   await writeFile(
     join(storeRoot, "workspace.json"),
     JSON.stringify({
-      documents: documents.map(([id, hash, title, kind], index) => ({
+      documents: documents.map(({ id, hash, title, kind, bytes: documentBytes }, index) => ({
         id,
         hash,
         title,
         kind,
         name: `${title}.pdf`,
-        bytes: bytes.length,
+        bytes: documentBytes.length,
         importedAt: `2026-08-${30 - index}T00:00:00.000Z`,
         pageCount: 3,
         authors: index === 0 ? ["Research Team"] : [],
@@ -41,19 +49,19 @@ test("library is a responsive home that opens existing PDFs", async () => {
       cards: [],
       insights: [
         {
-          documentId: documents[1][0],
+          documentId: documents[1].id,
           kind: "keywords",
           value: "- **Data quality**: 임상 데이터의 신뢰성",
           updatedAt: "2026-08-30T00:00:00.000Z",
         },
         {
-          documentId: documents[1][0],
+          documentId: documents[1].id,
           kind: "threeLines",
           value: "1. 문제: 데이터 품질\n2. 방법: 검증\n3. 결과: 신뢰성 향상",
           updatedAt: "2026-08-30T00:00:00.000Z",
         },
         {
-          documentId: documents[1][0],
+          documentId: documents[1].id,
           kind: "summary",
           value: "- 검증 가능한 에이전트 벤치마크",
           updatedAt: "2026-08-30T00:00:00.000Z",
@@ -61,11 +69,12 @@ test("library is a responsive home that opens existing PDFs", async () => {
       ],
       sidebarOpen: true,
       viewport: { x: 88, y: 36, zoom: 0.51 },
-      activeDocumentId: documents[0][0],
+      activeDocumentId: documents[0].id,
     }),
   )
   const qa = await launchSimulatedAuthenticatedApplication({
     userDataRoot: userData,
+    configuredProvider: true,
     environment: {
       OH_MY_PAPER_PADDLE_VL_READY: join(temporaryRoot, "missing-paddle-runtime"),
     },
@@ -74,7 +83,13 @@ test("library is a responsive home that opens existing PDFs", async () => {
     const page = await qa.application.firstWindow()
     const library = page.getByRole("region", { name: "PDF 라이브러리" })
     await expect(library).toBeVisible()
-    await expect(page.locator('.document-thumbnail[data-rendered="true"]')).toHaveCount(3)
+    // Each list row has a thumbnail and the detail panel shows the selected paper's as well.
+    await expect(
+      library.locator('.library-grid .document-thumbnail[data-rendered="true"]'),
+    ).toHaveCount(3)
+    await expect(
+      page.locator('.library-detail .document-thumbnail[data-rendered="true"]'),
+    ).toHaveCount(1)
     const electronWindow = await qa.application.browserWindow(page)
     const evidence = join(process.cwd(), "test-results", "evidence", "library-home")
     await mkdir(evidence, { recursive: true })
@@ -145,7 +160,7 @@ test("library is a responsive home that opens existing PDFs", async () => {
         channel: ipcChannels.documentAnalysisUpdated,
         update: [
           {
-            id: documents[0][0],
+            id: documents[0].id,
             title: "MedAgentGym",
             pageCount: 18,
             completedPages: 4,

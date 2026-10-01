@@ -104,7 +104,8 @@ async function migratePdfs(
     }
     const bytes = await readFile(source)
     if (revisionOf(bytes) !== row.hash) throw new Error(`Legacy PDF hash mismatch: ${row.id}`)
-    await copyFile(source, join(collectionRoot, "papers", `${row.id}.pdf`))
+    // The reader opens papers/<hash>.pdf, the same name a fresh import writes.
+    await copyFile(source, join(collectionRoot, "papers", `${row.hash}.pdf`))
   }
   return missing
 }
