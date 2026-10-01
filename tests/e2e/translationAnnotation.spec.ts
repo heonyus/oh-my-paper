@@ -130,7 +130,11 @@ test("saving a translation annotation leaves only its source highlight and sideb
     await expect(card).toBeHidden()
     await expect(page.locator(".highlight-mark > span")).toHaveCount(3)
     await expect(page.locator(".connector-layer path")).toHaveCount(0)
-    await page.getByRole("button", { name: "하이라이트 모드" }).click()
+    await page.getByRole("button", { name: "카드 모드" }).click()
+    await page
+      .getByRole("group", { name: "카드 종류" })
+      .getByRole("button", { name: /하이라이트/u })
+      .click()
     await expect(page.locator(".board-index-list > li")).toHaveCount(3)
     await expect(page.getByText("번역 주석")).toHaveCount(0)
     await expect(page.locator(".board-index-list .board-index-icon")).toHaveCount(0)

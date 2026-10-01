@@ -2,27 +2,40 @@ import {
   ArrowUpRight,
   Highlighter,
   Languages,
+  Layers,
   MessageSquareText,
   NotebookPen,
   Palette,
 } from "lucide-react"
-import type { JSX } from "react"
+import type { JSX, ReactNode } from "react"
 import { conciseCardTitle } from "../lib/cardPresentation"
 import { useTranslator } from "../lib/locale"
 import { type BoardMessageKey, boardMessages } from "../messages/board"
 import type { BoardCard, CardId } from "../types"
 
 export type BoardCategoryKind = Exclude<BoardCard["kind"], "citation" | "sticky">
+/** A category, or every card on the board at once. */
+export type BoardIndexFilter = BoardCategoryKind | "all"
 
 /**
- * The cards a category lists. Sticky notes are no longer made (note cards go into the reader's
- * note), so the ones already on a board are listed with the memos.
+ * The category a card is listed under. Sticky notes are no longer made (note cards go into the
+ * reader's note), so the ones already on a board are listed with the memos; citation cards are
+ * read in the related papers panel instead.
  */
+function categoryOf(card: BoardCard): BoardCategoryKind | null {
+  if (card.kind === "citation") return null
+  return card.kind === "sticky" ? "note" : card.kind
+}
+
+/** The cards a filter lists; every card is shown in page order, as it sits on the board. */
 export function cardsInCategory(
   cards: readonly BoardCard[],
-  kind: BoardCategoryKind,
+  filter: BoardIndexFilter,
 ): readonly BoardCard[] {
-  return cards.filter((card) => card.kind === kind || (kind === "note" && card.kind === "sticky"))
+  if (filter !== "all") return cards.filter((card) => categoryOf(card) === filter)
+  return cards
+    .filter((card) => categoryOf(card) !== null)
+    .sort((left, right) => left.anchor.page - right.anchor.page || left.y - right.y)
 }
 
 type CategoryCopy = {
@@ -31,7 +44,8 @@ type CategoryCopy = {
   readonly action: BoardMessageKey | null
 }
 
-const categoryCopy: Readonly<Record<BoardCategoryKind, CategoryCopy>> = {
+const categoryCopy: Readonly<Record<BoardIndexFilter, CategoryCopy>> = {
+  all: { purpose: "index.all.purpose", empty: "index.all.empty", action: null },
   translation: {
     purpose: "index.translation.purpose",
     empty: "index.translation.empty",
@@ -59,8 +73,10 @@ const categoryCopy: Readonly<Record<BoardCategoryKind, CategoryCopy>> = {
   },
 }
 
-function KindIcon({ kind, size }: { readonly kind: BoardCategoryKind; readonly size: number }) {
+function KindIcon({ kind, size }: { readonly kind: BoardIndexFilter; readonly size: number }) {
   switch (kind) {
+    case "all":
+      return <Layers size={size} />
     case "translation":
       return <Languages size={size} />
     case "explanation":
@@ -112,16 +128,17 @@ export function BoardIndexPanel({
   kind,
   label,
   onJump,
+  toolbar,
 }: {
   readonly cards: readonly BoardCard[]
-  readonly kind: BoardCategoryKind
+  readonly kind: BoardIndexFilter
   readonly label: string
   readonly onJump: (id: CardId) => void
+  /** Controls shown under the heading, such as the card type filter. */
+  readonly toolbar?: ReactNode
 }): JSX.Element {
   const t = useTranslator(boardMessages)
   const visible = cardsInCategory(cards, kind)
-  const copy = categoryCopy[kind]
-  const action = copy.action ? t(copy.action) : null
   return (
     <section
       className="sidebar-mode-panel board-category-panel"
@@ -135,24 +152,29 @@ export function BoardIndexPanel({
         </div>
         <span>{visible.length}</span>
       </header>
-      <p className="board-category-purpose">{t(copy.purpose)}</p>
+      {toolbar}
+      <p className="board-category-purpose">{t(categoryCopy[kind].purpose)}</p>
       {visible.length > 0 ? (
         <ol className="board-index-list">
           {visible.map((card) => {
+            const itemKind = categoryOf(card) ?? "note"
+            const actionKey = categoryCopy[itemKind].action
+            const action = actionKey ? t(actionKey) : null
             const source = sourceFor(card)
-            const showsItemIdentity = kind !== "highlight"
+            const showsItemIdentity = itemKind !== "highlight"
+            const styleKind = card.kind === "sticky" ? "sticky" : itemKind
             return (
-              <li key={card.id} data-kind={kind}>
+              <li key={card.id} data-kind={styleKind}>
                 <button
                   type="button"
-                  data-kind={kind}
+                  data-kind={itemKind}
                   aria-label={`${card.title}, p.${card.anchor.page}${action ? `, ${action}` : ""}`}
                   onClick={() => onJump(card.id)}
                 >
                   {showsItemIdentity ? (
                     <>
                       <span className="board-index-icon">
-                        <KindIcon kind={kind} size={20} />
+                        <KindIcon kind={itemKind} size={20} />
                       </span>
                       <strong className="board-index-title">
                         {conciseCardTitle(card.title, card.title)}
@@ -161,7 +183,7 @@ export function BoardIndexPanel({
                   ) : null}
                   <span className="board-index-page">p.{card.anchor.page}</span>
                   <span className="board-index-preview">
-                    {previewFor(card, kind, t("index.emptySticky"))}
+                    {previewFor(card, itemKind, t("index.emptySticky"))}
                   </span>
                   {source ? (
                     <span className="board-index-source">
@@ -185,7 +207,7 @@ export function BoardIndexPanel({
             <KindIcon kind={kind} size={22} />
           </span>
           <strong>{t("index.nothingSaved")}</strong>
-          <p>{t(copy.empty)}</p>
+          <p>{t(categoryCopy[kind].empty)}</p>
         </div>
       )}
     </section>

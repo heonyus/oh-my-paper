@@ -283,7 +283,7 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
     ).toBe("light")
     const explanationCard = page.locator('.board-card[data-kind="explanation"]')
     await expect(explanationCard).toBeVisible()
-    await page.getByRole("button", { name: "번역 모드" }).click()
+    await page.getByRole("button", { name: "p. 1 페이지 번역 열기" }).click()
     const pageTranslation = page.getByRole("region", { name: "페이지 번역" })
     await expect(pageTranslation).toBeVisible()
     expect(
@@ -339,7 +339,7 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
     await expect
       .poll(async () => (await firstPage.boundingBox())?.width ?? 0)
       .toBeCloseTo(firstPageBeforeTranslationZoom?.width ?? 0, 0)
-    await page.getByRole("button", { name: "AI 설명 모드" }).click()
+    await page.getByRole("button", { name: "카드 모드" }).click()
     const beforeCardWheel = await surfaceTranslation()
     await explanationCard.locator(".card-body").dispatchEvent("wheel", { deltaY: 120 })
     expect(await surfaceTranslation()).toEqual(beforeCardWheel)
@@ -357,10 +357,14 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
     await expect(page.locator(".connector-layer path")).toHaveCount(1)
     await board.click({ position: { x: 24, y: 24 } })
     await expect(page.locator(".connector-layer path")).toHaveCount(0)
-    await page.getByRole("button", { name: "AI 설명 모드" }).click()
+    await page.getByRole("button", { name: "카드 모드" }).click()
     await expect(
-      page.getByRole("button", { name: "AI 설명 모드" }).locator(".mode-count"),
+      page.getByRole("button", { name: "카드 모드" }).locator(".mode-count"),
     ).toHaveCount(0)
+    await page
+      .getByRole("group", { name: "카드 종류" })
+      .getByRole("button", { name: /설명/u })
+      .click()
     await page.getByRole("button", { name: /Abstract 해설/u }).click()
     const focusedCard = await explanationCard.boundingBox()
     const boardBounds = await page.locator(".board-viewport").boundingBox()

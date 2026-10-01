@@ -120,7 +120,7 @@ describe("ResearchSidebar", () => {
     await userEvent.click(screen.getByRole("button", { name: "연구 사이드바 접기" }))
     expect(screen.queryByLabelText("연구 사이드바")).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole("button", { name: "연구 사이드바 펼치기" }))
-    await userEvent.click(screen.getByRole("button", { name: "메모 모드" }))
+    await userEvent.click(screen.getByRole("button", { name: "카드 모드" }))
     // Then: the new mode opens transiently and closes on pointer leave.
     const sidebar = screen.getByLabelText("연구 사이드바")
     expect(sidebar).toHaveAttribute("data-flyout", "open")
@@ -128,7 +128,7 @@ describe("ResearchSidebar", () => {
     expect(sidebar).toHaveAttribute("data-flyout", "hover")
   })
 
-  it("exposes each board-card category as its own sidebar mode", async () => {
+  it("gathers every board card in one mode and other papers in another", async () => {
     Object.defineProperty(window, "ohmypaper", {
       configurable: true,
       value: { onDocumentPageParseProgress: () => () => undefined },
@@ -164,44 +164,57 @@ describe("ResearchSidebar", () => {
     )
 
     expect(screen.getByRole("region", { name: "AI 논문 개요" })).toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "보드 모드" })).not.toBeInTheDocument()
-    expect(screen.queryByRole("toolbar", { name: "보드 카드 필터" })).not.toBeInTheDocument()
-    for (const label of ["번역", "AI 설명", "AI 카드", "메모", "하이라이트"]) {
-      expect(screen.getByRole("button", { name: `${label} 모드` })).toBeVisible()
-    }
-    await userEvent.click(screen.getByRole("button", { name: "번역 모드" }))
+    const rail = screen.getByRole("navigation", { name: "연구 사이드바 모드" })
     expect(
-      screen.getByRole("button", { name: "번역 모드" }).querySelector(".mode-count"),
+      within(rail)
+        .getAllByRole("button")
+        .map((button) => button.getAttribute("data-research-mode"))
+        .filter(Boolean),
+    ).toEqual(["ai", "cards", "papers"])
+    for (const old of ["번역", "AI 설명", "AI 카드", "메모", "포스트잇", "하이라이트", "인용"]) {
+      expect(screen.queryByRole("button", { name: `${old} 모드` })).not.toBeInTheDocument()
+    }
+
+    await userEvent.click(screen.getByRole("button", { name: "카드 모드" }))
+    expect(
+      screen.getByRole("button", { name: "카드 모드" }).querySelector(".mode-count"),
     ).toBeNull()
-    const translationPane = await screen.findByRole("region", { name: "페이지 번역" })
-    expect(translationPane.closest(".board-world")).not.toBeNull()
-    expect(screen.getByLabelText("연구 사이드바")).toHaveAttribute("data-flyout", "open")
-    expect(screen.getByRole("region", { name: "페이지 번역" })).toBeInTheDocument()
-    expect(screen.getByRole("region", { name: "번역 인덱스" })).toBeInTheDocument()
-    expect(screen.getByText("p. 1 / 12")).toBeVisible()
-    expect(screen.queryByText("Abstract 해설")).not.toBeInTheDocument()
-    await userEvent.click(screen.getByRole("button", { name: "AI 설명 모드" }))
-    expect(screen.getByRole("button", { name: "AI 설명 모드" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    )
-    expect(screen.getByRole("button", { name: "번역 모드" })).toHaveAttribute(
-      "aria-pressed",
-      "false",
-    )
-    expect(screen.getByRole("region", { name: "AI 설명 인덱스" })).toBeInTheDocument()
+    // Choosing the cards no longer opens a page translation; each page has its own button.
+    expect(screen.queryByRole("region", { name: "페이지 번역" })).not.toBeInTheDocument()
+    const allCards = screen.getByRole("region", { name: "카드 인덱스" })
+    expect(
+      within(allCards)
+        .getAllByRole("listitem")
+        .map((item) => item.getAttribute("data-kind")),
+    ).toEqual(["translation", "explanation"])
+    const filters = screen.getByRole("group", { name: "카드 종류" })
+    expect(
+      within(filters)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["전체2", "번역1", "설명1"])
+
+    await userEvent.click(within(filters).getByRole("button", { name: /설명/u }))
+    expect(screen.getByRole("region", { name: "설명 인덱스" })).toBeInTheDocument()
     expect(
       within(screen.getByRole("button", { name: /Abstract 해설, p\.2/u })).getByText("Abstract", {
         selector: ".board-index-title",
       }),
     ).toBeVisible()
-    // Sticky notes are no longer a mode of their own; note cards go into the reader's note.
-    expect(screen.queryByRole("button", { name: "포스트잇 모드" })).not.toBeInTheDocument()
-    await userEvent.click(screen.getByRole("button", { name: "인용 모드" }))
+    expect(screen.queryByText("검증 가능한 번역")).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole("button", { name: "관련 논문 모드" }))
     expect(screen.getByRole("region", { name: "인용 논문 판독" })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole("button", { name: "찾기" }))
+    expect(screen.getByRole("region", { name: "관련 논문 탐색" })).toBeInTheDocument()
+    expect(screen.queryByRole("region", { name: "인용 논문 판독" })).not.toBeInTheDocument()
+
+    // Each mode keeps its choice when the reader comes back to it.
+    await userEvent.click(screen.getByRole("button", { name: "카드 모드" }))
+    expect(screen.getByRole("region", { name: "설명 인덱스" })).toBeInTheDocument()
   })
 
-  it("keeps the highlight mode manual without mounting automatic generation", async () => {
+  it("keeps highlights manual without mounting automatic generation", async () => {
     render(
       <ResearchSidebar
         document={documentFixture}
@@ -217,9 +230,9 @@ describe("ResearchSidebar", () => {
       />,
     )
 
-    await userEvent.click(screen.getByRole("button", { name: "하이라이트 모드" }))
+    await userEvent.click(screen.getByRole("button", { name: "카드 모드" }))
 
-    expect(screen.getByRole("region", { name: "하이라이트 인덱스" })).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "카드 인덱스" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "자동 하이라이트 실행" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Jev로 후보 선택" })).not.toBeInTheDocument()
   })

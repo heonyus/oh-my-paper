@@ -62,7 +62,7 @@ test("MinerU paragraphs map to translated cards without visual blocks", async ()
     await page.waitForSelector('.pdfViewer .page[data-page-number="1"] canvas', {
       timeout: 30_000,
     })
-    await page.getByRole("button", { name: "번역 모드" }).click()
+    await page.getByRole("button", { name: "p. 1 페이지 번역 열기" }).click()
     const translated = page.locator(".page-translation-block")
     await expect(translated.first()).toBeVisible({ timeout: 45_000 })
     expect(await translated.count()).toBeGreaterThan(0)

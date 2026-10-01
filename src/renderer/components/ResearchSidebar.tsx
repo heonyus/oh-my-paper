@@ -1,15 +1,10 @@
 import {
+  BookMarked,
   ChevronLeft,
-  Highlighter,
-  Languages,
-  MessageSquareText,
-  NotebookPen,
-  Palette,
+  Layers,
   PanelRightClose,
   Pin,
   PinOff,
-  Quote,
-  Search,
   Sparkles,
 } from "lucide-react"
 import { type JSX, useState } from "react"
@@ -18,24 +13,19 @@ import type { DocumentInsight, DocumentInsightKind } from "../../shared/schemas"
 import { researchSidebarLayout } from "../../shared/uiLayout"
 import type { SourceCitation } from "../lib/chatCitations"
 import { useTranslator } from "../lib/locale"
-import { togglePageTranslation } from "../lib/pageTranslationToggle"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
 import { saveCitationAssessment, saveSidebarInsight } from "../lib/sidebarCards"
 import { researchMessages } from "../messages/research"
 import type { AiRequestRunner, BoardCard, CardId, DocumentRecord } from "../types"
 import { AiOverviewPanel } from "./AiOverviewPanel"
-import { BoardIndexPanel, cardsInCategory } from "./BoardIndexPanel"
-import { CitationPanel } from "./CitationPanel"
+import { type BoardIndexFilter, cardsInCategory } from "./BoardIndexPanel"
+import { CardIndexPanel } from "./CardIndexPanel"
 import { PageTranslationPortal } from "./PageTranslationPortal"
-import { ScholarSearchPanel } from "./ScholarSearchPanel"
+import { RelatedPapersPanel, type RelatedPapersView } from "./RelatedPapersPanel"
 import { SidebarResizeHandle } from "./SidebarResizeHandle"
 
-type CardMode = Exclude<BoardCard["kind"], "citation" | "translation" | "sticky">
-type ResearchMode = "ai" | "citations" | "translation" | "scholar" | CardMode
-
-function isCardMode(mode: ResearchMode): mode is CardMode {
-  return mode !== "ai" && mode !== "citations" && mode !== "translation" && mode !== "scholar"
-}
+/** The paper's overview, the cards on its board, and other papers. */
+type ResearchMode = "ai" | "cards" | "papers"
 
 export function ResearchSidebar({
   document,
@@ -75,6 +65,8 @@ export function ResearchSidebar({
   const [mode, setMode] = useState<ResearchMode>("ai")
   const [flyout, setFlyout] = useState<"hover" | "open" | "pinned">("hover")
   const [seenCounts, setSeenCounts] = useState<Partial<Record<ResearchMode, number>>>({})
+  const [cardFilter, setCardFilter] = useState<BoardIndexFilter>("all")
+  const [papersView, setPapersView] = useState<RelatedPapersView>("references")
   const modeLabel = (id: ResearchMode): string => t(`sidebar.mode.${id}`)
   const modes: readonly {
     readonly id: ResearchMode
@@ -84,42 +76,17 @@ export function ResearchSidebar({
   }[] = [
     { id: "ai", label: modeLabel("ai"), icon: <Sparkles size={18} /> },
     {
-      id: "translation",
-      label: modeLabel("translation"),
-      count: cards.filter((card) => card.kind === "translation").length,
-      icon: <Languages size={18} />,
+      id: "cards",
+      label: modeLabel("cards"),
+      count: cardsInCategory(cards, "all").length,
+      icon: <Layers size={18} />,
     },
     {
-      id: "explanation",
-      label: modeLabel("explanation"),
-      count: cards.filter((card) => card.kind === "explanation").length,
-      icon: <MessageSquareText size={18} />,
-    },
-    {
-      id: "infographic",
-      label: modeLabel("infographic"),
-      count: cards.filter((card) => card.kind === "infographic").length,
-      icon: <Palette size={18} />,
-    },
-    {
-      id: "note",
-      label: modeLabel("note"),
-      count: cardsInCategory(cards, "note").length,
-      icon: <NotebookPen size={18} />,
-    },
-    {
-      id: "highlight",
-      label: modeLabel("highlight"),
-      count: cards.filter((card) => card.kind === "highlight").length,
-      icon: <Highlighter size={18} />,
-    },
-    {
-      id: "citations",
-      label: modeLabel("citations"),
+      id: "papers",
+      label: modeLabel("papers"),
       count: citations.length,
-      icon: <Quote size={18} />,
+      icon: <BookMarked size={18} />,
     },
-    { id: "scholar", label: modeLabel("scholar"), icon: <Search size={18} /> },
   ]
   const translationPortal = document ? (
     <PageTranslationPortal
@@ -194,35 +161,21 @@ export function ResearchSidebar({
                   onCardsChange(saveSidebarInsight(cards, document, title, body, sourceTitle))
                 }
               />
-            ) : mode === "translation" ? (
-              <BoardIndexPanel
+            ) : mode === "cards" ? (
+              <CardIndexPanel
                 cards={cards}
-                kind="translation"
-                label={modeLabel("translation")}
+                filter={cardFilter}
+                onFilterChange={setCardFilter}
                 onJump={onJumpToCard}
               />
-            ) : mode === "highlight" ? (
-              <BoardIndexPanel
-                cards={cards}
-                kind="highlight"
-                label={modeLabel("highlight")}
-                onJump={onJumpToCard}
-              />
-            ) : isCardMode(mode) ? (
-              <BoardIndexPanel
-                cards={cards}
-                kind={mode}
-                label={modeLabel(mode)}
-                onJump={onJumpToCard}
-              />
-            ) : mode === "scholar" ? (
-              <ScholarSearchPanel key={document.id} document={document} citations={citations} />
             ) : (
-              <CitationPanel
+              <RelatedPapersPanel
                 document={document}
                 citations={citations}
+                view={papersView}
+                onViewChange={setPapersView}
                 onAiRequest={onAiRequest}
-                onSave={(entry, state, result) =>
+                onSaveAssessment={(entry, state, result) =>
                   onCardsChange(saveCitationAssessment(cards, document, entry, state.paper, result))
                 }
               />
@@ -257,7 +210,7 @@ export function ResearchSidebar({
               key={item.id}
               data-active={mode === item.id}
               aria-pressed={mode === item.id}
-              aria-expanded={mode === item.id && flyout === "pinned" && mode !== "translation"}
+              aria-expanded={mode === item.id && flyout === "pinned"}
               aria-description={
                 mode === item.id && flyout === "pinned" ? t("sidebar.pinned") : undefined
               }
@@ -270,7 +223,6 @@ export function ResearchSidebar({
               title={item.label}
               onClick={() => {
                 if (flyout !== "pinned") setFlyout("open")
-                if (item.id === "translation") togglePageTranslation(currentPage)
                 setMode(item.id)
                 if (item.count) {
                   setSeenCounts((current) => ({ ...current, [item.id]: item.count }))

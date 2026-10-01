@@ -1,10 +1,11 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import {
   type BoardCategoryKind,
   BoardIndexPanel,
 } from "../../src/renderer/components/BoardIndexPanel"
+import { CardIndexPanel } from "../../src/renderer/components/CardIndexPanel"
 import { type BoardCard, boardCardSchema } from "../../src/shared/schemas"
 
 function card(
@@ -119,5 +120,50 @@ describe("BoardIndexPanel", () => {
     rerender(<BoardIndexPanel cards={[]} kind="highlight" label="하이라이트" onJump={vi.fn()} />)
     expect(screen.getByText("아직 저장된 항목이 없습니다.")).toBeVisible()
     expect(screen.getByText(/PDF 문장을 선택해 하이라이트/u)).toBeVisible()
+  })
+
+  it("offers a type only while the board holds one, and falls back to all when it is gone", async () => {
+    const onFilterChange = vi.fn()
+    const translation = card(
+      "42ad8d84-c1ee-45b4-a022-6cf0d4c14278",
+      "translation",
+      "선택 번역",
+      "번역문",
+      "Source sentence.",
+    )
+    const sticky = card(
+      "63b52673-19ca-4b24-9680-4d3e7615887c",
+      "sticky",
+      "포스트잇",
+      "예전에 붙인 메모",
+      "보드 포스트잇",
+    )
+    const { rerender } = render(
+      <CardIndexPanel
+        cards={[translation, sticky]}
+        filter="highlight"
+        onFilterChange={onFilterChange}
+        onJump={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole("region", { name: "카드 인덱스" })).toBeInTheDocument()
+    const filters = screen.getByRole("group", { name: "카드 종류" })
+    expect(
+      within(filters)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["전체2", "번역1", "메모1"])
+    await userEvent.click(within(filters).getByRole("button", { name: /메모/u }))
+    expect(onFilterChange).toHaveBeenCalledWith("note")
+
+    rerender(
+      <CardIndexPanel cards={[]} filter="note" onFilterChange={onFilterChange} onJump={vi.fn()} />,
+    )
+    expect(screen.getByRole("region", { name: "카드 인덱스" })).toBeInTheDocument()
+    expect(screen.queryByRole("group", { name: "카드 종류" })).not.toBeInTheDocument()
+    expect(
+      screen.getByText("PDF 문장을 고르고 T·E·H를 누르면 카드가 원문 옆에 붙고 여기에 모입니다."),
+    ).toBeVisible()
   })
 })

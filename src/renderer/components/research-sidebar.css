@@ -332,3 +332,50 @@
     animation: none;
   }
 }
+/* A row of choices inside a sidebar mode: card types, or the two sides of related papers. */
+.sidebar-segments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.sidebar-segments button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: var(--type-compact-size);
+  cursor: pointer;
+}
+.sidebar-segments button:hover {
+  color: var(--ink);
+}
+.sidebar-segments button[aria-pressed="true"] {
+  border-color: transparent;
+  background: var(--action-subtle);
+  color: var(--action);
+  font-weight: 600;
+}
+.sidebar-segments small {
+  color: inherit;
+  font-size: inherit;
+  font-weight: 400;
+  opacity: 0.75;
+}
+.related-papers {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
