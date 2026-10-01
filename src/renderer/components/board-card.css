@@ -223,3 +223,10 @@
 .note-card-editor {
   min-height: 88px;
 }
+
+.card-infographic {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+}

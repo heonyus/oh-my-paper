@@ -1,5 +1,6 @@
 import { type JSX, useEffect, useRef, useState } from "react"
 import { initialResearchCardHeight } from "../lib/board"
+import { infographicHtml } from "../lib/infographicHtml"
 import { useTranslator } from "../lib/locale"
 import { boardMessages } from "../messages/board"
 import type { AiDeltaHandler, BoardCard as Card, CardId } from "../types"
@@ -8,6 +9,7 @@ import { BoardCardCitationMeta } from "./BoardCardCitationMeta"
 import { BoardCardFooter } from "./BoardCardFooter"
 import { BoardCardHeader } from "./BoardCardHeader"
 import { BoardCardResizeHandle } from "./BoardCardResizeHandle"
+import { InfographicFrame } from "./InfographicFrame"
 import { MarkdownContent } from "./MarkdownContent"
 import { NoteCardBody } from "./NoteCardBody"
 
@@ -80,6 +82,7 @@ export function BoardCard({
   }
 
   const renderedBody = <MarkdownContent source={card.kind === "sticky" ? draft : card.body} />
+  const html = card.kind === "infographic" && !card.loading ? infographicHtml(card.body) : null
   const supportsChat =
     card.kind === "explanation" || card.kind === "infographic" || card.kind === "citation"
   const usesNaturalHeight =
@@ -181,6 +184,8 @@ export function BoardCard({
             >
               {renderedBody}
             </button>
+          ) : html ? (
+            <InfographicFrame html={html} title={card.title} />
           ) : (
             <div className="card-markdown">{renderedBody}</div>
           )}
