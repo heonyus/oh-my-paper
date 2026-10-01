@@ -1,4 +1,4 @@
-import { type ComponentProps, type JSX, useCallback, useMemo, useState } from "react"
+import { type ComponentProps, type JSX, useCallback, useEffect, useMemo, useState } from "react"
 import type { ProviderStatus } from "../../shared/ipc"
 import type { EvidenceNavigationTarget } from "../../shared/knowledgeTypes"
 import type { ReaderNote } from "../../shared/readerNote"
@@ -88,6 +88,11 @@ export function ReaderWorkspace(props: {
     [openNote],
   )
   const clearPendingQuote = useCallback(() => setPendingQuote(null), [])
+  // The note lives in the research sidebar, so opening it opens a collapsed sidebar.
+  const noteWanted = props.noteOpen && Boolean(document)
+  useEffect(() => {
+    if (noteWanted && !workspace.sidebarOpen) updateWorkspace({ ...workspace, sidebarOpen: true })
+  }, [noteWanted, workspace, updateWorkspace])
   const earlierNotes = useMemo(
     () =>
       documentId
@@ -159,21 +164,6 @@ export function ReaderWorkspace(props: {
           </div>
         </section>
       )}
-      {document && props.noteOpen ? (
-        <ReaderNotePane
-          document={document}
-          note={props.readerNote}
-          currentPage={props.currentPage}
-          earlierNotes={earlierNotes}
-          onAiRequest={props.runAi}
-          onChange={props.updateReaderNote}
-          onClose={props.closeNote}
-          onNavigateToSource={navigateToSource}
-          pendingQuote={pendingQuote}
-          onPendingQuoteHandled={clearPendingQuote}
-          registerLiveNote={props.registerLiveNote}
-        />
-      ) : null}
       <ResearchSidebar
         key={document?.id ?? "no-document"}
         document={document}
@@ -194,6 +184,25 @@ export function ReaderWorkspace(props: {
         onAiRequest={props.runAi}
         onInsightChange={props.updateInsight}
         onNavigateToSource={navigateToSource}
+        noteOpen={Boolean(document) && props.noteOpen}
+        onNoteOpenChange={(open) => (open ? props.openNote() : props.closeNote())}
+        notePane={
+          document ? (
+            <ReaderNotePane
+              document={document}
+              note={props.readerNote}
+              currentPage={props.currentPage}
+              earlierNotes={earlierNotes}
+              onAiRequest={props.runAi}
+              onChange={props.updateReaderNote}
+              onClose={props.closeNote}
+              onNavigateToSource={navigateToSource}
+              pendingQuote={pendingQuote}
+              onPendingQuoteHandled={clearPendingQuote}
+              registerLiveNote={props.registerLiveNote}
+            />
+          ) : null
+        }
       />
     </>
   )

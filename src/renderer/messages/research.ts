@@ -17,6 +17,7 @@ const ko = {
   "sidebar.openAi": "AI 개요 열기",
   "sidebar.modeButton": "{label} 모드",
   "sidebar.mode.ai": "AI",
+  "sidebar.mode.note": "노트",
   "sidebar.mode.cards": "카드",
   "sidebar.mode.papers": "관련 논문",
 
@@ -75,6 +76,7 @@ const en: Readonly<Record<keyof typeof ko, string>> = {
   "sidebar.openAi": "Open AI overview",
   "sidebar.modeButton": "{label} mode",
   "sidebar.mode.ai": "AI",
+  "sidebar.mode.note": "Note",
   "sidebar.mode.cards": "Cards",
   "sidebar.mode.papers": "Related papers",
 

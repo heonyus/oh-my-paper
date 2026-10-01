@@ -174,8 +174,6 @@ describe("in English", () => {
           onRedo={vi.fn()}
           outlineOpen={false}
           onToggleOutline={vi.fn()}
-          noteOpen={false}
-          onToggleNote={vi.fn()}
         />
         <OutlinePanel currentPage={1} outline={[]} onJump={vi.fn()} onClose={vi.fn()} />
       </>,
@@ -183,7 +181,7 @@ describe("in English", () => {
 
     expect(screen.getByRole("combobox", { name: "Paper" })).toBeInTheDocument()
     expect(screen.getByRole("option", { name: "No paper open" })).toBeInTheDocument()
-    for (const name of ["Open contents", "Open my note", "Pan tool", "Undo", "Zoom in"]) {
+    for (const name of ["Open contents", "Pan tool", "Undo", "Zoom in"]) {
       expect(screen.getByRole("button", { name })).toBeInTheDocument()
     }
     expect(screen.getByRole("button", { name: "Turn on auto-translate" })).toHaveTextContent(

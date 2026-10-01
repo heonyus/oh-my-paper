@@ -1,11 +1,5 @@
 /* The reader's note: a quiet writing sheet with a margin for source suggestions. */
-.reader-workspace[data-note-open="true"] {
-  grid-template-columns: 0 minmax(0, 1fr) auto auto;
-}
-.reader-workspace[data-note-open="true"][data-outline-open="true"] {
-  grid-template-columns: 0 auto minmax(0, 1fr) auto auto;
-}
-.reader-workspace[data-note-open="true"] .note-pane {
+.note-pane {
   grid-row: 2;
   grid-column: 3;
 }
@@ -22,9 +16,9 @@
   container: note-pane / inline-size;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  width: clamp(420px, 46vw, 760px);
+  width: 100%;
+  height: 100%;
   min-height: 0;
-  border-left: 1px solid var(--line);
   background: var(--surface);
 }
 .note-pane-head {
@@ -278,21 +272,40 @@
     transition: none;
   }
 }
+/* In a narrow sidebar the margin sits at the foot of the note, showing what answers the
+   paragraph being written; earlier answers stay folded away. */
 @container note-pane (max-width: 560px) {
+  .note-pane-head {
+    padding: 12px 12px 10px 20px;
+  }
+  .note-pane-head h2,
+  .note-pane-status,
+  .note-density button {
+    white-space: nowrap;
+  }
   .note-sheet {
     grid-template-columns: minmax(0, 1fr);
+    padding: 20px 16px 24px 32px;
   }
   .note-margin {
+    position: sticky;
+    bottom: 0;
+    display: grid;
+    gap: 6px;
+    max-height: 45cqh;
+    overflow-y: auto;
+    padding-top: 8px;
+    background: var(--surface);
+  }
+  .note-margin:empty {
     display: none;
   }
-}
-.reader-toolbar .topbar-note-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  width: auto;
-  min-height: 34px;
-  padding: 0 10px;
+  .note-margin-group {
+    position: static;
+  }
+  .note-margin-group[data-earlier="true"] {
+    display: none;
+  }
 }
 .note-pane-status {
   color: var(--ink-muted);

@@ -260,4 +260,35 @@ describe("ResearchSidebar", () => {
       expect.arrayContaining(["keywords", "three_line_summary", "paper_summary"]),
     )
   })
+
+  it("holds the reader's note as its own mode, opened pinned and closed by another mode", async () => {
+    const onNoteOpenChange = vi.fn()
+    render(
+      <ResearchSidebar
+        document={documentFixture}
+        currentPage={1}
+        cards={[]}
+        citations={[]}
+        expanded
+        provider={{ configured: false, provider: "openai", model: "gpt-5" }}
+        onToggle={vi.fn()}
+        onJumpToCard={vi.fn()}
+        onCardsChange={vi.fn()}
+        onAiRequest={vi.fn(async () => "answer")}
+        notePane={<section aria-label="내 노트" />}
+        noteOpen
+        onNoteOpenChange={onNoteOpenChange}
+      />,
+    )
+
+    expect(screen.getByRole("region", { name: "내 노트" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "노트 모드" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    )
+    expect(screen.getByLabelText("연구 사이드바")).toHaveAttribute("data-flyout", "pinned")
+
+    await userEvent.click(screen.getByRole("button", { name: "카드 모드" }))
+    expect(onNoteOpenChange).toHaveBeenCalledWith(false)
+  })
 })
