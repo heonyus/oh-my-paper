@@ -65,6 +65,17 @@ const ko = {
   "settings.hosted.save": "{provider} 저장하고 기본으로 사용",
 
   // Local PDF analysis
+  "settings.meaning.title": "노트 원문 매칭",
+  "settings.meaning.detail":
+    "노트에 쓴 문장의 근거 문단을 이 컴퓨터에서 찾는 모델입니다. 앱을 켜면 알아서 받습니다(약 300MB).",
+  "settings.meaning.ready": "준비됨",
+  "settings.meaning.loading": "받는 중",
+  "settings.meaning.loadingProgress": "받는 중 {progress}%",
+  "settings.meaning.failed": "받지 못했습니다",
+  "settings.meaning.idle": "아직 받지 않음",
+  "settings.meaning.retry": "다시 받기",
+  "settings.meaning.start": "지금 받기",
+  "settings.meaning.progress": "노트 원문 매칭 모델 다운로드 진행률",
   "settings.ocr.title": "로컬 PDF 분석",
   "settings.ocr.installing": "설치 중",
   "settings.ocr.installingProgress": "설치 중 {progress}",
@@ -145,6 +156,17 @@ const en: Readonly<Record<keyof typeof ko, string>> = {
   "settings.hosted.newKey": "Enter a new key",
   "settings.hosted.save": "Save {provider} and use it by default",
 
+  "settings.meaning.title": "Note source matching",
+  "settings.meaning.detail":
+    "Finds the passage behind each sentence of your note, on this computer. The app fetches it when it starts (about 300 MB).",
+  "settings.meaning.ready": "Ready",
+  "settings.meaning.loading": "Downloading",
+  "settings.meaning.loadingProgress": "Downloading {progress}%",
+  "settings.meaning.failed": "Download failed",
+  "settings.meaning.idle": "Not downloaded yet",
+  "settings.meaning.retry": "Try again",
+  "settings.meaning.start": "Download now",
+  "settings.meaning.progress": "Note source matching model download progress",
   "settings.ocr.title": "Local PDF analysis",
   "settings.ocr.installing": "Installing",
   "settings.ocr.installingProgress": "Installing {progress}",

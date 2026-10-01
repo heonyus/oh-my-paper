@@ -134,7 +134,12 @@ the paragraph being written.
   - Source match (local): once a sentence settles (sentence end, or a pause), it is matched by
     meaning against the parsed paragraphs of the page in view and its neighbours using a local
     multilingual embedding model (EmbeddingGemma-300M, downloaded once into the data folder and
-    run by the local server; nothing leaves the machine). A passage shows only when it scores at
+    run by the local server; nothing leaves the machine). The local server starts that download in
+    the background five seconds after it starts (2026-10-01), and 설정 › AI 모델 shows
+    `노트 원문 매칭` as 받는 중 n%, 준비됨, or 받지 못했습니다 with `다시 받기`. On a Korean-note check
+    against a real paper it found the right paragraph for 14 of 16 notes and kept unrelated notes
+    well below the floor; multilingual-e5-small, though 15× faster, scored every note 0.80–0.83 and
+    could not tell a related note from an unrelated one. A passage shows only when it scores at
     least 0.40 and leads the next by 0.04, so most sentences show nothing. Only the sentence
     being written shows it: the passage's text-layer spans get a quiet underline, a thin line
     runs from it to the sentence, and the margin shows a `원문` card with the passage's Korean

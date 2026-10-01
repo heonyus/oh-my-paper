@@ -312,7 +312,7 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
           case "meaningSearchStatus": {
             const input = await readJson(req, meaningSearchStatusRequestSchema)
             if (input.prepare) void services.meaningSearch.prepare().catch(() => undefined)
-            sendJson(res, 200, { state: services.meaningSearch.state() })
+            sendJson(res, 200, services.meaningSearch.status())
             return
           }
           case "rankByMeaning": {

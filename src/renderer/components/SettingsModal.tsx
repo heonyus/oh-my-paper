@@ -17,6 +17,7 @@ import {
   type HostedCredentialSettingsProps,
 } from "./HostedCredentialSettings"
 import { LocalAiPanel } from "./localAi/LocalAiPanel"
+import { MeaningSearchSettings } from "./MeaningSearchSettings"
 import "./settings-dialog.css"
 
 type SettingsSection = "general" | "ai" | "reading"
@@ -247,6 +248,7 @@ export function SettingsModal({
                 {ocrStatus && !locked ? (
                   <DocumentOcrSettings status={ocrStatus} analysis={documentAnalysis} />
                 ) : null}
+                {!locked ? <MeaningSearchSettings /> : null}
                 {!openRouterRequired && window.ohmypaper?.localInference ? (
                   <LocalAiPanel
                     api={window.ohmypaper.localInference}

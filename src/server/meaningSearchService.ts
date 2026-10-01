@@ -6,6 +6,7 @@ import {
   type MeaningSearchRequest,
   type MeaningSearchResult,
   type MeaningSearchState,
+  type MeaningSearchStatus,
   meaningSearchRequestSchema,
 } from "../shared/meaningSearch"
 
@@ -29,13 +30,42 @@ function normalized(vector: readonly number[]): readonly number[] {
   return length > 0 ? vector.map((value) => value / length) : vector
 }
 
+/** Bytes downloaded so far across the model's files, as transformers.js reports them. */
+export type DownloadProgress = (loaded: number, total: number) => void
+
+function progressReporter(onProgress: DownloadProgress | undefined) {
+  const files = new Map<string, { loaded: number; total: number }>()
+  return (event: unknown): void => {
+    if (!onProgress || typeof event !== "object" || event === null) return
+    const file = Reflect.get(event, "file")
+    const loaded = Reflect.get(event, "loaded")
+    const total = Reflect.get(event, "total")
+    if (typeof file !== "string" || typeof loaded !== "number" || typeof total !== "number") return
+    files.set(file, { loaded, total })
+    let sumLoaded = 0
+    let sumTotal = 0
+    for (const entry of files.values()) {
+      sumLoaded += entry.loaded
+      sumTotal += entry.total
+    }
+    onProgress(sumLoaded, sumTotal)
+  }
+}
+
 /** Loads EmbeddingGemma locally with transformers.js; the first use downloads the model. */
-export async function loadEmbeddingGemma(modelDirectory: string): Promise<Embedder> {
+export async function loadEmbeddingGemma(
+  modelDirectory: string,
+  onProgress?: DownloadProgress,
+): Promise<Embedder> {
   const transformers = await import("@huggingface/transformers")
   transformers.env.cacheDir = modelDirectory
-  const tokenizer = await transformers.AutoTokenizer.from_pretrained(MEANING_SEARCH_MODEL)
+  const progress_callback = progressReporter(onProgress)
+  const tokenizer = await transformers.AutoTokenizer.from_pretrained(MEANING_SEARCH_MODEL, {
+    progress_callback,
+  })
   const model = await transformers.AutoModel.from_pretrained(MEANING_SEARCH_MODEL, {
     dtype: "q8",
+    progress_callback,
   })
   return async (texts, kind) => {
     const inputs = await tokenizer(
@@ -69,13 +99,17 @@ function dot(left: readonly number[], right: readonly number[]): number {
  */
 export class MeaningSearchService {
   #state: MeaningSearchState = "idle"
+  #progress: number | null = null
   #embedder: Promise<Embedder> | null = null
   #queue: Promise<void> = Promise.resolve()
   readonly #vectors = new Map<string, readonly number[]>()
 
   constructor(
     dataDirectory: string,
-    private readonly load: (modelDirectory: string) => Promise<Embedder> = loadEmbeddingGemma,
+    private readonly load: (
+      modelDirectory: string,
+      onProgress: DownloadProgress,
+    ) => Promise<Embedder> = loadEmbeddingGemma,
     private readonly modelDirectory = join(dataDirectory, "models"),
   ) {}
 
@@ -83,12 +117,23 @@ export class MeaningSearchService {
     return this.#state
   }
 
+  /** The state, with download progress while a first start is still fetching the model. */
+  status(): MeaningSearchStatus {
+    return this.#state === "loading" && this.#progress !== null
+      ? { state: this.#state, progress: this.#progress }
+      : { state: this.#state }
+  }
+
   prepare(): Promise<Embedder> {
     if (!this.#embedder) {
       this.#state = "loading"
-      this.#embedder = this.load(this.modelDirectory).then(
+      this.#progress = null
+      this.#embedder = this.load(this.modelDirectory, (loaded, total) => {
+        if (total > 0) this.#progress = Math.min(100, Math.round((loaded / total) * 100))
+      }).then(
         (embedder) => {
           this.#state = "ready"
+          this.#progress = null
           return embedder
         },
         (error: unknown) => {
