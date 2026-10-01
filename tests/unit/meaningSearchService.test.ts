@@ -52,4 +52,21 @@ describe("MeaningSearchService", () => {
     expect(service.state()).toBe("failed")
     expect((await service.rank(request)).results[0]?.id).toBe("a")
   })
+
+  it("reports download progress while the model is first fetched", async () => {
+    let finish: (embedder: Embedder) => void = () => undefined
+    const service = new MeaningSearchService("/tmp/unused", (_directory, onProgress) => {
+      onProgress(30, 300)
+      onProgress(150, 300)
+      return new Promise<Embedder>((resolve) => {
+        finish = resolve
+      })
+    })
+
+    const ready = service.prepare()
+    expect(service.status()).toEqual({ state: "loading", progress: 50 })
+    finish(fakeEmbedder())
+    await ready
+    expect(service.status()).toEqual({ state: "ready" })
+  })
 })

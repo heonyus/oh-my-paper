@@ -30,7 +30,13 @@ export const meaningSearchResultSchema = z
   .strict()
 
 export const meaningSearchStateSchema = z.enum(["idle", "loading", "ready", "failed"])
-export const meaningSearchStatusSchema = z.object({ state: meaningSearchStateSchema }).strict()
+export const meaningSearchStatusSchema = z
+  .object({
+    state: meaningSearchStateSchema,
+    /** How much of the model has downloaded, 0–100, while the first start is fetching it. */
+    progress: z.number().min(0).max(100).optional(),
+  })
+  .strict()
 export const meaningSearchStatusRequestSchema = z.object({ prepare: z.boolean() }).strict()
 
 export type MeaningSearchRequest = z.input<typeof meaningSearchRequestSchema>
