@@ -7,6 +7,8 @@ export type TutorPassage = { readonly page: number; readonly text: string }
 export type EarlierNote = { readonly id: string; readonly title: string; readonly text: string }
 
 const CITATION = /\[\[\s*p\.?\s*(\d{1,4})\s*\|\s*([^\]\n]{1,300}?)\s*\]\]/gu
+/** The page a note card was written at, `[[p.N]]`, which quotes nothing. */
+const PAGE_CHIP = /\[\[\s*p\.?\s*\d{1,4}\s*\]\]/gu
 const EARLIER_NOTES_MAX = 150
 const EARLIER_NOTE_MIN_CHARACTERS = 20
 
@@ -24,6 +26,7 @@ export function earlierNoteParagraphs(
     note.markdown.split(/\n\s*\n/u).forEach((block, index) => {
       const text = block
         .replace(CITATION, "")
+        .replace(PAGE_CHIP, "")
         .replace(/^\s*(?:#{1,6}|[-*+]|\d+\.|>)\s*/gmu, "")
         .replace(/[*_`]/gu, "")
         .replace(/\s+/gu, " ")

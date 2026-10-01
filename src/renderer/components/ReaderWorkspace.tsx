@@ -11,6 +11,7 @@ import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
 import type { PreparedSummary } from "../lib/pdfDocumentFeatures"
 import type { PdfOutlineEntry } from "../lib/pdfOutline"
 import { flashQuoteOnPage } from "../lib/sourceQuoteFlash"
+import type { RegisterLiveNote } from "../lib/useReaderNote"
 import { readerMessages } from "../messages/reader"
 import type {
   AiRequestRunner,
@@ -38,7 +39,6 @@ export function ReaderWorkspace(props: {
   readonly updateCards: (cards: readonly BoardCard[]) => void
   readonly previewCards: (cards: readonly BoardCard[]) => void
   readonly tool: BoardTool
-  readonly setTool: (tool: BoardTool) => void
   readonly runAi: AiRequestRunner
   readonly provider: ProviderStatus
   readonly documentReady: boolean
@@ -50,6 +50,7 @@ export function ReaderWorkspace(props: {
   readonly closeNote: () => void
   readonly readerNote: ReaderNote | undefined
   readonly updateReaderNote: (markdown: string) => void
+  readonly registerLiveNote?: RegisterLiveNote | undefined
   readonly jumpToCard: (id: CardId) => void
   readonly onPrepared: (summary: PreparedSummary) => void
   readonly outline: readonly PdfOutlineEntry[]
@@ -142,7 +143,6 @@ export function ReaderWorkspace(props: {
           }
           onAiRequest={props.runAi}
           tool={props.tool}
-          onToolChange={props.setTool}
           minimapVisible={workspace.minimapVisible}
           onMinimapVisibleChange={(minimapVisible) =>
             updateWorkspace({ ...workspace, minimapVisible })
@@ -171,6 +171,7 @@ export function ReaderWorkspace(props: {
           onNavigateToSource={navigateToSource}
           pendingQuote={pendingQuote}
           onPendingQuoteHandled={clearPendingQuote}
+          registerLiveNote={props.registerLiveNote}
         />
       ) : null}
       <ResearchSidebar
@@ -193,8 +194,6 @@ export function ReaderWorkspace(props: {
         onAiRequest={props.runAi}
         onInsightChange={props.updateInsight}
         onNavigateToSource={navigateToSource}
-        tool={props.tool}
-        onToolChange={props.setTool}
       />
     </>
   )

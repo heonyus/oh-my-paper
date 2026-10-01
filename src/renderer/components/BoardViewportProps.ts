@@ -19,7 +19,6 @@ export type BoardViewportProps = {
   readonly onRegisterPageJump?: ((jump: (page: number) => void) => void) | undefined
   readonly onAiRequest: AiRequestRunner
   readonly tool: BoardTool
-  readonly onToolChange: (tool: BoardTool) => void
   readonly minimapVisible: boolean
   /** Screen width the research sidebar covers on the right of the board. */
   readonly rightOcclusion?: number | undefined

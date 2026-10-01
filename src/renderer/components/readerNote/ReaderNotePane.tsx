@@ -8,9 +8,11 @@ import type { ScoredSource } from "../../lib/noteSources"
 import type { EarlierNote } from "../../lib/noteTutor"
 import { useMeaningSearchReady } from "../../lib/useMeaningSearchReady"
 import { type CompanionDensity, useNoteCompanion } from "../../lib/useNoteCompanion"
+import type { RegisterLiveNote } from "../../lib/useReaderNote"
 import { type NoteMessageKey, noteMessages } from "../../messages/note"
 import type { AiRequestRunner, DocumentRecord } from "../../types"
 import { evidenceQuote } from "./evidenceNode"
+import { liveNoteAppender } from "./liveNoteAppend"
 import { MarginColumn } from "./MarginColumn"
 import { noteQuoteContent, type PendingNoteQuote } from "./noteQuote"
 import { ReaderNoteEditor } from "./ReaderNoteEditor"
@@ -56,6 +58,7 @@ export function ReaderNotePane({
   onNavigateToSource,
   pendingQuote,
   onPendingQuoteHandled,
+  registerLiveNote,
 }: {
   readonly document: DocumentRecord
   readonly note: ReaderNote | undefined
@@ -67,6 +70,8 @@ export function ReaderNotePane({
   readonly onNavigateToSource: (citation: SourceCitation) => void
   readonly pendingQuote: PendingNoteQuote | null
   readonly onPendingQuoteHandled: () => void
+  /** Lets note cards for this paper go through the editor while it is open. */
+  readonly registerLiveNote?: RegisterLiveNote | undefined
 }): JSX.Element {
   const t = useTranslator(noteMessages)
   const [editor, setEditor] = useState<Editor | null>(null)
@@ -82,6 +87,11 @@ export function ReaderNotePane({
     rank,
     onAiRequest,
   })
+
+  useEffect(() => {
+    if (!editor || !registerLiveNote) return
+    return registerLiveNote(document.id, liveNoteAppender(editor, onChange))
+  }, [editor, document.id, registerLiveNote, onChange])
 
   useEffect(() => {
     if (!editor || !pendingQuote) return

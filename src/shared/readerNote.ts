@@ -1,9 +1,15 @@
 import { z } from "zod"
-import { documentIdSchema } from "./ids"
+import { type DocumentId, documentIdSchema } from "./ids"
 import { mergeKeyedRecords } from "./keyedMerge"
 
 export const READER_NOTE_MAX_CHARACTERS = 200_000
 export const READER_NOTES_MAX = 5_000
+
+/**
+ * The note that belongs to no paper: note cards written away from a paper gather here. It is
+ * kept like a paper's note, under an id no paper takes (paper ids are SHA-256 prefixes).
+ */
+export const LOOSE_NOTE_ID: DocumentId = documentIdSchema.parse("0000000000000000")
 
 /** The reader's own Markdown note for one paper; the AI never writes into it. */
 export const readerNoteSchema = z.object({

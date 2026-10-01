@@ -57,7 +57,7 @@ const ko = {
     "원문 옆에 번역 페이지를 나란히 띄웁니다. 문단을 누르면 원문 자리로 돌아갑니다.",
   "tip.note.title": "내 말로 남기는 노트",
   "tip.note.body":
-    "쓰는 문장마다 근거가 된 문단을 찾아 보여줍니다. 문장을 고르고 C를 누르면 인용과 함께 담깁니다.",
+    "쓰는 문장마다 근거가 된 문단을 찾아 보여줍니다. 문장을 고르고 C를 누르면 인용과 함께 담기고, 어디서든 N을 누르면 노트 카드가 열립니다.",
   "tip.overview.title": "AI 개요",
   "tip.overview.body":
     "키워드, 3줄 요약, 요약을 한 번에 봅니다. 질문하면 근거 페이지와 함께 답합니다.",
@@ -66,6 +66,7 @@ const ko = {
   "key.T": "번역",
   "key.E": "설명",
   "key.C": "노트에",
+  "key.N": "노트 카드",
   "key.H": "하이라이트",
 
   // First-run connect screen
@@ -183,7 +184,7 @@ const en: Readonly<Record<Key, string>> = {
     "A translated page opens beside the original. Click a paragraph to return to it.",
   "tip.note.title": "Notes in your own words",
   "tip.note.body":
-    "Each sentence you write is matched to the passage behind it. Select a sentence and press C to bring it in with its citation.",
+    "Each sentence you write is matched to the passage behind it. Select a sentence and press C to bring it in with its citation, or press N anywhere for a note card.",
   "tip.overview.title": "AI overview",
   "tip.overview.body":
     "Keywords, a three-line summary and a full summary at a glance. Answers to your questions cite their pages.",
@@ -193,6 +194,7 @@ const en: Readonly<Record<Key, string>> = {
   "key.T": "translate",
   "key.E": "explain",
   "key.C": "to notes",
+  "key.N": "note card",
   "key.H": "highlight",
 
   "onb.chatgpt": "ChatGPT subscription",

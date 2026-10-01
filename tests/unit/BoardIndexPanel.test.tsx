@@ -5,9 +5,15 @@ import {
   type BoardCategoryKind,
   BoardIndexPanel,
 } from "../../src/renderer/components/BoardIndexPanel"
-import { boardCardSchema } from "../../src/shared/schemas"
+import { type BoardCard, boardCardSchema } from "../../src/shared/schemas"
 
-function card(id: string, kind: BoardCategoryKind, title: string, body: string, quote: string) {
+function card(
+  id: string,
+  kind: BoardCategoryKind | "sticky",
+  title: string,
+  body: string,
+  quote: string,
+): BoardCard {
   return boardCardSchema.parse({
     id,
     documentId: "aabbccddeeff0011",
@@ -63,9 +69,11 @@ describe("BoardIndexPanel", () => {
     await userEvent.click(translationItem)
     expect(onJump).toHaveBeenCalledWith(translation.id)
 
-    rerender(<BoardIndexPanel cards={[sticky]} kind="sticky" label="포스트잇" onJump={onJump} />)
-    expect(screen.getByText("빠른 메모를 모아 편집 위치로 이동합니다.")).toBeVisible()
+    // Sticky notes are no longer made; the ones already on a board are listed with the memos.
+    rerender(<BoardIndexPanel cards={[sticky]} kind="note" label="메모" onJump={onJump} />)
+    expect(screen.getByText("보드에 남긴 메모와 그 원문을 함께 봅니다.")).toBeVisible()
     expect(screen.getByText("내용이 없는 포스트잇")).toBeVisible()
+    expect(screen.queryByText("보드 포스트잇")).not.toBeInTheDocument()
 
     rerender(
       <BoardIndexPanel cards={[highlight]} kind="highlight" label="하이라이트" onJump={onJump} />,

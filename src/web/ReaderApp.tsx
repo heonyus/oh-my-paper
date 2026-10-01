@@ -1,14 +1,19 @@
-import { BookOpen, CircleHelp, Library, Settings, Sparkles } from "lucide-react"
+import { BookOpen, CircleHelp, Library, NotebookPen, Settings, Sparkles } from "lucide-react"
 import { type JSX, lazy, Suspense, useEffect, useRef, useState } from "react"
 import leafMarkUrl from "../../assets/branding/ohmypaper-leaf-mark.png"
 import { Topbar } from "../renderer/components/AppChrome"
 import { AppStatusOverlays } from "../renderer/components/AppStatusOverlays"
 import { LibraryHome } from "../renderer/components/LibraryHome"
+import { NoteCardOverlays } from "../renderer/components/noteCard/NoteCardOverlays"
 import { useTranslator } from "../renderer/lib/locale"
+import { noteCardTarget } from "../renderer/lib/noteCard"
 import { prefetchWhenIdle } from "../renderer/lib/prefetchWhenIdle"
 import { appShellStyle } from "../renderer/lib/uiFontScale"
 import { useAppWorkspace } from "../renderer/lib/useAppWorkspace"
+import { useNoteCard } from "../renderer/lib/useNoteCard"
+import { noteMessages } from "../renderer/messages/note"
 import { analysedPaperCount } from "../shared/documentAnalysis"
+import { LOOSE_NOTE_ID } from "../shared/readerNote"
 import { type DocumentId, documentIdSchema } from "../shared/schemas"
 import { webMessages } from "./messages"
 import { StarInvite } from "./star/StarInvite"
@@ -35,6 +40,7 @@ const ResearchView = lazy(() =>
 export function ReaderApp(): JSX.Element {
   const app = useAppWorkspace()
   const t = useTranslator(webMessages)
+  const tNote = useTranslator(noteMessages)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [researchOpen, setResearchOpen] = useState(false)
   const [tipsOpen, setTipsOpen] = useState(false)
@@ -53,6 +59,13 @@ export function ReaderApp(): JSX.Element {
   const workspace = app.workspace
   const credentialsReady = app.provider.configured
   const libraryVisible = !researchOpen && app.libraryView
+  const [looseNoteOpen, setLooseNoteOpen] = useState(false)
+  // A note card goes to the paper on screen; from the library or research, to the loose note.
+  const noteCard = useNoteCard(
+    noteCardTarget(!researchOpen && !app.libraryView ? app.activeDocument : null, app.currentPage),
+    app.appendToNote,
+    Boolean(workspace) && credentialsReady && welcome.state === "seen",
+  )
 
   // 설정 opens at once: its code is fetched while the app is idle, not on the first click.
   useEffect(() => prefetchWhenIdle(loadSettingsDialog), [])
@@ -231,6 +244,16 @@ export function ReaderApp(): JSX.Element {
         <div className="web-reader-header-actions">
           <button
             type="button"
+            className="web-reader-note-card"
+            aria-label={tNote("card.new")}
+            aria-keyshortcuts="N Alt+N"
+            title={`${tNote("card.new")} (N)`}
+            onClick={noteCard.open}
+          >
+            <NotebookPen size={18} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
             className="web-reader-help"
             aria-label={t("shell.help")}
             title={t("shell.help")}
@@ -274,6 +297,7 @@ export function ReaderApp(): JSX.Element {
             onFileDrop={(files) => void app.importDroppedPdfs(files)}
             importProgress={app.importProgress}
             onDeleteDocument={app.deleteDocument}
+            onOpenLooseNote={() => setLooseNoteOpen(true)}
           />
         ) : (
           <section
@@ -320,12 +344,12 @@ export function ReaderApp(): JSX.Element {
                 closeNote={() => app.setNoteOpen(false)}
                 readerNote={app.readerNote}
                 updateReaderNote={app.updateReaderNote}
+                registerLiveNote={app.registerLiveNote}
                 provider={app.provider}
                 documentReady={app.documentReady}
                 jumpToCard={app.jumpToCard}
                 runAi={app.runAi}
                 tool={app.tool}
-                setTool={app.setTool}
                 onPrepared={app.finishPreparation}
                 outline={app.outline}
                 outlineOpen={app.outlineOpen}
@@ -341,6 +365,18 @@ export function ReaderApp(): JSX.Element {
           </section>
         )}
       </div>
+      <NoteCardOverlays
+        state={noteCard}
+        looseNote={workspace.readerNotes.find((note) => note.documentId === LOOSE_NOTE_ID)}
+        looseOpen={looseNoteOpen}
+        onLooseOpenChange={setLooseNoteOpen}
+        onLooseChange={(markdown) => app.updateNote(LOOSE_NOTE_ID, markdown)}
+        registerLiveNote={app.registerLiveNote}
+        onOpenPaperNote={(id) => {
+          if (id !== app.activeDocument?.id || libraryVisible || researchOpen) openDocument(id)
+          app.setNoteOpen(true)
+        }}
+      />
       <AppStatusOverlays
         preparation={app.preparation}
         saveFailed={app.workspaceSaveFailed}

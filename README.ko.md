@@ -63,7 +63,7 @@ Apple Silicon Mac, git, Node.js 22 이상(`brew install node`)이 필요합니�
 <td width="50%" valign="top">
 <img src="docs/media/features/note.gif" alt="노트를 쓰는 동안 근거 문단이 옆에 나타나는 장면"><br>
 <b>내 말로 쓰는 노트</b><br>
-쓰는 문장마다 뒷받침하는 문단을 찾아 줍니다. <kbd>C</kbd>는 구절을 출처와 함께 가져옵니다.
+쓰는 문장마다 뒷받침하는 문단을 찾아 줍니다. <kbd>C</kbd>는 구절을 출처와 함께 가져오고, <kbd>N</kbd>은 어느 화면에서든 노트 카드를 열어 바로 적게 해 줍니다.
 </td>
 </tr>
 <tr>

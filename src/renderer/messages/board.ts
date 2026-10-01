@@ -14,8 +14,6 @@ const ko = {
   "index.infographic.action": "분석 카드 보기",
   "index.note.purpose": "보드에 남긴 메모와 그 원문을 함께 봅니다.",
   "index.note.empty": "보드에 남긴 메모 카드가 여기에 모입니다.",
-  "index.sticky.purpose": "빠른 메모를 모아 편집 위치로 이동합니다.",
-  "index.sticky.empty": "포스트잇 도구로 보드를 클릭하면 빠른 메모가 여기에 나타납니다.",
   "index.highlight.purpose": "핵심 문장을 페이지 순서로 다시 찾습니다.",
   "index.highlight.empty": "PDF 문장을 선택해 하이라이트하면 핵심 근거가 여기에 모입니다.",
   "index.highlight.action": "원문 위치 보기",
@@ -85,7 +83,6 @@ const ko = {
   "default.noteTitle": "메모",
   "default.highlightTitle": "하이라이트",
   "default.annotationTitle": "AI 번역",
-  "default.stickyTitle": "포스트잇",
 } as const
 
 const en: Readonly<Record<keyof typeof ko, string>> = {
@@ -103,8 +100,6 @@ const en: Readonly<Record<keyof typeof ko, string>> = {
   "index.infographic.action": "View analysis card",
   "index.note.purpose": "See the memos you left on the board with their source.",
   "index.note.empty": "Memo cards you leave on the board collect here.",
-  "index.sticky.purpose": "Collect quick notes and go back to where you wrote them.",
-  "index.sticky.empty": "Click the board with the sticky note tool, and quick notes appear here.",
   "index.highlight.purpose": "Find key sentences again in page order.",
   "index.highlight.empty":
     "Select a sentence in the PDF and highlight it. Key evidence collects here.",
@@ -169,7 +164,6 @@ const en: Readonly<Record<keyof typeof ko, string>> = {
   "default.noteTitle": "Memo",
   "default.highlightTitle": "Highlight",
   "default.annotationTitle": "AI translation",
-  "default.stickyTitle": "Sticky note",
 }
 
 export type BoardMessageKey = keyof typeof ko

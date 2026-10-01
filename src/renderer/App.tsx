@@ -1,13 +1,17 @@
 import { type JSX, lazy, Suspense, useState } from "react"
 import { analysedPaperCount } from "../shared/documentAnalysis"
+import { LOOSE_NOTE_ID } from "../shared/readerNote"
 import { LibraryTopbar, Topbar, type WebAccount } from "./components/AppChrome"
 import { AppStatusOverlays } from "./components/AppStatusOverlays"
 import type { HostedCredentialSettingsProps } from "./components/HostedCredentialSettings"
 import { LibraryWorkspace } from "./components/LibraryWorkspace"
+import { NoteCardOverlays } from "./components/noteCard/NoteCardOverlays"
 import { ResearchNavigation } from "./components/ResearchNavigation"
 import { WorkspaceSections } from "./components/WorkspaceSections"
+import { noteCardTarget } from "./lib/noteCard"
 import { appShellStyle } from "./lib/uiFontScale"
 import { useAppWorkspace } from "./lib/useAppWorkspace"
+import { useNoteCard } from "./lib/useNoteCard"
 import type { DocumentId } from "./types"
 
 const ReaderWorkspace = lazy(() =>
@@ -87,6 +91,13 @@ export function App({
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [dataExchangeOpen, setDataExchangeOpen] = useState(false)
   const [proposalOpen, setProposalOpen] = useState(false)
+  const [looseNoteOpen, setLooseNoteOpen] = useState(false)
+  // A note card goes to the paper on screen; anywhere else, to the loose note.
+  const noteCard = useNoteCard(
+    noteCardTarget(readerMode && !libraryView ? activeDocument : null, currentPage),
+    app.appendToNote,
+    Boolean(workspace) && provider.configured,
+  )
 
   if (!workspace) return <main className="loading-screen">oh-my-paper를 여는 중…</main>
 
@@ -181,6 +192,7 @@ export function App({
           importLabel={platform === "web" ? "PDF 업로드 및 분석" : "PDF 가져오기"}
           importProgress={importProgress}
           onSelect={openDocument}
+          onOpenLooseNote={() => setLooseNoteOpen(true)}
         />
       </div>
       <WorkspaceSections
@@ -238,12 +250,12 @@ export function App({
               closeNote={() => setNoteOpen(false)}
               readerNote={readerNote}
               updateReaderNote={updateReaderNote}
+              registerLiveNote={app.registerLiveNote}
               provider={provider}
               documentReady={documentReady}
               jumpToCard={jumpToCard}
               runAi={runAi}
               tool={tool}
-              setTool={app.setTool}
               onPrepared={finishPreparation}
               outline={outline}
               outlineOpen={outlineOpen}
@@ -258,6 +270,18 @@ export function App({
           </Suspense>
         </section>
       ) : null}
+      <NoteCardOverlays
+        state={noteCard}
+        looseNote={workspace.readerNotes.find((note) => note.documentId === LOOSE_NOTE_ID)}
+        looseOpen={looseNoteOpen}
+        onLooseOpenChange={setLooseNoteOpen}
+        onLooseChange={(markdown) => app.updateNote(LOOSE_NOTE_ID, markdown)}
+        registerLiveNote={app.registerLiveNote}
+        onOpenPaperNote={(id) => {
+          if (id !== activeDocument?.id || !readerMode || libraryView) openDocument(id)
+          setNoteOpen(true)
+        }}
+      />
       <AppStatusOverlays
         preparation={preparation}
         saveFailed={workspaceSaveFailed}

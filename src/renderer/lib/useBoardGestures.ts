@@ -184,6 +184,10 @@ export function useBoardGestures({
       panSettleFrame.current = null
     }
     event.preventDefault()
+    // Preventing the default also keeps focus where it was; pressing the board leaves the note
+    // or field outside it, so keys such as N act on the board instead of typing there.
+    const focused = document.activeElement
+    if (focused instanceof HTMLElement && !event.currentTarget.contains(focused)) focused.blur()
     event.currentTarget.style.userSelect = "none"
     window.getSelection()?.removeAllRanges()
     onClearSelection()

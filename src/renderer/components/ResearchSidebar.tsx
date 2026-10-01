@@ -11,7 +11,6 @@ import {
   Quote,
   Search,
   Sparkles,
-  StickyNote,
 } from "lucide-react"
 import { type JSX, useState } from "react"
 import type { ProviderStatus } from "../../shared/ipc"
@@ -23,15 +22,15 @@ import { togglePageTranslation } from "../lib/pageTranslationToggle"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
 import { saveCitationAssessment, saveSidebarInsight } from "../lib/sidebarCards"
 import { researchMessages } from "../messages/research"
-import type { AiRequestRunner, BoardCard, BoardTool, CardId, DocumentRecord } from "../types"
+import type { AiRequestRunner, BoardCard, CardId, DocumentRecord } from "../types"
 import { AiOverviewPanel } from "./AiOverviewPanel"
-import { BoardIndexPanel } from "./BoardIndexPanel"
+import { BoardIndexPanel, cardsInCategory } from "./BoardIndexPanel"
 import { CitationPanel } from "./CitationPanel"
 import { PageTranslationPortal } from "./PageTranslationPortal"
 import { ScholarSearchPanel } from "./ScholarSearchPanel"
 import { SidebarResizeHandle } from "./SidebarResizeHandle"
 
-type CardMode = Exclude<BoardCard["kind"], "citation" | "translation">
+type CardMode = Exclude<BoardCard["kind"], "citation" | "translation" | "sticky">
 type ResearchMode = "ai" | "citations" | "translation" | "scholar" | CardMode
 
 function isCardMode(mode: ResearchMode): mode is CardMode {
@@ -54,8 +53,6 @@ export function ResearchSidebar({
   insights = [],
   onInsightChange,
   onNavigateToSource,
-  tool,
-  onToolChange,
 }: {
   readonly document: DocumentRecord | null
   readonly currentPage: number
@@ -73,8 +70,6 @@ export function ResearchSidebar({
   readonly insights?: readonly DocumentInsight[] | undefined
   readonly onInsightChange?: ((kind: DocumentInsightKind, value: string) => void) | undefined
   readonly onNavigateToSource?: ((citation: SourceCitation) => void) | undefined
-  readonly tool: BoardTool
-  readonly onToolChange: (tool: BoardTool) => void
 }): JSX.Element {
   const t = useTranslator(researchMessages)
   const [mode, setMode] = useState<ResearchMode>("ai")
@@ -109,14 +104,8 @@ export function ResearchSidebar({
     {
       id: "note",
       label: modeLabel("note"),
-      count: cards.filter((card) => card.kind === "note").length,
+      count: cardsInCategory(cards, "note").length,
       icon: <NotebookPen size={18} />,
-    },
-    {
-      id: "sticky",
-      label: modeLabel("sticky"),
-      count: cards.filter((card) => card.kind === "sticky").length,
-      icon: <StickyNote size={18} />,
     },
     {
       id: "highlight",
@@ -282,8 +271,6 @@ export function ResearchSidebar({
               onClick={() => {
                 if (flyout !== "pinned") setFlyout("open")
                 if (item.id === "translation") togglePageTranslation(currentPage)
-                if (item.id === "sticky" && tool !== "sticky") onToolChange("sticky")
-                else if (item.id !== "sticky" && tool === "sticky") onToolChange("select")
                 setMode(item.id)
                 if (item.count) {
                   setSeenCounts((current) => ({ ...current, [item.id]: item.count }))

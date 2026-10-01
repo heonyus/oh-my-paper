@@ -5,7 +5,6 @@ import {
   MessageSquareText,
   NotebookPen,
   Palette,
-  StickyNote,
 } from "lucide-react"
 import type { JSX } from "react"
 import { conciseCardTitle } from "../lib/cardPresentation"
@@ -13,7 +12,18 @@ import { useTranslator } from "../lib/locale"
 import { type BoardMessageKey, boardMessages } from "../messages/board"
 import type { BoardCard, CardId } from "../types"
 
-export type BoardCategoryKind = Exclude<BoardCard["kind"], "citation">
+export type BoardCategoryKind = Exclude<BoardCard["kind"], "citation" | "sticky">
+
+/**
+ * The cards a category lists. Sticky notes are no longer made (note cards go into the reader's
+ * note), so the ones already on a board are listed with the memos.
+ */
+export function cardsInCategory(
+  cards: readonly BoardCard[],
+  kind: BoardCategoryKind,
+): readonly BoardCard[] {
+  return cards.filter((card) => card.kind === kind || (kind === "note" && card.kind === "sticky"))
+}
 
 type CategoryCopy = {
   readonly purpose: BoardMessageKey
@@ -42,11 +52,6 @@ const categoryCopy: Readonly<Record<BoardCategoryKind, CategoryCopy>> = {
     empty: "index.note.empty",
     action: null,
   },
-  sticky: {
-    purpose: "index.sticky.purpose",
-    empty: "index.sticky.empty",
-    action: null,
-  },
   highlight: {
     purpose: "index.highlight.purpose",
     empty: "index.highlight.empty",
@@ -64,8 +69,6 @@ function KindIcon({ kind, size }: { readonly kind: BoardCategoryKind; readonly s
       return <Palette size={size} />
     case "note":
       return <NotebookPen size={size} />
-    case "sticky":
-      return <StickyNote size={size} />
     case "highlight":
       return <Highlighter size={size} />
   }
@@ -87,32 +90,21 @@ function boundedPreview(value: string, maximum: number): string {
 }
 
 function previewFor(card: BoardCard, kind: BoardCategoryKind, emptySticky: string): string {
+  if (card.kind === "sticky") return plainPreview(card.body) || emptySticky
   switch (kind) {
     case "translation":
     case "explanation":
     case "note":
+    case "highlight":
       return plainPreview(card.body) || card.anchor.quote
     case "infographic":
       return boundedPreview(card.body, 280) || card.anchor.quote
-    case "sticky":
-      return plainPreview(card.body) || emptySticky
-    case "highlight":
-      return plainPreview(card.body) || card.anchor.quote
   }
 }
 
-function sourceFor(card: BoardCard, kind: BoardCategoryKind): string | null {
-  switch (kind) {
-    case "translation":
-    case "explanation":
-    case "infographic":
-    case "note":
-      return card.anchor.quote
-    case "sticky":
-      return null
-    case "highlight":
-      return card.anchor.quote
-  }
+/** A sticky note was placed on the board, not on a passage, so it has no source to show. */
+function sourceFor(card: BoardCard): string | null {
+  return card.kind === "sticky" ? null : card.anchor.quote
 }
 
 export function BoardIndexPanel({
@@ -127,7 +119,7 @@ export function BoardIndexPanel({
   readonly onJump: (id: CardId) => void
 }): JSX.Element {
   const t = useTranslator(boardMessages)
-  const visible = cards.filter((card) => card.kind === kind)
+  const visible = cardsInCategory(cards, kind)
   const copy = categoryCopy[kind]
   const action = copy.action ? t(copy.action) : null
   return (
@@ -147,7 +139,7 @@ export function BoardIndexPanel({
       {visible.length > 0 ? (
         <ol className="board-index-list">
           {visible.map((card) => {
-            const source = sourceFor(card, kind)
+            const source = sourceFor(card)
             const showsItemIdentity = kind !== "highlight"
             return (
               <li key={card.id} data-kind={kind}>

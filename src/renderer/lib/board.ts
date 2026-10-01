@@ -106,28 +106,6 @@ export function saveTranslationAsAnnotation(card: BoardCard, locale: Locale = "k
     : card
 }
 
-export function createPostIt(
-  documentId: DocumentId,
-  page: number,
-  placement: Point,
-  locale: Locale = "ko",
-): BoardCard {
-  return createBoardCard({
-    documentId,
-    kind: "sticky",
-    title: translator(boardMessages, locale)("default.stickyTitle"),
-    body: "",
-    placement,
-    anchor: {
-      page,
-      quote: "보드 포스트잇",
-      x: placement.x,
-      y: placement.y,
-      fragments: [{ x: placement.x, y: placement.y, width: 1, height: 1 }],
-    },
-  })
-}
-
 export function createSelectionCard(
   documentId: DocumentId,
   selection: BoardTextSelection,

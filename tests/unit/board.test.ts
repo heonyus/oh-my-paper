@@ -5,7 +5,6 @@ import {
   CARD_WIDTH,
   connectorPath,
   createBoardCard,
-  createPostIt,
   createSelectionCard,
   createStructureCard,
   saveTranslationAsAnnotation,
@@ -73,19 +72,6 @@ describe("createBoardCard", () => {
     expect(note.title).toBe("AI 번역")
     expect(note.body).toBe(translation.body)
     expect(note.anchor).toEqual(translation.anchor)
-  })
-
-  it("creates a persistent post-it at the clicked board coordinate", () => {
-    const postIt = createPostIt(documentIdSchema.parse("aabbccddeeff0011"), 4, { x: 780, y: 360 })
-
-    expect(postIt).toMatchObject({
-      kind: "sticky",
-      title: "포스트잇",
-      body: "",
-      x: 780,
-      y: 360,
-      anchor: { page: 4 },
-    })
   })
 
   it("labels a selected quote as a selection translation", () => {

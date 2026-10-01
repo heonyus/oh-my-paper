@@ -52,7 +52,6 @@ function readerProps(document: DocumentRecord): Parameters<typeof ReaderWorkspac
     updateCards: vi.fn(),
     previewCards: vi.fn(),
     tool: "select",
-    setTool: vi.fn(),
     runAi: vi.fn(async () => ""),
     provider: { configured: false, provider: "openai", model: "test-model" },
     documentReady: true,
