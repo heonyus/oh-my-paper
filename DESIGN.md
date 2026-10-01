@@ -27,6 +27,20 @@ place a reader's words go, the note, and one quick way to add to it, the note ca
   sidebar's `포스트잇` mode are gone. Sticky notes already on a board stay there, editable, and
   are listed with the memo cards.
 
+The research sidebar rail has three modes (2026-10-01), down from eight:
+
+- `AI` (overview), unchanged.
+- `카드`: every card on the board in one list, in page order. Under the heading, filter pills
+  (`전체 · 번역 · 설명 · 그림·표 · 하이라이트 · 메모`, each with its count) narrow it; a type
+  appears only while the board holds a card of it, and a filter whose last card is gone falls
+  back to `전체`. Each item keeps its type's icon, preview and action. The rail badge counts new
+  cards of any type. Choosing the mode no longer opens a page translation: each page's
+  `페이지 번역` button and the toolbar's `자동 번역` do that.
+- `관련 논문`: other papers, from two sides chosen with the same pills: `참고문헌` (this paper's
+  references, read one by one; the default) and `찾기` (search for related papers). Only the
+  chosen side is mounted, so nothing is looked up unasked.
+- Each mode remembers its filter or side while the paper stays open.
+
 ## 2026-09-29 First run: connect screen, terminal wizard and feature tips (current)
 
 First run offers OpenAI subscription login on equal footing with Claude, the latest models, a

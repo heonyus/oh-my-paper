@@ -145,7 +145,7 @@ test("web reader keeps the full research board and page-adjacent translation", a
   await expect(page.getByLabel("보드 미니맵")).toBeVisible()
   await expect(page.locator(".translation-pane")).toHaveCount(0)
 
-  await page.getByRole("button", { name: "번역 모드" }).click()
+  await page.getByRole("button", { name: "p. 1 페이지 번역 열기" }).click()
   await expect(page.locator(".research-sidebar-flyout")).toHaveCSS("visibility", "hidden")
   const pdf = page.locator('.pdfViewer .page[data-page-number="1"]')
   const translation = page.locator(".page-translation-pane")

@@ -17,13 +17,13 @@ const ko = {
   "sidebar.openAi": "AI 개요 열기",
   "sidebar.modeButton": "{label} 모드",
   "sidebar.mode.ai": "AI",
-  "sidebar.mode.translation": "번역",
-  "sidebar.mode.explanation": "AI 설명",
-  "sidebar.mode.infographic": "AI 카드",
-  "sidebar.mode.note": "메모",
-  "sidebar.mode.highlight": "하이라이트",
-  "sidebar.mode.citations": "인용",
-  "sidebar.mode.scholar": "논문 탐색",
+  "sidebar.mode.cards": "카드",
+  "sidebar.mode.papers": "관련 논문",
+
+  // Related papers: this paper's references, and a search for others
+  "papers.views": "관련 논문 보기",
+  "papers.references": "참고문헌",
+  "papers.find": "찾기",
 
   // AI overview
   "overview.label": "AI 논문 개요",
@@ -75,13 +75,12 @@ const en: Readonly<Record<keyof typeof ko, string>> = {
   "sidebar.openAi": "Open AI overview",
   "sidebar.modeButton": "{label} mode",
   "sidebar.mode.ai": "AI",
-  "sidebar.mode.translation": "Translation",
-  "sidebar.mode.explanation": "AI explanations",
-  "sidebar.mode.infographic": "AI cards",
-  "sidebar.mode.note": "Notes",
-  "sidebar.mode.highlight": "Highlights",
-  "sidebar.mode.citations": "Citations",
-  "sidebar.mode.scholar": "Find papers",
+  "sidebar.mode.cards": "Cards",
+  "sidebar.mode.papers": "Related papers",
+
+  "papers.views": "Related papers view",
+  "papers.references": "References",
+  "papers.find": "Find",
 
   "overview.label": "AI paper overview",
   "overview.keywords": "Keyword glossary",
