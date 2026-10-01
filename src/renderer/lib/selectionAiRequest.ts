@@ -19,7 +19,6 @@ export function selectionAiRequest(
         after: selection.context.after,
       }
     case "explanation":
-    case "infographic":
       return {
         action,
         page: selection.page,

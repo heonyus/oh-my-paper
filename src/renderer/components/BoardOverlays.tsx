@@ -3,7 +3,6 @@ import {
   Languages,
   MessageSquareText,
   NotebookPen,
-  Palette,
   Trash2,
 } from "lucide-react"
 import type { CSSProperties, JSX } from "react"
@@ -135,9 +134,6 @@ export function SelectionToolbar({
       </button>
       <button type="button" aria-keyshortcuts="E" onClick={() => onAction("explanation")}>
         <MessageSquareText size={14} /> {t("overlay.explain")}
-      </button>
-      <button type="button" aria-keyshortcuts="I" onClick={() => onAction("infographic")}>
-        <Palette size={14} /> {t("overlay.infographic")}
       </button>
       <button type="button" aria-keyshortcuts="H" onClick={() => onAction("highlight")}>
         <Highlighter size={14} /> {t("overlay.highlight")}

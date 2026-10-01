@@ -17,7 +17,6 @@ export const aiActionSchema = z.enum([
   "page_structure",
   "page_translation",
   "explanation",
-  "infographic",
   "section",
   "figure",
   "table",

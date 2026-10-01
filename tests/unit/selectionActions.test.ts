@@ -5,7 +5,7 @@ describe("selection shortcuts", () => {
   it("maps selection keys to local actions", () => {
     expect(selectionActionForShortcut("E")).toBe("explanation")
     expect(selectionActionForShortcut("t")).toBe("translation")
-    expect(selectionActionForShortcut("I")).toBe("infographic")
+    expect(selectionActionForShortcut("I")).toBeNull()
     expect(selectionActionForShortcut("h")).toBe("highlight")
     expect(selectionActionForShortcut("C")).toBe("note")
   })

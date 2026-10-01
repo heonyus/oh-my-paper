@@ -1,4 +1,4 @@
-export type SelectionAction = "translation" | "explanation" | "infographic" | "highlight" | "note"
+export type SelectionAction = "translation" | "explanation" | "highlight" | "note"
 
 import { useEffect, useRef } from "react"
 import type { BoardTextSelection } from "./boardSelection"
@@ -6,7 +6,6 @@ import type { BoardTextSelection } from "./boardSelection"
 const selectionActionByKey: Readonly<Record<string, SelectionAction>> = {
   e: "explanation",
   t: "translation",
-  i: "infographic",
   h: "highlight",
   c: "note",
 }

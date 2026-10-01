@@ -19,7 +19,6 @@ const readingTokenLimits: Readonly<Partial<Record<AiRequest["action"], number>>>
   citation_assessment: 768,
   note_tutor: 700,
   explanation: 1_536,
-  infographic: 1_024,
   section: 1_536,
   figure: 1_280,
   table: 1_280,

@@ -28,7 +28,6 @@ const WORDS = {
     paper: "논문",
     document: "문서",
     explanation: ["한눈에", "무엇을 말하는가", "근거와 논리", "{doc} 전체에서의 역할", "확인할 점"],
-    infographic: ["연구 질문", "핵심 결론", "근거", "해석 시 주의점"],
     section: [
       "이 절의 질문",
       "핵심 주장",
@@ -83,7 +82,6 @@ const WORDS = {
       "Role in the {doc}",
       "What to check",
     ],
-    infographic: ["Research question", "Key conclusion", "Evidence", "Cautions"],
     section: [
       "The question this section answers",
       "Main claim",
@@ -230,7 +228,6 @@ function pageBlockRules(language: Locale): string {
 /** The actions answered as a document with headings; the rest keep to their own short format. */
 const LONG_FORM: ReadonlySet<AiAction> = new Set([
   "explanation",
-  "infographic",
   "section",
   "figure",
   "table",
@@ -271,10 +268,6 @@ function actionInstruction(action: AiAction, context: PromptContext): string {
       return `Translate every supplied JSON block into ${name} and return JSON only, exactly in the shape {"translations":[{"id":"<input id>","markdown":"<${name} translation>"}]}: one entry for every input ID, in the same order, with no other keys and no code fence. ${pageBlockRules(language)}`
     case "explanation":
       return `Start with \`#\` and a concise card title. Teach this passage to a reader of the ${doc} as a research collaborator would. Write a substantive explanation with Markdown sections ${headings(words.explanation, doc)}: identify what the passage is and its main claim; unpack terminology, entities, method, data, or mechanism; trace the claim to the exact supplied evidence; connect it to the ${doc}'s question and the neighboring section; and name assumptions, limitations, or a concrete follow-up question. ${length.explanation}, more when equations or methods require it. ${written} Never pad with generic praise or discuss extraction quality.`
-    case "infographic": {
-      const [question, conclusion, evidence, cautions] = words.infographic
-      return `Start with \`#\` and a concise card title. Turn the passage into a Markdown concept map for a researcher, not a decorative summary: \`${question}\`, a one-line \`${conclusion}\`, then 4-7 bullets written as \`- **A** → **B**: why it matters\` for inputs, method components, evidence, and outputs, then \`${evidence}\` and \`${cautions}\` bullets. Preserve named variables, datasets, models, and representative numbers. ${written}`
-    }
     case "section":
       return `Start with \`#\` and a concise title. Explain the section as an argument, with Markdown sections ${headings(words.section, doc)}. Identify the specific problem it addresses, the method, data, or setup used here, 2-4 representative source-supported facts or results, and how the preceding and following sections depend on it. Write enough that a reader understands why this section exists without rereading it; do not inventory every sentence. ${written}`
     case "figure":

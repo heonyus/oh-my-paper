@@ -67,7 +67,6 @@ const ko = {
   "overlay.selectionActions": "선택 작업",
   "overlay.translate": "번역",
   "overlay.explain": "설명",
-  "overlay.infographic": "인포그래픽",
   "overlay.highlight": "하이라이트",
   "overlay.toNote": "노트에",
 
@@ -162,7 +161,6 @@ const en: Readonly<Record<keyof typeof ko, string>> = {
   "overlay.selectionActions": "Selection actions",
   "overlay.translate": "Translate",
   "overlay.explain": "Explain",
-  "overlay.infographic": "Infographic",
   "overlay.highlight": "Highlight",
   "overlay.toNote": "To note",
 
