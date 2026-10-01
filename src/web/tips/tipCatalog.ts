@@ -65,6 +65,10 @@ export const FEATURE_TIPS: readonly FeatureTip[] = [
     placement: "below",
     title: "tip.note.title",
     body: "tip.note.body",
+    keys: [
+      ["C", "key.C"],
+      ["N", "key.N"],
+    ],
     clip: "/tutorials/note.mp4",
   },
   {

@@ -20,7 +20,6 @@ import { useEvidenceNavigation } from "./useEvidenceNavigation"
 import { useKnowledgeClientOps } from "./useKnowledgeClientOps"
 import { useOverviewPrefetch } from "./useOverviewPrefetch"
 import { usePaperAiRequest } from "./usePaperAiRequest"
-import { usePostItShortcut } from "./usePostItShortcut"
 import { useReaderLearning } from "./useReaderLearning"
 import { useWorkspaceHistory } from "./useWorkspaceHistory"
 import { useWorkspacePersistence } from "./useWorkspacePersistence"
@@ -75,7 +74,6 @@ export function useAppWorkspace() {
     readonly entries: readonly CitationIndexEntry[]
   } | null>(null)
 
-  usePostItShortcut(setTool)
   const workspaceSaveFailed = useWorkspacePersistence(
     history.workspace,
     history.setWorkspaceTransient,

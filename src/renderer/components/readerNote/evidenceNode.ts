@@ -1,7 +1,10 @@
 import { mergeAttributes, Node } from "@tiptap/core"
 
-/** `[[p.12 | verbatim phrase]]`, the citation form the rest of the app already renders. */
-const EVIDENCE_MARKDOWN = /^\[\[\s*p\.?\s*(\d{1,4})\s*\|\s*([^\]\n]{1,300}?)\s*\]\]/u
+/**
+ * `[[p.12 | verbatim phrase]]`, the citation form the rest of the app already renders, or
+ * `[[p.12]]`, a page with no quote, which a note card leaves to mark where it was written.
+ */
+const EVIDENCE_MARKDOWN = /^\[\[\s*p\.?\s*(\d{1,4})\s*(?:\|\s*([^\]\n]{1,300}?)\s*)?\]\]/u
 const QUOTE_MAX_CHARACTERS = 160
 
 export type EvidenceAttributes = { readonly page: number; readonly quote: string }
@@ -92,6 +95,7 @@ export const EvidenceNode = Node.create({
     const attrs: unknown = node.attrs
     const page = typeof attrs === "object" && attrs !== null ? Reflect.get(attrs, "page") : 1
     const quote = typeof attrs === "object" && attrs !== null ? Reflect.get(attrs, "quote") : ""
-    return `[[p.${pageOf(page)} | ${evidenceQuote(String(quote ?? ""))}]]`
+    const text = evidenceQuote(String(quote ?? ""))
+    return text ? `[[p.${pageOf(page)} | ${text}]]` : `[[p.${pageOf(page)}]]`
   },
 })

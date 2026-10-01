@@ -3,7 +3,7 @@ import type { DocumentId, Workspace } from "../../shared/schemas"
 import { useReaderNote } from "./useReaderNote"
 import type { WorkspaceSetter } from "./useWorkspaceHistory"
 
-/** The open paper's own note, plus whether the note is open. */
+/** The open paper's own note, whether the note is open, and note cards for any note. */
 export function useReaderLearning(
   workspace: Workspace | null,
   documentId: DocumentId | undefined,
@@ -14,6 +14,9 @@ export function useReaderLearning(
   return {
     readerNote: note.note,
     updateReaderNote: note.update,
+    updateNote: note.updateNote,
+    registerLiveNote: note.registerLiveNote,
+    appendToNote: note.appendToNote,
     noteOpen,
     setNoteOpen,
   }

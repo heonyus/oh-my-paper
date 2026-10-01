@@ -70,7 +70,6 @@ function renderBoard(cards: readonly BoardCard[]) {
     currentPage: 1,
     onAiRequest: vi.fn(async () => ""),
     tool: "select",
-    onToolChange: vi.fn(),
     minimapVisible: false,
     onMinimapVisibleChange: vi.fn(),
   }

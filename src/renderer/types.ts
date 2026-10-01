@@ -1,6 +1,6 @@
 import type { AiRequest, OhMyPaperApi } from "../shared/ipc"
 
-export type BoardTool = "select" | "pan" | "sticky"
+export type BoardTool = "select" | "pan"
 export type AiDeltaHandler = (delta: string) => void
 export type AiRequestRunner = (
   request: Omit<AiRequest, "documentId">,

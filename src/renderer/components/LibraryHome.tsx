@@ -43,6 +43,7 @@ type LibraryHomeProps = {
   readonly recentDocumentId?: DocumentId | null | undefined
   readonly recentPage?: number | null | undefined
   readonly onDeleteDocument?: ((id: DocumentId) => Promise<void>) | undefined
+  readonly onOpenLooseNote?: (() => void) | undefined
 }
 
 /** A collection problem to show: catalog wording, or the message the failure carried. */
@@ -78,6 +79,7 @@ export function LibraryHome({
   recentDocumentId,
   recentPage,
   onDeleteDocument,
+  onOpenLooseNote,
 }: LibraryHomeProps): JSX.Element {
   const t = useTranslator(libraryMessages)
   const [query, setQuery] = useState("")
@@ -294,6 +296,7 @@ export function LibraryHome({
         onImport={onImport}
         onToggleMembership={(documentId, boardId) => void toggleMembership(documentId, boardId)}
         onDeleteDocument={onDeleteDocument}
+        onOpenLooseNote={onOpenLooseNote}
       />
       <LibraryTaskQueue
         imports={importProgress}

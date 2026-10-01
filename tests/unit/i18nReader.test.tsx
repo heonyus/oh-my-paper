@@ -11,7 +11,7 @@ import {
   matchingSlashItems,
   SlashMenuStore,
 } from "../../src/renderer/components/readerNote/slashCommands"
-import { createPostIt, createSelectionCard } from "../../src/renderer/lib/board"
+import { createSelectionCard } from "../../src/renderer/lib/board"
 import { LocaleProvider } from "../../src/renderer/lib/locale"
 import {
   pageTranslationFailureMessage,
@@ -76,7 +76,6 @@ describe("reader wording", () => {
       "Passage explanation",
     )
     expect(createSelectionCard(documentId, selection, "explanation")?.title).toBe("선택 구절 설명")
-    expect(createPostIt(documentId, 1, { x: 0, y: 0 }, "en").title).toBe("Sticky note")
   })
 
   it("matches slash blocks by their name in the reader's language", () => {
@@ -115,15 +114,13 @@ describe("reader in English", () => {
   })
 
   it("explains an empty board category in English", () => {
-    render(<BoardIndexPanel cards={[]} kind="sticky" label="Sticky notes" onJump={vi.fn()} />, {
+    render(<BoardIndexPanel cards={[]} kind="note" label="Notes" onJump={vi.fn()} />, {
       wrapper: english,
     })
 
-    expect(screen.getByRole("region", { name: "Sticky notes index" })).toBeVisible()
+    expect(screen.getByRole("region", { name: "Notes index" })).toBeVisible()
     expect(screen.getByText("Nothing saved yet.")).toBeVisible()
-    expect(
-      screen.getByText("Click the board with the sticky note tool, and quick notes appear here."),
-    ).toBeVisible()
+    expect(screen.getByText("Memo cards you leave on the board collect here.")).toBeVisible()
   })
 
   it("lists slash blocks with English names and hints", () => {

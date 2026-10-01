@@ -14,7 +14,6 @@ import { boardHighlightState, highlightAtPoint } from "../lib/boardHighlights"
 import { type BoardTextSelection, captureNativeBoardTextSelection } from "../lib/boardSelection"
 import { parsedCardResponse, parsedTranslationResponse } from "../lib/cardPresentation"
 import { useLocale, useTranslator } from "../lib/locale"
-import { postItFromPointer } from "../lib/postItPlacement"
 import { useSelectionShortcuts } from "../lib/selectionActions"
 import { selectionAiRequest } from "../lib/selectionAiRequest"
 import { addSelectionContext } from "../lib/selectionContext"
@@ -47,7 +46,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
   const [activeCardId, setActiveCardId] = useState<CardId | null>(null)
   const [selectedHighlightId, setSelectedHighlightId] = useState<string | null>(null)
   const pointerDownRef = useRef<{ readonly x: number; readonly y: number } | null>(null)
-  const [createdStickyId, setCreatedStickyId] = useState<CardId | null>(null)
+  const [createdMemoId, setCreatedMemoId] = useState<CardId | null>(null)
   const cardStreams = useCardStreams(props.cards)
   const panConstraint = usePanConstraint()
   const handlePageJump = usePageJump(viewportStateRef, viewportRef, props.onViewportChange)
@@ -175,24 +174,6 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
     )
   }
 
-  function placePostIt(event: Parameters<typeof postItFromPointer>[0]): boolean {
-    const card = postItFromPointer(event, {
-      documentId: props.document.id,
-      page: props.currentPage,
-      viewport: props.viewport,
-      viewportElement: viewportRef.current,
-      enabled: props.tool === "sticky",
-      locale,
-    })
-    if (!card) return false
-    event.preventDefault()
-    commitCards([...cardsRef.current, card])
-    setActiveCardId(card.id)
-    setCreatedStickyId(card.id)
-    props.onToolChange("select")
-    return true
-  }
-
   function addCard(kind: BoardOverlays.SelectionAction): void {
     if (!selectionMenu) return
     if (kind === "note" && props.onQuoteToNote) {
@@ -215,7 +196,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
       )
     }
     commitCards([...cardsRef.current, card])
-    if (kind === "note") setCreatedStickyId(card.id)
+    if (kind === "note") setCreatedMemoId(card.id)
     setSelectionMenu(null)
     window.getSelection()?.removeAllRanges()
     const request = selectionAiRequest(kind, selectionMenu)
@@ -326,7 +307,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
         setSelectedHighlightId(null)
         if (event.target instanceof Element && !event.target.closest(".board-card"))
           setActiveCardId(null)
-        if (!placePostIt(event)) startPan(event)
+        startPan(event)
       }}
       onPointerMove={movePan}
       onPointerUp={(event) => {
@@ -366,7 +347,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
         <BoardCardsLayer
           cards={cardStreams.displayCards}
           activeId={activeCardId}
-          autoEditId={createdStickyId}
+          autoEditId={createdMemoId}
           zoom={props.viewport.zoom}
           onActiveChange={setActiveCardId}
           getCards={() => cardsRef.current}

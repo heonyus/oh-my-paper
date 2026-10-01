@@ -261,8 +261,7 @@ test("library is a responsive home that opens existing PDFs", async () => {
       boardCapture.replace(/^data:image\/png;base64,/u, ""),
       "base64",
     )
-    await page.getByRole("button", { name: "포스트잇 모드" }).click()
-    await expect(page.locator(".board-viewport")).toHaveAttribute("data-tool", "sticky")
+    await expect(page.getByRole("button", { name: "포스트잇 모드" })).toHaveCount(0)
     await page.getByRole("button", { name: "라이브러리" }).click()
     await expect(library).toBeVisible()
     await page.getByRole("button", { name: "문서" }).click()

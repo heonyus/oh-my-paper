@@ -71,8 +71,6 @@ function SidebarHarness({ expanded = false }: { readonly expanded?: boolean }) {
       onJumpToCard={vi.fn()}
       onCardsChange={vi.fn()}
       onAiRequest={vi.fn(async () => "answer")}
-      tool="select"
-      onToolChange={vi.fn()}
     />
   )
 }
@@ -131,7 +129,6 @@ describe("ResearchSidebar", () => {
   })
 
   it("exposes each board-card category as its own sidebar mode", async () => {
-    const onToolChange = vi.fn()
     Object.defineProperty(window, "ohmypaper", {
       configurable: true,
       value: { onDocumentPageParseProgress: () => () => undefined },
@@ -162,8 +159,6 @@ describe("ResearchSidebar", () => {
           onJumpToCard={vi.fn()}
           onCardsChange={vi.fn()}
           onAiRequest={vi.fn(async () => "answer")}
-          tool="select"
-          onToolChange={onToolChange}
         />
       </>,
     )
@@ -171,7 +166,7 @@ describe("ResearchSidebar", () => {
     expect(screen.getByRole("region", { name: "AI 논문 개요" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "보드 모드" })).not.toBeInTheDocument()
     expect(screen.queryByRole("toolbar", { name: "보드 카드 필터" })).not.toBeInTheDocument()
-    for (const label of ["번역", "AI 설명", "AI 카드", "메모", "포스트잇", "하이라이트"]) {
+    for (const label of ["번역", "AI 설명", "AI 카드", "메모", "하이라이트"]) {
       expect(screen.getByRole("button", { name: `${label} 모드` })).toBeVisible()
     }
     await userEvent.click(screen.getByRole("button", { name: "번역 모드" }))
@@ -200,10 +195,8 @@ describe("ResearchSidebar", () => {
         selector: ".board-index-title",
       }),
     ).toBeVisible()
-    await userEvent.click(screen.getByRole("button", { name: "포스트잇 모드" }))
-    expect(onToolChange).toHaveBeenCalledWith("sticky")
-    await userEvent.click(screen.getByRole("button", { name: "포스트잇 모드" }))
-    expect(onToolChange).not.toHaveBeenCalledWith("select")
+    // Sticky notes are no longer a mode of their own; note cards go into the reader's note.
+    expect(screen.queryByRole("button", { name: "포스트잇 모드" })).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole("button", { name: "인용 모드" }))
     expect(screen.getByRole("region", { name: "인용 논문 판독" })).toBeInTheDocument()
   })
@@ -221,8 +214,6 @@ describe("ResearchSidebar", () => {
         onJumpToCard={vi.fn()}
         onCardsChange={vi.fn()}
         onAiRequest={vi.fn(async () => "answer")}
-        tool="select"
-        onToolChange={vi.fn()}
       />,
     )
 
@@ -248,8 +239,6 @@ describe("ResearchSidebar", () => {
         onJumpToCard={vi.fn()}
         onCardsChange={vi.fn()}
         onAiRequest={onAiRequest}
-        tool="select"
-        onToolChange={vi.fn()}
       />,
     )
 

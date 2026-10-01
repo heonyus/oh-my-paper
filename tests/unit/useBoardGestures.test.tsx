@@ -136,6 +136,25 @@ describe("board pan gestures", () => {
     expect(board.style.userSelect).toBe("")
   })
 
+  it("leaves a note being typed in when the board is pressed, so N reaches the board", () => {
+    Object.defineProperty(window, "PointerEvent", { value: MouseEvent, configurable: true })
+    render(
+      <>
+        <textarea aria-label="내 노트" />
+        <Harness />
+      </>,
+    )
+    const note = screen.getByRole("textbox", { name: "내 노트" })
+    const board = screen.getByTestId("board")
+    Object.defineProperty(board, "setPointerCapture", { value: vi.fn() })
+    note.focus()
+
+    fireEvent.pointerDown(board, { button: 0, pointerId: 1, clientX: 20, clientY: 30 })
+
+    expect(note).not.toHaveFocus()
+    fireEvent.pointerUp(board, { pointerId: 1 })
+  })
+
   it("preserves native text selection when the pointerup was not a pan", () => {
     render(<Harness />)
     const page = screen.getByTestId("page")

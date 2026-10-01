@@ -1,10 +1,11 @@
-import { FilePlus2, Search } from "lucide-react"
+import { FilePlus2, NotebookPen, Search } from "lucide-react"
 import { type JSX, useCallback, useState } from "react"
 import { documentKindName } from "../../shared/documentKind"
 import type { KnowledgeNodeId } from "../../shared/knowledgeSchemas"
 import type { KnowledgeClientOps } from "../lib/knowledgeTypes"
 import { useLocale, useTranslator } from "../lib/locale"
 import { libraryMessages } from "../messages/library"
+import { noteMessages } from "../messages/note"
 import type { DocumentId, DocumentRecord } from "../types"
 import { DocumentThumbnail } from "./DocumentThumbnail"
 import { LibraryCollectionSidebar, type LibraryFilter } from "./LibraryCollectionSidebar"
@@ -52,6 +53,8 @@ export type LibraryHomeContentProps = {
     boardId: LibraryCollection["board"]["id"],
   ) => void
   readonly onDeleteDocument?: ((id: DocumentId) => Promise<void>) | undefined
+  /** Opens the loose note, where note cards written away from any paper gather. */
+  readonly onOpenLooseNote?: (() => void) | undefined
 }
 
 export function LibraryHomeContent({
@@ -90,9 +93,11 @@ export function LibraryHomeContent({
   onImport,
   onToggleMembership,
   onDeleteDocument,
+  onOpenLooseNote,
 }: LibraryHomeContentProps): JSX.Element {
   const { locale } = useLocale()
   const t = useTranslator(libraryMessages)
+  const tNote = useTranslator(noteMessages)
   const [deleteRequestId, setDeleteRequestId] = useState<DocumentId | null>(null)
   const requestDelete = useCallback(
     (id: DocumentId) => {
@@ -133,6 +138,12 @@ export function LibraryHomeContent({
             {onOpenSearch ? (
               <button type="button" onClick={onOpenSearch}>
                 {t("home.searchPapers")}
+              </button>
+            ) : null}
+            {onOpenLooseNote ? (
+              <button type="button" className="library-loose-note-button" onClick={onOpenLooseNote}>
+                <NotebookPen size={16} aria-hidden="true" />
+                <span>{tNote("loose.title")}</span>
               </button>
             ) : null}
             {onOpenGraph ? (

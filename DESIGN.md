@@ -1,5 +1,32 @@
 # oh-my-paper interaction and visual contract
 
+## 2026-10-01 Note cards: one way to write a note, from anywhere (current)
+
+The owner merged the board's sticky notes (`포스트잇`) into the reader's note. There is one
+place a reader's words go, the note, and one quick way to add to it, the note card.
+
+- Note card (`노트 카드`): `N` on any screen where text is not being typed, or `⌥N` (Alt+N)
+  even while typing, opens a small card of note paper (the `--note` surface the sticky notes
+  used) floating over the screen; the header's note button opens it too. It is not modal:
+  reading, scrolling and selecting go on underneath, and the card can be dragged by its header
+  (the place is remembered per browser). The header names where the card goes; `⌘↵`/`Ctrl+↵`
+  or `노트에 붙이기` adds it; `Esc` or `닫기` closes it and keeps the unsent text for the next
+  card (per browser). After adding, a short status (`4쪽 노트에 붙였어요`, `열기`) stays for a
+  few seconds; `열기` opens that note.
+- Where a card goes: with a paper on screen, to that paper's note, appended at the end after a
+  rule (`---`) and starting with a page chip `[[p.N]]` for the page in view when the card
+  opened. A page chip is an evidence chip without a quote: it reads `p.N` and opens the page
+  without flashing anything. Anywhere else (Library, Research), to the loose note
+  (`모아 둔 노트`), the one note that belongs to no paper. It is stored like a paper's note,
+  `reader-notes/0000000000000000.md`, and the Library header's `모아 둔 노트` opens it in a sheet
+  with the same editor (no source matching or tutor: there is no paper).
+- When the note a card goes to is open in its editor, the card goes in through the editor, so
+  the editor's own save carries it. A note that would grow past its size limit keeps the card
+  open with `노트가 가득 차서 더 붙일 수 없습니다`.
+- Sticky notes are no longer made: the board's sticky tool, its `N` key and the research
+  sidebar's `포스트잇` mode are gone. Sticky notes already on a board stay there, editable, and
+  are listed with the memo cards.
+
 ## 2026-09-29 First run: connect screen, terminal wizard and feature tips (current)
 
 First run offers OpenAI subscription login on equal footing with Claude, the latest models, a

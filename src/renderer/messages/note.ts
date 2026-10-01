@@ -47,6 +47,24 @@ const ko = {
   "memo.content": "메모 내용",
   "memo.placeholder": "메모",
   "memo.edit": "메모 고쳐 쓰기",
+
+  // A note card, written from anywhere and added to a note
+  "card.label": "노트 카드",
+  "card.content": "노트 카드 내용",
+  "card.placeholder": "떠오른 생각을 내 말로 적어 두세요",
+  "card.paperTarget": "{page}쪽 · {title}",
+  "card.looseTarget": "모아 둔 노트",
+  "card.save": "노트에 붙이기",
+  "card.close": "닫기",
+  "card.full": "노트가 가득 차서 더 붙일 수 없습니다",
+  "card.savedPaper": "{page}쪽 노트에 붙였어요",
+  "card.savedLoose": "모아 둔 노트에 붙였어요",
+  "card.open": "열기",
+  "card.new": "노트 카드",
+
+  // The note that belongs to no paper
+  "loose.title": "모아 둔 노트",
+  "loose.close": "모아 둔 노트 닫기",
 } as const
 
 const en: Readonly<Record<keyof typeof ko, string>> = {
@@ -91,6 +109,22 @@ const en: Readonly<Record<keyof typeof ko, string>> = {
   "memo.content": "Memo content",
   "memo.placeholder": "Memo",
   "memo.edit": "Edit memo",
+
+  "card.label": "Note card",
+  "card.content": "Note card text",
+  "card.placeholder": "Jot the thought down in your own words",
+  "card.paperTarget": "p. {page} · {title}",
+  "card.looseTarget": "Loose notes",
+  "card.save": "Add to note",
+  "card.close": "Close",
+  "card.full": "This note is full; nothing more can be added",
+  "card.savedPaper": "Added to the note at p. {page}",
+  "card.savedLoose": "Added to loose notes",
+  "card.open": "Open",
+  "card.new": "Note card",
+
+  "loose.title": "Loose notes",
+  "loose.close": "Close loose notes",
 }
 
 export type NoteMessageKey = keyof typeof ko

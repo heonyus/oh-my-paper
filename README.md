@@ -63,7 +63,7 @@ Select a hard sentence, a figure or an equation and press <kbd>E</kbd>. The expl
 <td width="50%" valign="top">
 <img src="docs/media/features/note.gif" alt="Writing a note while the supporting paragraph appears beside it"><br>
 <b>Notes in your own words</b><br>
-Each sentence you write is matched to the paragraph that supports it. <kbd>C</kbd> brings a passage in with its citation.
+Each sentence you write is matched to the paragraph that supports it. <kbd>C</kbd> brings a passage in with its citation, and <kbd>N</kbd> opens a note card on any screen.
 </td>
 </tr>
 <tr>
