@@ -30,6 +30,9 @@ export function resolveLegacyAnchor(
   ast: SourceDocumentAst,
   anchor: SourceAnchor,
 ): LegacyAnchorResolution {
+  // An empty quote matches at every offset, and indexOf("", past the end) keeps returning the
+  // length, so the search below would never end. Structures such as tables can have no quote.
+  if (!anchor.quote) return { status: "unresolved", ranges: [] }
   const text = pageTextsFromAst(ast)[anchor.page - 1] ?? ""
   const ranges: AstSourceRange[] = []
   for (

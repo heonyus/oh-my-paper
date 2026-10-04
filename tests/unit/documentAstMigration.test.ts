@@ -67,6 +67,20 @@ describe("document AST migration", () => {
     expect(addAstRangesToAnchor(ast, anchor)).toEqual(anchor)
   })
 
+  it("leaves an anchor with no quote unresolved instead of searching forever", () => {
+    const ast = repeatedAst()
+    const anchor = {
+      page: 1,
+      quote: "",
+      x: 40,
+      y: 50,
+      fragments: [{ x: 40, y: 50, width: 36, height: 10 }],
+    }
+
+    expect(resolveLegacyAnchor(ast, anchor)).toEqual({ status: "unresolved", ranges: [] })
+    expect(addAstRangesToAnchor(ast, anchor)).toEqual(anchor)
+  })
+
   it("rebuilds a malformed sidecar without changing the workspace or source", async () => {
     const root = await mkdtemp(join(tmpdir(), "ohmypaper-ast-migration-"))
     try {
