@@ -53,12 +53,14 @@ export function parsedPageStructures(
   })
   const visual = parsedPageVisualGroups(page).map((group) => {
     const content = group.caption?.content.trim() ?? ""
+    const title = content || (group.kind === "figure" ? "Figure" : "Table")
     return {
       id: group.id,
       kind: group.kind,
       page: page.pageNumber,
-      title: content || (group.kind === "figure" ? "Figure" : "Table"),
-      quote: content,
+      title,
+      // AI requests and saved anchors need a non-empty quote, so an uncaptioned visual uses its title.
+      quote: title,
       bounds: scaledBounds(group.bounds, page, renderedWidth, renderedHeight),
     }
   })
