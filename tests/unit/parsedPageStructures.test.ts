@@ -225,6 +225,33 @@ describe("Paddle page structures", () => {
     ])
   })
 
+  it("gives an uncaptioned table a non-empty quote", () => {
+    const page = parsedDocumentPageSchema.parse({
+      schemaVersion: "1.0.0",
+      sourceHash: "e".repeat(64),
+      parser: "PaddleOCR-VL-1.6",
+      configVersion: "page-v1",
+      pageNumber: 5,
+      width: 1_000,
+      height: 2_000,
+      blocks: [
+        {
+          id: "page:5:block:0",
+          label: "table",
+          order: 0,
+          bounds: { x: 100, y: 200, width: 800, height: 900 },
+          content: "| Feature type | Conditions |",
+          contentFormat: "markdown",
+          translationPolicy: "exclude",
+        },
+      ],
+    })
+
+    expect(parsedPageStructures(page, 500, 1_000)).toMatchObject([
+      { kind: "table", title: "Table", quote: "Table" },
+    ])
+  })
+
   it("refines only visual structures through the shared rendered-pixel seam", () => {
     const structures = [
       {
