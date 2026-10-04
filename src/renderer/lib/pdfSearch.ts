@@ -8,6 +8,7 @@ import { activeParsedDocumentPages, loadParsedDocumentPage } from "./documentPag
 const RETRIEVAL_CHUNK_SIZE = 900
 const RETRIEVAL_CHUNK_STEP = 720
 const RETRIEVAL_RESULT_LIMIT = 5
+const MAX_QUESTION_QUERY_PARTS = 24
 
 type PdfRetrievalChunk = {
   readonly id: string
@@ -15,6 +16,8 @@ type PdfRetrievalChunk = {
   readonly text: string
   readonly normalized: string
   readonly tokens: readonly string[]
+  readonly tokenCounts: ReadonlyMap<string, number>
+  readonly grams: ReadonlySet<string>
 }
 
 function parsedPageRetrievalText(page: ParsedDocumentPage): string {
@@ -113,12 +116,17 @@ export function buildPdfRetrievalIndex(pageTexts: readonly string[]): PdfRetriev
     return Array.from({ length: count }, (_, chunkIndex) => {
       const start = chunkIndex * RETRIEVAL_CHUNK_STEP
       const chunkText = text.slice(start, start + RETRIEVAL_CHUNK_SIZE).trim()
+      const tokens = retrievalTokens(chunkText)
+      const tokenCounts = new Map<string, number>()
+      for (const token of tokens) tokenCounts.set(token, (tokenCounts.get(token) ?? 0) + 1)
       return {
         id: `${pageIndex + 1}:${chunkIndex}`,
         page: pageIndex + 1,
         text: chunkText,
         normalized: normalizedText(chunkText),
-        tokens: retrievalTokens(chunkText),
+        tokens,
+        tokenCounts,
+        grams: trigrams(chunkText),
       }
     })
   })
@@ -140,8 +148,7 @@ export function rankPdfPassages(
   if (!normalizedQuery || queryTokens.length === 0) return []
   const queryGrams = trigrams(query)
   const scored = index.chunks.flatMap((chunk) => {
-    const tokenCounts = new Map<string, number>()
-    for (const token of chunk.tokens) tokenCounts.set(token, (tokenCounts.get(token) ?? 0) + 1)
+    const tokenCounts = chunk.tokenCounts
     const matchedTokens = queryTokens.filter((token) => tokenCounts.has(token))
     const coverage = matchedTokens.length / queryTokens.length
     const lexical = matchedTokens.reduce((score, token) => {
@@ -151,7 +158,7 @@ export function rankPdfPassages(
       return score + (1 + Math.log(frequency)) * inverseFrequency
     }, 0)
     const phrase = chunk.normalized.includes(normalizedQuery) ? 12 : 0
-    const characterSimilarity = overlapRatio(queryGrams, trigrams(chunk.text))
+    const characterSimilarity = overlapRatio(queryGrams, chunk.grams)
     if (phrase === 0 && coverage < 0.34 && characterSimilarity < 0.1) return []
     return [
       {
@@ -208,7 +215,11 @@ function questionQueryParts(question: string): readonly string[] {
     const pair = next && token.length >= 3 && next.length >= 3 ? [`${token} ${next}`] : []
     return [...single, ...pair]
   })
-  return [...new Set([question.trim(), ...parts, ...focused])].filter((part) => part.length >= 3)
+  // Each part is a full pass over the index, so a question carrying a long passage of context
+  // would otherwise rank hundreds of parts and hold the page for tens of seconds.
+  return [...new Set([question.trim(), ...parts, ...focused])]
+    .filter((part) => part.length >= 3)
+    .slice(0, MAX_QUESTION_QUERY_PARTS)
 }
 
 function contextSnippetForResult(index: PdfRetrievalIndex, result: PdfRetrievalResult): string {
@@ -293,10 +304,28 @@ function sectionMembershipContext(question: string): string {
     .join("\n")
 }
 
+let cachedRetrieval: {
+  readonly pageTexts: readonly string[]
+  readonly index: PdfRetrievalIndex
+} | null = null
+
+function retrievalIndexFor(pageTexts: readonly string[]): PdfRetrievalIndex {
+  const cached = cachedRetrieval
+  if (
+    cached &&
+    cached.pageTexts.length === pageTexts.length &&
+    cached.pageTexts.every((text, index) => text === pageTexts[index])
+  )
+    return cached.index
+  const index = buildPdfRetrievalIndex(pageTexts)
+  cachedRetrieval = { pageTexts, index }
+  return index
+}
+
 export function paperContextForQuestion(question: string, currentPage: number): string {
   const ast = activeDocumentAst()
   if (ast) {
-    const index = buildPdfRetrievalIndex(pageTextsWithParsedPages(ast))
+    const index = retrievalIndexFor(pageTextsWithParsedPages(ast))
     const matches = rankedResultsForQuestion(index, question)
     return [
       sectionMembershipContext(question),
