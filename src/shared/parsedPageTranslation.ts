@@ -7,6 +7,8 @@ export type ParsedPageTranslationBlock = {
   readonly structureKind: "heading" | "body" | "equation" | "table" | "figure"
   readonly source: string
   readonly sourceBounds: ParsedPageBlock["bounds"]
+  /** A unit the page breaks across columns: one box per column, which `sourceBounds` encloses. */
+  readonly sourceParts?: readonly ParsedPageBlock["bounds"][]
   readonly sourcePageWidth: number
   readonly sourcePageHeight: number
   readonly sourceParser: ParsedDocumentPage["parser"]
@@ -354,7 +356,7 @@ function lineParts(
  * and every sentence cut from it — stays inside one source paragraph. Lines outside every
  * paragraph (a running head, a footer) stay on their own. Null without a layout.
  */
-function layoutParagraphBlocks(page: ParsedDocumentPage): readonly ParsedPageBlock[] | null {
+function layoutParagraphBlocks(page: ParsedDocumentPage): readonly JoinedBlock[] | null {
   const paragraphs = (page.layout ?? []).filter(
     (block) => layoutParagraphLabels.has(block.label) && !isSidewaysMargin(block),
   )
@@ -407,41 +409,76 @@ function layoutParagraphBlocks(page: ParsedDocumentPage): readonly ParsedPageBlo
   return [...loose, ...joinContinuations(gathered)]
 }
 
+/** A paragraph joined across columns keeps each column's box and text. */
+type ColumnPiece = { readonly bounds: Bounds; readonly content: string }
+type JoinedBlock = ParsedPageBlock & { readonly pieces?: readonly ColumnPiece[] }
+
+function enclosing(boxes: readonly Bounds[]): Bounds {
+  const left = Math.min(...boxes.map((box) => box.x))
+  const top = Math.min(...boxes.map((box) => box.y))
+  const right = Math.max(...boxes.map((box) => box.x + box.width))
+  const bottom = Math.max(...boxes.map((box) => box.y + box.height))
+  return { x: left, y: top, width: right - left, height: bottom - top }
+}
+
 /**
  * A sentence the page breaks across columns — "…different dilutions of" | "vasopressors,
  * different probe locations…" — is one translation unit, so it is translated whole instead
  * of as two fragments. Its paragraphs are told apart again when it is laid out.
  */
-function joinContinuations(blocks: readonly ParsedPageBlock[]): readonly ParsedPageBlock[] {
-  const joined: ParsedPageBlock[] = []
+function joinContinuations(blocks: readonly ParsedPageBlock[]): readonly JoinedBlock[] {
+  const joined: JoinedBlock[] = []
   for (const block of [...blocks].sort((left, right) => left.order - right.order)) {
     const previous = joined.at(-1)
     const unfinished = previous && !/[.!?:;]["'”’)\]]*$/u.test(previous.content.trim())
     if (previous && unfinished && /^\p{Ll}/u.test(block.content.trim())) {
-      const left = Math.min(previous.bounds.x, block.bounds.x)
-      const top = Math.min(previous.bounds.y, block.bounds.y)
-      const right = Math.max(
-        previous.bounds.x + previous.bounds.width,
-        block.bounds.x + block.bounds.width,
-      )
-      const bottom = Math.max(
-        previous.bounds.y + previous.bounds.height,
-        block.bounds.y + block.bounds.height,
-      )
+      // The box around both pieces spans the page between them, so each keeps its own.
+      const pieces = [
+        ...(previous.pieces ?? [{ bounds: previous.bounds, content: previous.content }]),
+        { bounds: block.bounds, content: block.content },
+      ]
       joined[joined.length - 1] = {
         ...previous,
-        bounds: { x: left, y: top, width: right - left, height: bottom - top },
+        bounds: enclosing(pieces.map((piece) => piece.bounds)),
         content: `${previous.content.trim()} ${block.content.trim()}`,
+        pieces,
       }
     } else joined.push(block)
   }
   return joined
 }
 
+/**
+ * The boxes each sentence of `block` sits in: the column piece it lies in, or every piece it
+ * runs through. A block in one place gives every sentence its own box.
+ */
+function sentenceBoxes(
+  block: JoinedBlock,
+  sentences: readonly string[],
+): readonly (readonly Bounds[])[] {
+  const pieces = block.pieces ?? []
+  if (pieces.length < 2) return sentences.map(() => [block.bounds])
+  // Sentences and pieces are cut from the same text and differ only in whitespace.
+  const length = (text: string) => text.replace(/\s+/gu, "").length
+  const ends: number[] = []
+  for (const piece of pieces) ends.push((ends.at(-1) ?? 0) + length(piece.content))
+  let start = 0
+  return sentences.map((sentence) => {
+    const end = start + length(sentence)
+    const boxes = pieces
+      .filter((_, index) => (ends[index - 1] ?? 0) < end && start < (ends[index] ?? 0))
+      .map((piece) => piece.bounds)
+    start = end
+    return boxes.length > 0 ? boxes : [block.bounds]
+  })
+}
+
 export function pageTranslationBlocksFromParsedPage(
   page: ParsedDocumentPage,
 ): readonly ParsedPageTranslationBlock[] {
-  return [...(layoutParagraphBlocks(page) ?? mergeAdjacentTextBlocks(page))]
+  const blocks: readonly JoinedBlock[] =
+    layoutParagraphBlocks(page) ?? mergeAdjacentTextBlocks(page)
+  return [...blocks]
     .sort((left, right) => left.order - right.order)
     .filter((block) => !isFigureLabel(block, page))
     .flatMap((block) => {
@@ -450,21 +487,27 @@ export function pageTranslationBlocksFromParsedPage(
       const preservedVisual = block.label === "table" || block.label === "image"
       if ((!preservedVisual && block.translationPolicy !== "include") || !source) return []
       const structureKind = translationKind(block.label)
-      return sentenceSources(block, source).map((sentence, index) => ({
-        id:
-          block.label === "text" || block.label === "list"
-            ? `${block.id}:sentence:${index + 1}`
-            : block.id,
-        parsedBlockId: block.id,
-        kind: structureKind === "heading" ? "heading" : "body",
-        structureKind,
-        source: sentence,
-        sourceBounds: block.bounds,
-        sourcePageWidth: page.width,
-        sourcePageHeight: page.height,
-        sourceParser: page.parser,
-        sourceParserConfigVersion: page.configVersion,
-      }))
+      const sentences = sentenceSources(block, source)
+      const boxes = sentenceBoxes(block, sentences)
+      return sentences.map((sentence, index) => {
+        const parts = boxes[index] ?? [block.bounds]
+        return {
+          id:
+            block.label === "text" || block.label === "list"
+              ? `${block.id}:sentence:${index + 1}`
+              : block.id,
+          parsedBlockId: block.id,
+          kind: structureKind === "heading" ? "heading" : "body",
+          structureKind,
+          source: sentence,
+          sourceBounds: enclosing(parts),
+          ...(parts.length > 1 ? { sourceParts: parts } : {}),
+          sourcePageWidth: page.width,
+          sourcePageHeight: page.height,
+          sourceParser: page.parser,
+          sourceParserConfigVersion: page.configVersion,
+        }
+      })
     })
 }
 

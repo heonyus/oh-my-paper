@@ -9,7 +9,7 @@ import {
   storeCachedPageTranslation,
 } from "./pageTranslationCacheRuntime"
 import { withPageTranslationCitationLinks } from "./pageTranslationCitations"
-import { reusablePageTranslations } from "./pageTranslationPaneState"
+import { reusablePageTranslations, withSourceGeometry } from "./pageTranslationPaneState"
 import { runPageTranslationBatches } from "./pageTranslationRunner"
 import { type PageTranslationBlock, pageTranslationBatches } from "./pageTranslationSource"
 import {
@@ -165,7 +165,11 @@ export async function translateDocumentPages(input: DocumentTranslationRunnerInp
       completedPages += 1
       completedBlocks += parserCached.length
       totalBlocks = Math.max(totalBlocks, completedBlocks)
-      notifyPageBlocks(input, page, parserCached)
+      notifyPageBlocks(
+        input,
+        page,
+        withSourceGeometry(parserCached, pageTranslationBlocksFromParsedPage(parsedPage)),
+      )
       notifyProgress(input, page, {
         pageCount: input.document.pageCount,
         completedPages,

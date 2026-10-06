@@ -4,6 +4,7 @@ import {
   mergePageTranslations,
   pageTranslationFailureMessage,
   reusablePageTranslations,
+  withSourceGeometry,
 } from "../../src/renderer/lib/pageTranslationPaneState"
 import type { PageTranslationBlock } from "../../src/renderer/lib/pageTranslationSource"
 import { PaperAiJobError } from "../../src/renderer/lib/usePaperAiRequest"
@@ -94,6 +95,44 @@ describe("reusablePageTranslations", () => {
       isPlaceholderPageTranslation("제공된 입력에 번역할 원문 텍스트가 포함되어 있지 않습니다."),
     ).toBe(true)
     expect(isPlaceholderPageTranslation("그 외에는")).toBe(false)
+  })
+})
+
+describe("withSourceGeometry", () => {
+  it("outlines a page cached with one box across both columns per column instead", () => {
+    const page = { sourcePageWidth: 1_000, sourcePageHeight: 1_000 }
+    const across = { x: 100, y: 100, width: 800, height: 800 }
+    const left = { x: 100, y: 880, width: 380, height: 20 }
+    const right = { x: 520, y: 100, width: 380, height: 20 }
+    const cached: readonly PageTranslationBlock[] = [
+      {
+        id: "b:1",
+        kind: "body",
+        source: "A to b.",
+        translation: "가.",
+        sourceBounds: across,
+        ...page,
+      },
+      { id: "b:2", kind: "body", source: "C.", translation: "나.", sourceBounds: across, ...page },
+    ]
+
+    const placed = withSourceGeometry(cached, [
+      {
+        id: "b:1",
+        kind: "body",
+        source: "A to b.",
+        sourceBounds: across,
+        sourceParts: [left, right],
+      },
+      { id: "b:2", kind: "body", source: "C.", sourceBounds: right },
+    ])
+
+    expect(
+      placed.map((block) => [block.translation, block.sourceBounds, block.sourceParts]),
+    ).toEqual([
+      ["가.", across, [left, right]],
+      ["나.", right, undefined],
+    ])
   })
 })
 

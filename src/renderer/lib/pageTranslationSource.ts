@@ -4,18 +4,22 @@ import { parsePageTranslationResponse } from "./pageTranslationJson"
 import { bindPageTranslationSpans, sourceElementMatchesBlock } from "./pageTranslationSpanMapping"
 import { normalizeExtractedPdfText } from "./pdfTextLines"
 
+type SourceBox = {
+  readonly x: number
+  readonly y: number
+  readonly width: number
+  readonly height: number
+}
+
 export type PageSourceBlock = {
   readonly id: string
   readonly kind: "heading" | "body"
   readonly structureKind?: PageStructureKind | "figure"
   readonly source: string
   readonly parsedBlockId?: string
-  readonly sourceBounds?: {
-    readonly x: number
-    readonly y: number
-    readonly width: number
-    readonly height: number
-  }
+  readonly sourceBounds?: SourceBox
+  /** A unit the page breaks across columns: one box per column, which `sourceBounds` encloses. */
+  readonly sourceParts?: readonly SourceBox[]
   readonly sourcePageWidth?: number
   readonly sourcePageHeight?: number
   readonly sourceParser?: ParsedDocumentPage["parser"]
@@ -91,14 +95,16 @@ export function bindPageSourceBounds(pageNumber: number, blocks: readonly PageSo
   for (const block of blocks) {
     if (matched.has(block.id)) continue
     if (!block.sourceBounds || !block.sourcePageWidth || !block.sourcePageHeight) continue
-    const bound = document.createElement("div")
-    bound.className = "page-translation-source-bound"
-    bound.setAttribute("data-page-translation-block", block.id)
-    bound.style.left = `${(block.sourceBounds.x / block.sourcePageWidth) * 100}%`
-    bound.style.top = `${(block.sourceBounds.y / block.sourcePageHeight) * 100}%`
-    bound.style.width = `${(block.sourceBounds.width / block.sourcePageWidth) * 100}%`
-    bound.style.height = `${(block.sourceBounds.height / block.sourcePageHeight) * 100}%`
-    overlay.append(bound)
+    for (const box of block.sourceParts ?? [block.sourceBounds]) {
+      const bound = document.createElement("div")
+      bound.className = "page-translation-source-bound"
+      bound.setAttribute("data-page-translation-block", block.id)
+      bound.style.left = `${(box.x / block.sourcePageWidth) * 100}%`
+      bound.style.top = `${(box.y / block.sourcePageHeight) * 100}%`
+      bound.style.width = `${(box.width / block.sourcePageWidth) * 100}%`
+      bound.style.height = `${(box.height / block.sourcePageHeight) * 100}%`
+      overlay.append(bound)
+    }
   }
 }
 

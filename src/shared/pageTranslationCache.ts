@@ -29,6 +29,7 @@ export const cachedPageTranslationBlockSchema = z.object({
   source: z.string().min(1).max(40_000),
   parsedBlockId: z.string().min(1).max(240).optional(),
   sourceBounds: sourceBoundsSchema.optional(),
+  sourceParts: z.array(sourceBoundsSchema).min(2).max(16).readonly().optional(),
   sourcePageWidth: z.number().finite().positive().optional(),
   sourcePageHeight: z.number().finite().positive().optional(),
   sourceParser: z

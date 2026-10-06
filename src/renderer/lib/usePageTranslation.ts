@@ -17,6 +17,7 @@ import {
   pause,
   reusablePageTranslations,
   type TranslationStatus,
+  withSourceGeometry,
 } from "./pageTranslationPaneState"
 import { runPageTranslationBatches } from "./pageTranslationRunner"
 import {
@@ -120,11 +121,12 @@ export function usePageTranslation({
         if (cancelled || abortController.signal.aborted) return
         const reusable = earlier ? reusablePageTranslations(earlier, source) : null
         if (cached && reusable?.complete) {
-          bindPageSourceBounds(currentPage, cached)
+          const placed = withSourceGeometry(cached, source)
+          bindPageSourceBounds(currentPage, placed)
           await pause(0)
           if (cancelled || abortController.signal.aborted) return
-          bindPageSourceBounds(currentPage, cached)
-          setBlocks(cached)
+          bindPageSourceBounds(currentPage, placed)
+          setBlocks(placed)
           setStatus("complete")
           return
         }
