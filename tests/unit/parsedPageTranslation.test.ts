@@ -151,6 +151,41 @@ describe("Paddle page translation blocks", () => {
     document.body.replaceChildren()
   })
 
+  it("outlines a sentence broken across columns in each column, not across the page", () => {
+    const host = document.createElement("div")
+    host.className = "paper-structure-host"
+    const page = document.createElement("div")
+    page.setAttribute("data-page-number", "1")
+    host.append(page)
+    document.body.append(host)
+
+    bindPageSourceBounds(1, [
+      {
+        id: "page:1:block:0:sentence:1",
+        kind: "body",
+        source: "Many variants (for example, dilutions of vasopressors).",
+        parsedBlockId: "page:1:block:0",
+        sourceBounds: { x: 100, y: 100, width: 800, height: 800 },
+        sourceParts: [
+          { x: 100, y: 880, width: 380, height: 20 },
+          { x: 520, y: 100, width: 380, height: 20 },
+        ],
+        sourcePageWidth: 1_000,
+        sourcePageHeight: 1_000,
+      },
+    ])
+    setPageSourceActive(1, "page:1:block:0:sentence:1", true)
+
+    const bounds = [...page.querySelectorAll<HTMLElement>(".page-translation-source-bound")]
+    expect(bounds.map((bound) => [bound.style.left, bound.style.top, bound.style.height])).toEqual([
+      ["10%", "88%", "2%"],
+      ["52%", "10%", "2%"],
+    ])
+    for (const bound of bounds)
+      expect(bound).toHaveAttribute("data-page-translation-active", "true")
+    document.body.replaceChildren()
+  })
+
   it("keeps a numbered list marker attached to its sentence", () => {
     const page = parsedDocumentPageSchema.parse({
       schemaVersion: "1.0.0",
@@ -421,11 +456,19 @@ describe("Paddle page translation blocks", () => {
       ],
     })
 
-    expect(pageTranslationBlocksFromParsedPage(page).map((unit) => unit.source)).toEqual([
+    const units = pageTranslationBlocksFromParsedPage(page)
+    expect(units.map((unit) => unit.source)).toEqual([
       "The system recorded many variants (for example, different dilutions of vasopressors, different probe locations).",
       "Some were rare.",
       "Certain compounds were grouped.",
     ])
+    // The box around both columns would cover the whole page between them.
+    const left = { x: 80, y: 1_300, width: 400, height: 14 }
+    const right = { x: 540, y: 100, width: 400, height: 14 }
+    expect(units[0]?.sourceParts).toEqual([left, right])
+    expect(units[0]?.sourceBounds).toEqual({ x: 80, y: 100, width: 860, height: 1_214 })
+    expect(units[1]?.sourceParts).toBeUndefined()
+    expect(units[1]?.sourceBounds).toEqual(right)
   })
 
   it("cuts a unit PDF.js ran across paragraphs where each paragraph opens, and drops sideways text", () => {

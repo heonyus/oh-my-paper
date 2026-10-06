@@ -2,7 +2,7 @@ import type { DocumentPageParseProgress } from "../../shared/documentPageModel"
 import { type Locale, translator } from "../../shared/i18n/locale"
 import { readerMessages } from "../messages/reader"
 import { isPlaceholderPageTranslation } from "./pageTranslationJson"
-import type { PageTranslationBlock } from "./pageTranslationSource"
+import type { PageSourceBlock, PageTranslationBlock } from "./pageTranslationSource"
 import { PaperAiJobError } from "./usePaperAiRequest"
 
 export type TranslationStatus =
@@ -120,4 +120,26 @@ export function reusablePageTranslations(
     if (translation) translations.set(unit.id, translation)
   }
   return { translations, complete: sameUnits && translations.size === current.length }
+}
+
+/**
+ * Cached units placed where the current parse puts their source, so a page cached while a
+ * paragraph broken across columns still had one box spanning both is outlined per column
+ * without being translated again.
+ */
+export function withSourceGeometry(
+  cached: readonly PageTranslationBlock[],
+  current: readonly PageSourceBlock[],
+): readonly PageTranslationBlock[] {
+  const byId = new Map(current.map((block) => [block.id, block]))
+  return cached.map((block) => {
+    const source = byId.get(block.id)
+    if (!source?.sourceBounds) return block
+    const { sourceParts: _, ...rest } = block
+    return {
+      ...rest,
+      sourceBounds: source.sourceBounds,
+      ...(source.sourceParts === undefined ? {} : { sourceParts: source.sourceParts }),
+    }
+  })
 }

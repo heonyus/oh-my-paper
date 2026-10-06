@@ -1,12 +1,15 @@
+type SourceBox = {
+  readonly x: number
+  readonly y: number
+  readonly width: number
+  readonly height: number
+}
+
 type SourceSpanBlock = {
   readonly id: string
   readonly source: string
-  readonly sourceBounds?: {
-    readonly x: number
-    readonly y: number
-    readonly width: number
-    readonly height: number
-  }
+  readonly sourceBounds?: SourceBox
+  readonly sourceParts?: readonly SourceBox[]
   readonly sourcePageWidth?: number
   readonly sourcePageHeight?: number
 }
@@ -24,13 +27,18 @@ function canonicalCharacters(value: string): readonly string[] {
   )
 }
 
-function sourceRectangle(block: SourceSpanBlock, pageRectangle: DOMRect): DOMRect | null {
-  if (!block.sourceBounds || !block.sourcePageWidth || !block.sourcePageHeight) return null
-  return new DOMRect(
-    pageRectangle.left + (block.sourceBounds.x / block.sourcePageWidth) * pageRectangle.width,
-    pageRectangle.top + (block.sourceBounds.y / block.sourcePageHeight) * pageRectangle.height,
-    (block.sourceBounds.width / block.sourcePageWidth) * pageRectangle.width,
-    (block.sourceBounds.height / block.sourcePageHeight) * pageRectangle.height,
+/** Where the block's source sits on screen: one rectangle, or one per column it runs across. */
+function sourceRectangles(block: SourceSpanBlock, pageRectangle: DOMRect): readonly DOMRect[] {
+  const { sourceBounds, sourcePageWidth, sourcePageHeight } = block
+  if (!sourceBounds || !sourcePageWidth || !sourcePageHeight) return []
+  return (block.sourceParts ?? [sourceBounds]).map(
+    (box) =>
+      new DOMRect(
+        pageRectangle.left + (box.x / sourcePageWidth) * pageRectangle.width,
+        pageRectangle.top + (box.y / sourcePageHeight) * pageRectangle.height,
+        (box.width / sourcePageWidth) * pageRectangle.width,
+        (box.height / sourcePageHeight) * pageRectangle.height,
+      ),
   )
 }
 
@@ -56,10 +64,13 @@ function bindBlock(
   pageRectangle: DOMRect,
   spans: readonly HTMLElement[],
 ): boolean {
-  const region = sourceRectangle(block, pageRectangle)
-  if (!region) return false
+  const regions = sourceRectangles(block, pageRectangle)
+  if (regions.length === 0) return false
   const padding = Math.max(2, pageRectangle.width * 0.005)
-  const candidates = spans.filter((span) => within(span.getBoundingClientRect(), region, padding))
+  const candidates = spans.filter((span) => {
+    const rectangle = span.getBoundingClientRect()
+    return regions.some((region) => within(rectangle, region, padding))
+  })
   const owners: CharacterOwner[] = []
   for (const element of candidates) {
     for (const character of canonicalCharacters(element.textContent ?? ""))

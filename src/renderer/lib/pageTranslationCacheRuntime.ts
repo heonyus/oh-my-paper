@@ -53,6 +53,7 @@ function runtimeBlocks(
     translation: block.translation,
     ...(block.parsedBlockId === undefined ? {} : { parsedBlockId: block.parsedBlockId }),
     ...(block.sourceBounds === undefined ? {} : { sourceBounds: block.sourceBounds }),
+    ...(block.sourceParts === undefined ? {} : { sourceParts: block.sourceParts }),
     ...(block.sourcePageWidth === undefined ? {} : { sourcePageWidth: block.sourcePageWidth }),
     ...(block.sourcePageHeight === undefined ? {} : { sourcePageHeight: block.sourcePageHeight }),
     ...(block.sourceParser === undefined ? {} : { sourceParser: block.sourceParser }),
