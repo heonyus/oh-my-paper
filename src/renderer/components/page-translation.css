@@ -508,6 +508,15 @@
   background: color-mix(in srgb, var(--action) 9%, transparent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--action) 18%, transparent);
 }
+/* A board highlight echoes on the sentences it covers, in the same yellow as on the page. */
+::highlight(page-translation-highlight) {
+  background-color: color-mix(in srgb, #ffd23f 45%, transparent);
+}
+.page-translation-block[data-highlighted="true"] .page-translation-result,
+.page-translation-block[data-highlighted="true"] .page-translation-source,
+.page-translation-layout-region[data-highlighted="true"] {
+  background: color-mix(in srgb, #ffd23f 30%, transparent);
+}
 .page-translation-body .katex-display {
   margin: 28px 0;
   padding: 18px 20px;

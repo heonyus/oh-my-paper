@@ -129,6 +129,8 @@ export const PageTranslationBlock = memo(function PageTranslationBlock({
       onBlur={() => setActive(false)}
       onClick={(event) => {
         if (event.target instanceof HTMLAnchorElement) return
+        // The click that ends a text selection is the selection, not a jump to the source.
+        if (!(window.getSelection()?.isCollapsed ?? true)) return
         focusSource()
       }}
       onKeyDown={(event) => {

@@ -153,9 +153,12 @@ export function ConnectorLayer({ cards }: { readonly cards: readonly BoardCard[]
 export function SelectionToolbar({
   position,
   onAction,
+  translatable = true,
 }: {
   readonly position: CSSProperties
   readonly onAction: (action: SelectionAction) => void
+  /** False for text already read in translation, which has nothing left to translate. */
+  readonly translatable?: boolean
 }): JSX.Element {
   const t = useTranslator(boardMessages)
   return (
@@ -166,9 +169,11 @@ export function SelectionToolbar({
       aria-label={t("overlay.selectionActions")}
       onPointerDown={(event) => event.preventDefault()}
     >
-      <button type="button" aria-keyshortcuts="T" onClick={() => onAction("translation")}>
-        <Languages size={14} /> {t("overlay.translate")}
-      </button>
+      {translatable ? (
+        <button type="button" aria-keyshortcuts="T" onClick={() => onAction("translation")}>
+          <Languages size={14} /> {t("overlay.translate")}
+        </button>
+      ) : null}
       <button type="button" aria-keyshortcuts="E" onClick={() => onAction("explanation")}>
         <MessageSquareText size={14} /> {t("overlay.explain")}
       </button>
