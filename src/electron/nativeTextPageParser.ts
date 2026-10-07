@@ -7,6 +7,7 @@ import {
   type ParsedPageBlock,
 } from "../shared/documentPageModel"
 import { type Sha256, sha256Schema } from "../shared/schemas"
+import { joinLineText } from "./citationSuperscripts"
 
 export type NativePageParserInput = {
   readonly ast: SourceDocumentAst
@@ -127,7 +128,7 @@ export function buildNativeParsedPage(
   const height = input.height ?? astPage.height
   const pageLines = input.ast.lines.filter((line) => line.pageId === pageId)
   const itemMap = new Map(
-    input.ast.items.filter((item) => item.pageId === pageId).map((item) => [item.id, item]),
+    input.ast.rawItems.filter((item) => item.pageId === pageId).map((item) => [item.id, item]),
   )
 
   const totalChars = input.ast.items
@@ -157,17 +158,14 @@ export function buildNativeParsedPage(
   for (let i = 0; i < sourceBlocks.length; i++) {
     const block = sourceBlocks[i]
     if (!block) continue
-    const text = block.sourceItemIds
-      .flatMap((id) => {
-        const item = itemMap.get(id)
-        return item ? [item] : []
-      })
-      .sort((left, right) => left.normalizedStart - right.normalizedStart)
-      .map((item) => item.text)
-      .filter(Boolean)
-      .join(" ")
-      .replace(/\s+/gu, " ")
-      .trim()
+    const text = joinLineText(
+      block.sourceItemIds
+        .flatMap((id) => {
+          const item = itemMap.get(id)
+          return item ? [item] : []
+        })
+        .sort((left, right) => left.normalizedStart - right.normalizedStart),
+    )
     if (!text) continue
 
     const detectedLabel = detectBlockLabel(text)
@@ -226,7 +224,7 @@ export function buildNativeParsedPage(
     schemaVersion: "1.0.0",
     sourceHash,
     parser: "NativeText-1.0",
-    configVersion: "page-native-v1",
+    configVersion: "page-native-v2",
     pageNumber: input.pageNumber,
     width,
     height,

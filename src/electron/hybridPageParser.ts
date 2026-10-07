@@ -8,7 +8,7 @@ import {
  * The version of hybrid pages. Raising it parses every page again, including the pages of
  * documents already analysed; v13 reads prose from the PDF's text layer instead of the VLM.
  */
-export const HYBRID_PAGE_CONFIG_VERSION = "hybrid-v13"
+export const HYBRID_PAGE_CONFIG_VERSION = "hybrid-v14"
 /** The cache directory hybrid pages of this version are kept in. */
 export const HYBRID_PAGE_CACHE_VERSION = `pdfjs-paddleocr-vl-1.6-${HYBRID_PAGE_CONFIG_VERSION}`
 
