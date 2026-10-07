@@ -179,11 +179,11 @@ describe("board translations", () => {
   it("puts the translation under a line near the top of the board", () => {
     const nearTop = boardCardSchema.parse({
       ...translation,
-      anchor: { ...translation.anchor, fragments: [{ x: 100, y: 40, width: 120, height: 18 }] },
+      anchor: { ...translation.anchor, fragments: [{ x: 100, y: 4, width: 120, height: 18 }] },
     })
     const { viewport } = renderBoard([nearTop])
 
-    fireEvent.pointerMove(viewport, { clientX: 150, clientY: 48, buttons: 0 })
+    fireEvent.pointerMove(viewport, { clientX: 150, clientY: 12, buttons: 0 })
 
     expect(screen.getByRole("complementary", { name: "번역" })).toHaveAttribute(
       "data-side",

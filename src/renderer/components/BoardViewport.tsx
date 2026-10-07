@@ -32,15 +32,13 @@ import { BoardNavigationController } from "./BoardNavigationController"
 import * as BoardOverlays from "./BoardOverlays"
 import type { BoardViewportProps } from "./BoardViewportProps"
 import { PdfSurface } from "./PdfSurface"
-import { type PeekPlacement, TranslationPeek } from "./TranslationPeek"
+import { type PeekAnchor, type PeekBounds, TranslationPeek } from "./TranslationPeek"
 
 /** The peek stays a moment after the pointer leaves, so it can be reached to copy or remove. */
 const PEEK_HIDE_DELAY_MS = 180
-const PEEK_WIDTH = 340
-const PEEK_MIN_WIDTH = 200
-const PEEK_GAP = 8
-/** Above the passage unless the line is this close to the board's top edge. */
-const PEEK_ROOM_ABOVE = 160
+const PEEK_EDGE = 8
+/** A hovered fragment narrower than this is a word or two, and the peek centres on it. */
+const PEEK_WORD_WIDTH = 220
 
 type TranslationHover = {
   readonly id: CardId
@@ -341,26 +339,26 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
     return { left: screenRect.left, top: screenRect.top - 44 }
   }, [selectionMenu, props.viewport])
 
-  const peekPlacement = useMemo((): PeekPlacement | null => {
+  const peekAnchor = useMemo((): PeekAnchor | null => {
     if (!translationHover) return null
-    const board = viewportRef.current
     const line = worldRectToScreen(translationHover.line, { x: 0, y: 0 }, displayViewport)
     const pointer = displayViewport.x + translationHover.x * displayViewport.zoom
-    // The peek is placed inside the viewport's content, which the browser may have scrolled.
-    const scrollLeft = board?.scrollLeft ?? 0
-    const right = scrollLeft + (board?.clientWidth ?? 0) - (props.rightOcclusion ?? 0)
-    const left = Math.max(
-      scrollLeft + PEEK_GAP,
-      Math.min(pointer - 28, right - PEEK_WIDTH - PEEK_GAP),
-    )
-    const above = line.top - (board?.scrollTop ?? 0) > PEEK_ROOM_ABOVE
     return {
-      left,
-      top: above ? line.top - PEEK_GAP : line.top + line.height + PEEK_GAP,
-      side: above ? "above" : "below",
-      caret: Math.max(14, Math.min(pointer - left, PEEK_MIN_WIDTH - 14)),
+      x: line.width <= PEEK_WORD_WIDTH ? line.left + line.width / 2 : pointer,
+      top: line.top,
+      bottom: line.top + line.height,
     }
-  }, [translationHover, displayViewport, props.rightOcclusion])
+  }, [translationHover, displayViewport])
+  // The peek is placed in the viewport's content, which the browser may have scrolled.
+  const peekBounds = useMemo((): PeekBounds | null => {
+    const board = viewportRef.current
+    if (!peekAnchor || !board) return null
+    return {
+      left: board.scrollLeft + PEEK_EDGE,
+      right: board.scrollLeft + board.clientWidth - PEEK_EDGE,
+      top: board.scrollTop + PEEK_EDGE,
+    }
+  }, [peekAnchor])
 
   const highlightMenuPosition = useMemo(() => {
     const firstFragment = selectedHighlight?.anchor.fragments[0]
@@ -448,10 +446,11 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
       {selectionMenu && menuPosition ? (
         <BoardOverlays.SelectionToolbar position={menuPosition} onAction={addCard} />
       ) : null}
-      {peekCard && peekPlacement ? (
+      {peekCard && peekAnchor && peekBounds ? (
         <TranslationPeek
           card={peekCard}
-          placement={peekPlacement}
+          anchor={peekAnchor}
+          bounds={peekBounds}
           onPointerEnter={keepPeek}
           onPointerLeave={hidePeekSoon}
           onDelete={() => {
