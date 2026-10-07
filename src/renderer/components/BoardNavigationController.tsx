@@ -9,7 +9,12 @@ import {
   useState,
 } from "react"
 import { paperOrigin } from "../../shared/uiLayout"
-import { CARD_WIDTH, initialResearchCardHeight, MINIMIZED_CARD_HEIGHT } from "../lib/board"
+import {
+  CARD_WIDTH,
+  drawnOnPassage,
+  initialResearchCardHeight,
+  MINIMIZED_CARD_HEIGHT,
+} from "../lib/board"
 import {
   centerViewportOnWorldPoint,
   constrainViewportToBounds,
@@ -145,7 +150,7 @@ export function BoardNavigationController({
     if (!panning) scheduleMeasure()
   }, [panning, scheduleMeasure])
   const cardRects = useMemo(
-    () => cards.filter((card) => card.kind !== "highlight").map(cardRect),
+    () => cards.filter((card) => !drawnOnPassage(card)).map(cardRect),
     [cards],
   )
   const bounds = useMemo(

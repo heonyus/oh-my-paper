@@ -7,7 +7,6 @@ import {
   createBoardCard,
   createSelectionCard,
   createStructureCard,
-  saveTranslationAsAnnotation,
 } from "../../src/renderer/lib/board"
 import {
   clearActiveDocumentAst,
@@ -48,30 +47,6 @@ describe("createBoardCard", () => {
     })
 
     expect({ x: card.x, y: card.y }).toEqual({ x: 944, y: 412 })
-  })
-
-  it("preserves translated content and source geometry as a highlight annotation", () => {
-    const translation = createBoardCard({
-      documentId: documentIdSchema.parse("aabbccddeeff0011"),
-      kind: "translation",
-      title: "페이지 번역",
-      body: "능력을 갖추고 있는",
-      placement: { x: 944, y: 412 },
-      anchor: {
-        page: 1,
-        quote: "empowered",
-        x: 520,
-        y: 430,
-        fragments: [{ x: 420, y: 418, width: 100, height: 18 }],
-      },
-    })
-
-    const note = saveTranslationAsAnnotation(translation)
-
-    expect(note.kind).toBe("highlight")
-    expect(note.title).toBe("AI 번역")
-    expect(note.body).toBe(translation.body)
-    expect(note.anchor).toEqual(translation.anchor)
   })
 
   it("labels a selected quote as a selection translation", () => {

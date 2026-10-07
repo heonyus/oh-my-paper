@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react"
-import { describe, expect, it, vi } from "vitest"
+import { act, fireEvent, render, screen, within } from "@testing-library/react"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { BoardViewport } from "../../src/renderer/components/BoardViewport"
 import type { BoardViewportProps } from "../../src/renderer/components/BoardViewportProps"
 import type { BoardCard } from "../../src/renderer/types"
@@ -132,5 +132,87 @@ describe("board highlights", () => {
     click(viewport, 400, 400)
 
     expect(screen.queryByRole("button", { name: "하이라이트 삭제" })).toBeNull()
+  })
+})
+
+const translation = boardCardSchema.parse({
+  id: "73fcb8ab-9085-4f88-af36-f4d25cdd2364",
+  documentId: "aabbccddeeff0011",
+  kind: "translation",
+  title: "presented",
+  body: "1. **제시된다**\n2. 제시받다\n3. 마주하다",
+  x: 900,
+  y: 240,
+  minimized: false,
+  anchor: {
+    page: 1,
+    quote: "presented",
+    x: 220,
+    y: 309,
+    fragments: [{ x: 100, y: 300, width: 120, height: 18 }],
+  },
+})
+
+describe("board translations", () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("tints a translated passage and shows its translation only while it is hovered", () => {
+    const { container, viewport, onCardsChange } = renderBoard([translation])
+
+    expect(container.querySelectorAll(".translation-mark")).toHaveLength(1)
+    expect(screen.queryByLabelText("source, 1 페이지 연결 카드")).toBeNull()
+    expect(screen.queryByRole("complementary", { name: "번역" })).toBeNull()
+
+    fireEvent.pointerMove(viewport, { clientX: 150, clientY: 308, buttons: 0 })
+
+    const peek = screen.getByRole("complementary", { name: "번역" })
+    expect(peek).toHaveAttribute("data-side", "above")
+    expect(peek.querySelector(".translation-peek-meanings")?.textContent).toBe(
+      "제시된다제시받다마주하다",
+    )
+    fireEvent.click(within(peek).getByRole("button", { name: "번역 지우기" }))
+    expect(onCardsChange).toHaveBeenCalledWith([])
+  })
+
+  it("puts the translation under a line near the top of the board", () => {
+    const nearTop = boardCardSchema.parse({
+      ...translation,
+      anchor: { ...translation.anchor, fragments: [{ x: 100, y: 40, width: 120, height: 18 }] },
+    })
+    const { viewport } = renderBoard([nearTop])
+
+    fireEvent.pointerMove(viewport, { clientX: 150, clientY: 48, buttons: 0 })
+
+    expect(screen.getByRole("complementary", { name: "번역" })).toHaveAttribute(
+      "data-side",
+      "below",
+    )
+  })
+
+  it("does not open while a button is held, and closes soon after the pointer leaves", () => {
+    vi.useFakeTimers()
+    const { viewport } = renderBoard([translation])
+
+    fireEvent.pointerMove(viewport, { clientX: 150, clientY: 308, buttons: 1 })
+    expect(screen.queryByRole("complementary", { name: "번역" })).toBeNull()
+
+    fireEvent.pointerMove(viewport, { clientX: 150, clientY: 308, buttons: 0 })
+    fireEvent.pointerMove(viewport, { clientX: 400, clientY: 500, buttons: 0 })
+    expect(screen.getByRole("complementary", { name: "번역" })).toBeInTheDocument()
+    act(() => {
+      vi.advanceTimersByTime(250)
+    })
+    expect(screen.queryByRole("complementary", { name: "번역" })).toBeNull()
+  })
+
+  it("shows that a translation is still on its way", () => {
+    const pending = boardCardSchema.parse({ ...translation, body: "", loading: true })
+    const { container, viewport } = renderBoard([pending])
+
+    expect(container.querySelector(".translation-mark")).toHaveAttribute("data-loading")
+    fireEvent.pointerMove(viewport, { clientX: 150, clientY: 308, buttons: 0 })
+    expect(screen.getByRole("status")).toHaveTextContent("번역하는 중…")
   })
 })

@@ -10,13 +10,13 @@ import type { BoardTool } from "../types"
 import { nextWheelAxis, panViewport, zoomViewportAt } from "./viewport"
 
 /**
- * An upright wheel over a page translation's own scrolling text scrolls that text while it has
- * room to go that way. Every other wheel over the pane — sideways, zoom, or a translation set on
+ * An upright wheel over a page translation's own scrolling text, or a long passage translation
+ * shown on hover, scrolls that text while it has room to go that way. Every other wheel over the pane — sideways, zoom, or a translation set on
  * its page copy with nothing to scroll — moves the board the pane sits on.
  */
 function scrollsTranslationText(event: WheelEvent): boolean {
   if (!(event.target instanceof Element)) return false
-  const body = event.target.closest<HTMLElement>(".page-translation-body")
+  const body = event.target.closest<HTMLElement>(".page-translation-body, .translation-peek-body")
   if (!body || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return false
   const overflow = getComputedStyle(body).overflowY
   if (overflow !== "auto" && overflow !== "scroll") return false

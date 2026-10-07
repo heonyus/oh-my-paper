@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { BoardCardsLayer } from "../../src/renderer/components/BoardCardsLayer"
 import { boardCardSchema } from "../../src/shared/schemas"
@@ -47,26 +47,17 @@ function renderLayer(cards = [translation], commitCards = vi.fn(), onActiveChang
 }
 
 describe("BoardCardsLayer annotations", () => {
-  it("does not render persistent highlight annotations as floating cards", () => {
-    renderLayer([translation, highlight])
-
-    expect(screen.getByLabelText("source, 1 페이지 연결 카드")).toBeVisible()
-    expect(screen.queryByLabelText("번역 주석, 1 페이지 연결 카드")).not.toBeInTheDocument()
-  })
-
-  it("replaces a translation card with a non-floating highlight annotation", () => {
-    const commitCards = vi.fn()
-    const onActiveChange = vi.fn()
-    renderLayer([translation], commitCards, onActiveChange)
-
-    fireEvent.click(screen.getByRole("button", { name: "번역을 주석으로 저장" }))
-
-    expect(onActiveChange).toHaveBeenCalledWith(null)
-    expect(commitCards.mock.lastCall?.[0]?.[0]).toMatchObject({
-      kind: "highlight",
-      title: "AI 번역",
-      body: translation.body,
-      anchor: translation.anchor,
+  it("draws highlights and translations on the passage, not as floating cards", () => {
+    const explanation = boardCardSchema.parse({
+      ...translation,
+      id: "0f6a3a4e-77c2-4d0f-9b0e-8a1f3f1b2c3d",
+      kind: "explanation",
+      title: "설명",
     })
+    renderLayer([translation, highlight, explanation])
+
+    expect(screen.getByLabelText("설명, 1 페이지 연결 카드")).toBeVisible()
+    expect(screen.queryByLabelText("source, 1 페이지 연결 카드")).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("번역 주석, 1 페이지 연결 카드")).not.toBeInTheDocument()
   })
 })

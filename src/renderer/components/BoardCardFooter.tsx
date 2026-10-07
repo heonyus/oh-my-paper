@@ -1,19 +1,17 @@
-import { Check, Copy, ExternalLink, Maximize2, StickyNote } from "lucide-react"
+import { Check, Copy, ExternalLink, Maximize2 } from "lucide-react"
 import { type JSX, useEffect, useState } from "react"
 import { useTranslator } from "../lib/locale"
 import { boardMessages } from "../messages/board"
-import type { BoardCard, CardId } from "../types"
+import type { BoardCard } from "../types"
 
 export function BoardCardFooter({
   card,
   streaming,
   onJump,
-  onSaveAsAnnotation,
 }: {
   readonly card: BoardCard
   readonly streaming: boolean
   readonly onJump: (page: number) => void
-  readonly onSaveAsAnnotation?: ((id: CardId) => void) | undefined
 }): JSX.Element {
   const t = useTranslator(boardMessages)
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle")
@@ -66,16 +64,6 @@ export function BoardCardFooter({
           onClick={() => void window.ohmypaper.openExternal({ url: sourceUrl })}
         >
           {t("card.openPaper")} <ExternalLink size={13} />
-        </button>
-      ) : null}
-      {card.kind === "translation" && onSaveAsAnnotation ? (
-        <button
-          type="button"
-          className="source-link"
-          aria-label={t("card.saveAsAnnotationLabel")}
-          onClick={() => onSaveAsAnnotation(card.id)}
-        >
-          {t("card.saveAsAnnotation")} <StickyNote size={13} />
         </button>
       ) : null}
       <button

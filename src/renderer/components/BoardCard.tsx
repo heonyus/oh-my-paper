@@ -19,7 +19,6 @@ type BoardCardProps = {
   readonly onMoveEnd?: ((id: CardId, x: number, y: number) => void) | undefined
   readonly onDelete: (id: CardId) => void
   readonly onJump: (page: number) => void
-  readonly onSaveAsAnnotation?: ((id: CardId) => void) | undefined
   readonly onBodyChange?: ((id: CardId, body: string) => void) | undefined
   readonly onMinimize: (id: CardId) => void
   readonly onRegenerateTitle?: ((id: CardId) => void) | undefined
@@ -44,7 +43,6 @@ export function BoardCard({
   onMoveEnd,
   onDelete,
   onJump,
-  onSaveAsAnnotation,
   onBodyChange,
   onMinimize,
   onRegenerateTitle,
@@ -200,12 +198,7 @@ export function BoardCard({
         </div>
       ) : null}
       {!card.minimized && card.kind !== "sticky" ? (
-        <BoardCardFooter
-          card={card}
-          streaming={streaming}
-          onJump={onJump}
-          onSaveAsAnnotation={onSaveAsAnnotation}
-        />
+        <BoardCardFooter card={card} streaming={streaming} onJump={onJump} />
       ) : null}
       {!card.minimized ? (
         <BoardCardResizeHandle

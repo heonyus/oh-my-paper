@@ -62,27 +62,6 @@ describe("BoardCard controls", () => {
     expect(onMove).not.toHaveBeenCalled()
   })
 
-  it("offers a direct translation-to-note action", () => {
-    const onSaveAsAnnotation = vi.fn()
-    render(
-      <BoardCard
-        {...advancedControls}
-        card={translationCard}
-        active={false}
-        zoom={1}
-        onMove={vi.fn()}
-        onDelete={vi.fn()}
-        onJump={vi.fn()}
-        onSaveAsAnnotation={onSaveAsAnnotation}
-        onActiveChange={vi.fn()}
-      />,
-    )
-
-    fireEvent.click(screen.getByRole("button", { name: "번역을 주석으로 저장" }))
-
-    expect(onSaveAsAnnotation).toHaveBeenCalledWith(translationCard.id)
-  })
-
   it("keeps the source jump in a separated card-bottom footer", () => {
     render(
       <BoardCard
@@ -93,7 +72,6 @@ describe("BoardCard controls", () => {
         onMove={vi.fn()}
         onDelete={vi.fn()}
         onJump={vi.fn()}
-        onSaveAsAnnotation={vi.fn()}
         onActiveChange={vi.fn()}
       />,
     )
