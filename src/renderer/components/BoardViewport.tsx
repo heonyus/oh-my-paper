@@ -11,12 +11,13 @@ import {
 import { CARD_WIDTH, clearOfCards, createSelectionCard, drawnOnPassage } from "../lib/board"
 import { askBoardCard, regenerateBoardCardTitle } from "../lib/boardCardAi"
 import { boardHighlightState, highlightAtPoint, translationAtPoint } from "../lib/boardHighlights"
-import { type BoardTextSelection, captureNativeBoardTextSelection } from "../lib/boardSelection"
+import { publishBoardHighlights } from "../lib/boardHighlightsStore"
+import type { BoardTextSelection } from "../lib/boardSelection"
+import { boardSelectionOf } from "../lib/boardSelectionSource"
 import { parsedCardResponse, parsedTranslationResponse } from "../lib/cardPresentation"
 import { useLocale, useTranslator } from "../lib/locale"
 import { useSelectionShortcuts } from "../lib/selectionActions"
 import { selectionAiRequest } from "../lib/selectionAiRequest"
-import { addSelectionContext } from "../lib/selectionContext"
 import { worldRectToScreen } from "../lib/selectionGeometry"
 import { createStructureActionHandler } from "../lib/structureActions"
 import { useBoardGestures } from "../lib/useBoardGestures"
@@ -131,33 +132,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
       setSelectionMenu(null)
       return
     }
-    const nativeSelection = window.getSelection()
-    const range = nativeSelection?.rangeCount ? nativeSelection.getRangeAt(0) : null
-    const anchorNode = nativeSelection?.anchorNode
-    const anchorElement = anchorNode instanceof Element ? anchorNode : anchorNode?.parentElement
-    const pageElement = anchorElement?.closest<HTMLElement>(".page")
-    const boardWorldElement = worldRef.current
-    if (
-      !nativeSelection ||
-      nativeSelection.isCollapsed ||
-      !range ||
-      !pageElement ||
-      !boardWorldElement
-    ) {
-      setSelectionMenu(null)
-      return
-    }
-    const selection = captureNativeBoardTextSelection({
-      pageElement,
-      boardWorldElement,
-      range,
-      quote: nativeSelection.toString(),
-    })
-    if (!selection) {
-      setSelectionMenu(null)
-      return
-    }
-    setSelectionMenu(addSelectionContext(selection, pageElement))
+    setSelectionMenu(boardSelectionOf(window.getSelection(), worldRef.current))
   }, [props.tool])
 
   useEffect(() => {
@@ -171,6 +146,13 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
     highlights,
     translations,
   } = boardHighlightState(props.cards, activeCardId)
+  // A page's translation pane echoes the highlights on the sentences they cover.
+  const highlightCards = useMemo(
+    () =>
+      props.cards.filter((card) => card.kind === "highlight" && card.anchor.fragments.length > 0),
+    [props.cards],
+  )
+  useEffect(() => publishBoardHighlights(highlightCards), [highlightCards])
   const selectedHighlight = highlights.find((card) => card.id === selectedHighlightId) ?? null
   const peekCard = translations.find((card) => card.id === translationHover?.id) ?? null
 
@@ -224,6 +206,8 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
 
   function addCard(kind: BoardOverlays.SelectionAction): void {
     if (!selectionMenu) return
+    // Selected in the translation, so the passage already reads in the reader's language.
+    if (kind === "translation" && selectionMenu.viaTranslation) return
     if (kind === "note" && props.onQuoteToNote) {
       props.onQuoteToNote(selectionMenu.page, selectionMenu.quote)
       setSelectionMenu(null)
@@ -334,7 +318,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
   })
 
   const menuPosition = useMemo(() => {
-    const firstFragment = selectionMenu?.fragments[0]
+    const firstFragment = selectionMenu?.viaTranslation?.anchor ?? selectionMenu?.fragments[0]
     if (!firstFragment) return null
     const screenRect = worldRectToScreen(firstFragment, { x: 0, y: 0 }, props.viewport)
     return { left: screenRect.left, top: screenRect.top - 44 }
@@ -445,7 +429,11 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
         />
       </div>
       {selectionMenu && menuPosition ? (
-        <BoardOverlays.SelectionToolbar position={menuPosition} onAction={addCard} />
+        <BoardOverlays.SelectionToolbar
+          position={menuPosition}
+          onAction={addCard}
+          translatable={!selectionMenu.viaTranslation}
+        />
       ) : null}
       {peekCard && peekAnchor && peekBounds ? (
         <TranslationPeek

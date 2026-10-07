@@ -3,6 +3,10 @@ import { type JSX, useEffect, useMemo, useRef, useState } from "react"
 import type { ProviderStatus } from "../../shared/ipc"
 import { parsedDocumentPage } from "../lib/documentPageRuntime"
 import { useLocale, useTranslator } from "../lib/locale"
+import {
+  clearPageTranslationBlocks,
+  publishPageTranslationBlocks,
+} from "../lib/pageTranslationBlocksRegistry"
 import { equationRegions } from "../lib/pageTranslationEquations"
 import { type PageTranslationMode, usePageTranslationMode } from "../lib/pageTranslationMode"
 import { nextTextSize, parserStageMessage, type TextSize } from "../lib/pageTranslationPaneState"
@@ -12,6 +16,7 @@ import { usePageSourceHover } from "../lib/usePageSourceHover"
 import { usePageTranslation } from "../lib/usePageTranslation"
 import { usePageTranslationPlacement } from "../lib/usePageTranslationPlacement"
 import { usePdfPage } from "../lib/usePdfPage"
+import { useTranslationHighlights } from "../lib/useTranslationHighlights"
 import { readerMessages } from "../messages/reader"
 import type { AiRequestRunner, DocumentRecord } from "../types"
 import { PageTranslationBlock } from "./PageTranslationBlock"
@@ -62,6 +67,13 @@ export function PageTranslationPane({
     provider,
     onAiRequest,
   })
+
+  // Selecting in the pane reads back to these units; the board's highlights echo on them.
+  useEffect(() => {
+    publishPageTranslationBlocks(currentPage, blocks)
+    return () => clearPageTranslationBlocks(currentPage)
+  }, [currentPage, blocks])
+  useTranslationHighlights(currentPage, bodyRef, blocks)
 
   const visibleBlocks = useMemo(
     () =>

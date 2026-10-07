@@ -554,6 +554,7 @@ export function PageTranslationLayout({
           onMouseLeave={() => setActive(region, false)}
           onClick={(event) => {
             if (event.target instanceof HTMLAnchorElement) return
+            if (!(window.getSelection()?.isCollapsed ?? true)) return
             focusSource(region)
           }}
           onKeyDown={(event) => {

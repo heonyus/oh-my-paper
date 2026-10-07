@@ -21,7 +21,8 @@ type CharacterOwner = {
 
 const comparableCharacter = /[\p{L}\p{N}]/u
 
-function canonicalCharacters(value: string): readonly string[] {
+/** The letters and digits of `value`, folded, so text compares the same however it is set. */
+export function canonicalCharacters(value: string): readonly string[] {
   return [...value.normalize("NFKC").toLocaleLowerCase()].filter((character) =>
     comparableCharacter.test(character),
   )
