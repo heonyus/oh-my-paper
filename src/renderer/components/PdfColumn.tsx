@@ -15,6 +15,7 @@ export function PdfColumn({
   onPageJump,
   onStructureTrigger,
   onRetrievalReady,
+  onFindReady,
   onScaleCommitted,
 }: PdfColumnProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -43,6 +44,7 @@ export function PdfColumn({
     onRegisterPageJump,
     onPageJump,
     onRetrievalReady,
+    onFindReady,
     onScaleCommitted,
   })
 

@@ -11,6 +11,8 @@ import type { ViewerSession } from "./pdfColumnSupport"
 import * as Pdf from "./pdfColumnSupport"
 import type { PreparedSummary } from "./pdfDocumentFeatures"
 import { registerPdfDocument } from "./pdfDocumentRegistry"
+import { createRevealingFindController } from "./pdfFindController"
+import { createPdfFindRuntime, type PdfFindRuntime } from "./pdfFindRuntime"
 import type { PdfOutlineEntry } from "./pdfOutline"
 import type { PageOverlayState } from "./pdfOverlayAnalysis"
 import { enrichOverlayCitations } from "./pdfOverlayBibliography"
@@ -38,6 +40,7 @@ export type UsePdfViewerLifecycleParams = {
   readonly onRegisterPageJump?: ((jump: (page: number) => void) => void) | undefined
   readonly onPageJump?: ((page: number, pageElement: HTMLElement) => void) | undefined
   readonly onRetrievalReady?: ((retrieval: PdfRetrievalRuntime | null) => void) | undefined
+  readonly onFindReady?: ((find: PdfFindRuntime | null) => void) | undefined
   readonly onScaleCommitted?: ((scale: number) => void) | undefined
 }
 
@@ -54,6 +57,7 @@ export function usePdfViewerLifecycle({
   onRegisterPageJump,
   onPageJump,
   onRetrievalReady,
+  onFindReady,
   onScaleCommitted,
 }: UsePdfViewerLifecycleParams): {
   readonly pageOverlays: Readonly<Record<number, PageOverlayState>>
@@ -114,11 +118,18 @@ export function usePdfViewerLifecycle({
 
     const eventBus = new EventBus()
     const linkService = new PDFLinkService({ eventBus, ignoreDestinationZoom: true })
+    const findController = createRevealingFindController({
+      eventBus,
+      linkService,
+      reveal: (page, element) => onPageJump?.(page, element),
+    })
+    const findSession = createPdfFindRuntime(eventBus)
     const viewer = new PDFViewer({
       container,
       viewer: viewerElement,
       eventBus,
       linkService,
+      findController,
       removePageBorders: true,
       supportsPinchToZoom: false,
       enableAutoLinking: true,
@@ -129,6 +140,7 @@ export function usePdfViewerLifecycle({
     })
     linkService.setViewer(viewer)
     onRegisterPageJump?.(Pdf.pageJumpHandler(viewer, onPageJump))
+    onFindReady?.(findSession.runtime)
 
     const bridge = bindViewerEventBridge({
       viewer,
@@ -221,6 +233,9 @@ export function usePdfViewerLifecycle({
       releaseExternalLinks()
       retrievalSession?.dispose()
       onRetrievalReady?.(null)
+      findSession.runtime.close()
+      findSession.dispose()
+      onFindReady?.(null)
       overlayRefreshRef.current = null
       onRegisterPageJump?.(() => {})
       if (activeSession) Pdf.disposeViewerSession(activeSession)
@@ -235,6 +250,7 @@ export function usePdfViewerLifecycle({
     onPageJump,
     onRegisterPageJump,
     onRetrievalReady,
+    onFindReady,
     onScaleCommitted,
     overlayRefreshRef,
     sessionRef,

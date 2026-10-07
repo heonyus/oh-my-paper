@@ -5,6 +5,16 @@ import type { PdfRetrievalRuntime } from "../lib/pdfRetrievalRuntime"
 import { rankPdfPassages } from "../lib/pdfSearch"
 import { readerMessages } from "../messages/reader"
 
+/** ⇧⌘F or Ctrl+Shift+F opens the related-passage search; plain ⌘F is the text find. */
+export function isRelatedSearchShortcut(event: KeyboardEvent): boolean {
+  return (
+    (event.metaKey || event.ctrlKey) &&
+    event.shiftKey &&
+    !event.altKey &&
+    event.key.toLocaleLowerCase() === "f"
+  )
+}
+
 export function DocumentRetrievalSwitcher({
   runtime,
 }: {
@@ -47,14 +57,16 @@ export function DocumentRetrievalSwitcher({
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent): void => {
-      if (event.key === "Escape" && open) {
-        event.preventDefault()
+      if (event.key === "Escape") {
+        // Closed or not, Esc takes the marks of the last opened passage off the pages.
         runtime?.clear()
+        if (!open) return
+        event.preventDefault()
         setOpen(false)
         restoreFocus()
         return
       }
-      if (!(event.metaKey || event.ctrlKey) || event.key.toLocaleLowerCase() !== "f") return
+      if (!isRelatedSearchShortcut(event)) return
       event.preventDefault()
       if (!open) {
         previousFocusRef.current =
@@ -133,7 +145,7 @@ export function DocumentRetrievalSwitcher({
           <span className="document-retrieval-count" role="status" aria-live="polite">
             {query.trim() ? t("search.count", { count: results.length }) : t("search.whole")}
           </span>
-          <kbd>⌘F</kbd>
+          <kbd>⇧⌘F</kbd>
           <button type="button" aria-label={t("search.close")} onClick={() => close(true)}>
             <X size={17} />
           </button>

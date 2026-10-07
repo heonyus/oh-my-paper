@@ -1,4 +1,5 @@
 import type { PreparedSummary } from "../lib/pdfDocumentFeatures"
+import type { PdfFindRuntime } from "../lib/pdfFindRuntime"
 import type { PdfOutlineEntry } from "../lib/pdfOutline"
 import type { PdfRetrievalRuntime } from "../lib/pdfRetrievalRuntime"
 import type { DetectedStructure } from "../lib/structureDetector"
@@ -14,5 +15,6 @@ export type PdfColumnProps = {
   readonly onPageJump?: ((page: number, pageElement: HTMLElement) => void) | undefined
   readonly onStructureTrigger?: ((structure: DetectedStructure) => void) | undefined
   readonly onRetrievalReady?: ((runtime: PdfRetrievalRuntime | null) => void) | undefined
+  readonly onFindReady?: ((runtime: PdfFindRuntime | null) => void) | undefined
   readonly onScaleCommitted?: ((zoom: number) => void) | undefined
 }
