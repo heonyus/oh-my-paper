@@ -9,6 +9,7 @@ import { useLocale, useTranslator } from "../../lib/locale"
 import { noteMessages } from "../../messages/note"
 import { EvidenceNode } from "./evidenceNode"
 import { ArrowInput, type MarginSlotRegistry, marginSlotsExtension } from "./marginSlots"
+import { MathNode } from "./mathNode"
 import { NoteImage } from "./noteImage"
 import { SlashMenu } from "./SlashMenu"
 import { SlashMenuStore, slashCommandExtension } from "./slashCommands"
@@ -82,6 +83,7 @@ export function ReaderNoteEditor({
       }),
       Markdown,
       EvidenceNode,
+      MathNode,
       ArrowInput,
       NoteImage.configure({ onError: reportImageError }),
       ...(marginSlots ? [marginSlotsExtension(marginSlots)] : []),

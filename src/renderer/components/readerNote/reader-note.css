@@ -165,6 +165,28 @@
 .ProseMirror-selectednode.note-evidence {
   outline: 2px solid var(--focus);
 }
+/* A formula typed as $…$, typeset in place; double-click returns it to text. */
+.note-math {
+  display: inline-block;
+  margin: 0 1px;
+  padding: 0 2px;
+  border-radius: 4px;
+  cursor: text;
+}
+.note-math[data-display="true"] {
+  display: block;
+  margin: 4px 0;
+  text-align: center;
+}
+.note-math .katex-display {
+  margin: 0;
+}
+.note-math:hover {
+  background: var(--surface-muted);
+}
+.ProseMirror-selectednode.note-math {
+  outline: 2px solid var(--focus);
+}
 .note-drag-handle {
   display: grid;
   place-items: center;
