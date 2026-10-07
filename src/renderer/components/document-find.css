@@ -1,0 +1,88 @@
+/* ⌘F: the plain text find bar, sitting at the top right of the paper. */
+.document-find-bar {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 6px 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 6px 18px rgb(25 35 45 / 12%);
+  color: var(--ink);
+  pointer-events: auto;
+  animation: document-find-enter 110ms ease-out;
+}
+.document-find-bar > svg {
+  flex: 0 0 auto;
+  color: var(--ink-muted);
+}
+.document-find-bar input {
+  width: 220px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--type-body-size);
+}
+.document-find-bar input::placeholder {
+  color: var(--ink-muted);
+}
+.document-find-bar input::-webkit-search-cancel-button {
+  display: none;
+}
+.document-find-count {
+  min-width: 56px;
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.document-find-bar[data-status="notFound"] .document-find-count {
+  color: var(--danger, #c0392b);
+}
+.document-find-bar button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-muted);
+}
+.document-find-bar button:hover:not(:disabled) {
+  background: var(--surface-muted);
+  color: var(--ink);
+}
+.document-find-bar button:disabled {
+  opacity: 0.4;
+}
+/* Every match in yellow, the one the bar is on in orange, as browsers do. */
+.pdf-viewer-container .textLayer .highlight {
+  --highlight-bg-color: rgb(255 204 0 / 38%);
+  --highlight-selected-bg-color: rgb(255 122 0 / 48%);
+  border-radius: 2px;
+}
+@keyframes document-find-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .document-find-bar {
+    animation: none;
+  }
+}
