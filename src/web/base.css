@@ -138,7 +138,8 @@ button:disabled {
   color: var(--ink-muted);
   font-size: var(--type-compact-size);
 }
-.web-shell[data-theme="dark"] .web-brand-mark {
+.web-shell[data-theme="dark"] .web-brand-mark,
+.web-shell[data-theme="dracula"] .web-brand-mark {
   filter: brightness(0) invert(1);
 }
 @media (prefers-color-scheme: dark) {

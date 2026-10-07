@@ -4,7 +4,13 @@ import type { DocumentOcrProviderStatus } from "../../shared/documentOcr"
 import type { ProviderConfig, ProviderStatus } from "../../shared/ipc"
 import type { AiMode } from "../../shared/providerModels"
 import type { AppearanceTheme } from "../../shared/schemas"
-import { uiFontScaleLabel, uiFontScalePercent, uiFontScalePresets } from "../../shared/uiAppearance"
+import {
+  appearanceThemes,
+  isAppearanceTheme,
+  uiFontScaleLabel,
+  uiFontScalePercent,
+  uiFontScalePresets,
+} from "../../shared/uiAppearance"
 import { type LanguagePreference, useLocale, useTranslator } from "../lib/locale"
 import { translationFontOptions, useTranslationFont } from "../lib/translationFont"
 import { settingsMessages } from "../messages/settings"
@@ -173,13 +179,14 @@ export function SettingsModal({
                     value={theme}
                     onChange={(event) => {
                       const next = event.currentTarget.value
-                      if (next === "system" || next === "light" || next === "dark")
-                        onThemeChange?.(next)
+                      if (isAppearanceTheme(next)) onThemeChange?.(next)
                     }}
                   >
-                    <option value="system">{t("settings.theme.system")}</option>
-                    <option value="light">{t("settings.theme.light")}</option>
-                    <option value="dark">{t("settings.theme.dark")}</option>
+                    {appearanceThemes.map((option) => (
+                      <option key={option} value={option}>
+                        {t(`settings.theme.${option}`)}
+                      </option>
+                    ))}
                   </select>
                 </label>
                 <label className="settings-row" htmlFor="ui-font-scale">

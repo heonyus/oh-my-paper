@@ -2,6 +2,9 @@ import { X } from "lucide-react"
 import type { CSSProperties, JSX } from "react"
 import type { AppearancePreferences } from "../shared/schemas"
 import {
+  appearanceThemeLabel,
+  appearanceThemes,
+  isAppearanceTheme,
   uiFontFamilyStack,
   uiFontScaleLabel,
   uiFontScalePercent,
@@ -50,13 +53,14 @@ export function WebAppearanceSettings({
               value={value.theme}
               onChange={(event) => {
                 const theme = event.currentTarget.value
-                if (theme === "system" || theme === "light" || theme === "dark")
-                  onChange({ ...value, theme })
+                if (isAppearanceTheme(theme)) onChange({ ...value, theme })
               }}
             >
-              <option value="system">시스템 설정</option>
-              <option value="light">라이트</option>
-              <option value="dark">다크</option>
+              {appearanceThemes.map((option) => (
+                <option key={option} value={option}>
+                  {appearanceThemeLabel(option)}
+                </option>
+              ))}
             </select>
           </label>
           <label className="web-settings-range">
