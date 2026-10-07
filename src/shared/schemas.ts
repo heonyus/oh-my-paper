@@ -157,7 +157,13 @@ export const documentInsightSchema = z.object({
 })
 
 export const uiFontFamilySchema = z.enum(["wanted", "pretendard", "suit", "geist-wanted", "system"])
-export const appearanceThemeSchema = z.enum(["system", "light", "dark"])
+export const appearanceThemeSchema = z.enum([
+  "system",
+  "light",
+  "dark",
+  "dracula",
+  "tokyo-night-light",
+])
 export const appearancePreferencesSchema = z.object({
   uiFontFamily: uiFontFamilySchema.default("wanted"),
   uiFontScale: z.number().min(0.5).max(2).default(1),

@@ -290,6 +290,32 @@ describe("SettingsModal", () => {
     })
   })
 
+  it("offers the Dracula and Tokyo Night Light themes", async () => {
+    const onThemeChange = vi.fn()
+    render(
+      <SettingsModal
+        status={{ configured: true, provider: "openrouter", model: "z-ai/glm-5.3-flash" }}
+        fontScale={1}
+        theme="dracula"
+        onClose={vi.fn()}
+        onSave={vi.fn(async () => {})}
+        onFontScaleChange={vi.fn()}
+        onThemeChange={onThemeChange}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole("button", { name: "일반" }))
+    const picker = screen.getByLabelText("화면 모드")
+    expect(picker).toHaveValue("dracula")
+    expect(
+      Array.from(picker.querySelectorAll("option")).map((option) => option.textContent),
+    ).toEqual(["시스템 설정", "라이트", "다크", "드라큘라", "도쿄 나이트 라이트"])
+
+    await userEvent.selectOptions(picker, "tokyo-night-light")
+
+    expect(onThemeChange).toHaveBeenCalledWith("tokyo-night-light")
+  })
+
   it("separates reading preferences in a source-list section", async () => {
     const onMinimapVisibleChange = vi.fn()
     render(

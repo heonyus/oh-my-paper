@@ -220,6 +220,14 @@
     --research-mint: #1d302c;
   }
 }
+.app-shell[data-theme="dracula"] {
+  --research-lilac: #2f2b45;
+  --research-mint: #233038;
+}
+.app-shell[data-theme="tokyo-night-light"] {
+  --research-lilac: #dcd6e8;
+  --research-mint: #d3dfe0;
+}
 
 .app-shell[data-navigation="research"][data-large-text="true"] {
   grid-template-rows: calc(var(--type-body-size) * 6 + 24px) minmax(0, 1fr);

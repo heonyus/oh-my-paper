@@ -73,6 +73,48 @@
     --error: #ed8b7e;
   }
 }
+/* Dracula: the VS Code palette, purple action and pink focus on the #282a36 editor surface. */
+.app-shell[data-theme="dracula"],
+[data-theme="dracula"] {
+  color-scheme: dark;
+  --canvas: #21222c;
+  --canvas-dot: #343746;
+  --surface: #282a36;
+  --surface-muted: #343746;
+  --surface-raised: #343746;
+  --ink: #f8f8f2;
+  --ink-muted: #a9afcf;
+  --line: #44475a;
+  --action: #bd93f9;
+  --action-hover: #d4b8ff;
+  --focus: #ff79c6;
+  --action-subtle: #3d3a5c;
+  --note: #494c63;
+  --success: #50fa7b;
+  --warning: #ffb86c;
+  --error: #ff5555;
+}
+/* Tokyo Night Light: the VS Code light variant, slate ink on a cool grey canvas with a navy action. */
+.app-shell[data-theme="tokyo-night-light"],
+[data-theme="tokyo-night-light"] {
+  color-scheme: light;
+  --canvas: #d5d6db;
+  --canvas-dot: #c1c2c7;
+  --surface: #e6e7ed;
+  --surface-muted: #dcdee3;
+  --surface-raised: #eceef3;
+  --ink: #343b58;
+  --ink-muted: #565a6e;
+  --line: #bfc1c9;
+  --action: #34548a;
+  --action-hover: #263d68;
+  --focus: #34548a;
+  --action-subtle: #c9d0e3;
+  --note: #e6e2cd;
+  --success: #485e30;
+  --warning: #8f5e15;
+  --error: #8c4351;
+}
 
 * {
   box-sizing: border-box;
@@ -962,8 +1004,9 @@ button:focus-visible {
 }
 
 /*
- * See-through, so the page shows under it. It always floats over the white paper, so it uses
- * paper colours in either theme, and a white halo keeps its text readable over the page's text.
+ * Frosted: the page still shows under it, softened enough that its text does not compete with
+ * the translation. It always floats over the white paper, so it uses paper colours in either
+ * theme, and a white halo keeps its text readable over the page's text.
  */
 .translation-peek {
   position: absolute;
@@ -974,17 +1017,17 @@ button:focus-visible {
   width: max-content;
   max-width: 360px;
   padding: 4px 4px 4px 10px;
-  border: 1px solid rgba(40, 86, 68, 0.45);
+  border: 1px solid rgba(40, 86, 68, 0.5);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.4);
-  -webkit-backdrop-filter: blur(0.6px);
-  backdrop-filter: blur(0.6px);
-  box-shadow: 0 2px 10px rgba(13, 31, 22, 0.1);
-  color: #0f1f18;
+  background: rgba(255, 255, 255, 0.78);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  box-shadow: 0 3px 12px rgba(13, 31, 22, 0.14);
+  color: #0b1812;
   text-shadow:
     0 0 2px #fff,
-    0 0 3px #fff,
-    0 0 6px #fff;
+    0 0 4px #fff,
+    0 0 8px #fff;
   font-size: var(--type-compact-size);
   line-height: 1.45;
   user-select: text;
@@ -1035,7 +1078,7 @@ button:focus-visible {
   border: 0;
   border-radius: 5px;
   background: transparent;
-  color: #2c3d35;
+  color: #1f2f28;
   filter: drop-shadow(0 0 2px #fff);
   cursor: pointer;
 }
@@ -1055,7 +1098,7 @@ button:focus-visible {
   font-weight: 700;
 }
 .translation-peek-meanings span + span {
-  color: #2c3d35;
+  color: #1f2f28;
   font-size: var(--type-compact-size);
 }
 .translation-peek-meanings span + span::before {
@@ -1069,7 +1112,7 @@ button:focus-visible {
   padding: 2px 0;
   overflow-y: auto;
   font-size: var(--type-compact-size);
-  font-weight: 500;
+  font-weight: 600;
 }
 .translation-peek-body > :first-child {
   margin-top: 0;
