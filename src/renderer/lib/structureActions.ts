@@ -2,7 +2,7 @@ import { type Locale, translator } from "../../shared/i18n/locale"
 import type { BoardCard, DocumentId, Viewport } from "../../shared/schemas"
 import { readerMessages } from "../messages/reader"
 import type { AiRequestRunner } from "../types"
-import { CARD_WIDTH, createStructureCard } from "./board"
+import { CARD_WIDTH, clearOfCards, createStructureCard } from "./board"
 import { parsedCardResponse } from "./cardPresentation"
 import { citationCardSource } from "./citationCardSource"
 import { assessCitationStructure } from "./citationStructureAssessment"
@@ -97,7 +97,11 @@ export function createStructureActionHandler(
       fragment,
       sourceKey,
     })
-    const upserted = upsertStructureCard(input.getCards(), freshCard, structure)
+    const upserted = upsertStructureCard(
+      input.getCards(),
+      clearOfCards(freshCard, input.getCards()),
+      structure,
+    )
     const card = upserted.card
     input.commitCards(upserted.cards)
     input.onCardActivated(card.id)

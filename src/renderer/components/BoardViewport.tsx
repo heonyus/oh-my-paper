@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react"
-import { CARD_WIDTH, createSelectionCard, drawnOnPassage } from "../lib/board"
+import { CARD_WIDTH, clearOfCards, createSelectionCard, drawnOnPassage } from "../lib/board"
 import { askBoardCard, regenerateBoardCardTitle } from "../lib/boardCardAi"
 import { boardHighlightState, highlightAtPoint, translationAtPoint } from "../lib/boardHighlights"
 import { type BoardTextSelection, captureNativeBoardTextSelection } from "../lib/boardSelection"
@@ -230,8 +230,9 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
       window.getSelection()?.removeAllRanges()
       return
     }
-    const card = createSelectionCard(props.document.id, selectionMenu, kind, locale)
-    if (!card) return
+    const created = createSelectionCard(props.document.id, selectionMenu, kind, locale)
+    if (!created) return
+    const card = clearOfCards(created, cardsRef.current)
     const boardWidth = viewportRef.current?.clientWidth
     // A translation is drawn on the passage, so there is no card beside the page to bring into view.
     if (boardWidth && !drawnOnPassage(card)) {

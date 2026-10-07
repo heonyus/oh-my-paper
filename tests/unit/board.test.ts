@@ -2,7 +2,9 @@ import type { TextItem } from "pdfjs-dist/types/src/display/api"
 import { afterEach, describe, expect, it } from "vitest"
 import { buildSourceDocumentAst } from "../../src/electron/sourceAst"
 import {
+  CARD_GAP,
   CARD_WIDTH,
+  clearOfCards,
   connectorPath,
   createBoardCard,
   createSelectionCard,
@@ -175,5 +177,47 @@ describe("createBoardCard", () => {
     // When / Then
     expect(connectorPath(card(-32))).toBe("M 420 324 C 330 324, 358 254, 268 254")
     expect(connectorPath(card(1148))).toBe("M 640 324 C 730 324, 1058 254, 1148 254")
+  })
+})
+
+describe("clearOfCards", () => {
+  const documentId = documentIdSchema.parse("aabbccddeeff0011")
+  function cardAt(kind: "explanation" | "translation", x: number, y: number, height = 300) {
+    const card = createBoardCard({
+      documentId,
+      kind,
+      title: "카드",
+      body: "",
+      placement: { x, y },
+      anchor: { page: 1, quote: "q", x: 0, y: 0, fragments: [{ x: 0, y: 0, width: 1, height: 1 }] },
+    })
+    return { ...card, height }
+  }
+
+  it("leaves a card where it opens when nothing is there", () => {
+    const card = cardAt("explanation", 100, 500)
+    expect(clearOfCards(card, [cardAt("explanation", 100, 900)])).toBe(card)
+  })
+
+  it("moves a new card below the card it would land on, with room between them", () => {
+    const placed = clearOfCards(cardAt("explanation", 100, 500), [cardAt("explanation", 100, 420)])
+    expect(placed).toMatchObject({ x: 100, y: 420 + 300 + CARD_GAP })
+  })
+
+  it("goes into the next column out when its own column is full far down", () => {
+    const column = [0, 1, 2].map((index) => cardAt("explanation", 100, 400 + index * 316))
+    const placed = clearOfCards(cardAt("explanation", 100, 500), column)
+    expect(placed).toMatchObject({ x: 100 - CARD_WIDTH - CARD_GAP, y: 500 })
+  })
+
+  it("opens in the next column out even when the cards beside the page sit a fraction apart", () => {
+    const column = [cardAt("explanation", 100.27, 400), cardAt("explanation", 100, 716)]
+    const placed = clearOfCards(cardAt("explanation", 100, 450), column)
+    expect(placed).toMatchObject({ x: 100 - CARD_WIDTH - CARD_GAP, y: 450 })
+  })
+
+  it("ignores translations, which are drawn on the passage", () => {
+    const card = cardAt("explanation", 100, 500)
+    expect(clearOfCards(card, [cardAt("translation", 100, 500)])).toBe(card)
   })
 })

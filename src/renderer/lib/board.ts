@@ -45,6 +45,70 @@ export function cardPlacementBesidePage(page: SourceFragment, source: SourceFrag
   }
 }
 
+/** Room kept between a new card and the cards already on the board. */
+export const CARD_GAP = 16
+
+type CardBox = {
+  readonly x: number
+  readonly y: number
+  readonly width: number
+  readonly height: number
+}
+
+function cardBox(card: BoardCard): CardBox {
+  return {
+    x: card.x,
+    y: card.y,
+    width: card.width ?? CARD_WIDTH,
+    height: card.minimized
+      ? MINIMIZED_CARD_HEIGHT
+      : (card.height ?? initialResearchCardHeight(card)),
+  }
+}
+
+/** Cards beside a page differ by a fraction of a pixel in x, which should not count as touching. */
+const PLACEMENT_SLACK = 2
+
+function touches(a: CardBox, b: CardBox): boolean {
+  return (
+    a.x + PLACEMENT_SLACK < b.x + b.width + CARD_GAP &&
+    b.x + PLACEMENT_SLACK < a.x + a.width + CARD_GAP &&
+    a.y < b.y + b.height + CARD_GAP &&
+    b.y < a.y + a.height + CARD_GAP
+  )
+}
+
+/**
+ * A new card moved so it touches no card already on its paper's board: down its column from where
+ * it would open, or, when that column would push it more than a card's height away from its
+ * passage, into the next column out (away from the page) if that is nearer. Cards drawn on the
+ * passage take no room beside the page.
+ */
+export function clearOfCards(card: BoardCard, cards: readonly BoardCard[]): BoardCard {
+  if (drawnOnPassage(card)) return card
+  const others = cards
+    .filter(
+      (other) =>
+        other.id !== card.id && other.documentId === card.documentId && !drawnOnPassage(other),
+    )
+    .map(cardBox)
+  const box = cardBox(card)
+  const freeY = (x: number): number => {
+    let y = box.y
+    for (;;) {
+      const hits = others.filter((other) => touches({ ...box, x, y }, other))
+      if (hits.length === 0) return y
+      y = Math.max(...hits.map((other) => other.y + other.height)) + CARD_GAP
+    }
+  }
+  const besidePage = freeY(box.x)
+  if (besidePage === box.y) return card
+  if (besidePage - box.y <= box.height) return { ...card, y: besidePage }
+  const outerX = box.x - box.width - CARD_GAP
+  const outer = freeY(outerX)
+  return outer < besidePage ? { ...card, x: outerX, y: outer } : { ...card, y: besidePage }
+}
+
 /** Curve from the quoted source to whichever card edge faces it. */
 export function connectorPath(card: BoardCard): string {
   const source = card.anchor.fragments[0]
