@@ -43,19 +43,31 @@
   overflow-y: auto;
   border-top: 1px solid var(--line);
 }
+/* The editor fills the sheet, so the page below the last line is still the page. */
 .note-sheet {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-auto-rows: auto;
   gap: 24px;
   min-height: 100%;
-  padding: 28px 20px 120px 40px;
+  padding: 28px 20px 24px 40px;
 }
 .note-editor {
   position: relative;
   min-width: 0;
 }
+.note-sheet > .note-editor,
+.note-editor-body {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  grid-auto-rows: auto;
+}
+/* A tail inside the editor, so the line being written can be scrolled up from the bottom edge and a click anywhere below the text lands at its end. */
 .note-prose {
-  min-height: 60vh;
+  box-sizing: border-box;
+  min-height: 100%;
+  padding-bottom: 50vh;
   outline: none;
   color: var(--ink);
   font-size: 15px;
@@ -298,7 +310,7 @@
     white-space: nowrap;
   }
   .note-sheet {
-    padding: 20px 16px 24px 32px;
+    padding: 20px 16px 20px 32px;
   }
 }
 .note-pane-status {
