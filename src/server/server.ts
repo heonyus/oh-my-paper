@@ -50,6 +50,7 @@ import type { WebServerConfig } from "./config"
 import { createDocumentFileRoute } from "./documentFileRoute"
 import { readGithubStarAnswer } from "./githubStarStore"
 import { readSavedLanguage, saveLanguage } from "./languageStore"
+import { createNoteAssetRoute } from "./noteAssetRoute"
 import { streamParsedPage } from "./pageParseStream"
 import type { WebServices } from "./services"
 import { importPdfBytes, importPdfFromUrl, readWorkspace } from "./services"
@@ -157,6 +158,7 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
   const subscriptionRoutes = createSubscriptionRoutes(services)
   const claudeRoutes = createClaudeRoutes(services)
   const documentFiles = createDocumentFileRoute(services)
+  const noteAssets = createNoteAssetRoute(services)
   const server = createServer(async (req, res) => {
     try {
       const hostname = new URL(`http://${req.headers.host ?? config.host}`).hostname
@@ -205,6 +207,7 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
       if (await subscriptionRoutes.handle(pathname, req, res)) return
       if (await claudeRoutes.handle(pathname, req, res)) return
       if (await documentFiles.handle(pathname, req, res)) return
+      if (await noteAssets.handle(pathname, req, res)) return
 
       if (!pathname.startsWith("/api/")) {
         const served = await serveStatic(req, res, config.staticDir)

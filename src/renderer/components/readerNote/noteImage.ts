@@ -2,7 +2,6 @@ import type { Editor } from "@tiptap/core"
 import Image, { type ImageOptions } from "@tiptap/extension-image"
 import { Plugin, PluginKey } from "@tiptap/pm/state"
 import { MAX_ASSET_BYTES } from "../../../shared/collectionIpc"
-import { safeNoteImageSource } from "../notes/noteRichContent"
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -17,10 +16,65 @@ type NoteImageOptions = ImageOptions & {
   readonly onError: (error: unknown) => void
 }
 
-const SERVED_ASSET = /^scourgify-asset:\/\/local\/(assets\/[a-f0-9]{64}\.(?:png|jpg|webp))$/u
+const ASSET_NAME = "[a-f0-9]{64}\\.(?:png|jpg|webp)"
+const NOTE_ASSET = new RegExp(`^(?:\\.\\./)+assets/(${ASSET_NAME})$`, "u")
+const SERVED_ASSET = new RegExp(
+  `^(?:scourgify-asset://local/assets/|(?:https?://[^/]+)?/api/note-assets/)(${ASSET_NAME})$`,
+  "u",
+)
 const STORED_TYPES = new Set(["image/png", "image/jpeg", "image/webp"])
 
-/** Images go in the collection's `assets/`; the note file sits one folder down, in `reader-notes/`. */
+/**
+ * Where note images are kept: the desktop app's collection, or the local server's data folder.
+ * Both keep them in `assets/` beside `reader-notes/` and answer with `assets/<hash>.<ext>`.
+ */
+type NoteImageStore = {
+  readonly save: (bytes: Uint8Array<ArrayBuffer>, name: string) => Promise<string>
+  /** A path the reader picked and the store kept, or null when nothing was picked. */
+  readonly pick: () => Promise<string | null>
+  readonly url: (file: string) => string
+}
+
+function chooseFile(): Promise<File | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement("input")
+    input.type = "file"
+    input.accept = "image/*"
+    input.addEventListener("change", () => resolve(input.files?.[0] ?? null))
+    input.addEventListener("cancel", () => resolve(null))
+    input.click()
+  })
+}
+
+function noteImageStore(): NoteImageStore | null {
+  if (typeof window === "undefined") return null
+  const collection = window.ohmypaper?.collection
+  if (collection) {
+    return {
+      save: async (bytes, name) => {
+        const saved = await collection.importAsset({ kind: "bytes", name, bytes })
+        if (!saved) throw new Error("이미지를 저장하지 못했습니다.")
+        return saved.relativePath
+      },
+      pick: async () => (await collection.importAsset({ kind: "pick" }))?.relativePath ?? null,
+      url: (file) => `scourgify-asset://local/assets/${file}`,
+    }
+  }
+  const saveNoteImage = window.ohmypaper?.saveNoteImage
+  if (saveNoteImage) {
+    return {
+      save: (bytes) => saveNoteImage(bytes),
+      pick: async () => {
+        const file = await chooseFile()
+        return file ? await saveFile(saveNoteImage, file) : null
+      },
+      url: (file) => `/api/note-assets/${file}`,
+    }
+  }
+  return null
+}
+
+/** Images go in `assets/`; the note file sits one folder down, in `reader-notes/`. */
 function noteSource(relativePath: string): string {
   return `../${relativePath}`
 }
@@ -28,17 +82,19 @@ function noteSource(relativePath: string): string {
 /** The note keeps the Markdown path, so the file still shows its images outside the app. */
 function storedSource(src: string | null): string | null {
   const asset = src ? SERVED_ASSET.exec(src) : null
-  return asset?.[1] ? noteSource(asset[1]) : src
+  return asset?.[1] ? noteSource(`assets/${asset[1]}`) : src
 }
 
 function shownSource(src: unknown): string | null {
   if (typeof src !== "string") return null
-  return safeNoteImageSource(src) ?? (src.startsWith("data:image/") ? src : null)
+  const asset = NOTE_ASSET.exec(src)?.[1]
+  if (asset) return noteImageStore()?.url(asset) ?? null
+  return src.startsWith("data:image/") ? src : null
 }
 
-/** Images can be added only where the collection can store them (the desktop app). */
+/** Images can be added where the app can keep them: the desktop app and the local server. */
 export function noteImagesAvailable(): boolean {
-  return typeof window !== "undefined" && window.ohmypaper?.collection !== undefined
+  return noteImageStore() !== null
 }
 
 function imageFiles(data: DataTransfer | null): readonly File[] {
@@ -62,14 +118,16 @@ async function storableBytes(
   return { bytes: new Uint8Array(await blob.arrayBuffer()), name: `${file.name}.png` }
 }
 
-async function storeImage(file: File): Promise<string> {
-  const api = window.ohmypaper.collection
-  if (!api) throw new Error("이 실행 환경에서는 이미지를 넣을 수 없습니다.")
+async function saveFile(save: NoteImageStore["save"], file: File): Promise<string> {
   if (file.size > MAX_ASSET_BYTES) throw new Error("이미지는 25MB 이하로 선택해 주세요.")
   const { bytes, name } = await storableBytes(file)
-  const saved = await api.importAsset({ kind: "bytes", name, bytes })
-  if (!saved) throw new Error("이미지를 저장하지 못했습니다.")
-  return noteSource(saved.relativePath)
+  return await save(bytes, name)
+}
+
+async function storeImage(file: File): Promise<string> {
+  const store = noteImageStore()
+  if (!store) throw new Error("이 실행 환경에서는 이미지를 넣을 수 없습니다.")
+  return noteSource(await saveFile(store.save, file))
 }
 
 function insertImage(editor: Editor, src: string, pos: number | null): void {
@@ -98,8 +156,8 @@ async function insertFiles(
 }
 
 /**
- * Images in the reader's note: pasted, dropped or picked with `/`. Each is saved once in the
- * collection's `assets/` and written into the Markdown as a relative path.
+ * Images in the reader's note: pasted, dropped or picked with `/`. Each is saved once in
+ * `assets/` and written into the Markdown as a relative path.
  */
 export const NoteImage = Image.extend<NoteImageOptions>({
   addOptions() {
@@ -122,13 +180,13 @@ export const NoteImage = Image.extend<NoteImageOptions>({
       pickNoteImage:
         () =>
         ({ editor }) => {
-          const api = window.ohmypaper.collection
-          if (!api) return false
+          const store = noteImageStore()
+          if (!store) return false
           const { onError } = this.options
-          void api
-            .importAsset({ kind: "pick" })
-            .then((saved) => {
-              if (saved) insertImage(editor, noteSource(saved.relativePath), null)
+          void store
+            .pick()
+            .then((relativePath) => {
+              if (relativePath) insertImage(editor, noteSource(relativePath), null)
             })
             .catch(onError)
           return true

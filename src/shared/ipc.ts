@@ -386,6 +386,11 @@ export type OhMyPaperApi = {
   readonly lookupCitation: (request: CitationLookupRequest) => Promise<CitationLookupResult>
   readonly openExternal: (request: z.infer<typeof openExternalRequestSchema>) => Promise<void>
   readonly writeClipboardText: (text: string) => Promise<void>
+  /**
+   * Keeps an image for a reader note and returns its path in the app's data, `assets/<hash>.<ext>`.
+   * The desktop app keeps note images through `collection` instead.
+   */
+  readonly saveNoteImage?: (bytes: Uint8Array<ArrayBuffer>) => Promise<string>
   readonly flushWorkspace: () => Promise<void>
   readonly onBeforeWorkspaceClose: (listener: () => Promise<void>) => () => void
   readonly knowledge: {

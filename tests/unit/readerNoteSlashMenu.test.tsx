@@ -58,7 +58,7 @@ describe("reader note slash menu", () => {
     expect(screen.getByRole("listbox", { name: "블록 추가" })).toHaveStyle({ bottom: "36px" })
   })
 
-  it("offers images only where the collection can keep them", () => {
+  it("offers images only where the app can keep them", () => {
     expect(matchingSlashItems("image").map((item) => item.id)).toEqual([])
 
     Object.defineProperty(window, "ohmypaper", {
@@ -68,5 +68,14 @@ describe("reader note slash menu", () => {
 
     expect(matchingSlashItems("image").map((item) => item.id)).toEqual(["image"])
     expect(matchingSlashItems("이미지").map((item) => item.id)).toEqual(["image"])
+  })
+
+  it("offers images in the local web app, which keeps them on its server", () => {
+    Object.defineProperty(window, "ohmypaper", {
+      configurable: true,
+      value: { saveNoteImage: vi.fn() },
+    })
+
+    expect(matchingSlashItems("image").map((item) => item.id)).toEqual(["image"])
   })
 })

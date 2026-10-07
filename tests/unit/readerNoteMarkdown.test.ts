@@ -24,12 +24,37 @@ function noteEditor(markdown: string): Editor {
 
 describe("reader note Markdown", () => {
   it("keeps an image as a path the note file can open, and shows it from the collection", () => {
-    const asset = `${"a".repeat(64)}.png`
-    const markdown = `생각\n\n![](../assets/${asset})\n\n다음 문단`
-    const editor = noteEditor(markdown)
+    Object.defineProperty(window, "ohmypaper", {
+      configurable: true,
+      value: { collection: { importAsset: async () => null } },
+    })
+    try {
+      const asset = `${"a".repeat(64)}.png`
+      const markdown = `생각\n\n![](../assets/${asset})\n\n다음 문단`
+      const editor = noteEditor(markdown)
 
-    expect(editor.getHTML()).toContain(`src="scourgify-asset://local/assets/${asset}"`)
-    expect(editor.getMarkdown()).toBe(markdown)
+      expect(editor.getHTML()).toContain(`src="scourgify-asset://local/assets/${asset}"`)
+      expect(editor.getMarkdown()).toBe(markdown)
+    } finally {
+      Reflect.deleteProperty(window, "ohmypaper")
+    }
+  })
+
+  it("shows note images from the local server in the web app", () => {
+    Object.defineProperty(window, "ohmypaper", {
+      configurable: true,
+      value: { saveNoteImage: async () => "" },
+    })
+    try {
+      const asset = `${"c".repeat(64)}.jpg`
+      const editor = noteEditor(`![](../assets/${asset})`)
+
+      expect(editor.getHTML()).toContain(`src="/api/note-assets/${asset}"`)
+      editor.commands.setContent(`<img src="http://127.0.0.1:4317/api/note-assets/${asset}">`)
+      expect(editor.getMarkdown().trim()).toBe(`![](../assets/${asset})`)
+    } finally {
+      Reflect.deleteProperty(window, "ohmypaper")
+    }
   })
 
   it("stores a pasted app image by its path, and shows no unknown image source", () => {

@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { agentAskRequestSchema, agentAskResultSchema } from "../shared/agentChat"
 import { jevDecisionResultSchema } from "../shared/aiDecision"
+import { assetRelativePathSchema } from "../shared/collectionSchemas"
 import {
   type DiscoveryApi,
   discoveryCancelResultSchema,
@@ -51,6 +52,8 @@ import { createLocalPageParser } from "./localPageParser"
 import { localRpc, readLocalResponse } from "./localTransport"
 import { saveLocalWorkspacePatch } from "./localWorkspacePatch"
 import { onPageClose } from "./pageClose"
+
+const noteAssetResultSchema = z.object({ relativePath: assetRelativePathSchema })
 
 export function installLocalReaderApi(): void {
   const importer = createLocalImporter()
@@ -234,6 +237,10 @@ export function installLocalReaderApi(): void {
     },
     writeClipboardText: async (text: string) => {
       await navigator.clipboard.writeText(text)
+    },
+    saveNoteImage: async (bytes) => {
+      const response = await fetch("/api/note-assets", { method: "POST", body: bytes })
+      return (await readLocalResponse(response, noteAssetResultSchema)).relativePath
     },
     flushWorkspace: async () => {},
     onBeforeWorkspaceClose: onPageClose,
