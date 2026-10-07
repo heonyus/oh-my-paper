@@ -172,7 +172,7 @@
     bottom: 16px;
   }
   .loose-note-sheet .note-sheet {
-    padding: var(--space-5) var(--space-4) 96px var(--space-6);
+    padding: var(--space-5) var(--space-4) var(--space-5) var(--space-6);
   }
 }
 @media (prefers-reduced-motion: no-preference) {
