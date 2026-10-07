@@ -1,5 +1,5 @@
 import type { Locale } from "./i18n/locale"
-import type { UiFontFamily } from "./schemas"
+import { type AppearanceTheme, appearanceThemeSchema, type UiFontFamily } from "./schemas"
 
 export const uiFontOptions = [
   { value: "wanted", label: { ko: "Wanted Sans", en: "Wanted Sans" } },
@@ -16,6 +16,25 @@ export const uiFontOptions = [
 }[]
 
 export const uiFontScalePresets = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const
+
+/** Every selectable theme, in the order the appearance pickers list them. */
+export const appearanceThemes = appearanceThemeSchema.options
+
+export function isAppearanceTheme(value: string): value is AppearanceTheme {
+  return appearanceThemeSchema.safeParse(value).success
+}
+
+const appearanceThemeLabels = {
+  system: { ko: "시스템 설정", en: "System setting" },
+  light: { ko: "라이트", en: "Light" },
+  dark: { ko: "다크", en: "Dark" },
+  dracula: { ko: "드라큘라", en: "Dracula" },
+  "tokyo-night-light": { ko: "도쿄 나이트 라이트", en: "Tokyo Night Light" },
+} as const satisfies Readonly<Record<AppearanceTheme, Readonly<Record<Locale, string>>>>
+
+export function appearanceThemeLabel(theme: AppearanceTheme, locale: Locale = "ko"): string {
+  return appearanceThemeLabels[theme][locale]
+}
 
 const fontStacks = {
   wanted: '"Wanted Sans Variable", "Apple SD Gothic Neo", sans-serif',

@@ -28,11 +28,31 @@
   }
 }
 
+.app-shell[data-theme="dracula"],
+[data-theme="dracula"] {
+  --glass-background: rgba(40, 42, 54, 0.9);
+  --glass-rim: rgba(255, 255, 255, 0.1);
+  --glass-shadow: inset 0 1px 0 var(--glass-rim), 0 8px 28px rgba(25, 26, 33, 0.35);
+  --glass-shadow-quiet: inset 0 1px 0 var(--glass-rim), 0 2px 8px rgba(25, 26, 33, 0.22);
+}
+
+.app-shell[data-theme="tokyo-night-light"],
+[data-theme="tokyo-night-light"] {
+  --glass-background: rgba(230, 231, 237, 0.88);
+  --glass-rim: rgba(255, 255, 255, 0.7);
+  --glass-shadow: inset 0 1px 0 var(--glass-rim), 0 8px 28px rgba(52, 59, 88, 0.12);
+  --glass-shadow-quiet: inset 0 1px 0 var(--glass-rim), 0 2px 8px rgba(52, 59, 88, 0.08);
+}
+
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   :root,
   .app-shell[data-theme="dark"],
   [data-theme="dark"],
-  [data-theme="system"] {
+  [data-theme="system"],
+  .app-shell[data-theme="dracula"],
+  [data-theme="dracula"],
+  .app-shell[data-theme="tokyo-night-light"],
+  [data-theme="tokyo-night-light"] {
     --glass-background: var(--surface);
     --glass-border: var(--line);
     --glass-filter: none;
@@ -43,7 +63,11 @@
   :root,
   .app-shell[data-theme="dark"],
   [data-theme="dark"],
-  [data-theme="system"] {
+  [data-theme="system"],
+  .app-shell[data-theme="dracula"],
+  [data-theme="dracula"],
+  .app-shell[data-theme="tokyo-night-light"],
+  [data-theme="tokyo-night-light"] {
     --glass-background: var(--surface);
     --glass-border: var(--line);
     --glass-filter: none;

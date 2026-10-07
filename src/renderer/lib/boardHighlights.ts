@@ -70,12 +70,16 @@ export function highlightAtPoint(
   return null
 }
 
-/** The translated passage, and the line of it, under a point on the board; topmost first. */
+/**
+ * The translated passage, and the line of it, under a point on the board. Where a translated
+ * word sits inside a translated paragraph the word wins, so each can still be reached.
+ */
 export function translationAtPoint(
   translations: readonly BoardCard[],
   point: { readonly x: number; readonly y: number },
 ): { readonly card: BoardCard; readonly line: SourceFragment } | null {
-  for (const card of [...translations].reverse()) {
+  let best: { readonly card: BoardCard; readonly line: SourceFragment } | null = null
+  for (const card of translations) {
     const line = card.anchor.fragments.find(
       (fragment) =>
         point.x >= fragment.x &&
@@ -83,7 +87,9 @@ export function translationAtPoint(
         point.y >= fragment.y &&
         point.y <= fragment.y + fragment.height,
     )
-    if (line) return { card, line }
+    if (!line) continue
+    if (!best || line.width * line.height <= best.line.width * best.line.height)
+      best = { card, line }
   }
-  return null
+  return best
 }

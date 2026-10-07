@@ -127,7 +127,7 @@ export function ReaderNoteEditor({
       <DragHandle editor={editor} className="note-drag-handle">
         <GripVertical size={14} aria-hidden="true" />
       </DragHandle>
-      <EditorContent editor={editor} />
+      <EditorContent editor={editor} className="note-editor-body" />
       {imageError ? (
         <p className="note-image-error" role="alert">
           {imageError}
