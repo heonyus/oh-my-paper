@@ -3,6 +3,7 @@ import { PluginKey } from "@tiptap/pm/state"
 import Suggestion from "@tiptap/suggestion"
 import { type Locale, translator } from "../../../shared/i18n/locale"
 import { type NoteMessageKey, noteMessages } from "../../messages/note"
+import { noteImagesAvailable } from "./noteImage"
 
 export type SlashItem = {
   readonly id: string
@@ -11,6 +12,8 @@ export type SlashItem = {
   readonly hint: NoteMessageKey
   readonly keywords: readonly string[]
   readonly run: (editor: Editor, range: Range) => void
+  /** Hidden where the block cannot be made, such as images outside the desktop app. */
+  readonly available?: () => boolean
 }
 
 export const slashItems: readonly SlashItem[] = [
@@ -65,14 +68,23 @@ export const slashItems: readonly SlashItem[] = [
     keywords: ["hr", "divider", "line"],
     run: (editor, range) => editor.chain().focus().deleteRange(range).setHorizontalRule().run(),
   },
+  {
+    id: "image",
+    label: "slash.image.label",
+    hint: "slash.image.hint",
+    keywords: ["image", "img", "photo", "picture", "figure"],
+    run: (editor, range) => editor.chain().focus().deleteRange(range).pickNoteImage().run(),
+    available: noteImagesAvailable,
+  },
 ]
 
 /** The blocks whose name, in the reader's language, or keywords match what follows `/`. */
 export function matchingSlashItems(query: string, locale: Locale = "ko"): readonly SlashItem[] {
   const needle = query.trim().toLocaleLowerCase()
-  if (!needle) return slashItems
+  const items = slashItems.filter((item) => item.available?.() ?? true)
+  if (!needle) return items
   const t = translator(noteMessages, locale)
-  return slashItems.filter(
+  return items.filter(
     (item) =>
       t(item.label).toLocaleLowerCase().includes(needle) ||
       item.keywords.some((keyword) => keyword.startsWith(needle)),

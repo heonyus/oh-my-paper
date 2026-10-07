@@ -33,6 +33,9 @@ const ko = {
   "slash.code.hint": "코드 블록",
   "slash.divider.label": "구분선",
   "slash.divider.hint": "단락 나누기",
+  "slash.image.label": "이미지",
+  "slash.image.hint": "사진이나 그림 넣기",
+  "image.failed": "이미지를 넣지 못했어요",
 
   // The margin beside the note
   "margin.label": "여백",
@@ -103,6 +106,9 @@ const en: Readonly<Record<keyof typeof ko, string>> = {
   "slash.code.hint": "Code block",
   "slash.divider.label": "Divider",
   "slash.divider.hint": "Separate sections",
+  "slash.image.label": "Image",
+  "slash.image.hint": "Add a photo or figure",
+  "image.failed": "Couldn't add the image",
 
   "margin.label": "Margin",
   "margin.source": "Source",
