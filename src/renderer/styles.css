@@ -961,7 +961,10 @@ button:focus-visible {
   }
 }
 
-/* Translucent so the page shows through; the blur keeps the translation itself easy to read. */
+/*
+ * See-through, so the page shows under it. It always floats over the white paper, so it uses
+ * paper colours in either theme, and a white halo keeps its text readable over the page's text.
+ */
 .translation-peek {
   position: absolute;
   z-index: 31;
@@ -971,13 +974,17 @@ button:focus-visible {
   width: max-content;
   max-width: 360px;
   padding: 4px 4px 4px 10px;
-  border: 1px solid color-mix(in srgb, var(--action) 30%, transparent);
+  border: 1px solid rgba(40, 86, 68, 0.45);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--surface-raised) 76%, transparent);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
-  backdrop-filter: blur(12px) saturate(140%);
-  box-shadow: 0 4px 16px rgba(13, 31, 22, 0.14);
-  color: var(--ink);
+  background: rgba(255, 255, 255, 0.4);
+  -webkit-backdrop-filter: blur(0.6px);
+  backdrop-filter: blur(0.6px);
+  box-shadow: 0 2px 10px rgba(13, 31, 22, 0.1);
+  color: #0f1f18;
+  text-shadow:
+    0 0 2px #fff,
+    0 0 3px #fff,
+    0 0 6px #fff;
   font-size: var(--type-compact-size);
   line-height: 1.45;
   user-select: text;
@@ -1028,12 +1035,13 @@ button:focus-visible {
   border: 0;
   border-radius: 5px;
   background: transparent;
-  color: var(--ink-muted);
+  color: #2c3d35;
+  filter: drop-shadow(0 0 2px #fff);
   cursor: pointer;
 }
 .translation-peek-actions button:hover {
-  background: color-mix(in srgb, var(--surface-muted) 80%, transparent);
-  color: var(--ink);
+  background: rgba(255, 255, 255, 0.7);
+  color: #0f1f18;
 }
 .translation-peek-meanings {
   display: flex;
@@ -1047,7 +1055,7 @@ button:focus-visible {
   font-weight: 700;
 }
 .translation-peek-meanings span + span {
-  color: color-mix(in srgb, var(--ink) 82%, transparent);
+  color: #2c3d35;
   font-size: var(--type-compact-size);
 }
 .translation-peek-meanings span + span::before {
@@ -1072,7 +1080,7 @@ button:focus-visible {
 .translation-peek-loading {
   margin: 0;
   padding: 2px 6px 2px 0;
-  color: var(--ink-muted);
+  color: #2c3d35;
 }
 
 .evidence-return {
