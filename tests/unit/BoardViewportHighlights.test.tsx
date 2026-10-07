@@ -207,6 +207,26 @@ describe("board translations", () => {
     expect(screen.queryByRole("complementary", { name: "번역" })).toBeNull()
   })
 
+  it("reaches a translated word inside a translated paragraph", () => {
+    const paragraph = boardCardSchema.parse({
+      ...translation,
+      id: "0f6a3a4e-77c2-4d0f-9b0e-8a1f3f1b2c3d",
+      body: "문단 번역",
+      anchor: {
+        ...translation.anchor,
+        quote: "a whole line of the paragraph",
+        fragments: [{ x: 40, y: 300, width: 500, height: 18 }],
+      },
+    })
+    const { viewport } = renderBoard([translation, paragraph])
+
+    fireEvent.pointerMove(viewport, { clientX: 150, clientY: 308, buttons: 0 })
+    expect(screen.getByRole("complementary", { name: "번역" })).toHaveTextContent("제시된다")
+
+    fireEvent.pointerMove(viewport, { clientX: 400, clientY: 308, buttons: 0 })
+    expect(screen.getByRole("complementary", { name: "번역" })).toHaveTextContent("문단 번역")
+  })
+
   it("shows that a translation is still on its way", () => {
     const pending = boardCardSchema.parse({ ...translation, body: "", loading: true })
     const { container, viewport } = renderBoard([pending])
