@@ -925,6 +925,156 @@ button:focus-visible {
   color: var(--error);
 }
 
+/* A translated passage is tinted green; its translation shows only while it is hovered. */
+.translation-mark {
+  position: absolute;
+  inset: 0 auto auto 0;
+  z-index: 2;
+  opacity: 0.36;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+.translation-mark > span {
+  position: absolute;
+  border-radius: 2px;
+  background: #3ecf8e;
+}
+.translation-mark[data-hovered] {
+  opacity: 0.55;
+}
+.translation-mark[data-loading] {
+  animation: translation-pending 1.2s ease-in-out infinite;
+}
+@keyframes translation-pending {
+  0%,
+  100% {
+    opacity: 0.16;
+  }
+  50% {
+    opacity: 0.42;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .translation-mark[data-loading] {
+    animation: none;
+    opacity: 0.24;
+  }
+}
+
+/* Translucent so the page shows through; the blur keeps the translation itself easy to read. */
+.translation-peek {
+  position: absolute;
+  z-index: 31;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  width: max-content;
+  max-width: 360px;
+  padding: 4px 4px 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--action) 30%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-raised) 76%, transparent);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  backdrop-filter: blur(12px) saturate(140%);
+  box-shadow: 0 4px 16px rgba(13, 31, 22, 0.14);
+  color: var(--ink);
+  font-size: var(--type-compact-size);
+  line-height: 1.45;
+  user-select: text;
+}
+.translation-peek[data-kind="passage"] {
+  width: 360px;
+}
+/* The caret points at the hovered word. */
+.translation-peek::after {
+  content: "";
+  position: absolute;
+  left: var(--peek-caret);
+  width: 8px;
+  height: 8px;
+  border: inherit;
+  background: inherit;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  transform: translateX(-50%) rotate(45deg);
+}
+.translation-peek[data-side="above"]::after {
+  bottom: -5px;
+  border-top-color: transparent;
+  border-left-color: transparent;
+}
+.translation-peek[data-side="below"]::after {
+  top: -5px;
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+}
+.translation-peek-actions {
+  display: flex;
+  flex: none;
+  gap: 0;
+  opacity: 0.55;
+  transition: opacity 120ms ease;
+}
+.translation-peek:hover .translation-peek-actions,
+.translation-peek-actions:focus-within {
+  opacity: 1;
+}
+.translation-peek-actions button {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.translation-peek-actions button:hover {
+  background: color-mix(in srgb, var(--surface-muted) 80%, transparent);
+  color: var(--ink);
+}
+.translation-peek-meanings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  margin: 0;
+  padding: 1px 0;
+  font-size: var(--type-body-size);
+}
+.translation-peek-meanings span:first-child {
+  font-weight: 700;
+}
+.translation-peek-meanings span + span {
+  color: color-mix(in srgb, var(--ink) 82%, transparent);
+  font-size: var(--type-compact-size);
+}
+.translation-peek-meanings span + span::before {
+  content: "·";
+  margin: 0 5px;
+}
+.translation-peek-body {
+  flex: 1;
+  min-width: 0;
+  max-height: 200px;
+  padding: 2px 0;
+  overflow-y: auto;
+  font-size: var(--type-compact-size);
+  font-weight: 500;
+}
+.translation-peek-body > :first-child {
+  margin-top: 0;
+}
+.translation-peek-body > :last-child {
+  margin-bottom: 0;
+}
+.translation-peek-loading {
+  margin: 0;
+  padding: 2px 6px 2px 0;
+  color: var(--ink-muted);
+}
+
 .evidence-return {
   position: absolute;
   left: 50%;

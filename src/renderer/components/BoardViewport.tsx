@@ -8,9 +8,9 @@ import {
   useRef,
   useState,
 } from "react"
-import { CARD_WIDTH, createSelectionCard } from "../lib/board"
+import { CARD_WIDTH, createSelectionCard, drawnOnPassage } from "../lib/board"
 import { askBoardCard, regenerateBoardCardTitle } from "../lib/boardCardAi"
-import { boardHighlightState, highlightAtPoint } from "../lib/boardHighlights"
+import { boardHighlightState, highlightAtPoint, translationAtPoint } from "../lib/boardHighlights"
 import { type BoardTextSelection, captureNativeBoardTextSelection } from "../lib/boardSelection"
 import { parsedCardResponse, parsedTranslationResponse } from "../lib/cardPresentation"
 import { useLocale, useTranslator } from "../lib/locale"
@@ -26,12 +26,26 @@ import { usePageJump } from "../lib/usePageJump"
 import { usePanConstraint } from "../lib/usePanConstraint"
 import { mostVisiblePage, revealWorldRectHorizontally } from "../lib/viewport"
 import { boardMessages } from "../messages/board"
-import type { BoardCard, CardId } from "../types"
+import type { BoardCard, CardId, SourceFragment } from "../types"
 import { BoardCardsLayer } from "./BoardCardsLayer"
 import { BoardNavigationController } from "./BoardNavigationController"
 import * as BoardOverlays from "./BoardOverlays"
 import type { BoardViewportProps } from "./BoardViewportProps"
 import { PdfSurface } from "./PdfSurface"
+import { type PeekAnchor, type PeekBounds, TranslationPeek } from "./TranslationPeek"
+
+/** The peek stays a moment after the pointer leaves, so it can be reached to copy or remove. */
+const PEEK_HIDE_DELAY_MS = 180
+const PEEK_EDGE = 8
+/** A hovered fragment narrower than this is a word or two, and the peek centres on it. */
+const PEEK_WORD_WIDTH = 220
+
+type TranslationHover = {
+  readonly id: CardId
+  /** The line the pointer came in on, and where along it, in board coordinates. */
+  readonly line: SourceFragment
+  readonly x: number
+}
 
 export function BoardViewport(props: BoardViewportProps): JSX.Element {
   const { locale } = useLocale()
@@ -47,6 +61,8 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
   const [selectedHighlightId, setSelectedHighlightId] = useState<string | null>(null)
   const pointerDownRef = useRef<{ readonly x: number; readonly y: number } | null>(null)
   const [createdMemoId, setCreatedMemoId] = useState<CardId | null>(null)
+  const [translationHover, setTranslationHover] = useState<TranslationHover | null>(null)
+  const peekHideTimer = useRef<number | undefined>(undefined)
   const cardStreams = useCardStreams(props.cards)
   const panConstraint = usePanConstraint()
   const handlePageJump = usePageJump(viewportStateRef, viewportRef, props.onViewportChange)
@@ -153,8 +169,40 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
     activeCards,
     fragments: highlightedFragments,
     highlights,
+    translations,
   } = boardHighlightState(props.cards, activeCardId)
   const selectedHighlight = highlights.find((card) => card.id === selectedHighlightId) ?? null
+  const peekCard = translations.find((card) => card.id === translationHover?.id) ?? null
+
+  const keepPeek = useCallback((): void => window.clearTimeout(peekHideTimer.current), [])
+  const hidePeekSoon = useCallback((): void => {
+    window.clearTimeout(peekHideTimer.current)
+    peekHideTimer.current = window.setTimeout(() => setTranslationHover(null), PEEK_HIDE_DELAY_MS)
+  }, [])
+  useEffect(() => () => window.clearTimeout(peekHideTimer.current), [])
+
+  /** Hovering a translated passage, with no button held, shows its translation. */
+  function trackTranslationHover(event: ReactPointerEvent<HTMLDivElement>): void {
+    if (event.buttons !== 0 || panning) return
+    if (event.target instanceof Element && event.target.closest(".translation-peek")) return
+    const world = worldRef.current
+    if (!world) return
+    // Measured from the drawn board, which also counts any scroll the browser gave the viewport.
+    const origin = world.getBoundingClientRect()
+    const { zoom } = viewportStateRef.current
+    const point = {
+      x: (event.clientX - origin.left) / zoom,
+      y: (event.clientY - origin.top) / zoom,
+    }
+    const hit = translationAtPoint(translations, point)
+    if (!hit) {
+      if (translationHover) hidePeekSoon()
+      return
+    }
+    keepPeek()
+    if (translationHover?.id !== hit.card.id)
+      setTranslationHover({ id: hit.card.id, line: hit.line, x: point.x })
+  }
 
   function commitCards(cards: readonly BoardCard[]): void {
     cardsRef.current = cards
@@ -185,7 +233,8 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
     const card = createSelectionCard(props.document.id, selectionMenu, kind, locale)
     if (!card) return
     const boardWidth = viewportRef.current?.clientWidth
-    if (boardWidth) {
+    // A translation is drawn on the passage, so there is no card beside the page to bring into view.
+    if (boardWidth && !drawnOnPassage(card)) {
       props.onViewportChange(
         revealWorldRectHorizontally(
           props.viewport,
@@ -290,6 +339,27 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
     return { left: screenRect.left, top: screenRect.top - 44 }
   }, [selectionMenu, props.viewport])
 
+  const peekAnchor = useMemo((): PeekAnchor | null => {
+    if (!translationHover) return null
+    const line = worldRectToScreen(translationHover.line, { x: 0, y: 0 }, displayViewport)
+    const pointer = displayViewport.x + translationHover.x * displayViewport.zoom
+    return {
+      x: line.width <= PEEK_WORD_WIDTH ? line.left + line.width / 2 : pointer,
+      top: line.top,
+      bottom: line.top + line.height,
+    }
+  }, [translationHover, displayViewport])
+  // The peek is placed in the viewport's content, which the browser may have scrolled.
+  const peekBounds = useMemo((): PeekBounds | null => {
+    const board = viewportRef.current
+    if (!peekAnchor || !board) return null
+    return {
+      left: board.scrollLeft + PEEK_EDGE,
+      right: board.scrollLeft + board.clientWidth - PEEK_EDGE,
+      top: board.scrollTop + PEEK_EDGE,
+    }
+  }, [peekAnchor])
+
   const highlightMenuPosition = useMemo(() => {
     const firstFragment = selectedHighlight?.anchor.fragments[0]
     if (!firstFragment) return null
@@ -306,11 +376,18 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
       onPointerDown={(event) => {
         pointerDownRef.current = { x: event.clientX, y: event.clientY }
         setSelectedHighlightId(null)
+        setTranslationHover(null)
         if (event.target instanceof Element && !event.target.closest(".board-card"))
           setActiveCardId(null)
         startPan(event)
       }}
-      onPointerMove={movePan}
+      onPointerMove={(event) => {
+        movePan(event)
+        trackTranslationHover(event)
+      }}
+      onPointerLeave={() => {
+        if (translationHover) hidePeekSoon()
+      }}
       onPointerUp={(event) => {
         endPan(event)
         selectHighlightAt(event)
@@ -335,9 +412,13 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
         }}
       >
         <BoardOverlays.ConnectorLayer
-          cards={activeCards.filter((card) => card.kind !== "sticky" && card.kind !== "highlight")}
+          cards={activeCards.filter((card) => card.kind !== "sticky" && !drawnOnPassage(card))}
         />
         <BoardOverlays.HighlightMarks highlights={highlights} selectedId={selectedHighlightId} />
+        <BoardOverlays.TranslationMarks
+          translations={translations}
+          hoveredId={translationHover?.id ?? null}
+        />
         <BoardOverlays.SourceHighlights fragments={highlightedFragments} />
         <BoardOverlays.SourceHighlights
           fragments={(props.evidenceFocus?.fragments ?? []).map((fragment, index) => ({
@@ -364,6 +445,19 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
       </div>
       {selectionMenu && menuPosition ? (
         <BoardOverlays.SelectionToolbar position={menuPosition} onAction={addCard} />
+      ) : null}
+      {peekCard && peekAnchor && peekBounds ? (
+        <TranslationPeek
+          card={peekCard}
+          anchor={peekAnchor}
+          bounds={peekBounds}
+          onPointerEnter={keepPeek}
+          onPointerLeave={hidePeekSoon}
+          onDelete={() => {
+            setTranslationHover(null)
+            deleteHighlight(peekCard.id)
+          }}
+        />
       ) : null}
       {selectedHighlight && highlightMenuPosition ? (
         <BoardOverlays.HighlightToolbar

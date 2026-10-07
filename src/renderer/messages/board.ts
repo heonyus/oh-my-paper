@@ -51,8 +51,6 @@ const ko = {
   "card.copied": "복사됨",
   "card.copyFailed": "복사 실패",
   "card.openPaper": "논문 열기",
-  "card.saveAsAnnotationLabel": "번역을 주석으로 저장",
-  "card.saveAsAnnotation": "주석으로 저장",
   "card.jumpToSource": "p. {page} 원문으로 이동",
 
   // Follow-up questions on a card
@@ -70,6 +68,13 @@ const ko = {
   "overlay.infographic": "인포그래픽",
   "overlay.highlight": "하이라이트",
   "overlay.toNote": "노트에",
+
+  // A translation drawn on its passage, shown on hover
+  "translation.label": "번역",
+  "translation.loading": "번역하는 중…",
+  "translation.copy": "번역 복사",
+  "translation.copied": "번역 복사됨",
+  "translation.delete": "번역 지우기",
 
   // Minimap
   "minimap.label": "보드 미니맵",
@@ -92,7 +97,6 @@ const ko = {
   "default.infographicTitle": "인포그래픽",
   "default.noteTitle": "메모",
   "default.highlightTitle": "하이라이트",
-  "default.annotationTitle": "AI 번역",
 } as const
 
 const en: Readonly<Record<keyof typeof ko, string>> = {
@@ -148,8 +152,6 @@ const en: Readonly<Record<keyof typeof ko, string>> = {
   "card.copied": "Copied",
   "card.copyFailed": "Copy failed",
   "card.openPaper": "Open paper",
-  "card.saveAsAnnotationLabel": "Save translation as annotation",
-  "card.saveAsAnnotation": "Save as annotation",
   "card.jumpToSource": "Go to source, p. {page}",
 
   "chat.section": "Follow-up questions",
@@ -165,6 +167,12 @@ const en: Readonly<Record<keyof typeof ko, string>> = {
   "overlay.infographic": "Infographic",
   "overlay.highlight": "Highlight",
   "overlay.toNote": "To note",
+
+  "translation.label": "Translation",
+  "translation.loading": "Translating…",
+  "translation.copy": "Copy translation",
+  "translation.copied": "Translation copied",
+  "translation.delete": "Remove translation",
 
   "minimap.label": "Board minimap",
   "minimap.title": "Minimap",
@@ -184,7 +192,6 @@ const en: Readonly<Record<keyof typeof ko, string>> = {
   "default.infographicTitle": "Infographic",
   "default.noteTitle": "Memo",
   "default.highlightTitle": "Highlight",
-  "default.annotationTitle": "AI translation",
 }
 
 export type BoardMessageKey = keyof typeof ko

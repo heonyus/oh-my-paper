@@ -78,6 +78,42 @@ export function HighlightMarks({
   )
 }
 
+/** Translated passages, tinted green; their text shows when the reader hovers one. */
+export function TranslationMarks({
+  translations,
+  hoveredId,
+}: {
+  readonly translations: readonly BoardCard[]
+  readonly hoveredId: string | null
+}): JSX.Element {
+  return (
+    <>
+      {translations.map((card) => (
+        <span
+          key={card.id}
+          className="translation-mark"
+          data-translation-id={card.id}
+          data-hovered={card.id === hoveredId || undefined}
+          data-loading={card.loading || undefined}
+          aria-hidden="true"
+        >
+          {card.anchor.fragments.map((fragment) => (
+            <span
+              key={`${fragment.x}-${fragment.y}-${fragment.width}-${fragment.height}`}
+              style={{
+                left: fragment.x,
+                top: fragment.y,
+                width: fragment.width,
+                height: fragment.height,
+              }}
+            />
+          ))}
+        </span>
+      ))}
+    </>
+  )
+}
+
 export function HighlightToolbar({
   position,
   onDelete,

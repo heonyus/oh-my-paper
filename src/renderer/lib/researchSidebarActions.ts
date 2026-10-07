@@ -1,7 +1,7 @@
 import { useCallback } from "react"
 import type { AiHistoryMessage, AiRequest } from "../../shared/ipc"
 import type { BoardCard, CardId, DocumentRecord, Workspace } from "../types"
-import { MINIMIZED_CARD_HEIGHT } from "./board"
+import { drawnOnPassage, MINIMIZED_CARD_HEIGHT } from "./board"
 import { paperContextForQuestion } from "./pdfSearch"
 import { focusWorldRect } from "./viewport"
 
@@ -28,7 +28,7 @@ function focusRectForCard(card: BoardCard): {
   readonly width: number
   readonly height: number
 } {
-  if (card.kind !== "highlight" || card.anchor.fragments.length === 0) {
+  if (!drawnOnPassage(card) || card.anchor.fragments.length === 0) {
     return {
       x: card.x,
       y: card.y,

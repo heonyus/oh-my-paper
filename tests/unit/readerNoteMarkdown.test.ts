@@ -4,6 +4,7 @@ import StarterKit from "@tiptap/starter-kit"
 import { afterEach, describe, expect, it } from "vitest"
 import { EvidenceNode, evidenceQuote } from "../../src/renderer/components/readerNote/evidenceNode"
 import { ArrowInput } from "../../src/renderer/components/readerNote/marginSlots"
+import { NoteImage } from "../../src/renderer/components/readerNote/noteImage"
 import { noteQuoteContent } from "../../src/renderer/components/readerNote/noteQuote"
 
 const editors: Editor[] = []
@@ -13,7 +14,7 @@ afterEach(() => {
 
 function noteEditor(markdown: string): Editor {
   const editor = new Editor({
-    extensions: [StarterKit, Markdown, EvidenceNode, ArrowInput],
+    extensions: [StarterKit, Markdown, EvidenceNode, ArrowInput, NoteImage],
     content: markdown,
     contentType: "markdown",
   })
@@ -22,6 +23,51 @@ function noteEditor(markdown: string): Editor {
 }
 
 describe("reader note Markdown", () => {
+  it("keeps an image as a path the note file can open, and shows it from the collection", () => {
+    Object.defineProperty(window, "ohmypaper", {
+      configurable: true,
+      value: { collection: { importAsset: async () => null } },
+    })
+    try {
+      const asset = `${"a".repeat(64)}.png`
+      const markdown = `생각\n\n![](../assets/${asset})\n\n다음 문단`
+      const editor = noteEditor(markdown)
+
+      expect(editor.getHTML()).toContain(`src="scourgify-asset://local/assets/${asset}"`)
+      expect(editor.getMarkdown()).toBe(markdown)
+    } finally {
+      Reflect.deleteProperty(window, "ohmypaper")
+    }
+  })
+
+  it("shows note images from the local server in the web app", () => {
+    Object.defineProperty(window, "ohmypaper", {
+      configurable: true,
+      value: { saveNoteImage: async () => "" },
+    })
+    try {
+      const asset = `${"c".repeat(64)}.jpg`
+      const editor = noteEditor(`![](../assets/${asset})`)
+
+      expect(editor.getHTML()).toContain(`src="/api/note-assets/${asset}"`)
+      editor.commands.setContent(`<img src="http://127.0.0.1:4317/api/note-assets/${asset}">`)
+      expect(editor.getMarkdown().trim()).toBe(`![](../assets/${asset})`)
+    } finally {
+      Reflect.deleteProperty(window, "ohmypaper")
+    }
+  })
+
+  it("stores a pasted app image by its path, and shows no unknown image source", () => {
+    const asset = `${"b".repeat(64)}.webp`
+    const editor = noteEditor("")
+    editor.commands.setContent(
+      `<img src="scourgify-asset://local/assets/${asset}"><img src="https://example.com/x.png">`,
+    )
+
+    expect(editor.getMarkdown()).toContain(`![](../assets/${asset})`)
+    expect(editor.getHTML()).not.toContain("example.com")
+  })
+
   it("keeps evidence chips as the app's citation Markdown", () => {
     const markdown =
       "## 문제\n\n선형 뷰어는 교차참조가 어렵다. [[p.1 | Traditional linear PDF viewers constrain cognitive synthesis.]]"

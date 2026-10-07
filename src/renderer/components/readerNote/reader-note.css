@@ -120,6 +120,26 @@
   border: 0;
   border-top: 1px solid var(--line);
 }
+.note-prose img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.6em 0;
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+.note-prose img:not([src]) {
+  min-height: 48px;
+}
+.note-prose img.ProseMirror-selectednode {
+  outline: 2px solid var(--action);
+  outline-offset: 2px;
+}
+.note-image-error {
+  margin: 8px 0 0;
+  color: var(--error);
+  font-size: var(--type-compact-size);
+}
 .note-prose .is-empty::before {
   content: attr(data-placeholder);
   float: left;

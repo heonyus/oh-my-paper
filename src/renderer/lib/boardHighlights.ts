@@ -1,4 +1,5 @@
 import type { BoardCard, CardId, SourceFragment } from "../types"
+import { drawnOnPassage } from "./board"
 
 export type HighlightFragment = {
   readonly key: string
@@ -30,16 +31,20 @@ export function boardHighlightState(
   readonly activeCards: readonly BoardCard[]
   readonly fragments: readonly HighlightFragment[]
   readonly highlights: readonly BoardCard[]
+  readonly translations: readonly BoardCard[]
 } {
   const activeCards = cards.filter((card) => card.id === activeId)
   return {
     activeCards,
     fragments: collectHighlightFragments(
-      activeCards.filter((card) => card.kind !== "highlight" && card.kind !== "sticky"),
+      activeCards.filter((card) => !drawnOnPassage(card) && card.kind !== "sticky"),
       [],
     ),
     highlights: cards.filter(
       (card) => card.kind === "highlight" && card.anchor.fragments.length > 0,
+    ),
+    translations: cards.filter(
+      (card) => card.kind === "translation" && card.anchor.fragments.length > 0,
     ),
   }
 }
@@ -61,6 +66,24 @@ export function highlightAtPoint(
       )
     })
     if (hit) return mark.getAttribute("data-highlight-id")
+  }
+  return null
+}
+
+/** The translated passage, and the line of it, under a point on the board; topmost first. */
+export function translationAtPoint(
+  translations: readonly BoardCard[],
+  point: { readonly x: number; readonly y: number },
+): { readonly card: BoardCard; readonly line: SourceFragment } | null {
+  for (const card of [...translations].reverse()) {
+    const line = card.anchor.fragments.find(
+      (fragment) =>
+        point.x >= fragment.x &&
+        point.x <= fragment.x + fragment.width &&
+        point.y >= fragment.y &&
+        point.y <= fragment.y + fragment.height,
+    )
+    if (line) return { card, line }
   }
   return null
 }

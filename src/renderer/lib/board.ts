@@ -20,6 +20,14 @@ export const DEFAULT_RESEARCH_CARD_HEIGHT = 420
 export const SHORT_TRANSLATION_CARD_HEIGHT = 180
 export const MINIMIZED_CARD_HEIGHT = 32
 
+/**
+ * Highlights and translations are drawn on the passage itself rather than as a card beside the
+ * page; a translation shows its text when the reader hovers the passage.
+ */
+export function drawnOnPassage(card: BoardCard): boolean {
+  return card.kind === "highlight" || card.kind === "translation"
+}
+
 export function initialResearchCardHeight(card: BoardCard): number {
   return card.kind === "translation" && card.anchor.quote.trim().length <= 120
     ? SHORT_TRANSLATION_CARD_HEIGHT
@@ -94,16 +102,6 @@ export function createBoardCard(input: CreateCardInput): BoardCard {
     ...(input.sourceKey ? { sourceKey: input.sourceKey } : {}),
     anchor: input.anchor,
   }
-}
-
-export function saveTranslationAsAnnotation(card: BoardCard, locale: Locale = "ko"): BoardCard {
-  return card.kind === "translation"
-    ? {
-        ...card,
-        kind: "highlight",
-        title: translator(boardMessages, locale)("default.annotationTitle"),
-      }
-    : card
 }
 
 /**

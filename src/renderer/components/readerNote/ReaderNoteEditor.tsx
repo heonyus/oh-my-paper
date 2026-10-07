@@ -4,16 +4,18 @@ import { Markdown } from "@tiptap/markdown"
 import { type Editor, EditorContent, useEditor } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import { GripVertical } from "lucide-react"
-import { type JSX, useCallback, useEffect, useMemo, useRef } from "react"
+import { type JSX, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslator } from "../../lib/locale"
 import { noteMessages } from "../../messages/note"
 import { EvidenceNode } from "./evidenceNode"
 import { ArrowInput, type MarginSlotRegistry, marginSlotsExtension } from "./marginSlots"
+import { NoteImage } from "./noteImage"
 import { SlashMenu } from "./SlashMenu"
 import { SlashMenuStore, slashCommandExtension } from "./slashCommands"
 
 /** Typing settles into the workspace after a short pause instead of on every keystroke. */
 const SAVE_DELAY_MS = 400
+const IMAGE_ERROR_MS = 5000
 
 /**
  * The reader's note: a block editor over plain Markdown. `/` opens block choices,
@@ -34,6 +36,9 @@ export function ReaderNoteEditor({
   readonly marginSlots?: MarginSlotRegistry | undefined
 }): JSX.Element {
   const slashMenu = useMemo(() => new SlashMenuStore(), [])
+  const root = useRef<HTMLDivElement>(null)
+  const [imageError, setImageError] = useState<string | null>(null)
+  const imageErrorTimer = useRef<number | undefined>(undefined)
   const saveTimer = useRef<number | undefined>(undefined)
   const pending = useRef<string | null>(null)
   const callbacks = useRef({ onMarkdownChange, onOpenEvidence })
@@ -43,6 +48,21 @@ export function ReaderNoteEditor({
   const t = useTranslator(noteMessages)
   const language = useRef({ locale, t })
   language.current = { locale, t }
+
+  const reportImageError = useCallback((error: unknown): void => {
+    const reason =
+      error instanceof Error
+        ? error.message.replace(/^Error invoking remote method '[^']+': (?:Error: )?/u, "")
+        : ""
+    setImageError(
+      reason
+        ? `${language.current.t("image.failed")}: ${reason}`
+        : language.current.t("image.failed"),
+    )
+    window.clearTimeout(imageErrorTimer.current)
+    imageErrorTimer.current = window.setTimeout(() => setImageError(null), IMAGE_ERROR_MS)
+  }, [])
+  useEffect(() => () => window.clearTimeout(imageErrorTimer.current), [])
 
   const flush = useCallback((): void => {
     window.clearTimeout(saveTimer.current)
@@ -63,6 +83,7 @@ export function ReaderNoteEditor({
       Markdown,
       EvidenceNode,
       ArrowInput,
+      NoteImage.configure({ onError: reportImageError }),
       ...(marginSlots ? [marginSlotsExtension(marginSlots)] : []),
       slashCommandExtension(slashMenu, () => language.current.locale),
     ],
@@ -97,12 +118,17 @@ export function ReaderNoteEditor({
   }, [editor, onEditorChange, flush])
 
   return (
-    <div className="note-editor">
+    <div ref={root} className="note-editor">
       <DragHandle editor={editor} className="note-drag-handle">
         <GripVertical size={14} aria-hidden="true" />
       </DragHandle>
       <EditorContent editor={editor} />
-      <SlashMenu store={slashMenu} />
+      {imageError ? (
+        <p className="note-image-error" role="alert">
+          {imageError}
+        </p>
+      ) : null}
+      <SlashMenu store={slashMenu} anchor={root} />
     </div>
   )
 }

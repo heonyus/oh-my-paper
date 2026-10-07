@@ -5,7 +5,7 @@ import { basename, join } from "node:path"
 import { expect, test } from "@playwright/test"
 import { launchSimulatedAuthenticatedApplication } from "../support/electron/launchSimulatedAuthenticatedApplication"
 
-test("saving a translation annotation leaves only its source highlight and sidebar entry", async () => {
+test("a translation is drawn on its passage and shows its text on hover", async () => {
   const root = await mkdtemp(join(tmpdir(), "ohmypaper-translation-annotation-"))
   const userData = join(root, "user-data")
   const store = join(userData, "ohmypaper")
@@ -106,67 +106,56 @@ test("saving a translation annotation leaves only its source highlight and sideb
       activeDocumentId: id,
     }),
   )
-  const qa = await launchSimulatedAuthenticatedApplication({ userDataRoot: userData })
+  const qa = await launchSimulatedAuthenticatedApplication({
+    userDataRoot: userData,
+    configuredProvider: true,
+  })
   const application = qa.application
   try {
     const page = await application.firstWindow()
     const browserWindow = await application.browserWindow(page)
     await page.getByRole("button", { name: "Translation annotation fixture 열기" }).click()
     await page.waitForSelector(".pdfViewer .page .textLayer span", { timeout: 30_000 })
-    const card = page.getByLabel("empowered, 1 페이지 연결 카드")
-    const sourceJump = card.getByRole("button", { name: "p. 1 원문으로 이동" })
-    await expect(sourceJump.locator("xpath=ancestor::footer[1]")).toHaveClass("card-source-footer")
-    const before = await browserWindow.evaluate(async (windowHandle) =>
+
+    // No card beside the page: the passage is tinted, and earlier translation notes are highlights.
+    await expect(page.getByLabel("empowered, 1 페이지 연결 카드")).toHaveCount(0)
+    await expect(page.locator(".translation-mark > span")).toHaveCount(1)
+    await expect(page.locator(".highlight-mark > span")).toHaveCount(2)
+    await expect(page.locator(".connector-layer path")).toHaveCount(0)
+    const peek = page.getByRole("complementary", { name: "번역" })
+    await expect(peek).toHaveCount(0)
+
+    const mark = await page.locator(".translation-mark > span").boundingBox()
+    if (!mark) throw new Error("translation mark is not drawn")
+    await page.mouse.move(mark.x + mark.width / 2 - 6, mark.y + mark.height / 2)
+    await page.mouse.move(mark.x + mark.width / 2, mark.y + mark.height / 2)
+    await expect(peek).toBeVisible()
+    await expect(peek).toContainText("능력을 갖추고 있는")
+    const peekBox = await peek.boundingBox()
+    expect(peekBox && peekBox.y + peekBox.height <= mark.y).toBe(true)
+    const shown = await browserWindow.evaluate(async (windowHandle) =>
       (await windowHandle.capturePage()).toDataURL(),
     )
     await writeFile(
-      join(evidence, "translation-footer-before.png"),
-      before.replace(/^data:image\/png;base64,/u, ""),
+      join(evidence, "translation-peek.png"),
+      shown.replace(/^data:image\/png;base64,/u, ""),
       "base64",
     )
 
-    await card.getByRole("button", { name: "번역을 주석으로 저장" }).click()
+    await page.mouse.move(mark.x + mark.width / 2, mark.y + 240)
+    await expect(peek).toHaveCount(0)
 
-    await expect(card).toBeHidden()
-    await expect(page.locator(".highlight-mark > span")).toHaveCount(3)
-    await expect(page.locator(".connector-layer path")).toHaveCount(0)
-    await page.getByRole("button", { name: "카드 모드" }).click()
-    await page
-      .getByRole("group", { name: "카드 종류" })
-      .getByRole("button", { name: /하이라이트/u })
-      .click()
-    await expect(page.locator(".board-index-list > li")).toHaveCount(3)
-    await expect(page.getByText("번역 주석")).toHaveCount(0)
-    await expect(page.locator(".board-index-list .board-index-icon")).toHaveCount(0)
-    await expect(page.getByText("보드에서 편집")).toHaveCount(0)
-    await expect(page.getByText("깨지기 쉬운")).toBeVisible()
-    await expect(page.getByText("통제된")).toBeVisible()
-    await expect(page.getByText("능력을 갖추고 있는")).toBeVisible()
-    await expect(page.getByText("empowered", { exact: true })).toBeVisible()
-    const rowGaps = await page.locator(".board-index-list > li").evaluateAll((items) =>
-      items.flatMap((item, index) => {
-        const previous = items[index - 1]
-        return previous
-          ? [item.getBoundingClientRect().top - previous.getBoundingClientRect().bottom]
-          : []
-      }),
-    )
-    expect(rowGaps.every((gap) => gap >= 11)).toBe(true)
+    await page.mouse.move(mark.x + mark.width / 2 - 6, mark.y + mark.height / 2)
+    await page.mouse.move(mark.x + mark.width / 2, mark.y + mark.height / 2)
+    await peek.getByRole("button", { name: "번역 지우기" }).click()
+    await expect(page.locator(".translation-mark")).toHaveCount(0)
     await expect
       .poll(async () =>
         (await page.evaluate(() => window.ohmypaper.readWorkspace())).cards.map(
           (storedCard) => storedCard.kind,
         ),
       )
-      .toEqual(["highlight", "highlight", "highlight"])
-    const after = await browserWindow.evaluate(async (windowHandle) =>
-      (await windowHandle.capturePage()).toDataURL(),
-    )
-    await writeFile(
-      join(evidence, "highlight-sidebar-after.png"),
-      after.replace(/^data:image\/png;base64,/u, ""),
-      "base64",
-    )
+      .toEqual(["highlight", "highlight"])
   } finally {
     await qa.close()
     await rm(root, { recursive: true, force: true })
