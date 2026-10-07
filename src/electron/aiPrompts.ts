@@ -222,7 +222,7 @@ function translatorInstruction(language: Locale): string {
 }
 
 function pageBlockRules(language: Locale): string {
-  return `Each supplied block is one unit: never merge, split, reorder, or omit blocks, including headings, captions, affiliations, citations, and short fragments. Translate headings and captions into ${LANGUAGE_NAME[language]} like any other text, keeping only their numbering as written. A block may be a fragment cut at a page or column break, even a single word: translate it as the fragment it is, and never answer that there is nothing to translate.`
+  return `Each supplied block is one unit: never merge, split, reorder, or omit blocks, including headings, captions, affiliations, citations, and short fragments. Translate headings and captions into ${LANGUAGE_NAME[language]} like any other text, keeping only their numbering as written. A bracketed number or number list such as [1], [2,3] or [4,5–7] is a citation marker into the reference list: copy it exactly, and keep it right after the word or punctuation whose translation it follows. A block may be a fragment cut at a page or column break, even a single word: translate it as the fragment it is, and never answer that there is nothing to translate.`
 }
 
 /** The actions answered as a document with headings; the rest keep to their own short format. */

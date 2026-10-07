@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm"
 import remarkMath from "remark-math"
 import type { MessageParams } from "../../shared/i18n/locale"
 import { parseCitationHref, rehypeSourceCitations, type SourceCitation } from "../lib/chatCitations"
+import { rehypeCitationMarkers } from "../lib/citationMarkers"
 import { useTranslator } from "../lib/locale"
 import { type ReaderMessageKey, readerMessages } from "../messages/reader"
 
@@ -66,17 +67,24 @@ export function MarkdownContent({
   source,
   className,
   onCitation,
+  citationMarkers = false,
 }: {
   readonly source: string
   readonly className?: string | undefined
   /** When set, page citations in the text become chips that call this with the target. */
   readonly onCitation?: ((citation: SourceCitation) => void) | undefined
+  /** When set, bracketed reference numbers such as "[4,5–7]" are set as superscripts. */
+  readonly citationMarkers?: boolean | undefined
 }): JSX.Element {
   const t = useTranslator(readerMessages)
   const components = useMemo(() => markdownComponents(t, onCitation), [t, onCitation])
   const rehypePlugins = useMemo(
-    () => (onCitation ? [rehypeKatex, rehypeSourceCitations] : [rehypeKatex]),
-    [onCitation],
+    () => [
+      rehypeKatex,
+      ...(onCitation ? [rehypeSourceCitations] : []),
+      ...(citationMarkers ? [rehypeCitationMarkers] : []),
+    ],
+    [onCitation, citationMarkers],
   )
   return (
     <div className={["markdown-content", className].filter(Boolean).join(" ")}>
