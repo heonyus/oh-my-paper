@@ -165,6 +165,15 @@
 .ProseMirror-selectednode.note-evidence {
   outline: 2px solid var(--focus);
 }
+/* The hidden stand-in line that lets a list's first item indent, as in a text note. */
+.note-prose li.note-list-stub {
+  list-style: none;
+}
+.note-prose li.note-list-stub > p:first-child {
+  height: 0;
+  margin: 0;
+  overflow: hidden;
+}
 /* A formula typed as $…$, typeset in place; double-click returns it to text. */
 .note-math {
   display: inline-block;

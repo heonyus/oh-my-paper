@@ -11,6 +11,8 @@ import { EvidenceNode } from "./evidenceNode"
 import { ArrowInput, type MarginSlotRegistry, marginSlotsExtension } from "./marginSlots"
 import { MathNode } from "./mathNode"
 import { NoteImage } from "./noteImage"
+import { noteMarkdown } from "./noteMarkdown"
+import { NoteTabKeys } from "./noteTabKeys"
 import { SlashMenu } from "./SlashMenu"
 import { SlashMenuStore, slashCommandExtension } from "./slashCommands"
 
@@ -86,6 +88,7 @@ export function ReaderNoteEditor({
       MathNode,
       ArrowInput,
       NoteImage.configure({ onError: reportImageError }),
+      NoteTabKeys,
       ...(marginSlots ? [marginSlotsExtension(marginSlots)] : []),
       slashCommandExtension(slashMenu, () => language.current.locale),
     ],
@@ -104,7 +107,7 @@ export function ReaderNoteEditor({
       },
     },
     onUpdate: ({ editor: current }) => {
-      pending.current = current.getMarkdown()
+      pending.current = noteMarkdown(current)
       window.clearTimeout(saveTimer.current)
       saveTimer.current = window.setTimeout(flush, SAVE_DELAY_MS)
     },
