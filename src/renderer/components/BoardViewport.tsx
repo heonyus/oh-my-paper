@@ -21,10 +21,10 @@ import { useSelectionShortcuts } from "../lib/selectionActions"
 import { selectionAiRequest } from "../lib/selectionAiRequest"
 import { worldRectToScreen } from "../lib/selectionGeometry"
 import { createStructureActionHandler } from "../lib/structureActions"
+import { useAnchorRepair } from "../lib/useAnchorRepair"
 import { useBoardGestures } from "../lib/useBoardGestures"
 import { useBoardPanPreview } from "../lib/useBoardPanPreview"
 import { useCardStreams } from "../lib/useCardStreams"
-import { useHighlightTightening } from "../lib/useHighlightTightening"
 import { usePageJump } from "../lib/usePageJump"
 import { usePanConstraint } from "../lib/usePanConstraint"
 import { mostVisiblePage, revealWorldRectHorizontally } from "../lib/viewport"
@@ -270,7 +270,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
   }
 
   useSelectionShortcuts(selectionMenu, addCard)
-  useHighlightTightening(cardsRef, worldRef, commitCards)
+  useAnchorRepair(cardsRef, worldRef, commitCards)
 
   const deleteHighlight = useCallback(
     (id: string): void => {

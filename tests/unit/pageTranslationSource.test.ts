@@ -171,4 +171,48 @@ describe("page translation source mapping", () => {
     expect(overlay.querySelector(".page-translation-source-bound")).toBeNull()
     document.body.replaceChildren()
   })
+
+  it("draws one box for the sentences of a paragraph none of whose lines could be matched", () => {
+    const page = document.createElement("div")
+    page.className = "page"
+    page.setAttribute("data-page-number", "2")
+    vi.spyOn(page, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 1_000, 1_000))
+    const textLayer = document.createElement("div")
+    textLayer.className = "textLayer"
+    textLayer.append(visibleSpan("Unrelated text", 12, 400, 100, 200))
+    page.append(textLayer)
+    const structureHost = document.createElement("div")
+    structureHost.className = "paper-structure-host"
+    const overlay = document.createElement("div")
+    overlay.setAttribute("data-page-number", "2")
+    structureHost.append(overlay)
+    document.body.append(page, structureHost)
+    const box = { x: 50, y: 150, width: 500, height: 200 }
+
+    bindPageSourceBounds(2, [
+      {
+        id: "s1",
+        kind: "body",
+        source: "A formula sentence.",
+        sourceBounds: box,
+        sourcePageWidth: 1_000,
+        sourcePageHeight: 1_000,
+      },
+      {
+        id: "s2",
+        kind: "body",
+        source: "Another formula sentence.",
+        sourceBounds: box,
+        sourcePageWidth: 1_000,
+        sourcePageHeight: 1_000,
+      },
+    ])
+
+    const bounds = overlay.querySelectorAll(".page-translation-source-bound")
+    expect(bounds).toHaveLength(1)
+    expect(bounds[0]).toHaveAttribute("data-page-translation-block", "s1,s2")
+    setPageSourceActive(2, "s2", true)
+    expect(bounds[0]).toHaveAttribute("data-page-translation-active", "true")
+    document.body.replaceChildren()
+  })
 })

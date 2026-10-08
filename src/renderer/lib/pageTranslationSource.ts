@@ -92,18 +92,33 @@ export function bindPageSourceBounds(pageNumber: number, blocks: readonly PageSo
     `.paper-structure-host > [data-page-number="${pageNumber}"]`,
   )
   if (!overlay) return
+  // The sentences of one paragraph share its box: one element carries them all, so the box
+  // is tinted once when they light up, not once per sentence.
+  const bounds = new Map<string, HTMLElement>()
   for (const block of blocks) {
     if (matched.has(block.id)) continue
     if (!block.sourceBounds || !block.sourcePageWidth || !block.sourcePageHeight) continue
     for (const box of block.sourceParts ?? [block.sourceBounds]) {
+      const left = `${(box.x / block.sourcePageWidth) * 100}%`
+      const top = `${(box.y / block.sourcePageHeight) * 100}%`
+      const width = `${(box.width / block.sourcePageWidth) * 100}%`
+      const height = `${(box.height / block.sourcePageHeight) * 100}%`
+      const key = [left, top, width, height].join("/")
+      const shared = bounds.get(key)
+      if (shared) {
+        const ids = shared.getAttribute("data-page-translation-block")?.split(",") ?? []
+        shared.setAttribute("data-page-translation-block", [...ids, block.id].join(","))
+        continue
+      }
       const bound = document.createElement("div")
       bound.className = "page-translation-source-bound"
       bound.setAttribute("data-page-translation-block", block.id)
-      bound.style.left = `${(box.x / block.sourcePageWidth) * 100}%`
-      bound.style.top = `${(box.y / block.sourcePageHeight) * 100}%`
-      bound.style.width = `${(box.width / block.sourcePageWidth) * 100}%`
-      bound.style.height = `${(box.height / block.sourcePageHeight) * 100}%`
+      bound.style.left = left
+      bound.style.top = top
+      bound.style.width = width
+      bound.style.height = height
       overlay.append(bound)
+      bounds.set(key, bound)
     }
   }
 }
