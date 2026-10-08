@@ -69,7 +69,7 @@ export function BoardCardChat({
       {streamedAnswer ? (
         <div className="card-chat-history" aria-live="polite">
           <article data-role="assistant" data-streaming="true">
-            <p>{streamedAnswer}</p>
+            <MarkdownContent source={streamedAnswer} onCitation={onCitation} />
           </article>
         </div>
       ) : null}

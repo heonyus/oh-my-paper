@@ -45,6 +45,27 @@ describe("BoardCardChat", () => {
     ])
   })
 
+  it("renders the answer as markdown while it is still streaming", async () => {
+    let finish: (answer: string) => void = () => undefined
+    const onAsk = vi.fn(
+      (_question: string, _history: unknown, onDelta?: (delta: string) => void) =>
+        new Promise<string>((resolve) => {
+          onDelta?.("## 결론\n\n네, **맞습니다**. 두 젖산 [[p.4 | lactate]]")
+          finish = resolve
+        }),
+    )
+    render(<BoardCardChat card={card} onChange={vi.fn()} onAsk={onAsk} onCitation={vi.fn()} />)
+
+    await userEvent.type(screen.getByLabelText("카드에 후속 질문"), "보간 방향은?")
+    await userEvent.click(screen.getByRole("button", { name: "후속 질문 보내기" }))
+
+    expect(await screen.findByRole("heading", { name: "결론" })).toBeInTheDocument()
+    expect(screen.getByText("맞습니다").tagName).toBe("STRONG")
+    expect(screen.getByRole("button", { name: /p\.4/ })).toBeInTheDocument()
+    expect(screen.queryByText(/## 결론/)).toBeNull()
+    finish("## 결론\n\n네, **맞습니다**. 두 젖산 [[p.4 | lactate]]")
+  })
+
   it("turns citations in answers into page chips", async () => {
     const onCitation = vi.fn()
     const cited = {
