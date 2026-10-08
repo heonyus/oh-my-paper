@@ -44,7 +44,7 @@ describe("Claude CLI environment", () => {
     expect(env).not.toHaveProperty("ANTHROPIC_API_KEY")
   })
 
-  it("defaults to the requested model and omits effort for Haiku", () => {
+  it("defaults to the requested model and omits effort for Haiku 4.x only", () => {
     const sonnet = buildClaudeCompletionArgs({
       model: "claude-sonnet-5",
       effort: "medium",
@@ -55,10 +55,16 @@ describe("Claude CLI environment", () => {
       effort: "high",
       systemPrompt: "system",
     })
+    const haiku55 = buildClaudeCompletionArgs({
+      model: "claude-haiku-5-5",
+      effort: "high",
+      systemPrompt: "system",
+    })
 
     expect(sonnet[sonnet.indexOf("--model") + 1]).toBe("claude-sonnet-5")
     expect(sonnet[sonnet.indexOf("--effort") + 1]).toBe("medium")
     expect(haiku).not.toContain("--effort")
+    expect(haiku55[haiku55.indexOf("--effort") + 1]).toBe("high")
   })
 
   it("turns thinking off with a zero budget and drops the effort level the CLI would refuse", () => {

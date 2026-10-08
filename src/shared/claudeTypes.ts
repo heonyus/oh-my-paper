@@ -1,11 +1,11 @@
 import { z } from "zod"
 import type { Locale } from "./i18n/locale"
 
-export const DEFAULT_CLAUDE_MODEL = "claude-haiku-4-5"
+export const DEFAULT_CLAUDE_MODEL = "claude-haiku-5-5"
 
 /** The models on offer by name; `claudeModelChoices` marks the default in the reader's language. */
 export const CLAUDE_MODEL_OPTIONS = [
-  { id: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
+  { id: "claude-haiku-5-5", label: "Claude Haiku 5.5" },
   { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5" },
   { id: "claude-opus-5-5", label: "Claude Opus 5.5" },
   { id: "claude-fable-5-1", label: "Claude Fable 5.1" },
@@ -50,14 +50,14 @@ export function isClaudeEffort(value: string): value is ClaudeEffort {
   return claudeEffortSchema.safeParse(value).success
 }
 
-/** Haiku 4.5 rejects the effort parameter, so the CLI flag is omitted for it. */
+/** Haiku 4.x rejects the effort parameter, so the CLI flag is omitted for it; Haiku 5.5 takes it. */
 export function claudeModelSupportsEffort(model: string): boolean {
-  return !model.startsWith("claude-haiku")
+  return !model.startsWith("claude-haiku-4")
 }
 
-/** Haiku 4.5 has a 200K-token context window; the other listed models take 1M. */
+/** Haiku 4.x has a 200K-token context window; Haiku 5.5 and the other listed models take 1M. */
 export function claudeModelHasLargeContext(model: string): boolean {
-  return !model.startsWith("claude-haiku")
+  return !model.startsWith("claude-haiku-4")
 }
 
 /** Output of `claude auth status --json`; unknown fields are ignored. */

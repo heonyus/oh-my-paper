@@ -60,7 +60,7 @@ async function setup() {
 
 // The fake CLI is a POSIX shebang script, which Windows cannot start directly.
 describe.skipIf(process.platform === "win32")("browser Claude subscription routes", () => {
-  it("defaults a fresh install to Claude with Haiku 4.5", async () => {
+  it("defaults a fresh install to Claude with Haiku 5.5", async () => {
     const { services } = await setup()
     vi.spyOn(services.claude, "getStatus").mockResolvedValue(loggedIn)
 
@@ -68,8 +68,8 @@ describe.skipIf(process.platform === "win32")("browser Claude subscription route
       configured: true,
       provider: "anthropic",
       mode: "claude",
-      model: "claude-haiku-4-5",
-      claudeModel: "claude-haiku-4-5",
+      model: "claude-haiku-5-5",
+      claudeModel: "claude-haiku-5-5",
       claudeEffort: "medium",
     })
   })

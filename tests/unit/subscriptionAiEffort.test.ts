@@ -6,7 +6,7 @@ import { codexEffortFor, runWithClaude, runWithCodex } from "../../src/server/su
 import type { AiRequest } from "../../src/shared/ipc"
 
 const settings = {
-  claudeModel: "claude-haiku-4-5",
+  claudeModel: "claude-haiku-5-5",
   claudeEffort: "medium",
   codexModel: "gpt-6-luna",
   codexReasoningEffort: "medium",

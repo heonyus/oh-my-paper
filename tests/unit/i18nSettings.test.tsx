@@ -214,7 +214,7 @@ describe("settings in English", () => {
     english(<ClaudeSettings />)
 
     await waitFor(() => expect(screen.getByText("Sign-in needed")).toBeVisible())
-    expect(screen.getByLabelText("Claude model")).toHaveDisplayValue("Claude Haiku 4.5 (default)")
+    expect(screen.getByLabelText("Claude model")).toHaveDisplayValue("Claude Haiku 5.5 (default)")
     expect(screen.getByLabelText("Claude reasoning effort")).toHaveDisplayValue("Medium (default)")
     expect(
       screen.getByText("The Claude Code CLI was not found. Install it, then refresh the status."),
