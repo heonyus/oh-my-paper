@@ -1,4 +1,5 @@
 import type { AiRequest } from "../../shared/ipc"
+import { AI_SOURCE_EVIDENCE_MAX_CHARACTERS } from "../../shared/ipc"
 import type { ReaderNote } from "../../shared/readerNote"
 import type { DocumentId } from "../../shared/schemas"
 import { sourceContainsQuote } from "./sourceQuoteFlash"
@@ -68,7 +69,7 @@ export function noteTutorRequest(input: {
     ...(input.earlierLines
       ? { sectionContext: `${EARLIER_LINES_LABEL}\n${input.earlierLines.slice(-1_900)}` }
       : {}),
-    ...(evidence ? { sourceEvidence: evidence.slice(0, 12_000) } : {}),
+    ...(evidence ? { sourceEvidence: evidence.slice(0, AI_SOURCE_EVIDENCE_MAX_CHARACTERS) } : {}),
   }
 }
 

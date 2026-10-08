@@ -1,4 +1,5 @@
 import type { ParsedDocumentPage, ParsedPageBlock } from "../../shared/documentPageModel"
+import { AI_SOURCE_EVIDENCE_MAX_CHARACTERS } from "../../shared/ipc"
 import type { SourceFragment } from "../../shared/schemas"
 import { paperContextForQuestion } from "./pdfSearch"
 import type { DetectedStructure } from "./structureDetector"
@@ -188,23 +189,31 @@ export function tableDefinitionEvidenceForStructure(
   return boundedContexts.join("\n\n")
 }
 
+const tableSourceHeading = "표 OCR Markdown 원문(셀 근거):"
+const evidenceSeparator = "\n\n"
+
+function tableEvidenceParts(
+  page: ParsedDocumentPage | null,
+  structure: DetectedStructure,
+  renderedWidth: number,
+  renderedHeight: number,
+): { readonly markdown: string; readonly facts: string } | null {
+  if (!page || structure.kind !== "table" || renderedWidth <= 0 || renderedHeight <= 0) return null
+  const markdown = tableMarkdownForStructure(page, structure, renderedWidth, renderedHeight)
+  if (!markdown) return null
+  const facts = numericFacts(markdown)
+  return { markdown, facts: facts.length > 0 ? `표에서 확인한 수치:\n- ${facts.join("\n- ")}` : "" }
+}
+
 export function tableEvidenceForStructure(
   page: ParsedDocumentPage | null,
   structure: DetectedStructure,
   renderedWidth: number,
   renderedHeight: number,
 ): string | null {
-  if (!page || structure.kind !== "table" || renderedWidth <= 0 || renderedHeight <= 0) return null
-  const markdown = tableMarkdownForStructure(page, structure, renderedWidth, renderedHeight)
-  if (!markdown) return null
-  const facts = numericFacts(markdown)
-  return [
-    "표 OCR Markdown 원문(셀 근거):",
-    markdown,
-    facts.length > 0 ? `표에서 확인한 수치:\n- ${facts.join("\n- ")}` : "",
-  ]
-    .filter(Boolean)
-    .join("\n\n")
+  const parts = tableEvidenceParts(page, structure, renderedWidth, renderedHeight)
+  if (!parts) return null
+  return [tableSourceHeading, parts.markdown, parts.facts].filter(Boolean).join(evidenceSeparator)
 }
 
 export function tableVerifiedFactsForStructure(
@@ -267,15 +276,48 @@ export function verifiedTableBody(
   )
 }
 
+const retrievedEvidenceHeading = "표 관련 문서 근거(정의와 해석):\n"
+/** Document passages shorter than this say nothing worth the space; the table keeps it. */
+const minimumRetrievedCharacters = 240
+
+/** Cuts text to fit, at the last line break when one falls in the final third. */
+function clipAtLineBreak(text: string, maximumCharacters: number): string {
+  if (text.length <= maximumCharacters) return text
+  const head = text.slice(0, maximumCharacters)
+  const lineBreak = head.lastIndexOf("\n")
+  return (
+    lineBreak >= Math.floor(maximumCharacters * 0.66) ? head.slice(0, lineBreak) : head
+  ).trimEnd()
+}
+
+/**
+ * The table's cells and extrema come first, then the retrieved passages fill what is left of
+ * the request's evidence field. A page-sized table that alone exceeds the field loses its
+ * last rows, keeping its header rows and column extrema, instead of the whole request: the
+ * server refuses evidence past the limit.
+ */
 export function tableEvidenceWithDocumentContext(
   page: ParsedDocumentPage | null,
   structure: DetectedStructure,
   renderedWidth: number,
   renderedHeight: number,
   nearbyContext: string,
+  maximumCharacters = AI_SOURCE_EVIDENCE_MAX_CHARACTERS,
 ): string | null {
-  const table = tableEvidenceForStructure(page, structure, renderedWidth, renderedHeight)
-  if (!table) return null
+  const parts = tableEvidenceParts(page, structure, renderedWidth, renderedHeight)
+  if (!parts) return null
+  const fixed = [tableSourceHeading, parts.facts].filter(Boolean)
+  const markdownBudget =
+    maximumCharacters -
+    fixed.reduce((total, part) => total + part.length, 0) -
+    evidenceSeparator.length * fixed.length
+  const table = [
+    tableSourceHeading,
+    clipAtLineBreak(parts.markdown, Math.max(0, markdownBudget)),
+    parts.facts,
+  ]
+    .filter(Boolean)
+    .join(evidenceSeparator)
   const retrieved = tableDefinitionEvidenceForStructure(
     page,
     structure,
@@ -283,7 +325,8 @@ export function tableEvidenceWithDocumentContext(
     renderedHeight,
     nearbyContext,
   )
-  return [table, retrieved ? `표 관련 문서 근거(정의와 해석):\n${retrieved}` : ""]
-    .filter(Boolean)
-    .join("\n\n")
+  const remaining =
+    maximumCharacters - table.length - evidenceSeparator.length - retrievedEvidenceHeading.length
+  if (!retrieved || remaining < minimumRetrievedCharacters) return table
+  return `${table}${evidenceSeparator}${retrievedEvidenceHeading}${clipAtLineBreak(retrieved, remaining)}`
 }

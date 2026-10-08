@@ -4,6 +4,7 @@ import {
   tableEvidenceForStructure,
   tableEvidenceWithDocumentContext,
 } from "../../src/renderer/lib/tableEvidence"
+import { AI_SOURCE_EVIDENCE_MAX_CHARACTERS, aiRequestSchema } from "../../src/shared/aiIpc"
 import { parsedDocumentPageSchema } from "../../src/shared/documentPageModel"
 
 describe("table evidence", () => {
@@ -142,6 +143,111 @@ describe("table evidence", () => {
     )
 
     expect(evidence).toContain("label smoothing")
+  })
+
+  it("keeps a page-sized table inside the request's evidence limit", () => {
+    const rows = Array.from(
+      { length: 400 },
+      (_, index) => `| patient subgroup number ${index} | ${index} | 0.${index % 100} |`,
+    )
+    const page = parsedDocumentPageSchema.parse({
+      schemaVersion: "1.0.0",
+      sourceHash: "d".repeat(64),
+      parser: "PDF.js+PaddleOCR-VL-1.6",
+      configVersion: "blocks-v1",
+      pageNumber: 7,
+      width: 1_000,
+      height: 1_400,
+      blocks: [
+        {
+          id: "page:7:block:1",
+          label: "table",
+          order: 1,
+          bounds: { x: 60, y: 120, width: 880, height: 1_200 },
+          content: [
+            "| Subgroup | Cohort size | Raw score |",
+            "| --- | ---: | ---: |",
+            ...rows,
+          ].join("\n"),
+          contentFormat: "markdown",
+          translationPolicy: "exclude",
+        },
+      ],
+    })
+    const structure = {
+      id: "page:7:block:1",
+      kind: "table" as const,
+      page: 7,
+      title: "Supplementary Table 5",
+      quote: "Supplementary Table 5: Model calibration in patient subgroups",
+      bounds: { x: 60, y: 120, width: 880, height: 1_200 },
+    }
+
+    expect(tableEvidenceForStructure(page, structure, 1_000, 1_400)?.length ?? 0).toBeGreaterThan(
+      AI_SOURCE_EVIDENCE_MAX_CHARACTERS,
+    )
+    const evidence = tableEvidenceWithDocumentContext(page, structure, 1_000, 1_400, "calibration")
+
+    expect(evidence).not.toBeNull()
+    expect(evidence?.length ?? 0).toBeLessThanOrEqual(AI_SOURCE_EVIDENCE_MAX_CHARACTERS)
+    expect(evidence).toContain("| Subgroup | Cohort size | Raw score |")
+    expect(evidence).toContain("| patient subgroup number 0 |")
+    expect(evidence).toContain('열 "Cohort size"의 최대값은 399')
+    expect(
+      aiRequestSchema.safeParse({
+        action: "table",
+        documentId: "be97e47c63d3cb14",
+        page: 7,
+        quote: structure.quote,
+        before: "",
+        after: "",
+        sourceEvidence: evidence,
+      }).success,
+    ).toBe(true)
+  })
+
+  it("gives retrieved passages only the room the table leaves", () => {
+    const rows = Array.from({ length: 20 }, (_, index) => `| row ${index} | ${index} |`)
+    const page = parsedDocumentPageSchema.parse({
+      schemaVersion: "1.0.0",
+      sourceHash: "e".repeat(64),
+      parser: "PDF.js+PaddleOCR-VL-1.6",
+      configVersion: "blocks-v1",
+      pageNumber: 3,
+      width: 1_000,
+      height: 800,
+      blocks: [
+        {
+          id: "page:3:block:0",
+          label: "table",
+          order: 0,
+          bounds: { x: 100, y: 100, width: 800, height: 400 },
+          content: ["| Name | Count |", "| --- | ---: |", ...rows].join("\n"),
+          contentFormat: "markdown",
+          translationPolicy: "exclude",
+        },
+      ],
+    })
+    const structure = {
+      id: "page:3:block:0",
+      kind: "table" as const,
+      page: 3,
+      title: "Table 1",
+      quote: "Table 1: Counts",
+      bounds: { x: 100, y: 100, width: 800, height: 400 },
+    }
+    const table = tableEvidenceForStructure(page, structure, 1_000, 800) ?? ""
+
+    const tight = tableEvidenceWithDocumentContext(
+      page,
+      structure,
+      1_000,
+      800,
+      "",
+      table.length + 60,
+    )
+
+    expect(tight).toBe(table)
   })
 
   it("removes unsupported extrema claims before appending verified facts", () => {
