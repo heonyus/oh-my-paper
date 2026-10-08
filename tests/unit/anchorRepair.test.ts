@@ -1,5 +1,9 @@
 import { afterEach, beforeAll, describe, expect, it } from "vitest"
-import { tightenedHighlight, tightenedHighlights } from "../../src/renderer/lib/highlightTightening"
+import {
+  repairedAnchor,
+  repairedAnchors,
+  tightenedHighlight,
+} from "../../src/renderer/lib/anchorRepair"
 import { boardCardSchema } from "../../src/shared/schemas"
 
 type Box = {
@@ -128,9 +132,50 @@ describe("tightening block highlights", () => {
   it("returns the same array when no card on the page changes", () => {
     const { world, page } = fixture()
     const cards = [{ ...blockHighlight, anchor: { ...blockHighlight.anchor, page: 3 } }]
-    expect(tightenedHighlights(cards, 12, page, world)).toBe(cards)
-    expect(
-      tightenedHighlights([blockHighlight], 12, page, world)[0]?.anchor.fragments,
-    ).toHaveLength(3)
+    expect(repairedAnchors(cards, 12, page, world)).toBe(cards)
+    expect(repairedAnchors([blockHighlight], 12, page, world)[0]?.anchor.fragments).toHaveLength(3)
+  })
+})
+
+describe("repairing drifted anchors", () => {
+  afterEach(() => {
+    document.body.innerHTML = ""
+  })
+
+  const word = boardCardSchema.parse({
+    ...blockHighlight,
+    kind: "translation",
+    body: "양성",
+    anchor: {
+      page: 12,
+      quote: "positive",
+      x: 500,
+      y: 140,
+      // Saved a line and a half above where the word prints, at a zoom since corrected.
+      fragments: [{ x: 540, y: 116, width: 40, height: 12 }],
+    },
+  })
+
+  it("moves a card to the nearest place its quote prints, when that is within a few lines", () => {
+    const { world, page } = fixture()
+    const repaired = repairedAnchor(word, page, world)
+    expect(repaired?.anchor.fragments).toEqual([{ x: 340, y: 134, width: 300, height: 12 }])
+    expect(repaired?.kind).toBe("translation")
+  })
+
+  it("leaves a card whose quote prints only far away, or that already sits on its lines", () => {
+    const { world, page } = fixture()
+    const far = {
+      ...word,
+      anchor: { ...word.anchor, fragments: [{ x: 540, y: 700, width: 40, height: 12 }] },
+    }
+    expect(repairedAnchor(far, page, world)).toBeNull()
+    const settled = {
+      ...word,
+      anchor: { ...word.anchor, fragments: [{ x: 340.6, y: 133.2, width: 300, height: 12 }] },
+    }
+    expect(repairedAnchor(settled, page, world)).toBeNull()
+    const sticky = { ...word, kind: "sticky" as const }
+    expect(repairedAnchor(sticky, page, world)).toBeNull()
   })
 })

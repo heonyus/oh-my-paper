@@ -14,6 +14,7 @@ import type { PdfAstRuntimeSession } from "./pdfAstRuntimeSession"
 import type { PdfOutlineEntry } from "./pdfOutline"
 import type { PageOverlayState } from "./pdfOverlayAnalysis"
 import { syncViewerWidth } from "./pdfOverlayRefresh"
+import { keepPageSpacing } from "./pdfPageSpacing"
 import type { PdfRetrievalRuntime, PdfRetrievalSession } from "./pdfRetrievalRuntime"
 
 export type EventBridgeParams = {
@@ -117,6 +118,7 @@ export function bindViewerEventBridge(params: EventBridgeParams): {
 
   const handlePagesInit = (): void => {
     params.viewer.currentScale = params.zoomRef.current ?? 1
+    keepPageSpacing(params.viewer, params.zoomRef.current ?? 1)
     restoreInitialReaderPage(params.viewer, params.initialPage, params.onPageActive)
     const pageElement = params.viewer.getPageView(params.initialPage - 1)?.div
     if (pageElement) params.onPageJump?.(params.initialPage, pageElement)
@@ -145,6 +147,8 @@ export function bindViewerEventBridge(params: EventBridgeParams): {
   }
 
   const handlePageRendered = ({ pageNumber }: { readonly pageNumber: number }): void => {
+    // A page drawn for the first time takes its own size; the pages below it keep their places.
+    keepPageSpacing(params.viewer, params.zoomRef.current ?? 1)
     scheduleOverlayRefresh()
     announcePageRendered(pageNumber)
   }

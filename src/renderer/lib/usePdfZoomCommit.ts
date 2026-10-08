@@ -1,6 +1,7 @@
 import { type RefObject, useEffect, useRef } from "react"
 import type { ViewerSession } from "./pdfColumnSupport"
 import { syncViewerWidth } from "./pdfOverlayRefresh"
+import { keepPageSpacing } from "./pdfPageSpacing"
 
 export function usePdfZoomCommit({
   zoom,
@@ -24,6 +25,7 @@ export function usePdfZoomCommit({
     timerRef.current = window.setTimeout(() => {
       requestAnimationFrame(() => {
         session.viewer.currentScale = zoom
+        keepPageSpacing(session.viewer, zoom)
         syncViewerWidth(container, session.viewer)
         onScaleCommitted?.(zoom)
         overlayRefreshRef.current?.()
