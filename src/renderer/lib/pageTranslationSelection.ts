@@ -7,6 +7,7 @@ import {
 import type { PageTranslationBlock } from "./pageTranslationSource"
 import { sourceElementMatchesBlock } from "./pageTranslationSpanMapping"
 import {
+  anchoredRangeOfOwners,
   canonicalText,
   coveredBlocks,
   plainSource,
@@ -61,27 +62,58 @@ function sourceBoundRects(pageNumber: string | null, ids: readonly string[]): re
     .map((bound) => bound.getBoundingClientRect())
 }
 
+function inside(rect: DOMRect, boxes: readonly DOMRect[], padding: number): boolean {
+  const x = rect.left + rect.width / 2
+  const y = rect.top + rect.height / 2
+  return boxes.some(
+    (box) =>
+      x >= box.left - padding &&
+      x <= box.right + padding &&
+      y >= box.top - padding &&
+      y <= box.bottom + padding,
+  )
+}
+
+/**
+ * The text-layer spans a block's source may be written in: those mapped to it, else those
+ * lying in the box drawn for it when no span could be mapped, else the whole page's.
+ */
+function candidateSpans(
+  pageElement: HTMLElement,
+  pageNumber: string | null,
+  block: PageTranslationBlock,
+): readonly HTMLElement[] {
+  const mapped = sourceSpans(pageElement, [block.id])
+  if (mapped.length > 0) return mapped
+  const all = [...pageElement.querySelectorAll<HTMLElement>(".textLayer span")]
+  const boxes = sourceBoundRects(pageNumber, [block.id])
+  if (boxes.length === 0) return all
+  const padding = Math.max(2, pageElement.getBoundingClientRect().width * 0.005)
+  return all.filter((span) => inside(span.getBoundingClientRect(), boxes, padding))
+}
+
 /**
  * Where the source of `blocks` is printed on the page: the exact letters when the text layer
- * spells them, else the lines of the spans mapped to them, else the boxes drawn for them.
+ * spells them, else the lines from a sentence's opening letters to its closing ones, else
+ * the boxes drawn for it.
  */
 export function sourceClientRects(
   pageElement: HTMLElement,
   blocks: readonly PageTranslationBlock[],
 ): readonly DOMRect[] {
+  const pageNumber = pageElement.getAttribute("data-page-number")
   const ids = blocks.map((block) => block.id)
-  const spans = sourceSpans(pageElement, ids)
-  const owners = textOwners(spans)
-  const whole = rangeOfOwners(owners, blocks.map((block) => canonicalText(block.source)).join(""))
+  const whole = rangeOfOwners(
+    textOwners(sourceSpans(pageElement, ids)),
+    blocks.map((block) => canonicalText(block.source)).join(""),
+  )
   if (whole) return [...whole.getClientRects()]
-  const rects = blocks.flatMap((block) => {
-    const range = rangeOfOwners(owners, canonicalText(block.source))
+  return blocks.flatMap((block) => {
+    const owners = textOwners(candidateSpans(pageElement, pageNumber, block))
+    const range = anchoredRangeOfOwners(owners, canonicalText(block.source))
     if (range) return [...range.getClientRects()]
-    const mapped = sourceSpans(pageElement, [block.id])
-    if (mapped.length > 0) return mapped.map((span) => span.getBoundingClientRect())
-    return sourceBoundRects(pageElement.getAttribute("data-page-number"), [block.id])
+    return sourceBoundRects(pageNumber, [block.id])
   })
-  return rects
 }
 
 /**
