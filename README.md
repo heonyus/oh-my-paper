@@ -4,152 +4,152 @@
 
 # oh-my-paper
 
-A local-first reader for research papers.
+내 컴퓨터에서 읽는 논문 리더.
 
-Select a passage and press a key: its translation, explanation or note appears beside it.<br>
-The PDF stays as it is, on your computer.
+구절을 고르고 키 하나를 누르면 번역·설명·노트가 원문 옆에 붙습니다.<br>
+PDF는 그대로, 이 컴퓨터 안에 있습니다.
 
-**English** · [한국어](README.ko.md)
+[English](README.en.md) · **한국어**
 
-<img alt="Status: beta" src="https://img.shields.io/badge/status-beta-efc245"> <img alt="macOS on Apple Silicon" src="https://img.shields.io/badge/macOS-Apple%20Silicon-111?logo=apple&logoColor=white"> <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-285644"></a>
+<img alt="상태: 베타" src="https://img.shields.io/badge/status-beta-efc245"> <img alt="macOS Apple Silicon" src="https://img.shields.io/badge/macOS-Apple%20Silicon-111?logo=apple&logoColor=white"> <a href="LICENSE"><img alt="MIT 라이선스" src="https://img.shields.io/badge/license-MIT-285644"></a>
 
 <br>
 
-<img src="docs/media/oh-my-paper-demo.gif" width="860" alt="Selecting a sentence in a paper, pressing T for a translation card beside it, then E for an explanation">
+<img src="docs/media/oh-my-paper-demo.gif" width="860" alt="논문 문장을 선택해 T로 번역 카드를 붙이고 E로 설명을 여는 장면">
 
-<sub><a href="docs/media/oh-my-paper-demo.mp4">Full demo (75 s)</a>, recorded from the app</sub>
+<sub><a href="docs/media/oh-my-paper-demo.mp4">전체 데모 (75초)</a>, 실제 앱에서 녹화</sub>
 
 </div>
 
 > [!NOTE]
-> **oh-my-paper is in beta.** It is under active development, so expect rough edges and changes between updates. The interface and AI answers come in Korean or English: the wizard asks which, and `oh-my-paper language` or the app's settings change it.
+> **oh-my-paper는 베타 버전입니다.** 계속 개발 중이라 거친 부분이 있을 수 있고, 업데이트마다 바뀔 수 있습니다. 화면과 AI 답변은 한국어나 영어로 나옵니다. 마법사에서 고르고, `oh-my-paper language`나 앱 설정에서 바꿀 수 있습니다.
 
-## Install
+## 설치
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.sh | bash
 ```
 
-You need an Apple Silicon Mac, git and Node.js 22 or later (`brew install node`). A setup wizard follows the install:
+Apple Silicon Mac, git, Node.js 22 이상(`brew install node`)이 필요합니다. 설치가 끝나면 설정 마법사가 이어집니다.
 
-1. **Runtime check.** Node.js, plus the ChatGPT sign-in runtime (Codex) and Claude Code used for AI connections.
-2. **Document engine.** PaddleOCR-VL (about 3 GB) starts downloading in the background.
-3. **AI connection.** A ChatGPT subscription, a Claude subscription or an API key.
-4. **Tour.** The keys and first steps, then the app opens.
+1. **실행 환경 확인.** Node.js와, AI 연결에 쓰는 ChatGPT 로그인 런타임(Codex)과 Claude Code를 확인합니다.
+2. **문서 분석 엔진.** PaddleOCR-VL(약 3GB)을 백그라운드로 받기 시작합니다.
+3. **AI 연결.** ChatGPT 구독, Claude 구독, API 키 중 하나를 고릅니다.
+4. **둘러보기.** 단축키와 첫 단계를 보여 주고 앱을 엽니다.
 
-Papers open and read right away while the engine downloads; each one is analysed once the engine is ready.
+엔진을 받는 동안에도 논문은 바로 열어 읽을 수 있고, 엔진이 준비되면 알아서 분석됩니다.
 
-## Reading
+## 읽기
 
 <table>
 <tr>
 <td width="50%" valign="top">
-<img src="docs/media/features/translate.gif" alt="Dragging over a sentence and pressing T to attach a translation card"><br>
-<b>Select, then one key</b><br>
-<kbd>T</kbd> translate · <kbd>E</kbd> explain · <kbd>C</kbd> add to notes · <kbd>H</kbd> highlight. The result stays beside the passage as a card.
+<img src="docs/media/features/translate.gif" alt="문장을 드래그하고 T를 눌러 번역 카드를 붙이는 장면"><br>
+<b>고르고, 키 하나</b><br>
+<kbd>T</kbd> 번역 · <kbd>E</kbd> 설명 · <kbd>C</kbd> 노트에 · <kbd>H</kbd> 하이라이트. 결과는 카드로 원문 옆에 붙습니다.
 </td>
 <td width="50%" valign="top">
-<img src="docs/media/features/page-translation.gif" alt="A translation of the page appearing beside the source page"><br>
-<b>Whole-page translation</b><br>
-A translated page opens beside the original, as the original layout, source, parallel or interleaved text. Click a paragraph to return to it in the PDF.
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-<img src="docs/media/features/explain.gif" alt="Selecting a sentence with an equation and pressing E for an explanation"><br>
-<b>Explanations in context</b><br>
-Select a hard sentence, a figure or an equation and press <kbd>E</kbd>. The explanation draws on the surrounding text.
-</td>
-<td width="50%" valign="top">
-<img src="docs/media/features/note.gif" alt="Writing a note while the supporting paragraph appears beside it"><br>
-<b>Notes in your own words</b><br>
-Each sentence you write is matched to the paragraph that supports it. <kbd>C</kbd> brings a passage in with its citation, and <kbd>N</kbd> opens a note card on any screen.
+<img src="docs/media/features/page-translation.gif" alt="원문 페이지 옆에 번역 페이지가 나타나는 장면"><br>
+<b>페이지 번역</b><br>
+원문 옆에 번역 페이지가 열립니다. 원본 배치, 원문, 대조, 교차 네 가지로 볼 수 있고, 문단을 누르면 PDF의 그 자리로 돌아갑니다.
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
-<img src="docs/media/features/overview.gif" alt="The AI overview panel with keywords and a three-line summary"><br>
-<b>Overview</b><br>
-Keywords, a three-line summary and a full summary, ready when the paper opens. Answers to your questions cite the pages they come from.
+<img src="docs/media/features/explain.gif" alt="수식이 있는 문장을 선택하고 E로 설명을 여는 장면"><br>
+<b>맥락을 읽는 설명</b><br>
+어려운 문장이나 그림, 수식을 고르고 <kbd>E</kbd>를 누르면 앞뒤 맥락을 읽고 풀어 줍니다.
 </td>
 <td width="50%" valign="top">
-<img src="docs/media/features/import.gif" alt="Importing a PDF into the library"><br>
-<b>Library</b><br>
-Drop a PDF in and it opens at once. Title, authors and page structure (figures, tables, equations) are filled in in the background.
+<img src="docs/media/features/note.gif" alt="노트를 쓰는 동안 근거 문단이 옆에 나타나는 장면"><br>
+<b>내 말로 쓰는 노트</b><br>
+쓰는 문장마다 뒷받침하는 문단을 찾아 줍니다. <kbd>C</kbd>는 구절을 출처와 함께 가져오고, <kbd>N</kbd>은 어느 화면에서든 노트 카드를 열어 바로 적게 해 줍니다.
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+<img src="docs/media/features/overview.gif" alt="키워드와 3줄 요약이 있는 AI 개요 패널"><br>
+<b>개요</b><br>
+키워드, 3줄 요약, 전체 요약이 논문을 열 때 준비돼 있습니다. 질문에 대한 답은 근거 페이지와 함께 나옵니다.
+</td>
+<td width="50%" valign="top">
+<img src="docs/media/features/import.gif" alt="라이브러리로 PDF를 가져오는 장면"><br>
+<b>라이브러리</b><br>
+PDF를 끌어다 놓으면 바로 열립니다. 제목, 저자, 페이지 구조(그림·표·수식)는 뒤에서 채워집니다.
 </td>
 </tr>
 </table>
 
-The **?** button in the app plays these clips.
+앱의 **?** 버튼을 누르면 이 영상들을 볼 수 있습니다.
 
-## Principles
+## 원칙
 
-- The PDF is never flattened into text. Translations, explanations and notes sit over the original pages.
-- Every card and note stays linked to the passage it came from.
-- Documents stay on your computer. AI requests go out only when you ask, and only to the provider you connected.
-- A ChatGPT or Claude subscription works without an API key.
+- PDF를 텍스트로 뭉개지 않습니다. 번역·설명·노트는 원래 페이지 위에 얹힙니다.
+- 모든 카드와 노트는 나온 구절과 연결돼 있습니다.
+- 문서는 이 컴퓨터에 남습니다. AI 요청은 직접 요청할 때만, 연결한 서비스로만 나갑니다.
+- ChatGPT나 Claude 구독이 있으면 API 키 없이 쓸 수 있습니다.
 
-## AI providers
+## AI 연결
 
-| Mode | What you need | Default model |
+| 방식 | 필요한 것 | 기본 모델 |
 |:--|:--|:--|
-| ChatGPT subscription | Your ChatGPT sign-in (in the browser, or a device code) | GPT-6 Luna, when your account offers it |
-| Claude subscription | The Claude Code login on this computer; for personal use on your own machine only | Claude Haiku 4.5 |
-| API key | A key for OpenRouter, OpenAI, Gemini or Groq | The provider's default |
+| ChatGPT 구독 | ChatGPT 로그인 (브라우저 또는 기기 코드) | GPT-6 Luna (계정에서 쓸 수 있을 때) |
+| Claude 구독 | 이 컴퓨터의 Claude Code 로그인, 본인 컴퓨터에서 개인용으로만 | Claude Haiku 4.5 |
+| API 키 | OpenRouter, OpenAI, Gemini, Groq 중 하나의 키 | 서비스 기본값 |
 
-Models are listed from your account, so new ones appear without an app update. You can switch at any time in the app's AI settings.
+모델 목록은 계정에서 받아 오기 때문에 새 모델은 앱 업데이트 없이 보입니다. 앱의 AI 설정에서 언제든 바꿀 수 있습니다.
 
-## Document engine
+## 문서 분석 엔진
 
-Scanned PDFs, figures, tables and equations are read on your computer by PaddleOCR-VL 1.6, accelerated with MLX on Apple Silicon.
+스캔 PDF와 그림·표·수식은 PaddleOCR-VL 1.6이 이 컴퓨터에서 읽습니다. Apple Silicon에서는 MLX로 가속합니다.
 
-- The wizard installs it; progress shows in the app's settings and in `oh-my-paper doctor`.
-- It turns itself on when ready, without a restart.
-- If it is missing, `oh-my-paper update` and starting the app install it, unless you declined it in the wizard.
-- To install it by hand, run `npm run setup:paddle-vl`. It installs [uv](https://docs.astral.sh/uv/) and Python 3.12 as needed.
+- 마법사가 설치하고, 진행 상황은 앱 설정과 `oh-my-paper doctor`에 나옵니다.
+- 준비되면 다시 시작하지 않아도 알아서 켜집니다.
+- 엔진이 없으면 `oh-my-paper update` 뒤나 앱을 켤 때 설치를 시작합니다. 마법사에서 설치하지 않겠다고 고른 경우는 제외합니다.
+- 직접 설치하려면 `npm run setup:paddle-vl`을 실행하세요. 필요하면 [uv](https://docs.astral.sh/uv/)와 Python 3.12도 함께 설치합니다.
 
-## Commands
+## 명령어
 
-| Command | What it does |
+| 명령 | 하는 일 |
 |:--|:--|
-| `oh-my-paper` | Start the app and open the browser (the wizard first if no AI is connected) |
-| `oh-my-paper onboard` | Run the setup wizard again |
-| `oh-my-paper doctor` | Check the runtime, sign-ins, models, engine and data folder |
-| `oh-my-paper update` | Update to the latest version and rebuild |
-| `oh-my-paper language` | Switch between Korean and English, in the terminal and the app |
-| `oh-my-paper start --no-open` | Start without opening a browser |
+| `oh-my-paper` | 앱을 켜고 브라우저를 엽니다 (AI 연결이 없으면 마법사부터) |
+| `oh-my-paper onboard` | 설정 마법사를 다시 실행합니다 |
+| `oh-my-paper doctor` | 실행 환경, 로그인, 모델, 엔진, 데이터 폴더를 점검합니다 |
+| `oh-my-paper update` | 최신 버전으로 업데이트하고 다시 빌드합니다 |
+| `oh-my-paper language` | 터미널과 앱의 언어를 한국어와 영어 중에서 바꿉니다 |
+| `oh-my-paper start --no-open` | 브라우저를 열지 않고 켭니다 |
 
-The app runs at `http://127.0.0.1:8788` and keeps its data in `~/.ohmypaper`.
+앱은 `http://127.0.0.1:8788`에서 돌고, 데이터는 `~/.ohmypaper`에 있습니다.
 
-## Privacy
+## 개인정보
 
-| What | Where |
+| 무엇 | 어디에 |
 |:--|:--|
-| PDFs, library, notes, highlights and cards | Your computer |
-| Page analysis (PDF.js and PaddleOCR-VL) | Your computer |
-| Translation, explanation and summary requests | The AI provider you connected, only when you ask |
+| PDF, 라이브러리, 노트, 하이라이트, 카드 | 이 컴퓨터 |
+| 페이지 분석 (PDF.js, PaddleOCR-VL) | 이 컴퓨터 |
+| 번역·설명·요약 요청 | 연결한 AI 서비스, 직접 요청할 때만 |
 
-Opening a PDF sends it nowhere. API keys are stored encrypted and go only to the provider they belong to. Subscriptions and APIs have their own costs and limits.
+PDF를 열어도 어디로도 보내지 않습니다. API 키는 암호화해 저장하고, 해당 서비스로만 보냅니다. 구독과 API에는 각자의 비용과 한도가 있습니다.
 
-## Development
+## 개발
 
 <details>
-<summary>Run from source</summary>
+<summary>소스에서 실행</summary>
 
-Requires Node.js 22+ and npm, on macOS or Windows.
+Node.js 22 이상과 npm이 필요합니다. macOS와 Windows에서 동작합니다.
 
 ```bash
 git clone https://github.com/heonyus/oh-my-paper.git
 cd oh-my-paper
 npm ci
 npm run build:web
-npm run cli          # same as the oh-my-paper command
+npm run cli          # oh-my-paper 명령과 같습니다
 ```
 
-`npm run start:web` also starts the app and `npm run setup` reruns the wizard. Optional local runtimes:
+`npm run start:web`으로도 앱을 켤 수 있고, `npm run setup`은 마법사를 다시 실행합니다. 선택 사항인 로컬 런타임:
 
 ```bash
-npm run setup:paddle-vl   # PaddleOCR-VL, plus an MLX-VLM server on Apple Silicon
+npm run setup:paddle-vl   # PaddleOCR-VL (Apple Silicon에서는 MLX-VLM 서버 포함)
 npm run setup:layout
 npm run setup:mineru
 ```
@@ -157,42 +157,42 @@ npm run setup:mineru
 </details>
 
 <details>
-<summary>GPU acceleration on Windows with NVIDIA</summary>
+<summary>Windows + NVIDIA GPU 가속</summary>
 
-`npm run setup:paddle-vl` also installs a vLLM server inside WSL (an Ubuntu distribution with uv); `npm run setup:paddle-vllm` reinstalls just that part. It takes about 13 GB inside WSL and about 4.6 GB of GPU memory during analysis, and recognizes a page in about 2 seconds on an RTX 3060 Ti. The app starts the server when needed and stops it after ten idle minutes.
+`npm run setup:paddle-vl`이 WSL(uv가 있는 Ubuntu) 안에 vLLM 서버도 설치하고, `npm run setup:paddle-vllm`은 그 부분만 다시 설치합니다. WSL 안에서 약 13GB, 분석 중 GPU 메모리 약 4.6GB를 쓰고, RTX 3060 Ti 기준 한 페이지를 약 2초에 읽습니다. 앱이 필요할 때 서버를 켜고, 10분 동안 쓰지 않으면 끕니다.
 
 </details>
 
 <details>
-<summary>Desktop app (Electron)</summary>
+<summary>데스크톱 앱 (Electron)</summary>
 
 ```bash
 npm run build
 npm run dev
 ```
 
-Rebuild after changing the main or preload code. Account setup for the desktop app is described in [docs/account-service.md](docs/account-service.md).
+main이나 preload 코드를 바꾸면 다시 빌드하세요. 데스크톱 앱의 계정 설정은 [docs/account-service.md](docs/account-service.md)에 있습니다.
 
 </details>
 
 <details>
-<summary>Checks and contributing</summary>
+<summary>점검과 기여</summary>
 
 ```bash
 npm run verify
 npm run build
 ```
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and report security issues privately as described in [SECURITY.md](SECURITY.md).
+PR을 열기 전에 [CONTRIBUTING.md](CONTRIBUTING.md)를 읽어 주세요. 보안 문제는 [SECURITY.md](SECURITY.md)에 적힌 대로 비공개로 알려 주세요.
 
 </details>
 
-## Status
+## 상태
 
-oh-my-paper is in beta and supports Apple Silicon Macs. Packaging, code signing and the oldest supported macOS version are not settled yet; see [release readiness](docs/release-readiness.md) and [Mac packaging](docs/mac-release.md).
+oh-my-paper는 베타이며 Apple Silicon Mac을 지원합니다. 패키징, 코드 서명, 지원하는 가장 오래된 macOS 버전은 아직 정해지지 않았습니다. [릴리스 준비 상태](docs/release-readiness.md)와 [Mac 패키징](docs/mac-release.md)을 참고하세요.
 
-Contributions are welcome, especially reproducible synthetic PDF fixtures, local parser improvements, accessibility fixes and packaging checks.
+기여를 환영합니다. 특히 재현 가능한 합성 PDF 예제, 로컬 파서 개선, 접근성 수정, 패키징 점검이 도움이 됩니다.
 
 ---
 
-<sub>[MIT](LICENSE) · Demo paper: Wei et al., "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models", [arXiv:2201.11903](https://arxiv.org/abs/2201.11903), CC BY 4.0</sub>
+<sub>[MIT](LICENSE) · 데모 논문: Wei et al., "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models", [arXiv:2201.11903](https://arxiv.org/abs/2201.11903), CC BY 4.0</sub>
