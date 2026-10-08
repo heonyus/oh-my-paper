@@ -103,7 +103,7 @@ describe("browser Claude subscription AI service", () => {
 
     const result = await service.run(request)
 
-    expect(result).toEqual({ text: "claude answer", model: "claude-haiku-4-5" })
+    expect(result).toEqual({ text: "claude answer", model: "claude-haiku-5-5" })
     const params = completion.mock.calls[0]?.[0]
     expect(params?.systemPrompt).toBe(systemPromptFor("figure"))
     expect(params?.prompt).toContain("What does this show?")

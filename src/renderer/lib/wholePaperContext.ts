@@ -20,8 +20,8 @@ export function usesWholePaper(action: AiRequest["action"]): boolean {
 }
 
 /**
- * Characters of paper text sent with each whole-paper request. Claude Sonnet and Opus take
- * a 1M-token context through the subscription, Haiku 200K; API keys are billed and
+ * Characters of paper text sent with each whole-paper request. Claude Sonnet, Opus and Haiku 5.5 take
+ * a 1M-token context through the subscription, Haiku 4.x 200K; API keys are billed and
  * rate-limited per token, so they get a bounded excerpt of the paper in reading order.
  */
 export function wholePaperCharacterBudget(

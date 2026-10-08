@@ -29,9 +29,9 @@ const newPaper = paper("bbbbbbbbbbbbbbbb", "2026-09-30T08:00:00.000Z")
 const ready: ProviderStatus = {
   configured: true,
   provider: "anthropic",
-  model: "claude-haiku-4-5",
+  model: "claude-haiku-5-5",
   mode: "claude",
-  claudeModel: "claude-haiku-4-5",
+  claudeModel: "claude-haiku-5-5",
 }
 
 function library(documents: readonly ReturnType<typeof paper>[]): Workspace {

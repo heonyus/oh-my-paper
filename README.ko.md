@@ -94,7 +94,7 @@ PDF를 끌어다 놓으면 바로 열립니다. 제목, 저자, 페이지 구조
 | 방식 | 필요한 것 | 기본 모델 |
 |:--|:--|:--|
 | ChatGPT 구독 | ChatGPT 로그인 (브라우저 또는 기기 코드) | GPT-6 Luna (계정에서 쓸 수 있을 때) |
-| Claude 구독 | 이 컴퓨터의 Claude Code 로그인, 본인 컴퓨터에서 개인용으로만 | Claude Haiku 4.5 |
+| Claude 구독 | 이 컴퓨터의 Claude Code 로그인, 본인 컴퓨터에서 개인용으로만 | Claude Haiku 5.5 |
 | API 키 | OpenRouter, OpenAI, Gemini, Groq 중 하나의 키 | 서비스 기본값 |
 
 모델 목록은 계정에서 받아 오기 때문에 새 모델은 앱 업데이트 없이 보입니다. 앱의 AI 설정에서 언제든 바꿀 수 있습니다.

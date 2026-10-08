@@ -138,10 +138,10 @@ describe("PageTranslationCacheService", () => {
     try {
       await service.write({ ...page, model: "claude-sonnet-5", blocks: [block("오래된 번역")] })
       await service.write({ ...page, model: "claude-sonnet-5-5", blocks: [block("최근 번역")] })
-      await service.write({ ...page, model: "claude-haiku-4-5", blocks: [block("하이쿠 번역")] })
+      await service.write({ ...page, model: "claude-haiku-5-5", blocks: [block("하이쿠 번역")] })
       await date("claude-sonnet-5", 1_000)
       await date("claude-sonnet-5-5", 2_000)
-      await date("claude-haiku-4-5", 500)
+      await date("claude-haiku-5-5", 500)
       const earlier = (model: string) =>
         service.read({ id, pageNumber: 1, targetLanguage: "ko", provider: "anthropic", model })
 
@@ -153,7 +153,7 @@ describe("PageTranslationCacheService", () => {
         "하이쿠 번역",
       ])
       // The current model's own translation comes first, however old.
-      const own = await earlier("claude-haiku-4-5")
+      const own = await earlier("claude-haiku-5-5")
       expect(own.status === "ready" && own.blocks[0]?.translation).toBe("하이쿠 번역")
       // An exact read still answers only for the model that wrote it.
       expect(await service.read({ ...page, model: "claude-opus-5-5" })).toEqual({
@@ -166,9 +166,9 @@ describe("PageTranslationCacheService", () => {
         pageNumber: 1,
         targetLanguage: "ko",
         provider: "anthropic",
-        model: "claude-haiku-4-5",
+        model: "claude-haiku-5-5",
       })
-      expect(await earlier("claude-haiku-4-5")).toEqual({ status: "missing" })
+      expect(await earlier("claude-haiku-5-5")).toEqual({ status: "missing" })
     } finally {
       await rm(root, { recursive: true, force: true })
     }
