@@ -1,4 +1,16 @@
+/* The board world scales with the PDF zoom, so text tokens inside a card are divided back
+   by `--board-zoom`: card text then reads at the same size as the sidebar at any zoom. */
+.board-world {
+  --board-type-title-size: var(--type-title-size);
+  --board-type-body-size: var(--type-body-size);
+  --board-type-compact-size: var(--type-compact-size);
+  --board-type-toolbar-size: var(--type-toolbar-size);
+}
 .board-card {
+  --type-title-size: calc(var(--board-type-title-size) / var(--board-zoom, 1));
+  --type-body-size: calc(var(--board-type-body-size) / var(--board-zoom, 1));
+  --type-compact-size: calc(var(--board-type-compact-size) / var(--board-zoom, 1));
+  --type-toolbar-size: calc(var(--board-type-toolbar-size) / var(--board-zoom, 1));
   position: absolute;
   z-index: 4;
   width: 300px;
@@ -144,6 +156,8 @@
   padding: 10px 12px;
   border-radius: 8px;
   background: var(--surface-muted);
+  font-size: var(--type-toolbar-size);
+  line-height: 1.62;
 }
 .card-chat-history article[data-role="user"] {
   margin-left: 20px;
@@ -159,6 +173,10 @@
 .board-card .markdown-content {
   overflow-wrap: break-word;
   word-break: keep-all;
+}
+/* The shared h2 rule subtracts 2px from the title size; that step shrinks with the zoom too. */
+.board-card .markdown-content h2 {
+  font-size: calc(var(--type-title-size) - 2px / var(--board-zoom, 1));
 }
 .post-it-preview {
   width: 100%;
