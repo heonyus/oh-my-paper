@@ -8,7 +8,7 @@ import {
   parsedDocumentPage,
   subscribeParsedDocumentPages,
 } from "./documentPageRuntime"
-import { announcePageRendered } from "./pageRenderEvents"
+import { announcePageRendered, announceTextLayerRendered } from "./pageRenderEvents"
 import { parsedPageStructures } from "./parsedPageStructures"
 import type { PdfAstRuntimeSession } from "./pdfAstRuntimeSession"
 import type { PdfOutlineEntry } from "./pdfOutline"
@@ -141,6 +141,7 @@ export function bindViewerEventBridge(params: EventBridgeParams): {
     params.astRuntime.bind(pageNumber)
     params.getRetrievalSession()?.applyToRenderedPage(pageNumber, pageDiv)
     loadPreparedPage(pageNumber, pageDiv)
+    announceTextLayerRendered(pageNumber)
   }
 
   const handlePageRendered = ({ pageNumber }: { readonly pageNumber: number }): void => {
