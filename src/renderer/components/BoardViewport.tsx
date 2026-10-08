@@ -1,4 +1,5 @@
 import {
+  type CSSProperties,
   type JSX,
   type PointerEvent as ReactPointerEvent,
   useCallback,
@@ -45,6 +46,20 @@ type TranslationHover = {
   /** The line the pointer came in on, and where along it, in board coordinates. */
   readonly line: SourceFragment
   readonly x: number
+}
+
+type BoardWorldStyle = CSSProperties & { readonly "--board-zoom": number }
+
+/** Cards counter-scale their text by `--board-zoom` so it reads at the same size as the sidebar. */
+function boardWorldStyle(viewport: {
+  readonly x: number
+  readonly y: number
+  readonly zoom: number
+}): BoardWorldStyle {
+  return {
+    transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+    "--board-zoom": viewport.zoom,
+  }
 }
 
 export function BoardViewport(props: BoardViewportProps): JSX.Element {
@@ -405,13 +420,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
         onPageJump={handlePageJump}
         onStructureTrigger={handleStructureTrigger}
       />
-      <div
-        ref={worldRef}
-        className="board-world"
-        style={{
-          transform: `translate(${displayViewport.x}px, ${displayViewport.y}px) scale(${displayViewport.zoom})`,
-        }}
-      >
+      <div ref={worldRef} className="board-world" style={boardWorldStyle(displayViewport)}>
         <BoardOverlays.ConnectorLayer
           cards={activeCards.filter((card) => card.kind !== "sticky" && !drawnOnPassage(card))}
         />

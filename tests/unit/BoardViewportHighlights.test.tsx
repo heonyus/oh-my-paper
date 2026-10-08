@@ -44,7 +44,7 @@ const highlight = boardCardSchema.parse({
   },
 })
 
-function renderBoard(cards: readonly BoardCard[]) {
+function renderBoard(cards: readonly BoardCard[], zoom = 1) {
   const onCardsChange = vi.fn()
   const props: BoardViewportProps = {
     document: documentRecordSchema.parse({
@@ -60,7 +60,7 @@ function renderBoard(cards: readonly BoardCard[]) {
       doi: null,
       quality: { textCharacters: 100, needsOcr: false, warnings: [] },
     }),
-    viewport: { x: 0, y: 0, zoom: 1 },
+    viewport: { x: 0, y: 0, zoom },
     cards,
     onViewportChange: vi.fn(),
     onCardsChange,
@@ -234,5 +234,14 @@ describe("board translations", () => {
     expect(container.querySelector(".translation-mark")).toHaveAttribute("data-loading")
     fireEvent.pointerMove(viewport, { clientX: 150, clientY: 308, buttons: 0 })
     expect(screen.getByRole("status")).toHaveTextContent("번역하는 중…")
+  })
+})
+
+describe("board world zoom", () => {
+  it("exposes the zoom to cards so their text can read at sidebar size", () => {
+    const { container } = renderBoard([highlight], 1.57)
+    const world = container.querySelector<HTMLElement>(".board-world")
+    expect(world?.style.getPropertyValue("--board-zoom")).toBe("1.57")
+    expect(world?.style.transform).toContain("scale(1.57)")
   })
 })
