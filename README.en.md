@@ -94,7 +94,7 @@ The **?** button in the app plays these clips.
 | Mode | What you need | Default model |
 |:--|:--|:--|
 | ChatGPT subscription | Your ChatGPT sign-in (in the browser, or a device code) | GPT-6 Luna, when your account offers it |
-| Claude subscription | The Claude Code login on this computer; for personal use on your own machine only | Claude Haiku 4.5 |
+| Claude subscription | The Claude Code login on this computer; for personal use on your own machine only | Claude Haiku 5.5 |
 | API key | A key for OpenRouter, OpenAI, Gemini or Groq | The provider's default |
 
 Models are listed from your account, so new ones appear without an app update. You can switch at any time in the app's AI settings.

@@ -75,7 +75,7 @@ describe("AI answer language", () => {
 
   it("keys page translations by the app's language", () => {
     const documentId = documentIdSchema.parse("aabbccddeeff0011")
-    const provider = { configured: true, provider: "anthropic", model: "claude-haiku-4-5" } as const
+    const provider = { configured: true, provider: "anthropic", model: "claude-haiku-5-5" } as const
     render(<LocaleProvider initialPreference="en">x</LocaleProvider>)
     expect(currentLocale()).toBe("en")
     expect(pageTranslationCacheIdentity(documentId, 3, provider)).toContain(":3:en:")

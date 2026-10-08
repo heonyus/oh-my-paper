@@ -99,6 +99,17 @@ const ko = {
   "search.keyEnter": "Enter 원문 열기",
   "search.keyEsc": "Esc 닫기",
 
+  // ⌘F: plain text find
+  "find.dialog": "문서에서 찾기",
+  "find.input": "찾을 글자",
+  "find.placeholder": "글자 찾기",
+  "find.count": "{current} / {total}",
+  "find.none": "없음",
+  "find.pending": "찾는 중…",
+  "find.previous": "이전 결과",
+  "find.next": "다음 결과",
+  "find.close": "찾기 닫기",
+
   // Images attached to a chat question
   "image.notImage": "이미지 파일만 첨부할 수 있습니다",
   "image.tooLargeFile": "20MB 이하 이미지만 첨부할 수 있습니다",
@@ -215,6 +226,16 @@ const en: Readonly<Record<keyof typeof ko, string>> = {
   "search.keyTab": "Tab next result",
   "search.keyEnter": "Enter open source",
   "search.keyEsc": "Esc close",
+
+  "find.dialog": "Find in document",
+  "find.input": "Text to find",
+  "find.placeholder": "Find text",
+  "find.count": "{current} / {total}",
+  "find.none": "None",
+  "find.pending": "Finding…",
+  "find.previous": "Previous match",
+  "find.next": "Next match",
+  "find.close": "Close find",
 
   "image.notImage": "Only image files can be attached",
   "image.tooLargeFile": "Images must be 20 MB or smaller",

@@ -23,7 +23,7 @@ function tableRows(source: string): readonly (readonly string[])[] {
 
 function TableContent({ source }: { readonly source: string }): JSX.Element {
   const rows = tableRows(source)
-  if (rows.length === 0) return <MarkdownContent source={source} />
+  if (rows.length === 0) return <MarkdownContent source={source} citationMarkers />
   const [header, ...body] = rows
   return (
     <div className="page-translation-table-wrap">
@@ -82,7 +82,7 @@ export const PageTranslationBlock = memo(function PageTranslationBlock({
     block.structureKind === "table" ? (
       <TableContent source={text} />
     ) : (
-      <MarkdownContent source={text} />
+      <MarkdownContent source={text} citationMarkers />
     )
   const figure =
     block.structureKind === "figure" ? <PageTranslationFigure block={block} page={page} /> : null
@@ -129,6 +129,8 @@ export const PageTranslationBlock = memo(function PageTranslationBlock({
       onBlur={() => setActive(false)}
       onClick={(event) => {
         if (event.target instanceof HTMLAnchorElement) return
+        // The click that ends a text selection is the selection, not a jump to the source.
+        if (!(window.getSelection()?.isCollapsed ?? true)) return
         focusSource()
       }}
       onKeyDown={(event) => {

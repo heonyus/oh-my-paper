@@ -79,7 +79,7 @@ shipped to other users.
   button because it would sign the user out of Claude Code everywhere.
 - Each request is one headless turn: `-p` with stream-json input/output, `--tools ""`,
   `--safe-mode` (no CLAUDE.md, plugins, hooks or MCP), `--no-session-persistence`, the
-  action's system prompt, and the selected model and effort (effort is omitted for Haiku).
+  action's system prompt, and the selected model and effort (effort is omitted for Haiku 4.x).
   Images travel as base64 content blocks, never inside the prompt text.
 - The child environment is an allowlist (`PATH`, `HOME`, locale, `TMPDIR`,
   `CLAUDE_CONFIG_DIR`). `ANTHROPIC_API_KEY`, auth tokens and base-URL overrides are never

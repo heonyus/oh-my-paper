@@ -132,16 +132,16 @@ describe("WebOnboarding", () => {
     }
   })
 
-  it("connects an existing Claude Code login with Haiku 4.5", async () => {
+  it("connects an existing Claude Code login with Haiku 5.5", async () => {
     installClaudeApi()
     render(<WebOnboarding status={{ ...providerStatusProp }} onDone={vi.fn()} />)
 
-    fireEvent.click(screen.getByRole("button", { name: /Claude 구독.*Haiku 4\.5/ }))
+    fireEvent.click(screen.getByRole("button", { name: /Claude 구독.*Haiku 5\.5/ }))
 
     await waitFor(() =>
       expect(mocks.saveAiMode).toHaveBeenCalledWith({
         mode: "claude",
-        claudeModel: "claude-haiku-4-5",
+        claudeModel: "claude-haiku-5-5",
         claudeEffort: "medium",
       }),
     )

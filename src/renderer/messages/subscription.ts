@@ -63,7 +63,7 @@ const ko = {
   "sub.claude.modelDetail": "번역, 해설, 질의응답, 요약에 사용됩니다.",
   "sub.claude.effort": "추론 수준 (Effort)",
   "sub.claude.effortLabel": "Claude 추론 수준",
-  "sub.claude.effortDetail": "높을수록 느리지만 더 깊이 검토합니다. Haiku에는 적용되지 않습니다.",
+  "sub.claude.effortDetail": "높을수록 느리지만 더 깊이 검토합니다. Haiku 4.x에는 적용되지 않습니다.",
   "sub.claude.cliMissing": "Claude Code CLI를 찾지 못했습니다. 설치한 뒤 상태를 새로고침하세요.",
   "sub.claude.signIn": "Claude로 로그인",
   "sub.claude.notCompleted": "로그인이 완료되지 않았습니다",
@@ -128,7 +128,7 @@ const en: Readonly<Record<keyof typeof ko, string>> = {
   "sub.claude.modelDetail": "Used for translations, explanations, questions and summaries.",
   "sub.claude.effort": "Reasoning effort (Effort)",
   "sub.claude.effortLabel": "Claude reasoning effort",
-  "sub.claude.effortDetail": "Higher is slower but more thorough. Does not apply to Haiku.",
+  "sub.claude.effortDetail": "Higher is slower but more thorough. Does not apply to Haiku 4.x.",
   "sub.claude.cliMissing":
     "The Claude Code CLI was not found. Install it, then refresh the status.",
   "sub.claude.signIn": "Sign in with Claude",

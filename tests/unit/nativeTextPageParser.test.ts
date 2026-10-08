@@ -53,6 +53,73 @@ describe("nativeTextPageParser", () => {
     }
   })
 
+  it("writes citation superscripts as bracketed markers on the word they follow", () => {
+    const sourceHash = sha256Schema.parse("c".repeat(64))
+    const ast = buildSourceDocumentAst(sourceHash, [
+      {
+        page: 1,
+        width: 600,
+        height: 800,
+        items: [
+          {
+            str: "lead to task fixation",
+            dir: "ltr",
+            transform: [10, 0, 0, 10, 50, 700],
+            width: 100,
+            height: 10,
+            fontName: "Helvetica",
+            hasEOL: false,
+          },
+          {
+            str: "1",
+            dir: "ltr",
+            transform: [6, 0, 0, 6, 151, 704],
+            width: 3,
+            height: 6,
+            fontName: "Helvetica",
+            hasEOL: false,
+          },
+          {
+            str: ". This increases the risk",
+            dir: "ltr",
+            transform: [10, 0, 0, 10, 155, 700],
+            width: 120,
+            height: 10,
+            fontName: "Helvetica",
+            hasEOL: false,
+          },
+          {
+            str: "2,3",
+            dir: "ltr",
+            transform: [6, 0, 0, 6, 276, 704],
+            width: 8,
+            height: 6,
+            fontName: "Helvetica",
+            hasEOL: false,
+          },
+          {
+            str: ".",
+            dir: "ltr",
+            transform: [10, 0, 0, 10, 285, 700],
+            width: 3,
+            height: 10,
+            fontName: "Helvetica",
+            hasEOL: true,
+          },
+        ],
+      },
+    ])
+
+    const result = buildNativeParsedPage({ ast, pageNumber: 1, sourceHash })
+
+    expect(result?.status).toBe("ready")
+    if (result?.status === "ready") {
+      expect(result.page.blocks.map((block) => block.content)).toEqual([
+        "lead to task fixation[1]. This increases the risk[2,3].",
+      ])
+    }
+  })
+
   it("limits caption continuation and keeps later Table references as body text", () => {
     const sourceHash = sha256Schema.parse("e".repeat(64))
     const ast = buildSourceDocumentAst(sourceHash, [

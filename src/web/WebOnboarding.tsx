@@ -54,7 +54,7 @@ const DEFAULT_API_PROVIDER = API_PROVIDERS[0] ?? {
 
 const DEFAULT_CODEX_EFFORT = "medium"
 
-/** "Claude Haiku 4.5 (기본)" → "Haiku 4.5", so the choice names the model it will use. */
+/** "Claude Haiku 5.5 (기본)" → "Haiku 5.5", so the choice names the model it will use. */
 const CLAUDE_DEFAULT_LABEL = (
   CLAUDE_MODEL_OPTIONS.find((option) => option.id === DEFAULT_CLAUDE_MODEL)?.label ??
   DEFAULT_CLAUDE_MODEL
