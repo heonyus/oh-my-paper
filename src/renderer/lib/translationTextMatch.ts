@@ -99,21 +99,51 @@ export function textOwners(roots: readonly Node[]): readonly Owner[] {
   return owners
 }
 
-/** The range of `owners` spelling `needle` (a canonical text), or null when it is not there. */
-export function rangeOfOwners(owners: readonly Owner[], needle: string): Range | null {
-  if (needle.length === 0) return null
-  const start = owners
-    .map((owner) => owner.character)
-    .join("")
-    .indexOf(needle)
-  if (start < 0) return null
+/** Opening and closing letters a sentence is anchored by when its middle reads differently. */
+const anchorLengths = [24, 16, 10] as const
+
+function ownersText(owners: readonly Owner[]): string {
+  return owners.map((owner) => owner.character).join("")
+}
+
+function rangeBetween(owners: readonly Owner[], start: number, end: number): Range | null {
   const first = owners[start]
-  const last = owners[start + needle.length - 1]
+  const last = owners[end - 1]
   if (!first || !last) return null
   const range = document.createRange()
   range.setStart(first.node, first.offset)
   range.setEnd(last.node, last.offset + last.length)
   return range
+}
+
+/** The range of `owners` spelling `needle` (a canonical text), or null when it is not there. */
+export function rangeOfOwners(owners: readonly Owner[], needle: string): Range | null {
+  if (needle.length === 0) return null
+  const start = ownersText(owners).indexOf(needle)
+  return start < 0 ? null : rangeBetween(owners, start, start + needle.length)
+}
+
+/**
+ * The range of `owners` that `needle` spells, or most likely spells when it is not there
+ * letter for letter (a formula the text layer sets differently, a ligature): anchored on its
+ * opening letters and on its closing letters after them, the longest of each that match, and
+ * sized by the needle where only one end does.
+ */
+export function anchoredRangeOfOwners(owners: readonly Owner[], needle: string): Range | null {
+  const exact = rangeOfOwners(owners, needle)
+  if (exact) return exact
+  const text = ownersText(owners)
+  for (const length of anchorLengths) {
+    if (needle.length < length) continue
+    const head = text.indexOf(needle.slice(0, length))
+    const tailFrom = head >= 0 ? head + length : 0
+    const tail = text.indexOf(needle.slice(-length), tailFrom)
+    if (head < 0 && tail < 0) continue
+    const start = head >= 0 ? head : Math.max(0, tail + length - needle.length)
+    const end = tail >= 0 ? tail + length : Math.min(text.length, head + needle.length)
+    if (end > start) return rangeBetween(owners, start, end)
+  }
+  return null
 }
 
 /** Where `needle` (a canonical text) is written under `root`. */

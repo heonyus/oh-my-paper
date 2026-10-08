@@ -163,6 +163,71 @@ describe("selecting in the translation pane", () => {
     ])
   })
 
+  it("finds the lines of a sentence no span was mapped to, not the box drawn for it", () => {
+    const { world, page, pane, results } = fixture()
+    // The imputation sentence: its formula reads differently in the text layer, so binding
+    // mapped no span to it and drew its paragraph's box instead.
+    const textLayer = page.querySelector(".textLayer")
+    const lines = [
+      "Patient-centered adaptive time series imputation. Values were",
+      "imputed within (m",
+      "i",
+      ", iqr",
+      "i",
+      ") of the first measurement, as in",
+      "Table 4. The rest of the paragraph follows for several more lines.",
+    ]
+    const spans = lines.map((text) => {
+      const span = document.createElement("span")
+      span.textContent = text
+      textLayer?.append(span)
+      return span
+    })
+    for (const [index, span] of spans.entries())
+      setBox(span, {
+        left: 340 + (index > 0 && index < 6 ? 60 * (index - 1) : 0),
+        top: index === 0 ? 400 : index < 6 ? 414 : 428,
+        width: index === 0 || index === 6 ? 300 : 60,
+        height: 12,
+      })
+    const host = document.createElement("div")
+    host.className = "paper-structure-host"
+    host.innerHTML = `<div data-page-number="1"><div class="page-translation-source-bound" data-page-translation-block="p1-b4"></div></div>`
+    const bound = host.querySelector(".page-translation-source-bound")
+    if (!bound) throw new Error("fixture")
+    setBox(bound, { left: 330, top: 390, width: 320, height: 60 })
+    document.body.append(host)
+    const formula: PageTranslationBlock = {
+      id: "p1-b4",
+      kind: "body",
+      source:
+        "Values were imputed within $(\\mathrm{m}_i, \\mathrm{iqr}_i)$ of the first measurement, as in Table 4.",
+      translation: "값은 첫 측정값의 범위 안에서 보간했다.",
+    }
+    pane.insertAdjacentHTML(
+      "beforeend",
+      `<article data-block-ids="p1-b4"><div class="page-translation-result"><p>값은 첫 측정값의 범위 안에서 보간했다.</p></div></article>`,
+    )
+    const result = pane.querySelectorAll<HTMLElement>(".page-translation-result p")[2]
+    const text = result?.firstChild
+    if (!result || !text) throw new Error("fixture")
+    setBox(result, { left: 916, top: 200, width: 320, height: 48 })
+
+    const selection = captureTranslationSelection({
+      paneElement: pane,
+      pageElement: page,
+      boardWorldElement: world,
+      range: rangeIn(text, 0, text, 5),
+      blocks: [...blocks, formula],
+    })
+
+    expect(selection?.quote).toBe(formula.source)
+    // One rect per line from "Values were" to "Table 4", never the 60px-tall paragraph box.
+    expect(selection?.fragments.map((fragment) => fragment.y)).toEqual([400, 414, 428])
+    expect(selection?.fragments.every((fragment) => fragment.height === 12)).toBe(true)
+    expect(results).toHaveLength(2)
+  })
+
   it("is nothing when the pane holds no translation units yet", () => {
     const { world, page, pane, results } = fixture()
     const text = results[0]?.firstChild

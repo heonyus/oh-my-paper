@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest"
 import {
+  anchoredRangeOfOwners,
   canonicalText,
   coveredBlocks,
   plainSource,
   quoteCoversText,
+  rangeOfOwners,
+  textOwners,
   textRangeIn,
   textWithin,
 } from "../../src/renderer/lib/translationTextMatch"
@@ -94,5 +97,39 @@ describe("text ranges", () => {
     range.setEnd(b.firstChild, 6)
     expect(textWithin(range, a)).toBe("part")
     expect(textWithin(range, b)).toBe("second")
+  })
+})
+
+describe("anchored ranges", () => {
+  function ownersOf(html: string) {
+    const root = document.createElement("div")
+    root.innerHTML = html
+    return { root, owners: textOwners([root]) }
+  }
+
+  it("spans from a sentence's opening letters to its closing ones when its middle differs", () => {
+    const { owners } = ownersOf(
+      "<span>Values were imputed for all variables </span><span>within (m</span><span>i</span><span>, iqr</span><span>i</span><span>) of the first measurement, as in </span><span>Table 4.</span>",
+    )
+    const needle = canonicalText(
+      "Values were imputed for all variables within $(\\mathrm{m}_i, \\mathrm{iqr}_i)$ of the first measurement, as in Table 4.",
+    )
+    expect(rangeOfOwners(owners, needle)).toBeNull()
+    expect(anchoredRangeOfOwners(owners, needle)?.toString()).toBe(
+      "Values were imputed for all variables within (mi, iqri) of the first measurement, as in Table 4",
+    )
+  })
+
+  it("sizes the range by the sentence when only its opening is found", () => {
+    const { owners } = ownersOf(
+      "<span>Values were imputed for all variables within reach and beyond.</span>",
+    )
+    const needle = canonicalText("Values were imputed for all variables within XYZ")
+    expect(anchoredRangeOfOwners(owners, needle)?.toString()).toBe(
+      "Values were imputed for all variables within rea",
+    )
+    expect(
+      anchoredRangeOfOwners(owners, canonicalText("nothing of this appears anywhere")),
+    ).toBeNull()
   })
 })
