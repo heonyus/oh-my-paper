@@ -24,6 +24,7 @@ import { createStructureActionHandler } from "../lib/structureActions"
 import { useBoardGestures } from "../lib/useBoardGestures"
 import { useBoardPanPreview } from "../lib/useBoardPanPreview"
 import { useCardStreams } from "../lib/useCardStreams"
+import { useHighlightTightening } from "../lib/useHighlightTightening"
 import { usePageJump } from "../lib/usePageJump"
 import { usePanConstraint } from "../lib/usePanConstraint"
 import { mostVisiblePage, revealWorldRectHorizontally } from "../lib/viewport"
@@ -269,6 +270,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
   }
 
   useSelectionShortcuts(selectionMenu, addCard)
+  useHighlightTightening(cardsRef, worldRef, commitCards)
 
   const deleteHighlight = useCallback(
     (id: string): void => {

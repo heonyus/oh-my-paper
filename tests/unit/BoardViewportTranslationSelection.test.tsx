@@ -2,12 +2,13 @@ import { act, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 import { BoardViewport } from "../../src/renderer/components/BoardViewport"
 import type { BoardViewportProps } from "../../src/renderer/components/BoardViewportProps"
+import { announceTextLayerRendered } from "../../src/renderer/lib/pageRenderEvents"
 import {
   clearPageTranslationBlocks,
   publishPageTranslationBlocks,
 } from "../../src/renderer/lib/pageTranslationBlocksRegistry"
 import type { BoardCard } from "../../src/renderer/types"
-import { documentRecordSchema } from "../../src/shared/schemas"
+import { boardCardSchema, documentRecordSchema } from "../../src/shared/schemas"
 
 vi.mock("../../src/renderer/components/PdfSurface", () => ({ PdfSurface: () => null }))
 vi.mock("../../src/renderer/components/BoardNavigationController", () => ({
@@ -48,7 +49,9 @@ beforeAll(() => {
   })
 })
 
-function renderBoard(): { readonly onCardsChange: ReturnType<typeof vi.fn> } {
+function renderBoard(cards: readonly BoardCard[] = []): {
+  readonly onCardsChange: ReturnType<typeof vi.fn>
+} {
   const onCardsChange = vi.fn()
   const props: BoardViewportProps = {
     document: documentRecordSchema.parse({
@@ -65,7 +68,7 @@ function renderBoard(): { readonly onCardsChange: ReturnType<typeof vi.fn> } {
       quality: { textCharacters: 100, needsOcr: false, warnings: [] },
     }),
     viewport: { x: 0, y: 0, zoom: 1 },
-    cards: [],
+    cards,
     onViewportChange: vi.fn(),
     onCardsChange,
     onCardsPreview: vi.fn(),
@@ -170,5 +173,40 @@ describe("selecting text in a page's translation pane", () => {
     expect(onCardsChange).not.toHaveBeenCalled()
     fireEvent.keyDown(document, { key: "h", code: "KeyH" })
     expect(onCardsChange).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("highlights saved as blocks", () => {
+  afterEach(() => {
+    clearPageTranslationBlocks(1)
+    document.body.innerHTML = ""
+  })
+
+  it("are redrawn on their quote's lines once the page's text layer is laid out", async () => {
+    const block = boardCardSchema.parse({
+      id: "2889c232-6a05-46df-bd89-9f128b49ad42",
+      documentId: "aabbccddeeff0011",
+      kind: "highlight",
+      title: "하이라이트",
+      body: "Critically ill patients are cared for in ICUs.",
+      x: 900,
+      y: 240,
+      minimized: false,
+      anchor: {
+        page: 1,
+        quote: "Critically ill patients are cared for in ICUs.",
+        x: 640,
+        y: 140,
+        fragments: [{ x: 330, y: 110, width: 330, height: 60 }],
+      },
+    })
+    const { onCardsChange } = renderBoard([block])
+    act(() => {
+      announceTextLayerRendered(1)
+    })
+    await act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())))
+
+    const cards: readonly BoardCard[] = onCardsChange.mock.calls.at(-1)?.[0] ?? []
+    expect(cards[0]?.anchor.fragments).toEqual([{ x: 340, y: 134, width: 300, height: 12 }])
   })
 })
