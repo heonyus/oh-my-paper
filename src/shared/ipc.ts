@@ -12,6 +12,7 @@ import {
 import type { JevDecisionRequest, JevDecisionResult } from "./aiDecision"
 import {
   AI_CONTEXT_MAX_CHARACTERS,
+  AI_SOURCE_EVIDENCE_MAX_CHARACTERS,
   aiActionSchema,
   aiHistoryMessageSchema,
   aiJobCancelRequestSchema,
@@ -508,6 +509,7 @@ export type {
 } from "./aiIpc"
 export {
   AI_CONTEXT_MAX_CHARACTERS,
+  AI_SOURCE_EVIDENCE_MAX_CHARACTERS,
   agentAskRequestSchema,
   agentAskResultSchema,
   agentContextDocSchema,

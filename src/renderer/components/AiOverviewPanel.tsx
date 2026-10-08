@@ -1,5 +1,6 @@
 import { type JSX, useCallback, useEffect, useRef, useState } from "react"
 import type { AiHistoryMessage, ProviderStatus } from "../../shared/ipc"
+import { AI_SOURCE_EVIDENCE_MAX_CHARACTERS } from "../../shared/ipc"
 import type { DocumentInsight, DocumentInsightKind } from "../../shared/schemas"
 import type { SourceCitation } from "../lib/chatCitations"
 import { keywordEntries } from "../lib/keywordEntries"
@@ -193,7 +194,10 @@ export function AiOverviewPanel({
         quote: question,
         ...(evidence
           ? {
-              sourceEvidence: `Passages retrieved for this question:\n${evidence}`.slice(0, 12_000),
+              sourceEvidence: `Passages retrieved for this question:\n${evidence}`.slice(
+                0,
+                AI_SOURCE_EVIDENCE_MAX_CHARACTERS,
+              ),
             }
           : {}),
         before: "",
