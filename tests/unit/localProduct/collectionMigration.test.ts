@@ -31,6 +31,7 @@ async function legacyFixture(): Promise<{
   readonly userDataRoot: string
   readonly noteId: string
   readonly versionId: string
+  readonly hash: string
   readonly pdf: Uint8Array
 }> {
   const root = await mkdtemp(join(tmpdir(), "ohmypaper-migration-"))
@@ -72,7 +73,7 @@ async function legacyFixture(): Promise<{
   await writeFile(join(legacyRoot, "workspace.json"), '{"legacy":true}\n')
   await mkdir(join(legacyRoot, "documents"), { recursive: true })
   await writeFile(join(legacyRoot, "documents", `${hash}.pdf`), pdf)
-  return { legacyRoot, userDataRoot, noteId: note.id, versionId, pdf }
+  return { legacyRoot, userDataRoot, noteId: note.id, versionId, hash, pdf }
 }
 
 describe("collection migration", () => {
@@ -99,9 +100,9 @@ describe("collection migration", () => {
       collectionId,
     )
     expect(repeated.destinationRoot).toBe(result.destinationRoot)
-    expect(
-      await readFile(join(result.destinationRoot, "papers", `${fixture.versionId}.pdf`)),
-    ).toEqual(Buffer.from(fixture.pdf))
+    expect(await readFile(join(result.destinationRoot, "papers", `${fixture.hash}.pdf`))).toEqual(
+      Buffer.from(fixture.pdf),
+    )
     const service = await CollectionService.open(
       result.destinationRoot,
       collectionIndexFile(fixture.userDataRoot, collectionId),
