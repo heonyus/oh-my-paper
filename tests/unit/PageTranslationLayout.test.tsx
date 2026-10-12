@@ -1,5 +1,5 @@
-import { fireEvent, render } from "@testing-library/react"
-import { afterEach, describe, expect, it } from "vitest"
+import { act, fireEvent, render } from "@testing-library/react"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { PageTranslationLayout } from "../../src/renderer/components/PageTranslationLayout"
 import type { LayoutRegion } from "../../src/renderer/lib/pageTranslationLayoutRegions"
 import { documentIdSchema } from "../../src/shared/schemas"
@@ -128,5 +128,60 @@ describe("a display equation in the page layout", () => {
     expect(equation?.querySelector(".katex-display .mfrac")).not.toBeNull()
     expect(equation?.querySelector(".katex-error")).toBeNull()
     expect(equation?.style.getPropertyValue("--fit-font-size")).toBe("1.6")
+  })
+
+  it("lays the page out again when a region changes height after the pass", () => {
+    const observers: { callback: ResizeObserverCallback; observed: Element[] }[] = []
+    class FakeResizeObserver {
+      observed: Element[] = []
+      constructor(readonly callback: ResizeObserverCallback) {
+        observers.push(this)
+      }
+      observe(element: Element): void {
+        this.observed.push(element)
+      }
+      disconnect(): void {}
+      unobserve(): void {}
+    }
+    vi.stubGlobal("ResizeObserver", FakeResizeObserver)
+    vi.useFakeTimers()
+    try {
+      sourcePage()
+      const { container } = render(
+        <PageTranslationLayout documentId={documentId} page={2} regions={regions} />,
+      )
+      const layoutContainer = container.querySelector<HTMLElement>(".page-translation-layout")
+      if (!layoutContainer) throw new Error("no layout")
+      Object.defineProperty(layoutContainer, "clientWidth", { value: 600, configurable: true })
+      Object.defineProperty(layoutContainer, "clientHeight", { value: 800, configurable: true })
+      // The container's shape arrives, and the first pass lays the regions out and watches them.
+      const shapeObserver = observers.find((o) => o.observed.includes(layoutContainer))
+      if (!shapeObserver) throw new Error("container not observed")
+      act(() => shapeObserver.callback([], shapeObserver as unknown as ResizeObserver))
+      act(() => vi.advanceTimersByTime(250))
+      const regionObservers = () =>
+        observers.filter((o) =>
+          o.observed.some((e) => e.matches(".page-translation-layout-region")),
+        )
+      expect(regionObservers()).toHaveLength(1)
+      const body = container.querySelector<HTMLElement>('[data-region-id="page:2:block:4"]')
+      if (!body) throw new Error("no region")
+
+      // A typeface arrives late and the paragraph grows: the pass runs again, watching anew.
+      Object.defineProperty(body, "offsetHeight", { value: 40, configurable: true })
+      const watcher = regionObservers()[0]
+      act(() => watcher?.callback([], watcher as unknown as ResizeObserver))
+      act(() => vi.advanceTimersByTime(250))
+      expect(regionObservers()).toHaveLength(2)
+
+      // Nothing changed since: no further pass.
+      const second = regionObservers()[1]
+      act(() => second?.callback([], second as unknown as ResizeObserver))
+      act(() => vi.advanceTimersByTime(250))
+      expect(regionObservers()).toHaveLength(2)
+    } finally {
+      vi.useRealTimers()
+      vi.unstubAllGlobals()
+    }
   })
 })

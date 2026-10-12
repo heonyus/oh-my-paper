@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs"
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import { MarkdownContent } from "../../src/renderer/components/MarkdownContent"
@@ -34,5 +35,20 @@ describe("MarkdownContent", () => {
       <MarkdownContent source={"`a[1]` and [1](https://example.com)"} citationMarkers />,
     )
     expect(container.querySelector("sup")).toBeNull()
+  })
+
+  it("sets a superscript in the size classes the loaded KaTeX stylesheet knows", () => {
+    // The renderer's KaTeX and the stylesheet's must be one version: a newer stylesheet styles
+    // `.katex-sizing` while an older renderer emits `.sizing`, and an exponent is then set at
+    // full size on its own line.
+    const { container } = render(<MarkdownContent source="넓이는 $x^2$" />)
+    const exponent = container.querySelector(".katex .msupsub .mord.mtight")
+    expect(exponent).not.toBeNull()
+    const sizingClass = [...(exponent?.parentElement?.classList ?? [])].find((name) =>
+      /sizing/u.test(name),
+    )
+    expect(sizingClass).toBeDefined()
+    const stylesheet = readFileSync(require.resolve("katex/dist/katex.min.css"), "utf8")
+    expect(stylesheet).toContain(`.katex .${sizingClass}.reset-size6.size3`)
   })
 })
