@@ -355,6 +355,8 @@ button:focus-visible {
   transform-origin: 0 0;
   z-index: 2;
   pointer-events: none;
+  /* Panned and zoomed by transform: its own layer, so a pan moves it without repainting it. */
+  will-change: transform;
 }
 .board-navigation-controller {
   position: absolute;
@@ -533,6 +535,7 @@ button:focus-visible {
   position: absolute;
   inset: 0 auto auto 0;
   z-index: 1;
+  will-change: transform;
 }
 .pdf-viewer-container {
   position: absolute;
@@ -1327,6 +1330,15 @@ button:focus-visible {
   box-shadow: var(--glass-shadow-quiet);
   color: var(--error);
   font-size: var(--type-compact-size);
+}
+.workspace-save-error .workspace-save-reason {
+  display: block;
+  max-width: 420px;
+  overflow: hidden;
+  font-size: var(--type-compact-size);
+  opacity: 0.8;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .modal-backdrop {

@@ -74,7 +74,7 @@ export function useAppWorkspace() {
     readonly entries: readonly CitationIndexEntry[]
   } | null>(null)
 
-  const workspaceSaveFailed = useWorkspacePersistence(
+  const workspaceSaveFailure = useWorkspacePersistence(
     history.workspace,
     history.setWorkspaceTransient,
   )
@@ -242,7 +242,7 @@ export function useAppWorkspace() {
     bootstrapError,
     outline: outline?.documentId === activeId ? outline.entries : [],
     citations: citations?.documentId === activeId ? citations.entries : [],
-    workspaceSaveFailed,
+    workspaceSaveFailure,
     documentAnalysisJobs,
     knowledgeClientOps,
     evidence,

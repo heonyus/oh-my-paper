@@ -385,7 +385,7 @@ export function ReaderApp(): JSX.Element {
       />
       <AppStatusOverlays
         preparation={app.preparation}
-        saveFailed={app.workspaceSaveFailed}
+        saveFailure={app.workspaceSaveFailure}
         bootstrapError={app.bootstrapError}
         onPreparationClose={() => app.setPreparation([])}
       />

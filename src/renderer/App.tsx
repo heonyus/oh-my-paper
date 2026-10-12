@@ -63,7 +63,7 @@ export function App({
     bootstrapError,
     outline,
     citations,
-    workspaceSaveFailed,
+    workspaceSaveFailure,
     documentAnalysisJobs,
     knowledgeClientOps,
     evidence,
@@ -287,7 +287,7 @@ export function App({
       />
       <AppStatusOverlays
         preparation={preparation}
-        saveFailed={workspaceSaveFailed}
+        saveFailure={workspaceSaveFailure}
         bootstrapError={bootstrapError}
         onPreparationClose={() => app.setPreparation([])}
       />

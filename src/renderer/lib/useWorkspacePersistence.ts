@@ -4,11 +4,16 @@ import { mergeWorkspaceForSave } from "../../shared/workspaceMerge"
 import type { WorkspaceSetter } from "./useWorkspaceHistory"
 import { saveWorkspaceChanges } from "./workspaceSave"
 
+/**
+ * Keeps the workspace saved, and reports why the latest save failed while one does: the reason
+ * is shown with the failure so it can be read off the screen rather than dug out of a console.
+ */
 export function useWorkspacePersistence(
   workspace: Workspace | null,
   onAcknowledged: WorkspaceSetter,
-): boolean {
-  const [failed, setFailed] = useState(false)
+): string | null {
+  const [failure, setFailure] = useState<string | null>(null)
+  const failed = failure !== null
   const latest = useRef<Workspace | null>(workspace)
   const saved = useRef<Workspace | null>(null)
   // The workspace the backend last acknowledged, as the base for the next patch save.
@@ -32,7 +37,7 @@ export function useWorkspacePersistence(
           latest.current = merged
           saved.current = pending === next ? merged : acknowledged
           onAcknowledged((current) => (current === pending ? merged : current))
-          setFailed(false)
+          setFailure(null)
           setRetryAttempt(0)
           reported.current = null
         } catch (error) {
@@ -41,7 +46,7 @@ export function useWorkspacePersistence(
             reported.current = reason
             console.warn("[workspace] save failed; retrying", error)
           }
-          setFailed(true)
+          setFailure(reason)
           throw error
         }
       }
@@ -57,7 +62,9 @@ export function useWorkspacePersistence(
     if (!workspace) return
     const timer = window.setTimeout(
       () => {
-        void persistLatest().catch(() => setFailed(true))
+        void persistLatest().catch((error: unknown) =>
+          setFailure(error instanceof Error ? error.message : String(error)),
+        )
       },
       retryAttempt === 0 ? 220 : 0,
     )
@@ -79,5 +86,5 @@ export function useWorkspacePersistence(
     [persistLatest],
   )
 
-  return failed
+  return failure
 }
