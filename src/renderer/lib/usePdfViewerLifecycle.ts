@@ -1,9 +1,10 @@
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs"
-import { EventBus, PDFLinkService, PDFViewer } from "pdfjs-dist/legacy/web/pdf_viewer.mjs"
+import { EventBus, PDFLinkService } from "pdfjs-dist/legacy/web/pdf_viewer.mjs"
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react"
 import "./pdfWorker"
 import { readerMessages } from "../messages/reader"
 import type { DocumentRecord } from "../types"
+import { BoardPdfViewer } from "./boardPdfViewer"
 import { clearParsedDocumentPages } from "./documentPageRuntime"
 import { useTranslator } from "./locale"
 import { PdfAstRuntimeSession } from "./pdfAstRuntimeSession"
@@ -124,7 +125,7 @@ export function usePdfViewerLifecycle({
       reveal: (page, element) => onPageJump?.(page, element),
     })
     const findSession = createPdfFindRuntime(eventBus)
-    const viewer = new PDFViewer({
+    const viewer = new BoardPdfViewer({
       container,
       viewer: viewerElement,
       eventBus,
@@ -140,6 +141,14 @@ export function usePdfViewerLifecycle({
     })
     linkService.setViewer(viewer)
     onRegisterPageJump?.(Pdf.pageJumpHandler(viewer, onPageJump))
+    // Pages exist once PDF.js has laid the paper out; from then on, what the board shows decides
+    // what is drawn.
+    let releasePagesInView: (() => void) | null = null
+    const watchPagesInView = (): void => {
+      releasePagesInView?.()
+      releasePagesInView = viewer.watchPagesInView()
+    }
+    eventBus.on("pagesinit", watchPagesInView)
     onFindReady?.(findSession.runtime)
 
     const bridge = bindViewerEventBridge({
@@ -223,6 +232,8 @@ export function usePdfViewerLifecycle({
     return () => {
       disposed = true
       download.abort()
+      eventBus.off("pagesinit", watchPagesInView)
+      releasePagesInView?.()
       unregisterPdf?.()
       astRuntime.dispose()
       clearParsedDocumentPages(resourceDocument.id)

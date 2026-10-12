@@ -2,27 +2,47 @@ import { mergeReaderNotes } from "./readerNote"
 import type { BoardCard, DocumentInsight, DocumentRecord, Workspace } from "./schemas"
 import { equalWorkspaceValue } from "./workspaceValue"
 
+const CONFLICT_MESSAGE = "Workspace conflict at "
+
 export class WorkspaceConflictError extends Error {
   readonly name = "WorkspaceConflictError"
 
   constructor(readonly field: string) {
-    super(`Workspace conflict at ${field}; reread and resolve before saving`)
+    super(`${CONFLICT_MESSAGE}${field}; reread and resolve before saving`)
   }
 }
 
-function mergeField<T>(field: string, base: T, current: T, incoming: T): T {
+/** True for a conflict thrown here, or one a backend reported by its message. */
+export function isWorkspaceConflictError(error: unknown): boolean {
+  return (
+    error instanceof WorkspaceConflictError ||
+    (error instanceof Error && error.message.startsWith(CONFLICT_MESSAGE))
+  )
+}
+
+/**
+ * What a field gets when the base, the current and the incoming values all differ: a save is
+ * refused (`reject`), or the incoming side's edit wins (`keepIncoming`), as it does for a whole
+ * record in `mergeKeyedRecords`.
+ */
+type ConflictPolicy = "reject" | "keepIncoming"
+
+function mergeField<T>(policy: ConflictPolicy, field: string, base: T, current: T, incoming: T): T {
   if (equalWorkspaceValue(incoming, base)) return current
   if (equalWorkspaceValue(current, base)) return incoming
   if (equalWorkspaceValue(current, incoming)) return current
+  if (policy === "keepIncoming") return incoming
   throw new WorkspaceConflictError(field)
 }
 
 function mergeDocument(
+  policy: ConflictPolicy,
   base: DocumentRecord,
   current: DocumentRecord,
   incoming: DocumentRecord,
 ): DocumentRecord {
   const lastReadPage = mergeField(
+    policy,
     "document.lastReadPage",
     base.lastReadPage,
     current.lastReadPage,
@@ -30,42 +50,69 @@ function mergeDocument(
   )
   return {
     id: current.id,
-    name: mergeField("document.name", base.name, current.name, incoming.name),
+    name: mergeField(policy, "document.name", base.name, current.name, incoming.name),
     hash: current.hash,
-    bytes: mergeField("document.bytes", base.bytes, current.bytes, incoming.bytes),
+    bytes: mergeField(policy, "document.bytes", base.bytes, current.bytes, incoming.bytes),
     importedAt: current.importedAt,
     pageCount: mergeField(
+      policy,
       "document.pageCount",
       base.pageCount,
       current.pageCount,
       incoming.pageCount,
     ),
-    title: mergeField("document.title", base.title, current.title, incoming.title),
-    authors: mergeField("document.authors", base.authors, current.authors, incoming.authors),
-    year: mergeField("document.year", base.year, current.year, incoming.year),
-    doi: mergeField("document.doi", base.doi, current.doi, incoming.doi),
-    kind: mergeField("document.kind", base.kind, current.kind, incoming.kind),
-    overview: mergeField("document.overview", base.overview, current.overview, incoming.overview),
+    title: mergeField(policy, "document.title", base.title, current.title, incoming.title),
+    authors: mergeField(
+      policy,
+      "document.authors",
+      base.authors,
+      current.authors,
+      incoming.authors,
+    ),
+    year: mergeField(policy, "document.year", base.year, current.year, incoming.year),
+    doi: mergeField(policy, "document.doi", base.doi, current.doi, incoming.doi),
+    kind: mergeField(policy, "document.kind", base.kind, current.kind, incoming.kind),
+    overview: mergeField(
+      policy,
+      "document.overview",
+      base.overview,
+      current.overview,
+      incoming.overview,
+    ),
     // An unread paper has no key at all; an own `undefined` would make every save rewrite it.
     ...(lastReadPage === undefined ? {} : { lastReadPage }),
-    quality: mergeField("document.quality", base.quality, current.quality, incoming.quality),
+    quality: mergeField(
+      policy,
+      "document.quality",
+      base.quality,
+      current.quality,
+      incoming.quality,
+    ),
   }
 }
 
-function mergeCard(base: BoardCard, current: BoardCard, incoming: BoardCard): BoardCard {
+function mergeCard(
+  policy: ConflictPolicy,
+  base: BoardCard,
+  current: BoardCard,
+  incoming: BoardCard,
+): BoardCard {
   const sourceKey = mergeField(
+    policy,
     "card.sourceKey",
     base.sourceKey,
     current.sourceKey,
     incoming.sourceKey,
   )
   const sourceUrl = mergeField(
+    policy,
     "card.sourceUrl",
     base.sourceUrl,
     current.sourceUrl,
     incoming.sourceUrl,
   )
   const sourceMeta = mergeField(
+    policy,
     "card.sourceMeta",
     base.sourceMeta,
     current.sourceMeta,
@@ -74,22 +121,29 @@ function mergeCard(base: BoardCard, current: BoardCard, incoming: BoardCard): Bo
   return {
     id: current.id,
     documentId: mergeField(
+      policy,
       "card.documentId",
       base.documentId,
       current.documentId,
       incoming.documentId,
     ),
-    kind: mergeField("card.kind", base.kind, current.kind, incoming.kind),
-    title: mergeField("card.title", base.title, current.title, incoming.title),
-    body: mergeField("card.body", base.body, current.body, incoming.body),
-    x: mergeField("card.x", base.x, current.x, incoming.x),
-    y: mergeField("card.y", base.y, current.y, incoming.y),
-    minimized: mergeField("card.minimized", base.minimized, current.minimized, incoming.minimized),
-    width: mergeField("card.width", base.width, current.width, incoming.width),
-    height: mergeField("card.height", base.height, current.height, incoming.height),
-    loading: mergeField("card.loading", base.loading, current.loading, incoming.loading),
-    chat: mergeField("card.chat", base.chat, current.chat, incoming.chat),
-    anchor: mergeField("card.anchor", base.anchor, current.anchor, incoming.anchor),
+    kind: mergeField(policy, "card.kind", base.kind, current.kind, incoming.kind),
+    title: mergeField(policy, "card.title", base.title, current.title, incoming.title),
+    body: mergeField(policy, "card.body", base.body, current.body, incoming.body),
+    x: mergeField(policy, "card.x", base.x, current.x, incoming.x),
+    y: mergeField(policy, "card.y", base.y, current.y, incoming.y),
+    minimized: mergeField(
+      policy,
+      "card.minimized",
+      base.minimized,
+      current.minimized,
+      incoming.minimized,
+    ),
+    width: mergeField(policy, "card.width", base.width, current.width, incoming.width),
+    height: mergeField(policy, "card.height", base.height, current.height, incoming.height),
+    loading: mergeField(policy, "card.loading", base.loading, current.loading, incoming.loading),
+    chat: mergeField(policy, "card.chat", base.chat, current.chat, incoming.chat),
+    anchor: mergeField(policy, "card.anchor", base.anchor, current.anchor, incoming.anchor),
     ...(sourceKey === undefined ? {} : { sourceKey }),
     ...(sourceUrl === undefined ? {} : { sourceUrl }),
     ...(sourceMeta === undefined ? {} : { sourceMeta }),
@@ -97,6 +151,7 @@ function mergeCard(base: BoardCard, current: BoardCard, incoming: BoardCard): Bo
 }
 
 function mergeDocuments(
+  policy: ConflictPolicy,
   base: readonly DocumentRecord[],
   current: readonly DocumentRecord[],
   incoming: readonly DocumentRecord[],
@@ -112,7 +167,7 @@ function mergeDocuments(
       continue
     }
     if (baseDocument)
-      result.set(document.id, mergeDocument(baseDocument, currentDocument, document))
+      result.set(document.id, mergeDocument(policy, baseDocument, currentDocument, document))
   }
   for (const document of current) {
     if (baseById.has(document.id) && !incomingById.has(document.id)) result.delete(document.id)
@@ -121,6 +176,7 @@ function mergeDocuments(
 }
 
 function mergeCards(
+  policy: ConflictPolicy,
   base: readonly BoardCard[],
   current: readonly BoardCard[],
   incoming: readonly BoardCard[],
@@ -135,7 +191,7 @@ function mergeCards(
       if (!baseCard) result.set(card.id, card)
       continue
     }
-    if (baseCard) result.set(card.id, mergeCard(baseCard, currentCard, card))
+    if (baseCard) result.set(card.id, mergeCard(policy, baseCard, currentCard, card))
   }
   for (const card of current) {
     if (baseById.has(card.id) && !incomingById.has(card.id)) result.delete(card.id)
@@ -144,6 +200,7 @@ function mergeCards(
 }
 
 function mergeInsights(
+  policy: ConflictPolicy,
   base: readonly DocumentInsight[],
   current: readonly DocumentInsight[],
   incoming: readonly DocumentInsight[],
@@ -163,8 +220,15 @@ function mergeInsights(
       result.set(key(insight), {
         documentId: currentInsight.documentId,
         kind: currentInsight.kind,
-        value: mergeField("insight.value", baseInsight.value, currentInsight.value, insight.value),
+        value: mergeField(
+          policy,
+          "insight.value",
+          baseInsight.value,
+          currentInsight.value,
+          insight.value,
+        ),
         updatedAt: mergeField(
+          policy,
           "insight.updatedAt",
           baseInsight.updatedAt,
           currentInsight.updatedAt,
@@ -179,49 +243,56 @@ function mergeInsights(
   return [...result.values()]
 }
 
-export function mergeWorkspaceForSave(
+function mergeWorkspace(
+  policy: ConflictPolicy,
   base: Workspace,
   current: Workspace,
   incoming: Workspace,
 ): Workspace {
   return {
     ...current,
-    documents: [...mergeDocuments(base.documents, current.documents, incoming.documents)],
-    cards: [...mergeCards(base.cards, current.cards, incoming.cards)],
-    insights: [...mergeInsights(base.insights, current.insights, incoming.insights)],
+    documents: [...mergeDocuments(policy, base.documents, current.documents, incoming.documents)],
+    cards: [...mergeCards(policy, base.cards, current.cards, incoming.cards)],
+    insights: [...mergeInsights(policy, base.insights, current.insights, incoming.insights)],
     readerNotes: [...mergeReaderNotes(base.readerNotes, current.readerNotes, incoming.readerNotes)],
     sidebarOpen: mergeField(
+      policy,
       "settings.sidebarOpen",
       base.sidebarOpen,
       current.sidebarOpen,
       incoming.sidebarOpen,
     ),
     outlineWidth: mergeField(
+      policy,
       "settings.outlineWidth",
       base.outlineWidth,
       current.outlineWidth,
       incoming.outlineWidth,
     ),
     researchSidebarWidth: mergeField(
+      policy,
       "settings.researchSidebarWidth",
       base.researchSidebarWidth,
       current.researchSidebarWidth,
       incoming.researchSidebarWidth,
     ),
     uiFontFamily: mergeField(
+      policy,
       "settings.uiFontFamily",
       base.uiFontFamily,
       current.uiFontFamily,
       incoming.uiFontFamily,
     ),
     uiFontScale: mergeField(
+      policy,
       "settings.uiFontScale",
       base.uiFontScale,
       current.uiFontScale,
       incoming.uiFontScale,
     ),
-    theme: mergeField("settings.theme", base.theme, current.theme, incoming.theme),
+    theme: mergeField(policy, "settings.theme", base.theme, current.theme, incoming.theme),
     minimapVisible: mergeField(
+      policy,
       "settings.minimapVisible",
       base.minimapVisible,
       current.minimapVisible,
@@ -229,10 +300,32 @@ export function mergeWorkspaceForSave(
     ),
     viewport: incoming.viewport,
     activeDocumentId: mergeField(
+      policy,
       "settings.activeDocumentId",
       base.activeDocumentId,
       current.activeDocumentId,
       incoming.activeDocumentId,
     ),
   }
+}
+
+/** Three-way merge of a save onto the current workspace; a field both sides changed is refused. */
+export function mergeWorkspaceForSave(
+  base: Workspace,
+  current: Workspace,
+  incoming: Workspace,
+): Workspace {
+  return mergeWorkspace("reject", base, current, incoming)
+}
+
+/**
+ * The same merge for a save that was refused: a field both sides changed keeps the incoming
+ * side's edit, so the reader's own change is what gets saved rather than nothing at all.
+ */
+export function resolveWorkspaceConflicts(
+  base: Workspace,
+  current: Workspace,
+  incoming: Workspace,
+): Workspace {
+  return mergeWorkspace("keepIncoming", base, current, incoming)
 }

@@ -182,6 +182,38 @@ describe("useWorkspacePersistence patch saves", () => {
     expect(backend.saveWorkspace.mock.lastCall?.[0]).toMatchObject({ theme: "dark" })
   })
 
+  it("saves the reader's page when another writer turned the same page after a restart", async () => {
+    const backend = fakeBackend(library)
+    const { result } = await openApp(backend)
+    backend.restart()
+    backend.otherWriter((workspace) => turnPage(workspace, 5) ?? workspace)
+
+    act(() => result.current.setWorkspace(turnPage(result.current.workspace, 9)))
+    await settle()
+    await settle()
+
+    expect(result.current.failed).toBe(false)
+    expect(result.current.workspace?.documents[0]?.lastReadPage).toBe(9)
+    expect((await backend.readWorkspace()).documents[0]?.lastReadPage).toBe(9)
+  })
+
+  it("rebases a full save the server refuses as a conflict instead of retrying it forever", async () => {
+    const backend = fakeBackend(library)
+    const { result } = await openApp(backend)
+    // A workspace replaced by a fresh read saves in full on that read's token...
+    const reread = await backend.readWorkspace()
+    backend.restart()
+    // ...which the restarted server no longer knows.
+    act(() => result.current.setWorkspace(turnPage(reread, 7)))
+    await settle()
+    await settle()
+
+    expect(backend.saveWorkspacePatch).not.toHaveBeenCalled()
+    expect(result.current.failed).toBe(false)
+    expect(result.current.workspace?.documents[0]?.lastReadPage).toBe(7)
+    expect((await backend.readWorkspace()).documents[0]?.lastReadPage).toBe(7)
+  })
+
   it("keeps patching after recovery once the workspace descends from the new acknowledgement", async () => {
     const backend = fakeBackend(library)
     const { result } = await openApp(backend)
