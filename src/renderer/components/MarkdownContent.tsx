@@ -1,4 +1,4 @@
-import { type JSX, useMemo } from "react"
+import { type JSX, memo, useMemo } from "react"
 import ReactMarkdown, { type Components } from "react-markdown"
 import rehypeKatex from "rehype-katex"
 import remarkGfm from "remark-gfm"
@@ -63,7 +63,11 @@ function normalizedDisplayMath(source: string): string {
     })
 }
 
-export function MarkdownContent({
+/**
+ * Parsing Markdown is the costly part of drawing a card, and a board redraw rarely changes a
+ * card's text, so the parsed result is kept until the text or the handlers change.
+ */
+export const MarkdownContent = memo(function MarkdownContent({
   source,
   className,
   onCitation,
@@ -97,4 +101,4 @@ export function MarkdownContent({
       </ReactMarkdown>
     </div>
   )
-}
+})

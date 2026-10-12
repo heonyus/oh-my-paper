@@ -1,4 +1,4 @@
-import { type JSX, useEffect, useRef, useState } from "react"
+import { type JSX, memo, useEffect, useRef, useState } from "react"
 import { initialResearchCardHeight } from "../lib/board"
 import { infographicHtml } from "../lib/infographicHtml"
 import { useTranslator } from "../lib/locale"
@@ -37,7 +37,8 @@ type BoardCardProps = {
   readonly onActiveChange: (id: CardId | null) => void
   readonly zoom: number
 }
-export function BoardCard({
+/** Drawn again only when its own card, state or handlers change, not when the board around it is. */
+export const BoardCard = memo(function BoardCard({
   card,
   onMove,
   onMoveEnd,
@@ -212,4 +213,4 @@ export function BoardCard({
       ) : null}
     </section>
   )
-}
+})
