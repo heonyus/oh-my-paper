@@ -38,6 +38,8 @@ const shrinkEquation = 0.4
 const flowingLabels = new Set(["text", "list", "references", "footnote", "aside_text"])
 /** Masks reach this far past a region, as a fraction of the page, to cover glyph overhang. */
 const maskPad = 0.003
+/** How often one text is laid out again because a region changed height after the pass. */
+const maxReflows = 3
 
 function sourcePage(pageNumber: number): HTMLElement | null {
   return document.querySelector<HTMLElement>(`.page[data-page-number="${pageNumber}"]`)
@@ -365,6 +367,15 @@ function useFittedRegions(
   const [shape, setShape] = useState<string | null>(null)
   const laidOut = useRef({ key: "", at: 0 })
   const trailing = useRef<number | null>(null)
+  // A region laid out before its typeface or its equation fonts arrived is taller once they
+  // have, and would overlap what was flowed below it; the pass runs again when one changes.
+  const [reflow, setReflow] = useState(0)
+  const settling = useRef<{
+    observer: ResizeObserver | null
+    heights: Map<HTMLElement, number>
+    key: string
+    count: number
+  }>({ observer: null, heights: new Map(), key: "", count: 0 })
   useEffect(() => {
     const container = containerRef.current
     if (!container || typeof ResizeObserver === "undefined") {
@@ -381,6 +392,7 @@ function useFittedRegions(
   useEffect(
     () => () => {
       if (trailing.current !== null) window.clearTimeout(trailing.current)
+      settling.current.observer?.disconnect()
     },
     [],
   )
@@ -388,8 +400,30 @@ function useFittedRegions(
   useLayoutEffect(() => {
     const container = containerRef.current
     if (!container || shape === null) return
-    const key = `${shape}|${regions.map((region) => `${region.id}:${region.translation}`).join("|")}`
+    const textKey = `${shape}|${regions.map((region) => `${region.id}:${region.translation}`).join("|")}`
+    const key = `${textKey}|${reflow}`
     if (laidOut.current.key === key) return
+    const watchSettled = (): void => {
+      const watch = settling.current
+      watch.observer?.disconnect()
+      watch.observer = null
+      if (typeof ResizeObserver === "undefined") return
+      if (watch.key !== textKey) {
+        watch.key = textKey
+        watch.count = 0
+      }
+      const elements = regions.flatMap((region) => regionElement(container, region) ?? [])
+      watch.heights = new Map(elements.map((element) => [element, element.offsetHeight]))
+      watch.observer = new ResizeObserver(() => {
+        const changed = [...watch.heights].some(
+          ([element, height]) => Math.abs(element.offsetHeight - height) > 1,
+        )
+        if (!changed || watch.count >= maxReflows) return
+        watch.count += 1
+        setReflow((count) => count + 1)
+      })
+      for (const element of elements) watch.observer.observe(element)
+    }
     const layout = (): void => {
       laidOut.current = { key, at: performance.now() }
       const parsed = parsedDocumentPage(documentId, pageNumber)
@@ -471,13 +505,14 @@ function useFittedRegions(
         flowRun(run, present, Math.min(commonFor(index), fit.size), pageHeight)
         for (const element of present) element.setAttribute("data-overflow", String(!fit.fits))
       })
+      watchSettled()
     }
     // Streaming changes the text many times a second; lay out at most every 200 ms.
     if (trailing.current !== null) window.clearTimeout(trailing.current)
     trailing.current = null
     if (performance.now() - laidOut.current.at > 200) layout()
     else trailing.current = window.setTimeout(layout, 200)
-  }, [pageNumber, documentId, containerRef, regions, shape])
+  }, [pageNumber, documentId, containerRef, regions, shape, reflow])
 }
 
 /**
