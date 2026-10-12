@@ -1,4 +1,5 @@
 import {
+  BookA,
   Clock3,
   FilePlus2,
   FileText,
@@ -36,6 +37,9 @@ export function LibraryCollectionSidebar({
   onCollectionSelect,
   onCreateCollection,
   collectionsEnabled,
+  vocabularyCount,
+  vocabularyActive,
+  onOpenVocabulary,
 }: {
   readonly documents: readonly DocumentRecord[]
   readonly recentDocumentId: DocumentRecord["id"] | null | undefined
@@ -48,6 +52,10 @@ export function LibraryCollectionSidebar({
   readonly onCollectionSelect: (id: LibraryCollection["board"]["id"] | null) => void
   readonly onCreateCollection: (title: string) => Promise<boolean>
   readonly collectionsEnabled: boolean
+  /** Words translated across the library; the entry is listed once a word has been looked up. */
+  readonly vocabularyCount?: number | undefined
+  readonly vocabularyActive?: boolean | undefined
+  readonly onOpenVocabulary?: (() => void) | undefined
 }): JSX.Element {
   const { locale } = useLocale()
   const t = useTranslator(libraryMessages)
@@ -122,6 +130,20 @@ export function LibraryCollectionSidebar({
             <small aria-hidden="true">{countFor("recent")}</small>
           </button>
         </div>
+        {onOpenVocabulary ? (
+          <div className="library-collection-group">
+            <button
+              type="button"
+              className={vocabularyActive ? "active" : undefined}
+              aria-pressed={Boolean(vocabularyActive)}
+              onClick={onOpenVocabulary}
+            >
+              <BookA size={16} aria-hidden="true" />
+              <span>{t("sidebar.vocabulary")}</span>
+              <small aria-hidden="true">{vocabularyCount ?? 0}</small>
+            </button>
+          </div>
+        ) : null}
         {collectionsEnabled ? (
           <div className="library-collection-group library-project-collections">
             <div className="library-collection-label-row">

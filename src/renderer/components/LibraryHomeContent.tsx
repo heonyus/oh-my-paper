@@ -4,14 +4,15 @@ import { documentKindName } from "../../shared/documentKind"
 import type { KnowledgeNodeId } from "../../shared/knowledgeSchemas"
 import type { KnowledgeClientOps } from "../lib/knowledgeTypes"
 import { useLocale, useTranslator } from "../lib/locale"
-import { libraryMessages } from "../messages/library"
+import { countKey, libraryMessages } from "../messages/library"
 import { noteMessages } from "../messages/note"
-import type { DocumentId, DocumentRecord } from "../types"
+import type { BoardCard, CardId, DocumentId, DocumentRecord } from "../types"
 import { DocumentThumbnail } from "./DocumentThumbnail"
 import { LibraryCollectionSidebar, type LibraryFilter } from "./LibraryCollectionSidebar"
 import { LibraryDocumentDetail } from "./LibraryDocumentDetail"
 import { LibraryDocumentList, type LibraryView } from "./LibraryDocumentList"
 import { LibrarySavedPapers } from "./LibrarySavedPapers"
+import { LibraryVocabulary, type VocabularySaveFile } from "./LibraryVocabulary"
 import type { LibraryCollection } from "./library-collections"
 
 export type LibraryHomeContentProps = {
@@ -55,6 +56,17 @@ export type LibraryHomeContentProps = {
   readonly onDeleteDocument?: ((id: DocumentId) => Promise<void>) | undefined
   /** Opens the loose note, where note cards written away from any paper gather. */
   readonly onOpenLooseNote?: (() => void) | undefined
+  /** The vocabulary view: the words translated across the library, shown in place of the papers. */
+  readonly vocabulary?:
+    | {
+        readonly cards: readonly BoardCard[]
+        readonly count: number
+        readonly open: boolean
+        readonly onOpen: () => void
+        readonly onOpenCard: ((documentId: DocumentId, cardId: CardId) => void) | undefined
+        readonly onSaveFile: VocabularySaveFile | undefined
+      }
+    | undefined
 }
 
 export function LibraryHomeContent({
@@ -94,11 +106,13 @@ export function LibraryHomeContent({
   onToggleMembership,
   onDeleteDocument,
   onOpenLooseNote,
+  vocabulary,
 }: LibraryHomeContentProps): JSX.Element {
   const { locale } = useLocale()
   const t = useTranslator(libraryMessages)
   const tNote = useTranslator(noteMessages)
   const [deleteRequestId, setDeleteRequestId] = useState<DocumentId | null>(null)
+  const vocabularyOpen = Boolean(vocabulary?.open)
   const requestDelete = useCallback(
     (id: DocumentId) => {
       onPreview(id)
@@ -120,19 +134,29 @@ export function LibraryHomeContent({
         onCollectionSelect={onCollectionSelect}
         onCreateCollection={onCreateCollection}
         collectionsEnabled={Boolean(active && clientOps)}
+        vocabularyCount={vocabulary?.count}
+        vocabularyActive={vocabulary?.open}
+        onOpenVocabulary={vocabulary?.onOpen}
       />
       <div className="library-home-main">
         <header className="library-home-header">
           <div>
             <h1>
-              {collections.find((collection) => collection.board.id === selectedCollectionId)?.board
-                .title ??
-                (filter === "all"
-                  ? t("home.allDocuments")
-                  : filter === "recent"
-                    ? t("home.recent")
-                    : documentKindName(filter, locale))}
+              {vocabularyOpen
+                ? t("vocab.title")
+                : (collections.find((collection) => collection.board.id === selectedCollectionId)
+                    ?.board.title ??
+                  (filter === "all"
+                    ? t("home.allDocuments")
+                    : filter === "recent"
+                      ? t("home.recent")
+                      : documentKindName(filter, locale)))}
             </h1>
+            {vocabularyOpen && vocabulary ? (
+              <p className="library-home-subtitle">
+                {t(countKey("vocab.count", vocabulary.count), { count: vocabulary.count })}
+              </p>
+            ) : null}
           </div>
           <div className="library-header-actions">
             {onOpenSearch ? (
@@ -157,7 +181,15 @@ export function LibraryHomeContent({
             </button>
           </div>
         </header>
-        {recentDocument && recentPageToShow ? (
+        {vocabularyOpen && vocabulary ? (
+          <LibraryVocabulary
+            cards={vocabulary.cards}
+            documents={documents}
+            onOpenCard={vocabulary.onOpenCard}
+            onSaveFile={vocabulary.onSaveFile}
+          />
+        ) : null}
+        {!vocabularyOpen && recentDocument && recentPageToShow ? (
           <section className="library-recent" aria-label={t("home.continueLabel")}>
             <button type="button" onClick={() => onOpenReader(recentDocument.id)}>
               <DocumentThumbnail document={recentDocument} />
@@ -169,63 +201,69 @@ export function LibraryHomeContent({
             </button>
           </section>
         ) : null}
-        <div className="library-search-row">
-          <label>
-            <Search size={16} aria-hidden="true" />
-            <input
-              type="search"
-              value={query}
-              onChange={(event) => onQueryChange(event.target.value)}
-              placeholder={t("home.searchPlaceholder")}
-              aria-label={t("home.searchLabel")}
-            />
-          </label>
-        </div>
-        {documents.length === 0 && !hasActiveImport ? (
-          <div className="library-empty">
-            <FilePlus2 size={24} aria-hidden="true" />
-            <h2>{t("home.emptyTitle")}</h2>
-            <p>{t("home.emptyBody")}</p>
-            <button type="button" onClick={onImport}>
-              {importLabel}
-            </button>
-          </div>
-        ) : documents.length > 0 && visibleDocuments.length === 0 ? (
-          <div className="library-empty is-search">
-            <h2>{t(selectedCollectionId ? "home.emptyCollectionTitle" : "home.noResultsTitle")}</h2>
-            <p>{t(selectedCollectionId ? "home.emptyCollectionBody" : "home.noResultsBody")}</p>
-          </div>
-        ) : documents.length > 0 ? (
-          <div className="library-results-layout">
-            <LibraryDocumentList
-              documents={visibleDocuments}
-              selectedId={selectedId}
-              view={view}
-              onViewChange={onViewChange}
-              onPreview={onPreview}
-              onOpenReader={onOpenReader}
-              onRequestDelete={onDeleteDocument ? requestDelete : undefined}
-            />
-            <LibraryDocumentDetail
-              document={selectedDocument}
-              onOpenReader={onOpenReader}
-              onOpenKnowledge={onOpenKnowledge}
-              collections={collections}
-              membershipBusyKey={membershipBusyKey}
-              onToggleMembership={onToggleMembership}
-              deletion={
-                onDeleteDocument && selectedDocument
-                  ? {
-                      confirming: deleteRequestId === selectedDocument.id,
-                      onConfirmingChange: (confirming) =>
-                        setDeleteRequestId(confirming ? selectedDocument.id : null),
-                      onDelete: onDeleteDocument,
-                    }
-                  : undefined
-              }
-            />
-          </div>
-        ) : null}
+        {vocabularyOpen ? null : (
+          <>
+            <div className="library-search-row">
+              <label>
+                <Search size={16} aria-hidden="true" />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(event) => onQueryChange(event.target.value)}
+                  placeholder={t("home.searchPlaceholder")}
+                  aria-label={t("home.searchLabel")}
+                />
+              </label>
+            </div>
+            {documents.length === 0 && !hasActiveImport ? (
+              <div className="library-empty">
+                <FilePlus2 size={24} aria-hidden="true" />
+                <h2>{t("home.emptyTitle")}</h2>
+                <p>{t("home.emptyBody")}</p>
+                <button type="button" onClick={onImport}>
+                  {importLabel}
+                </button>
+              </div>
+            ) : documents.length > 0 && visibleDocuments.length === 0 ? (
+              <div className="library-empty is-search">
+                <h2>
+                  {t(selectedCollectionId ? "home.emptyCollectionTitle" : "home.noResultsTitle")}
+                </h2>
+                <p>{t(selectedCollectionId ? "home.emptyCollectionBody" : "home.noResultsBody")}</p>
+              </div>
+            ) : documents.length > 0 ? (
+              <div className="library-results-layout">
+                <LibraryDocumentList
+                  documents={visibleDocuments}
+                  selectedId={selectedId}
+                  view={view}
+                  onViewChange={onViewChange}
+                  onPreview={onPreview}
+                  onOpenReader={onOpenReader}
+                  onRequestDelete={onDeleteDocument ? requestDelete : undefined}
+                />
+                <LibraryDocumentDetail
+                  document={selectedDocument}
+                  onOpenReader={onOpenReader}
+                  onOpenKnowledge={onOpenKnowledge}
+                  collections={collections}
+                  membershipBusyKey={membershipBusyKey}
+                  onToggleMembership={onToggleMembership}
+                  deletion={
+                    onDeleteDocument && selectedDocument
+                      ? {
+                          confirming: deleteRequestId === selectedDocument.id,
+                          onConfirmingChange: (confirming) =>
+                            setDeleteRequestId(confirming ? selectedDocument.id : null),
+                          onDelete: onDeleteDocument,
+                        }
+                      : undefined
+                  }
+                />
+              </div>
+            ) : null}
+          </>
+        )}
         {collectionError ? (
           <div className="library-collection-error" role="alert">
             <p>{collectionError}</p>
@@ -234,13 +272,15 @@ export function LibraryHomeContent({
             </button>
           </div>
         ) : null}
-        <LibrarySavedPapers
-          clientOps={clientOps}
-          documents={documents}
-          onOpenNode={onOpenNode}
-          onOpenExternal={onOpenExternal}
-          active={active}
-        />
+        {vocabularyOpen ? null : (
+          <LibrarySavedPapers
+            clientOps={clientOps}
+            documents={documents}
+            onOpenNode={onOpenNode}
+            onOpenExternal={onOpenExternal}
+            active={active}
+          />
+        )}
       </div>
     </div>
   )
