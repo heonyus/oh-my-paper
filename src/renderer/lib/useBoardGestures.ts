@@ -257,17 +257,19 @@ export function useBoardGestures({
     }
     event.preventDefault()
     if (event.ctrlKey || event.metaKey) {
-      finishWheelPan()
       wheelAxis.current = null
       const rect = currentTarget.getBoundingClientRect()
       const factor = Math.exp(-event.deltaY * 0.006)
-      queueViewport(
-        zoomViewportAt(
-          pendingViewport.current,
-          { x: event.clientX - rect.left, y: event.clientY - rect.top },
-          pendingViewport.current.zoom * factor,
-        ),
+      const next = zoomViewportAt(
+        pendingViewport.current,
+        { x: event.clientX - rect.left, y: event.clientY - rect.top },
+        pendingViewport.current.zoom * factor,
       )
+      // A pinch arrives as a wheel tick per frame. Committing each one rendered the whole app
+      // once per frame; the gesture now moves the board like a wheel pan does, by preview, and
+      // commits once it has settled.
+      if (onPanPreview) queueWheelPan(next)
+      else queueViewport(next)
     } else {
       const delta = event.shiftKey
         ? { x: -(event.deltaY || event.deltaX), y: 0 }

@@ -302,6 +302,35 @@ describe("board pan gestures", () => {
     expect(board).toHaveAttribute("data-panning", "false")
   })
 
+  it("previews a pinch zoom frame by frame and commits once after it ends", async () => {
+    vi.useFakeTimers()
+    const frames: FrameRequestCallback[] = []
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      frames.push(callback)
+      return frames.length
+    })
+    const onPreview = vi.fn()
+    const onCommit = vi.fn()
+    render(<PreviewHarness onPreview={onPreview} onCommit={onCommit} />)
+    const board = screen.getByTestId("preview-board")
+
+    for (let index = 0; index < 3; index += 1) {
+      fireEvent.wheel(board, { ctrlKey: true, deltaY: -20, clientX: 100, clientY: 100 })
+    }
+    act(() => frames.shift()?.(0))
+
+    expect(onPreview).toHaveBeenCalledOnce()
+    const previewed = onPreview.mock.lastCall?.[0] as Viewport
+    expect(previewed.zoom).toBeGreaterThan(1.3)
+    expect(onCommit).not.toHaveBeenCalled()
+    expect(board).toHaveAttribute("data-panning", "true")
+    await act(async () => vi.advanceTimersByTimeAsync(180))
+    expect(onCommit).toHaveBeenCalledOnce()
+    expect(onCommit).toHaveBeenLastCalledWith(previewed)
+    act(() => frames.shift()?.(16))
+    expect(board).toHaveAttribute("data-panning", "false")
+  })
+
   it("keeps a wheel pan pending while the preview rerenders its parent", async () => {
     vi.useFakeTimers()
     const frames: FrameRequestCallback[] = []
