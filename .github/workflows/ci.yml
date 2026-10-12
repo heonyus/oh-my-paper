@@ -5,6 +5,10 @@ name: CI
 # weekend. Cross-platform builds still run from release.yml on tag pushes.
 on:
   pull_request:
+  # Also check main itself, so a break that lands there shows up on main
+  # right away instead of on the next unrelated PR.
+  push:
+    branches: [main]
 
 # A new push to the same PR cancels the run that is still in progress.
 concurrency:

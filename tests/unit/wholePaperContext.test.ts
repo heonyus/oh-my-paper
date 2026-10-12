@@ -62,9 +62,9 @@ describe("whole-paper context", () => {
     expect(wholePaperCharacterBudget({ mode: "claude" })).toBe(
       wholePaperCharacterBudget({ mode: "claude", claudeModel: "claude-haiku-5-5" }),
     )
-    expect(wholePaperCharacterBudget({ mode: "claude", claudeModel: "claude-haiku-4-5" })).toBeLessThan(
-      wholePaperCharacterBudget({ mode: "claude", claudeModel: "claude-sonnet-5-5" }),
-    )
+    expect(
+      wholePaperCharacterBudget({ mode: "claude", claudeModel: "claude-haiku-4-5" }),
+    ).toBeLessThan(wholePaperCharacterBudget({ mode: "claude", claudeModel: "claude-sonnet-5-5" }))
     expect(wholePaperCharacterBudget({ mode: "api" })).toBeLessThan(
       wholePaperCharacterBudget({ mode: "chatgpt" }),
     )
