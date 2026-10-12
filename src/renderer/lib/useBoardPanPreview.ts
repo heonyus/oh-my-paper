@@ -14,8 +14,6 @@ export function useBoardPanPreview(
       const world = worldRef.current
       if (world) {
         world.style.transform = `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`
-        // Cards counter-scale their text by this, so it follows a zoom gesture as it happens.
-        world.style.setProperty("--board-zoom", String(viewport.zoom))
       }
       const surface = hostRef.current?.querySelector<HTMLElement>(".pdf-surface")
       if (!surface) return

@@ -182,7 +182,10 @@ export function usePdfViewerLifecycle({
     void window.ohmypaper
       .readDocument(resourceDocument.id, download.signal)
       .then(async (bytes) => {
-        const loadingTask = getDocument({ data: bytes })
+        // Page canvases on the GPU: without this PDF.js makes them software canvases
+        // (`willReadFrequently`), and every frame of a pan or zoom re-uploaded each visible
+        // page's whole bitmap, tens of megabytes a page on a Retina screen at reading zoom.
+        const loadingTask = getDocument({ data: bytes, enableHWA: true })
         const pdf = await loadingTask.promise
         if (disposed) {
           await loadingTask.destroy()

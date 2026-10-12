@@ -4,6 +4,7 @@ import { mergeSelectionFragments } from "./selectionGeometry"
 import {
   anchoredRangeOfOwners,
   canonicalText,
+  type Owner,
   rangeOfOwners,
   textOwners,
 } from "./translationTextMatch"
@@ -77,10 +78,10 @@ export function quoteFragments(
   quote: string,
   pageElement: HTMLElement,
   boardWorldElement: HTMLElement,
+  owners: readonly Owner[] = pageTextOwners(pageElement),
 ): readonly (readonly SourceFragment[])[] {
   const needle = canonicalText(quote)
   if (needle.length < quoteMin) return []
-  const owners = textOwners([...pageElement.querySelectorAll<HTMLElement>(".textLayer span")])
   const places: (readonly SourceFragment[])[] = []
   for (let from = 0; ; ) {
     const range = rangeOfOwners(owners.slice(from), needle)
@@ -140,11 +141,12 @@ export function repairedAnchor(
   card: BoardCard,
   pageElement: HTMLElement,
   boardWorldElement: HTMLElement,
+  owners: readonly Owner[] = pageTextOwners(pageElement),
 ): BoardCard | null {
   if (!anchoredKinds.has(card.kind) || card.anchor.fragments.length === 0) return null
   const saved = union(card.anchor.fragments)
   const origin = center(saved)
-  const nearest = quoteFragments(card.anchor.quote, pageElement, boardWorldElement)
+  const nearest = quoteFragments(card.anchor.quote, pageElement, boardWorldElement, owners)
     .map((lines) => {
       const at = center(union(lines))
       return { lines, distance: Math.hypot(at.x - origin.x, at.y - origin.y) }
@@ -183,6 +185,11 @@ export function tightenedHighlight(
   return repaired
 }
 
+/** The page's text, read once for every card on the page rather than once per card. */
+function pageTextOwners(pageElement: HTMLElement): readonly Owner[] {
+  return textOwners([...pageElement.querySelectorAll<HTMLElement>(".textLayer span")])
+}
+
 /** The page's cards redrawn where their quotes are printed; `cards` itself when none change. */
 export function repairedAnchors(
   cards: readonly BoardCard[],
@@ -190,10 +197,12 @@ export function repairedAnchors(
   pageElement: HTMLElement,
   boardWorldElement: HTMLElement,
 ): readonly BoardCard[] {
+  if (!cards.some((card) => card.anchor.page === pageNumber)) return cards
+  const owners = pageTextOwners(pageElement)
   let changed = false
   const next = cards.map((card) => {
     if (card.anchor.page !== pageNumber) return card
-    const repaired = repairedAnchor(card, pageElement, boardWorldElement)
+    const repaired = repairedAnchor(card, pageElement, boardWorldElement, owners)
     if (repaired) changed = true
     return repaired ?? card
   })
