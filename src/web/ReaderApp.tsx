@@ -11,6 +11,7 @@ import { noteCardTarget } from "../renderer/lib/noteCard"
 import { prefetchWhenIdle } from "../renderer/lib/prefetchWhenIdle"
 import { appShellStyle } from "../renderer/lib/uiFontScale"
 import { useAppWorkspace } from "../renderer/lib/useAppWorkspace"
+import { useCrossDocumentCardJump } from "../renderer/lib/useCrossDocumentCardJump"
 import { useNoteCard } from "../renderer/lib/useNoteCard"
 import { noteMessages } from "../renderer/messages/note"
 import { analysedPaperCount } from "../shared/documentAnalysis"
@@ -112,6 +113,13 @@ export function ReaderApp(): JSX.Element {
     if (!selected) return
     app.setWorkspace({ ...workspace, activeDocumentId: imported.data })
   }, [openDocumentId, workspace, app.setWorkspace])
+  const openCardOnPaper = useCrossDocumentCardJump({
+    activeDocumentId: workspace?.activeDocumentId ?? null,
+    readerVisible: !researchOpen && !app.libraryView && app.readerMode,
+    cards: app.activeCards,
+    openDocument,
+    jumpToCard: app.jumpToCard,
+  })
 
   if (!workspace)
     return (
@@ -307,6 +315,8 @@ export function ReaderApp(): JSX.Element {
             importProgress={app.importProgress}
             onDeleteDocument={app.deleteDocument}
             onOpenLooseNote={() => setLooseNoteOpen(true)}
+            cards={workspace.cards}
+            onOpenCard={openCardOnPaper}
           />
         ) : (
           <section

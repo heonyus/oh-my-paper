@@ -13,6 +13,7 @@ import { useLocale } from "./lib/locale"
 import { noteCardTarget } from "./lib/noteCard"
 import { appShellStyle } from "./lib/uiFontScale"
 import { useAppWorkspace } from "./lib/useAppWorkspace"
+import { useCrossDocumentCardJump } from "./lib/useCrossDocumentCardJump"
 import { useNoteCard } from "./lib/useNoteCard"
 import type { DocumentId } from "./types"
 
@@ -109,6 +110,24 @@ export function App({
     Boolean(workspace) && provider.configured,
   )
 
+  const openDocument = (id: DocumentId): void => {
+    const selected = workspace?.documents.find((document) => document.id === id)
+    if (!workspace || !selected) return
+    evidence.dismiss()
+    app.setWorkspace({ ...workspace, activeDocumentId: id })
+    setCurrentPage(selected.lastReadPage ?? 1)
+    app.setDocumentReady(Boolean(selected.overview))
+    app.setViewMode("reader")
+    app.setLibraryOpen(false)
+  }
+  const openCardOnPaper = useCrossDocumentCardJump({
+    activeDocumentId: workspace?.activeDocumentId ?? null,
+    readerVisible: readerMode && !libraryView,
+    cards: activeCards,
+    openDocument,
+    jumpToCard,
+  })
+
   if (!workspace) return <main className="loading-screen">oh-my-paper를 여는 중…</main>
 
   if (!app.credentialsChecked)
@@ -142,17 +161,6 @@ export function App({
         </Suspense>
       </main>
     )
-
-  const openDocument = (id: DocumentId): void => {
-    const selected = workspace.documents.find((document) => document.id === id)
-    if (!selected) return
-    evidence.dismiss()
-    app.setWorkspace({ ...workspace, activeDocumentId: id })
-    setCurrentPage(selected.lastReadPage ?? 1)
-    app.setDocumentReady(Boolean(selected.overview))
-    app.setViewMode("reader")
-    app.setLibraryOpen(false)
-  }
 
   return (
     <main
@@ -203,6 +211,13 @@ export function App({
           importProgress={importProgress}
           onSelect={openDocument}
           onOpenLooseNote={() => setLooseNoteOpen(true)}
+          cards={workspace.cards}
+          onOpenCard={openCardOnPaper}
+          onSaveFile={
+            platform === "web"
+              ? undefined
+              : async (request) => (await window.ohmypaper.interchange.saveFile(request)).saved
+          }
         />
       </div>
       <WorkspaceSections
