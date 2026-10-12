@@ -18,14 +18,18 @@ export type SpacedViewer = {
  * gap at this scale plus whatever rounding took off the page's height.
  */
 export function keepPageSpacing(viewer: SpacedViewer, scale: number): void {
+  // Every height is read before any margin is written: a write between reads would make each
+  // read lay the whole paper out again, once per page, every time a page is drawn.
+  const margins: { readonly page: HTMLElement; readonly margin: number }[] = []
   for (let index = 0; ; index += 1) {
     const view = viewer.getPageView(index)
-    if (!view) return
+    if (!view) break
     const page = view.div
     const exactHeight = view.viewport?.height
     if (!page || exactHeight === undefined || exactHeight <= 0) continue
     const rendered = page.offsetHeight
     if (rendered <= 0) continue
-    page.style.marginBottom = `${pageGap * scale + (exactHeight - rendered)}px`
+    margins.push({ page, margin: pageGap * scale + (exactHeight - rendered) })
   }
+  for (const { page, margin } of margins) page.style.marginBottom = `${margin}px`
 }

@@ -64,11 +64,11 @@ describe("useWorkspacePersistence", () => {
     const { result } = renderHook(() => useWorkspacePersistence(workspace, vi.fn()))
 
     await act(async () => vi.advanceTimersByTimeAsync(250))
-    expect(result.current).toBe(true)
+    expect(result.current).toBe("temporary failure")
     expect(saveWorkspace).toHaveBeenCalledTimes(1)
 
     await act(async () => vi.advanceTimersByTimeAsync(1_000))
     expect(saveWorkspace).toHaveBeenCalledTimes(2)
-    expect(result.current).toBe(false)
+    expect(result.current).toBeNull()
   })
 })

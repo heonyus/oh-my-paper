@@ -93,8 +93,8 @@ function useAppState(initial: Workspace) {
   const acknowledge = useCallback((update: WorkspaceUpdate) => {
     setWorkspace((current) => (typeof update === "function" ? update(current) : update))
   }, [])
-  const failed = useWorkspacePersistence(workspace, acknowledge)
-  return { workspace, setWorkspace, failed }
+  const failure = useWorkspacePersistence(workspace, acknowledge)
+  return { workspace, setWorkspace, failed: failure !== null }
 }
 
 const turnPage = (workspace: Workspace | null, page: number): Workspace | null =>

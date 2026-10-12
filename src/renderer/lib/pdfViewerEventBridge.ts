@@ -13,7 +13,7 @@ import { parsedPageStructures } from "./parsedPageStructures"
 import type { PdfAstRuntimeSession } from "./pdfAstRuntimeSession"
 import type { PdfOutlineEntry } from "./pdfOutline"
 import type { PageOverlayState } from "./pdfOverlayAnalysis"
-import { syncViewerWidth } from "./pdfOverlayRefresh"
+import { needsOverlayRefresh, type OverlayPageSnapshot, syncViewerWidth } from "./pdfOverlayRefresh"
 import { keepPageSpacing } from "./pdfPageSpacing"
 import type { PdfRetrievalRuntime, PdfRetrievalSession } from "./pdfRetrievalRuntime"
 
@@ -63,9 +63,17 @@ export function bindViewerEventBridge(params: EventBridgeParams): {
   readonly scheduleOverlayRefresh: () => void
   readonly dispose: () => void
 } {
+  // What each page's overlay was last laid out for. A refresh runs after every drawn page and
+  // again shortly after, so a pass skips the pages whose element and size it already has.
+  const laidOut = new Map<number, OverlayPageSnapshot>()
   const applyParsedPage = (parsed: ParsedDocumentPage, pageDiv: HTMLElement): void => {
     if (params.isDisposed() || !pageDiv.isConnected) return
     const pageRect = pageDiv.getBoundingClientRect()
+    laidOut.set(parsed.pageNumber, {
+      page: pageDiv,
+      width: pageRect.width,
+      height: pageRect.height,
+    })
     const structures = parsedPageStructures(parsed, pageRect.width, pageRect.height)
     for (const structure of structures) {
       if (structure.kind !== "section") continue
@@ -95,9 +103,12 @@ export function bindViewerEventBridge(params: EventBridgeParams): {
       const pageNumber = Number(pageNumberText)
       if (!Number.isInteger(pageNumber) || pageNumber < 1) continue
       const parsed = parsedDocumentPage(params.document.id, pageNumber)
-      if (parsed) {
-        applyParsedPage(parsed, pageDiv)
-      }
+      if (!parsed) continue
+      const previous = laidOut.get(pageNumber)
+      if (previous && !needsOverlayRefresh(previous, pageDiv, true)) continue
+      const rect = pageDiv.getBoundingClientRect()
+      laidOut.set(pageNumber, { page: pageDiv, width: rect.width, height: rect.height })
+      applyParsedPage(parsed, pageDiv)
     }
   }
 
