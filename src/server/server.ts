@@ -571,7 +571,11 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
       if (res.headersSent) res.destroy()
       else if (error instanceof RemotePdfError) {
         sendError(res, remotePdfErrorStatus(error.kind), message)
-      } else sendError(res, 500, message)
+      } else {
+        // The reason stays visible in the terminal; the page only shows that saving failed.
+        console.error(`[server] ${req.method ?? "?"} ${req.url ?? "/"} failed: ${message}`)
+        sendError(res, 500, message)
+      }
     }
   })
   server.on("close", subscriptionRoutes.dispose)
