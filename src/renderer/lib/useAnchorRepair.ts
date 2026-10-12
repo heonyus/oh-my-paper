@@ -6,6 +6,8 @@ import { onTextLayerRendered } from "./pageRenderEvents"
 /**
  * As each page's text layer is laid out, cards drawn beside their passages or as blocks over
  * them are redrawn on the lines their quotes are printed on, and the board keeps them so.
+ * Pages are laid out again whenever they scroll back into view or the zoom changes; a page
+ * whose cards were checked already, and have not changed since, is not read again.
  */
 export function useAnchorRepair(
   cardsRef: RefObject<readonly BoardCard[]>,
@@ -18,6 +20,7 @@ export function useAnchorRepair(
   }, [commitCards])
   useEffect(() => {
     const frames = new Set<number>()
+    const checked = new Map<number, readonly BoardCard[]>()
     const unsubscribe = onTextLayerRendered((pageNumber) => {
       const frame = requestAnimationFrame(() => {
         frames.delete(frame)
@@ -25,7 +28,9 @@ export function useAnchorRepair(
         const page = document.querySelector<HTMLElement>(`.page[data-page-number="${pageNumber}"]`)
         if (!world || !page) return
         const cards = cardsRef.current
+        if (checked.get(pageNumber) === cards) return
         const next = repairedAnchors(cards, pageNumber, page, world)
+        checked.set(pageNumber, next)
         if (next !== cards) commitRef.current(next)
       })
       frames.add(frame)

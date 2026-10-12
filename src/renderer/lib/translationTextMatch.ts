@@ -6,7 +6,7 @@ type TextBlock = {
   readonly translation: string
 }
 
-type Owner = {
+export type Owner = {
   readonly character: string
   readonly node: Text
   readonly offset: number
