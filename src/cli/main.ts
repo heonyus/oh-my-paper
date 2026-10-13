@@ -15,6 +15,7 @@ import { readWebServerConfig, type WebServerConfig } from "../server/config"
 import { checkEnvironment, ensureOcrInstall } from "./environment"
 import { languageCommand } from "./language"
 import { cliLocale } from "./locale"
+import { menubarCommand } from "./menubar"
 import { t } from "./messages"
 import { readOnboardingState, runOnboarding } from "./onboarding"
 import { portOpen, startApp } from "./startApp"
@@ -217,6 +218,7 @@ function help(config: WebServerConfig): void {
       command("oh-my-paper doctor", t("help.doctor")),
       command("oh-my-paper update", t("help.update")),
       command("oh-my-paper language", t("help.language")),
+      command("oh-my-paper menubar", t("help.menubar")),
       command("oh-my-paper start --no-open", t("help.noOpen")),
       "",
     ].join("\n"),
@@ -245,6 +247,9 @@ async function main(): Promise<void> {
       return
     case "language":
       await languageCommand(config, rest[0])
+      return
+    case "menubar":
+      await menubarCommand(config, appRoot, rest[0])
       return
     case "-v":
     case "--version":

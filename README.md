@@ -118,8 +118,11 @@ PDF를 끌어다 놓으면 바로 열립니다. 제목, 저자, 페이지 구조
 | `oh-my-paper update` | 최신 버전으로 업데이트하고 다시 빌드합니다 |
 | `oh-my-paper language` | 터미널과 앱의 언어를 한국어와 영어 중에서 바꿉니다 |
 | `oh-my-paper start --no-open` | 브라우저를 열지 않고 켭니다 |
+| `oh-my-paper menubar` | macOS 메뉴 막대에 띄워 두고 꺼지지 않게 합니다 (`menubar off`로 해제) |
 
 앱은 `http://127.0.0.1:8788`에서 돌고, 데이터는 `~/.ohmypaper`에 있습니다.
+
+`oh-my-paper`로 켠 앱은 그 터미널을 닫으면 같이 꺼집니다. `oh-my-paper menubar`로 켜면 메뉴 막대에 잎 아이콘이 생기고, 터미널을 닫아도 켜져 있으며, 서버가 꺼지면 다시 켜고, 로그인할 때 자동으로 시작합니다. 끄려면 잎 아이콘에서 **종료**를 누르세요. 로그는 `~/Library/Logs/oh-my-paper/menubar.log`에 쌓입니다. 빌드에 Xcode Command Line Tools가 필요합니다.
 
 ## 개인정보
 

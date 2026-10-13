@@ -20,7 +20,7 @@ export function portOpen(host: string, port: number): Promise<boolean> {
   })
 }
 
-async function waitForPort(host: string, port: number, timeoutMs: number): Promise<boolean> {
+export async function waitForPort(host: string, port: number, timeoutMs: number): Promise<boolean> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     if (await portOpen(host, port)) return true
