@@ -1,0 +1,9 @@
+{
+  "lang": { "message": "en" },
+  "actionTitle": { "message": "Open in oh-my-paper" },
+  "stopped": { "message": "oh-my-paper is not running" },
+  "stoppedBody": {
+    "message": "Start it from a terminal with the command below. The paper you were on opens as soon as it is up."
+  },
+  "stoppedWaiting": { "message": "Waiting for oh-my-paper…" }
+}

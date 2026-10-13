@@ -146,6 +146,7 @@ const ko = {
   "import.complete": "가져오기 완료",
   "import.pick": "가져올 PDF 선택",
   "import.pickAgain": "가져올 파일을 다시 선택하세요.",
+  "import.serverDown": "oh-my-paper가 꺼져 있습니다. 터미널에서 oh-my-paper를 다시 실행하세요.",
 
   // Preparing an opened paper
   "prep.label": "PDF 로컬 준비 진행",
@@ -302,6 +303,7 @@ const en: Readonly<Record<LibraryMessageKey, string>> = {
   "import.complete": "Import complete",
   "import.pick": "Choose a PDF to import",
   "import.pickAgain": "Choose the file to import again.",
+  "import.serverDown": "oh-my-paper is not running. Start oh-my-paper again from a terminal.",
 
   "prep.label": "Local PDF preparation progress",
   "prep.title": "Preparing the paper for the board",

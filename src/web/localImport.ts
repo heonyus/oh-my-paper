@@ -44,7 +44,9 @@ export function createLocalImporter(locale: () => Locale = pageLocale) {
       return result
     } catch (error) {
       if (!(error instanceof Error)) throw error
-      publish({ stage: "checking", state: "failed", progress: 0, message: error.message })
+      // A stopped server refuses the connection, which fetch reports as a bare TypeError.
+      const detail = error instanceof TypeError ? message("import.serverDown") : error.message
+      publish({ stage: "checking", state: "failed", progress: 0, message: detail })
       throw error
     }
   }
