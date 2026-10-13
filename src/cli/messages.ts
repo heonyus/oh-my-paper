@@ -221,6 +221,17 @@ const ko = {
   "help.quickstart": "빠른 시작",
   "help.unknown": "알 수 없는 명령: {command}",
   "help.language": "언어를 바꿉니다 (한국어 · English)",
+  "help.menubar": "메뉴 막대에 띄워 꺼지지 않게 합니다 (macOS)",
+
+  "menubar.macOnly": "메뉴 막대 실행은 macOS에서만 됩니다.",
+  "menubar.buildFailed":
+    "메뉴 막대 앱을 빌드하지 못했습니다 — Xcode Command Line Tools가 필요합니다: xcode-select --install",
+  "menubar.failed": "메뉴 막대 앱을 시작하지 못했습니다",
+  "menubar.on": "메뉴 막대에서 실행 중 → {url}",
+  "menubar.onHint":
+    "터미널을 닫아도 켜져 있고, 꺼지면 다시 켜지며, 로그인하면 다시 시작합니다. 끄려면 메뉴 막대의 잎 아이콘 → 종료.",
+  "menubar.slow": "메뉴 막대 앱은 떴지만 서버가 아직 응답하지 않습니다 — 로그: {log}",
+  "menubar.off": "메뉴 막대 실행을 껐습니다. 로그인해도 다시 시작하지 않습니다.",
 
   "language.ask": "언어 · Language",
   "language.saved": "이제 터미널과 앱이 한국어로 나옵니다",
@@ -446,6 +457,17 @@ const en: Readonly<Record<Key, string>> = {
   "help.quickstart": "Quick start",
   "help.unknown": "Unknown command: {command}",
   "help.language": "Change the language (한국어 · English)",
+  "help.menubar": "Keep it running from the menu bar (macOS)",
+
+  "menubar.macOnly": "The menu bar companion runs on macOS only.",
+  "menubar.buildFailed":
+    "Could not build the menu bar app — it needs the Xcode Command Line Tools: xcode-select --install",
+  "menubar.failed": "Could not start the menu bar app",
+  "menubar.on": "Running from the menu bar → {url}",
+  "menubar.onHint":
+    "It stays on when this terminal closes, comes back if it stops, and starts again at login. To stop it: the leaf icon in the menu bar → Quit.",
+  "menubar.slow": "The menu bar app is up but the server is not answering yet — log: {log}",
+  "menubar.off": "The menu bar companion is off and no longer starts at login.",
 
   "language.ask": "Language · 언어",
   "language.saved": "The terminal and the app now use English",

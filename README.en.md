@@ -118,8 +118,11 @@ Scanned PDFs, figures, tables and equations are read on your computer by PaddleO
 | `oh-my-paper update` | Update to the latest version and rebuild |
 | `oh-my-paper language` | Switch between Korean and English, in the terminal and the app |
 | `oh-my-paper start --no-open` | Start without opening a browser |
+| `oh-my-paper menubar` | Keep it running from the macOS menu bar (`menubar off` undoes it) |
 
 The app runs at `http://127.0.0.1:8788` and keeps its data in `~/.ohmypaper`.
+
+An app started with `oh-my-paper` stops when that terminal closes. Started with `oh-my-paper menubar` it gets a leaf icon in the menu bar, stays on when the terminal closes, restarts the server if it stops, and starts again at login. To stop it, choose **Quit** from the leaf icon. The log is at `~/Library/Logs/oh-my-paper/menubar.log`. Building it needs the Xcode Command Line Tools.
 
 ## Privacy
 
