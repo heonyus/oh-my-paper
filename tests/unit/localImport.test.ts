@@ -86,4 +86,26 @@ describe("createLocalImporter", () => {
     await expect(importer.importDocumentPaths(tokens)).rejects.toThrow()
     expect(uploaded).not.toContain("queued.pdf")
   })
+
+  it("says the server is stopped when the upload cannot connect", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("Failed to fetch")
+      }),
+    )
+    const importer = createLocalImporter(() => "ko")
+    const messages: string[] = []
+    importer.onImportProgress((progress) => {
+      if (progress.state === "failed") messages.push(progress.message)
+    })
+    const token = importer.getDroppedFilePath(
+      new File([new Uint8Array(8)], "paper.pdf", { type: "application/pdf" }),
+    )
+
+    await expect(importer.importDocumentPath(token)).rejects.toThrow()
+    expect(messages).toEqual([
+      "oh-my-paper가 꺼져 있습니다. 터미널에서 oh-my-paper를 다시 실행하세요.",
+    ])
+  })
 })

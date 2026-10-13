@@ -83,7 +83,27 @@ async function openPaper(pdfUrl, tabId) {
   }
 }
 
-function openLink(url, tabId) {
+// Whether the local server answers at all; a stopped one refuses the
+// connection. The toolbar button carries the answer, so a paper that opened in
+// the browser's own viewer is explained.
+async function appRunning() {
+  let running = true
+  try {
+    await fetch(`${APP_ORIGIN}/`, { method: "HEAD", signal: AbortSignal.timeout(1500) })
+  } catch {
+    running = false
+  }
+  void chrome.action.setBadgeText({ text: running ? "" : "off" })
+  void chrome.action.setTitle({
+    title: chrome.i18n.getMessage(running ? "actionTitle" : "stopped"),
+  })
+  return running
+}
+
+async function openLink(url, tabId) {
+  // The content script already cancelled the click, so with the server
+  // stopped the tab follows the link itself.
+  if (!(await appRunning())) return chrome.tabs.update(tabId, { url })
   const pdfUrl = resolvePdfUrl(url)
   if (pdfUrl) return openPaper(pdfUrl, tabId)
   // Landing pages that need API resolution go through the server importer.
@@ -92,14 +112,77 @@ function openLink(url, tabId) {
   })
 }
 
+// The PDF behind the page in a tab: the tab's own address when it is showing
+// one, else the link scholarly sites publish for indexers.
+async function pdfInPage(tabId, tabUrl) {
+  try {
+    const [injection] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () =>
+        document.contentType === "application/pdf"
+          ? location.href
+          : (document.querySelector('meta[name="citation_pdf_url"]')?.content ?? null),
+    })
+    return injection?.result ? new URL(injection.result, tabUrl).toString() : null
+  } catch {
+    // Browser pages and the extension store refuse scripts.
+    return null
+  }
+}
+
+function isSemanticScholarPaper(url) {
+  const { hostname, pathname } = new URL(url)
+  return hostname.replace(/^www\./, "") === "semanticscholar.org" && pathname.startsWith("/paper/")
+}
+
+// The toolbar button: the paper in the tab opens in the reader in its place.
+// A page that is not a paper keeps its tab and the reader opens beside it.
+async function sendTab(tab) {
+  const url = tab.url ?? ""
+  if (tab.id === undefined || url.startsWith(APP_ORIGIN)) return
+  if (!(await appRunning())) {
+    await chrome.tabs.create({
+      url: chrome.runtime.getURL(`stopped.html?tab=${tab.id}`),
+      index: tab.index + 1,
+    })
+    return
+  }
+  if (/^https?:/.test(url)) {
+    const pdfUrl = resolvePdfUrl(url) ?? (await pdfInPage(tab.id, url))
+    if (pdfUrl) return openPaper(pdfUrl, tab.id)
+    if (isSemanticScholarPaper(url)) return openLink(url, tab.id)
+  }
+  await chrome.tabs.create({ url: `${APP_ORIGIN}/`, index: tab.index + 1 })
+}
+
+// The "not running" page asks every couple of seconds; once the server
+// answers, the tab the button was pressed on carries on and the page closes.
+async function resume(tabId, noticeTabId) {
+  if (!(await appRunning())) return
+  const tab = await chrome.tabs.get(tabId).catch(() => null)
+  if (noticeTabId !== undefined) {
+    if (tab) await chrome.tabs.remove(noticeTabId)
+    else await chrome.tabs.update(noticeTabId, { url: `${APP_ORIGIN}/` })
+  }
+  if (!tab) return
+  await chrome.tabs.update(tabId, { active: true })
+  await sendTab(tab)
+}
+
+chrome.action.onClicked.addListener((tab) => void sendTab(tab))
+
 chrome.runtime.onMessage.addListener((message, sender) => {
   if (message?.type === "oh-my-paper:open" && typeof message.url === "string") {
     void openLink(message.url, sender.tab?.id ?? -1)
   }
+  if (message?.type === "oh-my-paper:resume" && Number.isInteger(message.tabId)) {
+    void resume(message.tabId, sender.tab?.id)
+  }
 })
 
 // Redirects a top-level navigation that serves a PDF into oh-my-paper. The
-// download runs in the extension so cookie-gated PDFs still work.
+// download runs in the extension so cookie-gated PDFs still work. With the
+// server stopped the tab keeps the browser's own viewer.
 chrome.webRequest.onHeadersReceived.addListener(
   (details) => {
     if (details.tabId < 0 || details.url.startsWith(APP_ORIGIN)) return
@@ -108,7 +191,9 @@ chrome.webRequest.onHeadersReceived.addListener(
         .find((header) => header.name.toLowerCase() === "content-type")
         ?.value?.toLowerCase() ?? ""
     if (!contentType.includes("application/pdf")) return
-    void openPaper(details.url, details.tabId)
+    void appRunning().then((running) => {
+      if (running) void openPaper(details.url, details.tabId)
+    })
   },
   { urls: ["<all_urls>"], types: ["main_frame"] },
   ["responseHeaders"],
