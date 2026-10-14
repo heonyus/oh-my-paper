@@ -23,6 +23,7 @@ const CARD_METADATA_KEYS = [
   "sourceUrl",
   "sourceMeta",
   "anchor",
+  "example",
 ] as const
 
 function metadataForCard(card: BoardCard): Readonly<Record<string, unknown>> {
@@ -35,6 +36,7 @@ function metadataForCard(card: BoardCard): Readonly<Record<string, unknown>> {
     ...(card.sourceUrl === undefined ? {} : { sourceUrl: card.sourceUrl }),
     ...(card.sourceMeta === undefined ? {} : { sourceMeta: card.sourceMeta }),
     anchor: card.anchor,
+    ...(card.example === undefined ? {} : { example: card.example }),
   }
 }
 

@@ -21,6 +21,7 @@ const cardMetaSchema = boardCardSchema
     sourceKey: true,
     sourceUrl: true,
     sourceMeta: true,
+    example: true,
   })
   .partial()
   .extend({
@@ -88,6 +89,8 @@ function cardOfRow(repo: KnowledgeRepository, row: SqlRow): BoardCard | null {
     sourceUrl: cardMeta.sourceUrl,
     sourceMeta: cardMeta.sourceMeta,
     anchor: cardMeta.anchor,
+    createdAt: node.createdAt,
+    example: cardMeta.example,
   })
 }
 

@@ -55,7 +55,11 @@ function comparable(workspace: Workspace) {
   return {
     ...rest,
     documents: byKey(documents, (item) => item.id),
-    cards: byKey(cards, (item) => item.id),
+    // Each store stamps its own rows, so when a card was first saved differs between them.
+    cards: byKey(
+      cards.map(({ createdAt: _created, ...card }) => card),
+      (item) => item.id,
+    ),
     insights: byKey(insights, (item) => `${item.documentId}:${item.kind}`),
     readerNotes: readerNotes.map(({ updatedAt: _time, ...note }) => note),
   }

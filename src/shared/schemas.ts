@@ -146,6 +146,15 @@ export const boardCardSchema = z.object({
     })
     .optional(),
   anchor: sourceAnchorSchema,
+  /** When the card was first saved, as the library database recorded it; absent until then. */
+  createdAt: z.string().datetime().optional(),
+  /** For a word translation: the sentence the word was met in, and that sentence translated. */
+  example: z
+    .object({
+      sentence: z.string().min(1).max(2_000),
+      translation: z.string().min(1).max(4_000),
+    })
+    .optional(),
 })
 
 export const documentInsightKindSchema = z.enum(["keywords", "threeLines", "summary"])

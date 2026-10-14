@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { LibraryHome } from "../../src/renderer/components/LibraryHome"
 import { LibraryVocabulary } from "../../src/renderer/components/LibraryVocabulary"
+import { sourceDocumentAstSchema } from "../../src/shared/documentAst"
 import { boardCardSchema, documentRecordSchema } from "../../src/shared/schemas"
 
 vi.mock("../../src/renderer/components/DocumentThumbnail", () => ({
@@ -43,54 +44,168 @@ const indicates = boardCardSchema.parse({
   },
 })
 
+const sentence = "This indicates that perfusion was failing early."
+
+/** Page 3 of the paper: a heading, then the sentence the word was looked up in, then another. */
+const structure = sourceDocumentAstSchema.parse({
+  schemaVersion: "1.0.0",
+  sourceHash: "a".repeat(64),
+  extractorVersion: "test",
+  pages: [{ id: "page:3", page: 3, width: 600, height: 800 }],
+  items: [
+    {
+      id: "item:0",
+      pageId: "page:3",
+      text: "Results",
+      normalizedStart: 0,
+      normalizedEnd: 7,
+      bounds: { x: 40, y: 40, width: 60, height: 10 },
+    },
+    {
+      id: "item:1",
+      pageId: "page:3",
+      text: `Lactate rose first. ${sentence}`,
+      normalizedStart: 8,
+      normalizedEnd: 8 + 20 + sentence.length,
+      bounds: { x: 40, y: 54, width: 480, height: 10 },
+    },
+  ],
+  lines: [
+    {
+      id: "line:0",
+      pageId: "page:3",
+      sourceItemIds: ["item:0"],
+      bounds: { x: 40, y: 40, width: 60, height: 10 },
+    },
+    {
+      id: "line:1",
+      pageId: "page:3",
+      sourceItemIds: ["item:1"],
+      bounds: { x: 40, y: 54, width: 480, height: 10 },
+    },
+  ],
+})
+
+const runAi = vi.fn()
+
+beforeEach(() => {
+  runAi.mockReset()
+  runAi.mockResolvedValue({ text: "이는 관류가 일찍 나빠지고 있었음을 나타낸다.", model: "test" })
+  Object.defineProperty(window, "ohmypaper", {
+    configurable: true,
+    value: {
+      readDocumentAst: vi.fn().mockResolvedValue({
+        status: "ready",
+        sourceHash: "a".repeat(64),
+        fingerprint: "b".repeat(64),
+        ast: structure,
+      }),
+      runAi,
+    },
+  })
+})
+
 describe("LibraryVocabulary", () => {
-  it("lists the word with its meanings and opens the paper at the word", () => {
+  it("shows the sentence the word was met in, translates it, and opens the paper at the word", async () => {
     const onOpenCard = vi.fn()
-    render(
+    const onSaveExample = vi.fn()
+    const dated = { ...indicates, createdAt: "2026-10-14T09:30:00.000Z" }
+    const { container } = render(
       <LibraryVocabulary
-        cards={[indicates]}
+        cards={[dated]}
         documents={[paper]}
         onOpenCard={onOpenCard}
         onSaveFile={undefined}
+        onSaveExample={onSaveExample}
       />,
     )
-    expect(screen.getByText("indicates")).toBeVisible()
-    expect(screen.getByText("나타내다")).toBeVisible()
+    expect(screen.getByRole("heading", { level: 2, name: "indicates" })).toBeVisible()
+    expect(screen.getAllByText("나타내다").length).toBeGreaterThan(0)
     expect(screen.getByText("시사하다")).toBeVisible()
+    expect(await screen.findByText("indicates", { selector: "mark" })).toBeVisible()
+    expect(screen.getByText(/that perfusion was failing early\./u)).toBeVisible()
+    expect(container.querySelector("time")).toHaveAttribute("datetime", dated.createdAt)
+    await waitFor(() =>
+      expect(onSaveExample).toHaveBeenCalledWith(indicates.id, {
+        sentence,
+        translation: "이는 관류가 일찍 나빠지고 있었음을 나타낸다.",
+      }),
+    )
+    expect(runAi).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "translation", quote: sentence, page: 3 }),
+    )
     expect(screen.queryByRole("button", { name: "CSV 파일로 저장" })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: `${paper.title} 3페이지로 이동` }))
     expect(onOpenCard).toHaveBeenCalledWith(paper.id, indicates.id)
   })
 
-  it("copies a Markdown table and saves a CSV file", async () => {
+  it("shows a translation that failed, and asks again on 다시 시도", async () => {
+    runAi.mockRejectedValueOnce(new Error("offline"))
+    const onSaveExample = vi.fn()
+    // Another paper, so the translation the first test asked for is not reused here.
+    const otherPaper = documentRecordSchema.parse({
+      ...paper,
+      id: "bbccddeeff001122",
+      hash: "c".repeat(64),
+    })
+    const again = boardCardSchema.parse({
+      ...indicates,
+      id: "8a6f6b9e-3a0b-4c55-9b63-0a3f8e1d2c44",
+      documentId: otherPaper.id,
+    })
+    render(
+      <LibraryVocabulary
+        cards={[again]}
+        documents={[otherPaper]}
+        onOpenCard={vi.fn()}
+        onSaveFile={undefined}
+        onSaveExample={onSaveExample}
+      />,
+    )
+    expect(await screen.findByText("해석을 불러오지 못했습니다.")).toBeVisible()
+    expect(onSaveExample).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole("button", { name: "다시 시도" }))
+    await waitFor(() => expect(onSaveExample).toHaveBeenCalledTimes(1))
+    expect(runAi).toHaveBeenCalledTimes(2)
+  })
+
+  it("copies a Markdown table with the kept example and saves a CSV file", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } })
     const onSaveFile = vi.fn().mockResolvedValue(true)
+    const kept = {
+      ...indicates,
+      example: { sentence, translation: "이는 관류가 일찍 나빠지고 있었음을 나타낸다." },
+    }
     render(
       <LibraryVocabulary
-        cards={[indicates]}
+        cards={[kept]}
         documents={[paper]}
         onOpenCard={vi.fn()}
         onSaveFile={onSaveFile}
       />,
     )
+    expect(screen.getByText("이는 관류가 일찍 나빠지고 있었음을 나타낸다.")).toBeVisible()
+    fireEvent.click(screen.getByText("내보내기"))
     fireEvent.click(screen.getByRole("button", { name: "Markdown 복사" }))
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("복사했습니다"))
     expect(writeText).toHaveBeenCalledWith(
       [
-        "| 단어 | 뜻 | 출처 |",
-        "| --- | --- | --- |",
-        `| **indicates** | 나타내다, 시사하다 | ${paper.title} p.3 |`,
+        "| 단어 | 뜻 | 예문 | 해석 | 출처 |",
+        "| --- | --- | --- | --- | --- |",
+        `| **indicates** | 나타내다; 시사하다 | ${sentence} | 이는 관류가 일찍 나빠지고 있었음을 나타낸다. | ${paper.title} p.3 |`,
       ].join("\n"),
     )
+    fireEvent.click(screen.getByText("내보내기"))
     fireEvent.click(screen.getByRole("button", { name: "CSV 파일로 저장" }))
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("파일로 저장했습니다"))
     expect(onSaveFile).toHaveBeenCalledWith(
       expect.objectContaining({
         defaultName: expect.stringMatching(/^vocabulary-\d{4}-\d{2}-\d{2}\.csv$/),
-        content: `단어,뜻,출처\nindicates,나타내다; 시사하다,${paper.title} p.3`,
+        content: `단어,뜻,예문,해석,출처\nindicates,나타내다; 시사하다,${sentence},이는 관류가 일찍 나빠지고 있었음을 나타낸다.,${paper.title} p.3`,
       }),
     )
+    expect(runAi).not.toHaveBeenCalled()
   })
 
   it("narrows the list by search and reports when nothing matches", () => {
@@ -126,7 +241,7 @@ describe("LibraryHome vocabulary", () => {
     expect(entry).toHaveTextContent("1")
     fireEvent.click(entry)
     expect(screen.getByRole("heading", { level: 1, name: "단어장" })).toBeVisible()
-    expect(screen.getAllByText("1개 단어")).toHaveLength(2)
+    expect(screen.getByText("1개 단어")).toBeVisible()
     expect(screen.getByRole("region", { name: "단어장" })).toBeVisible()
     expect(screen.queryByRole("searchbox", { name: "라이브러리 검색" })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: "전체 문서" }))

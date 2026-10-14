@@ -4,6 +4,7 @@ import { documentKindName } from "../../shared/documentKind"
 import type { KnowledgeNodeId } from "../../shared/knowledgeSchemas"
 import type { KnowledgeClientOps } from "../lib/knowledgeTypes"
 import { useLocale, useTranslator } from "../lib/locale"
+import type { VocabularyExample } from "../lib/vocabulary"
 import { countKey, libraryMessages } from "../messages/library"
 import { noteMessages } from "../messages/note"
 import type { BoardCard, CardId, DocumentId, DocumentRecord } from "../types"
@@ -65,6 +66,7 @@ export type LibraryHomeContentProps = {
         readonly onOpen: () => void
         readonly onOpenCard: ((documentId: DocumentId, cardId: CardId) => void) | undefined
         readonly onSaveFile: VocabularySaveFile | undefined
+        readonly onSaveExample: ((cardId: CardId, example: VocabularyExample) => void) | undefined
       }
     | undefined
 }
@@ -187,6 +189,7 @@ export function LibraryHomeContent({
             documents={documents}
             onOpenCard={vocabulary.onOpenCard}
             onSaveFile={vocabulary.onSaveFile}
+            onSaveExample={vocabulary.onSaveExample}
           />
         ) : null}
         {!vocabularyOpen && recentDocument && recentPageToShow ? (
