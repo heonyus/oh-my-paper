@@ -1,5 +1,25 @@
 # oh-my-paper interaction and visual contract
 
+## 2026-10-14 Vocabulary: every word, where and when it was met (current)
+
+`단어장` in the Library sidebar gathers every word a translation card looked up, across papers.
+
+- Layout: the word list beside the chosen word. The list is quiet rows (word, first meaning,
+  `n곳` when met more than once) under day headings (`오늘`, `어제`, a date) for `최근`, paper
+  titles for `논문별`, none for `ABC`; `↑`/`↓` move through it. No boxed cards, pills or
+  explanatory copy. Below 900px the chosen word opens under its row.
+- The chosen word: the word large, the first meaning, the other meanings muted, then `예문 n`.
+  Each lookup gives the sentence the word sat in, read from the paper's structure with the word
+  underlined, that sentence in Korean under it, and the paper, page and when it was looked up,
+  with `논문에서 보기`.
+- When: a card's `createdAt` is the time the library database first saved it; saves never move
+  it, and cards saved before this change keep the time they were first stored.
+- The translation is asked for only when a word is chosen, one sentence at a time, and kept on
+  the card (`example`), so it is there the next time and in exports. A sentence another word
+  already has a translation of reuses it. With the English UI no translation is asked for.
+- `내보내기` copies a Markdown table or CSV (word, meanings, example, its translation, sources
+  with dates) and, on the desktop, saves the CSV.
+
 ## 2026-10-01 Note cards: one way to write a note, from anywhere (current)
 
 The owner merged the board's sticky notes (`포스트잇`) into the reader's note. There is one

@@ -118,6 +118,13 @@ function mergeCard(
     current.sourceMeta,
     incoming.sourceMeta,
   )
+  const example = mergeField(
+    policy,
+    "card.example",
+    base.example,
+    current.example,
+    incoming.example,
+  )
   return {
     id: current.id,
     documentId: mergeField(
@@ -147,6 +154,9 @@ function mergeCard(
     ...(sourceKey === undefined ? {} : { sourceKey }),
     ...(sourceUrl === undefined ? {} : { sourceUrl }),
     ...(sourceMeta === undefined ? {} : { sourceMeta }),
+    ...(example === undefined ? {} : { example }),
+    // When the card was first saved is the library's to say; no edit moves it.
+    ...(current.createdAt === undefined ? {} : { createdAt: current.createdAt }),
   }
 }
 

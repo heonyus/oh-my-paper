@@ -8,7 +8,7 @@ import type { ImportProgress } from "../../shared/ipc"
 import type { KnowledgeNodeId } from "../../shared/knowledgeSchemas"
 import type { KnowledgeClientOps } from "../lib/knowledgeTypes"
 import { useTranslator } from "../lib/locale"
-import { buildVocabulary } from "../lib/vocabulary"
+import { buildVocabulary, type VocabularyExample } from "../lib/vocabulary"
 import { countKey, type LibraryMessageKey, libraryMessages } from "../messages/library"
 import type { BoardCard, CardId, DocumentId, DocumentRecord } from "../types"
 import type { LibraryFilter } from "./LibraryCollectionSidebar"
@@ -50,6 +50,8 @@ type LibraryHomeProps = {
   readonly cards?: readonly BoardCard[] | undefined
   readonly onOpenCard?: ((documentId: DocumentId, cardId: CardId) => void) | undefined
   readonly onSaveFile?: VocabularySaveFile | undefined
+  /** Keeps a word's translated example sentence on its card. */
+  readonly onSaveExample?: ((cardId: CardId, example: VocabularyExample) => void) | undefined
 }
 
 /** A collection problem to show: catalog wording, or the message the failure carried. */
@@ -89,6 +91,7 @@ export function LibraryHome({
   cards,
   onOpenCard,
   onSaveFile,
+  onSaveExample,
 }: LibraryHomeProps): JSX.Element {
   const t = useTranslator(libraryMessages)
   const [query, setQuery] = useState("")
@@ -322,6 +325,7 @@ export function LibraryHome({
                 onOpen: () => setVocabularyOpen(true),
                 onOpenCard,
                 onSaveFile,
+                onSaveExample,
               }
             : undefined
         }

@@ -15,6 +15,7 @@ import { appShellStyle } from "./lib/uiFontScale"
 import { useAppWorkspace } from "./lib/useAppWorkspace"
 import { useCrossDocumentCardJump } from "./lib/useCrossDocumentCardJump"
 import { useNoteCard } from "./lib/useNoteCard"
+import { withCardExample } from "./lib/vocabulary"
 import type { DocumentId } from "./types"
 
 const ReaderWorkspace = lazy(() =>
@@ -213,6 +214,9 @@ export function App({
           onOpenLooseNote={() => setLooseNoteOpen(true)}
           cards={workspace.cards}
           onOpenCard={openCardOnPaper}
+          onSaveExample={(cardId, example) =>
+            app.setWorkspaceTransient(withCardExample(cardId, example))
+          }
           onSaveFile={
             platform === "web"
               ? undefined

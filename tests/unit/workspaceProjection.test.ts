@@ -29,7 +29,14 @@ afterEach(() => {
 /** The projection as it was computed before it became one joined, memoized query. */
 function referenceProjection(repo: KnowledgeRepository, db: DatabaseSync) {
   const metaSchema = boardCardSchema
-    .pick({ chat: true, loading: true, sourceKey: true, sourceUrl: true, sourceMeta: true })
+    .pick({
+      chat: true,
+      loading: true,
+      sourceKey: true,
+      sourceUrl: true,
+      sourceMeta: true,
+      example: true,
+    })
     .partial()
     .extend({
       documentId: documentIdSchema.optional(),
@@ -60,6 +67,8 @@ function referenceProjection(repo: KnowledgeRepository, db: DatabaseSync) {
         sourceUrl: meta.sourceUrl,
         sourceMeta: meta.sourceMeta,
         anchor: meta.anchor,
+        createdAt: node.createdAt,
+        example: meta.example,
       }),
     )
   }

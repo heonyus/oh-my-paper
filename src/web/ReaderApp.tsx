@@ -13,6 +13,7 @@ import { appShellStyle } from "../renderer/lib/uiFontScale"
 import { useAppWorkspace } from "../renderer/lib/useAppWorkspace"
 import { useCrossDocumentCardJump } from "../renderer/lib/useCrossDocumentCardJump"
 import { useNoteCard } from "../renderer/lib/useNoteCard"
+import { withCardExample } from "../renderer/lib/vocabulary"
 import { noteMessages } from "../renderer/messages/note"
 import { analysedPaperCount } from "../shared/documentAnalysis"
 import { LOOSE_NOTE_ID } from "../shared/readerNote"
@@ -317,6 +318,9 @@ export function ReaderApp(): JSX.Element {
             onOpenLooseNote={() => setLooseNoteOpen(true)}
             cards={workspace.cards}
             onOpenCard={openCardOnPaper}
+            onSaveExample={(cardId, example) =>
+              app.setWorkspaceTransient(withCardExample(cardId, example))
+            }
           />
         ) : (
           <section
