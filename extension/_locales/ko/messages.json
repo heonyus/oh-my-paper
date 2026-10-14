@@ -1,6 +1,8 @@
 {
   "lang": { "message": "ko" },
-  "actionTitle": { "message": "oh-my-paper로 열기" },
+  "actionTitle": { "message": "oh-my-paper에서 열기" },
+  "openHere": { "message": "여기서 열기" },
+  "dismiss": { "message": "닫기" },
   "stopped": { "message": "oh-my-paper가 꺼져 있습니다" },
   "stoppedBody": {
     "message": "터미널에서 아래 명령으로 켜 주세요. 켜지는 대로 보던 논문을 엽니다."

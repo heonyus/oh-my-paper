@@ -1,7 +1,6 @@
-// Sends paper links on supported sites to the background worker, which opens
-// them in the local oh-my-paper reader. Plain left clicks are intercepted;
-// modified clicks (Cmd/Ctrl/Shift) are left alone so the site still opens
-// normally in a new tab.
+// Offers the choice for paper links on supported sites: a plain left click
+// shows it beside the link instead of following it. Modified clicks
+// (Cmd/Ctrl/Shift/Alt) are left alone so the site still opens normally.
 
 function isPaperLink(anchor) {
   let url
@@ -30,6 +29,9 @@ function isPaperLink(anchor) {
   }
 }
 
+// The link chosen to open here, let through once when its click is replayed.
+let passing = null
+
 document.addEventListener(
   "click",
   (event) => {
@@ -37,9 +39,16 @@ document.addEventListener(
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
     const anchor = event.target instanceof Element ? event.target.closest("a[href]") : null
     if (!anchor || !isPaperLink(anchor)) return
+    if (anchor === passing) {
+      passing = null
+      return
+    }
     event.preventDefault()
     event.stopPropagation()
-    chrome.runtime.sendMessage({ type: "oh-my-paper:open", url: anchor.href })
+    globalThis.ohMyPaperChooser.forLink(anchor, () => {
+      passing = anchor
+      anchor.click()
+    })
   },
   true,
 )

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "oh-my-paper Connector",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Open paper links and PDFs directly in the local oh-my-paper reader.",
   "default_locale": "en",
   "icons": {
@@ -30,7 +30,7 @@
         "*://aclanthology.org/*",
         "*://www.aclanthology.org/*"
       ],
-      "js": ["content.js"],
+      "js": ["chooser.js", "content.js"],
       "run_at": "document_start"
     }
   ]

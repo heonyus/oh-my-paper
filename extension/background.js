@@ -100,10 +100,23 @@ async function appRunning() {
   return running
 }
 
+// Beside the tab, a page that says how to start the app; it hands the tab back
+// once the server answers, with the link that was chosen, if one was.
+async function showStopped(tab, url) {
+  const query = new URLSearchParams({ tab: String(tab.id) })
+  if (url) query.set("url", url)
+  await chrome.tabs.create({
+    url: chrome.runtime.getURL(`stopped.html?${query}`),
+    index: tab.index + 1,
+  })
+}
+
+// A link chosen in the chooser on a paper site.
 async function openLink(url, tabId) {
-  // The content script already cancelled the click, so with the server
-  // stopped the tab follows the link itself.
-  if (!(await appRunning())) return chrome.tabs.update(tabId, { url })
+  if (!(await appRunning())) {
+    const tab = await chrome.tabs.get(tabId).catch(() => null)
+    return tab ? showStopped(tab, url) : undefined
+  }
   const pdfUrl = resolvePdfUrl(url)
   if (pdfUrl) return openPaper(pdfUrl, tabId)
   // Landing pages that need API resolution go through the server importer.
@@ -135,18 +148,13 @@ function isSemanticScholarPaper(url) {
   return hostname.replace(/^www\./, "") === "semanticscholar.org" && pathname.startsWith("/paper/")
 }
 
-// The toolbar button: the paper in the tab opens in the reader in its place.
-// A page that is not a paper keeps its tab and the reader opens beside it.
+// The toolbar button, and the button on a PDF tab: the paper in the tab opens
+// in the reader in its place. A page that is not a paper keeps its tab and
+// the reader opens beside it.
 async function sendTab(tab) {
   const url = tab.url ?? ""
   if (tab.id === undefined || url.startsWith(APP_ORIGIN)) return
-  if (!(await appRunning())) {
-    await chrome.tabs.create({
-      url: chrome.runtime.getURL(`stopped.html?tab=${tab.id}`),
-      index: tab.index + 1,
-    })
-    return
-  }
+  if (!(await appRunning())) return showStopped(tab)
   if (/^https?:/.test(url)) {
     const pdfUrl = resolvePdfUrl(url) ?? (await pdfInPage(tab.id, url))
     if (pdfUrl) return openPaper(pdfUrl, tab.id)
@@ -157,7 +165,7 @@ async function sendTab(tab) {
 
 // The "not running" page asks every couple of seconds; once the server
 // answers, the tab the button was pressed on carries on and the page closes.
-async function resume(tabId, noticeTabId) {
+async function resume(tabId, url, noticeTabId) {
   if (!(await appRunning())) return
   const tab = await chrome.tabs.get(tabId).catch(() => null)
   if (noticeTabId !== undefined) {
@@ -166,7 +174,7 @@ async function resume(tabId, noticeTabId) {
   }
   if (!tab) return
   await chrome.tabs.update(tabId, { active: true })
-  await sendTab(tab)
+  await (url ? openLink(url, tabId) : sendTab(tab))
 }
 
 chrome.action.onClicked.addListener((tab) => void sendTab(tab))
@@ -175,14 +183,17 @@ chrome.runtime.onMessage.addListener((message, sender) => {
   if (message?.type === "oh-my-paper:open" && typeof message.url === "string") {
     void openLink(message.url, sender.tab?.id ?? -1)
   }
+  if (message?.type === "oh-my-paper:send-tab" && sender.tab) void sendTab(sender.tab)
   if (message?.type === "oh-my-paper:resume" && Number.isInteger(message.tabId)) {
-    void resume(message.tabId, sender.tab?.id)
+    void resume(message.tabId, typeof message.url === "string" ? message.url : null, sender.tab?.id)
   }
 })
 
-// Redirects a top-level navigation that serves a PDF into oh-my-paper. The
-// download runs in the extension so cookie-gated PDFs still work. With the
-// server stopped the tab keeps the browser's own viewer.
+// Tabs that received a PDF and have not finished loading it.
+const pdfTabs = new Set()
+
+// A top-level navigation that serves a PDF stays in the browser's viewer; once
+// it has loaded, a corner button offers to open it in oh-my-paper.
 chrome.webRequest.onHeadersReceived.addListener(
   (details) => {
     if (details.tabId < 0 || details.url.startsWith(APP_ORIGIN)) return
@@ -190,11 +201,28 @@ chrome.webRequest.onHeadersReceived.addListener(
       (details.responseHeaders ?? [])
         .find((header) => header.name.toLowerCase() === "content-type")
         ?.value?.toLowerCase() ?? ""
-    if (!contentType.includes("application/pdf")) return
-    void appRunning().then((running) => {
-      if (running) void openPaper(details.url, details.tabId)
-    })
+    if (contentType.includes("application/pdf")) pdfTabs.add(details.tabId)
+    else pdfTabs.delete(details.tabId)
   },
   { urls: ["<all_urls>"], types: ["main_frame"] },
   ["responseHeaders"],
 )
+
+chrome.tabs.onUpdated.addListener((tabId, change) => {
+  if (change.status !== "complete" || !pdfTabs.delete(tabId)) return
+  void offerPdf(tabId)
+})
+
+chrome.tabs.onRemoved.addListener((tabId) => pdfTabs.delete(tabId))
+
+async function offerPdf(tabId) {
+  try {
+    await chrome.scripting.executeScript({ target: { tabId }, files: ["chooser.js"] })
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => globalThis.ohMyPaperChooser.forPdf(),
+    })
+  } catch {
+    // The tab moved on, or shows a page extensions may not touch.
+  }
+}

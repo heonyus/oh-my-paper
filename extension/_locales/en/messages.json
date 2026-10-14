@@ -1,6 +1,8 @@
 {
   "lang": { "message": "en" },
   "actionTitle": { "message": "Open in oh-my-paper" },
+  "openHere": { "message": "Open here" },
+  "dismiss": { "message": "Close" },
   "stopped": { "message": "oh-my-paper is not running" },
   "stoppedBody": {
     "message": "Start it from a terminal with the command below. The paper you were on opens as soon as it is up."
