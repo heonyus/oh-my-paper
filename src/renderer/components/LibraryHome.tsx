@@ -8,12 +8,14 @@ import type { ImportProgress } from "../../shared/ipc"
 import type { KnowledgeNodeId } from "../../shared/knowledgeSchemas"
 import type { KnowledgeClientOps } from "../lib/knowledgeTypes"
 import { useTranslator } from "../lib/locale"
+import { buildVocabulary } from "../lib/vocabulary"
 import { countKey, type LibraryMessageKey, libraryMessages } from "../messages/library"
-import type { DocumentId, DocumentRecord } from "../types"
+import type { BoardCard, CardId, DocumentId, DocumentRecord } from "../types"
 import type { LibraryFilter } from "./LibraryCollectionSidebar"
 import type { LibraryView } from "./LibraryDocumentList"
 import { LibraryHomeContent } from "./LibraryHomeContent"
 import { LibraryTaskQueue } from "./LibraryTaskQueue"
+import type { VocabularySaveFile } from "./LibraryVocabulary"
 import {
   collectionDocumentIds,
   type LibraryCollection,
@@ -44,6 +46,10 @@ type LibraryHomeProps = {
   readonly recentPage?: number | null | undefined
   readonly onDeleteDocument?: ((id: DocumentId) => Promise<void>) | undefined
   readonly onOpenLooseNote?: (() => void) | undefined
+  /** Every card on every paper; the vocabulary gathers the word translations among them. */
+  readonly cards?: readonly BoardCard[] | undefined
+  readonly onOpenCard?: ((documentId: DocumentId, cardId: CardId) => void) | undefined
+  readonly onSaveFile?: VocabularySaveFile | undefined
 }
 
 /** A collection problem to show: catalog wording, or the message the failure carried. */
@@ -80,6 +86,9 @@ export function LibraryHome({
   recentPage,
   onDeleteDocument,
   onOpenLooseNote,
+  cards,
+  onOpenCard,
+  onSaveFile,
 }: LibraryHomeProps): JSX.Element {
   const t = useTranslator(libraryMessages)
   const [query, setQuery] = useState("")
@@ -87,6 +96,11 @@ export function LibraryHome({
   const [filter, setFilter] = useState<LibraryFilter>("all")
   const [view, setView] = useState<LibraryView>("list")
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [vocabularyOpen, setVocabularyOpen] = useState(false)
+  const vocabularyCount = useMemo(
+    () => (cards ? buildVocabulary(cards, documents).length : 0),
+    [cards, documents],
+  )
   const [collections, setCollections] = useState<readonly LibraryCollection[]>([])
   const [selectedCollectionId, setSelectedCollectionId] = useState<
     LibraryCollection["board"]["id"] | null
@@ -276,6 +290,7 @@ export function LibraryHome({
         clientOps={clientOps}
         onFilterChange={(next) => {
           setFilter(next)
+          setVocabularyOpen(false)
           if (next === "all") setSelectedCollectionId(null)
         }}
         onQueryChange={setQuery}
@@ -283,6 +298,7 @@ export function LibraryHome({
         onCollectionSelect={(id) => {
           setSelectedCollectionId(id)
           setFilter("all")
+          setVocabularyOpen(false)
         }}
         onCreateCollection={createCollection}
         onViewChange={setView}
@@ -297,6 +313,18 @@ export function LibraryHome({
         onToggleMembership={(documentId, boardId) => void toggleMembership(documentId, boardId)}
         onDeleteDocument={onDeleteDocument}
         onOpenLooseNote={onOpenLooseNote}
+        vocabulary={
+          cards
+            ? {
+                cards,
+                count: vocabularyCount,
+                open: vocabularyOpen,
+                onOpen: () => setVocabularyOpen(true),
+                onOpenCard,
+                onSaveFile,
+              }
+            : undefined
+        }
       />
       <LibraryTaskQueue
         imports={importProgress}

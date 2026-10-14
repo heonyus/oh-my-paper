@@ -1517,3 +1517,243 @@
     width: calc(100vw - 24px);
   }
 }
+
+/* Vocabulary: the words translated across the library, shown in place of the papers. */
+.library-home-subtitle {
+  margin: 4px 0 0;
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+}
+
+.library-vocabulary {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.library-vocabulary-intro {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+}
+
+.library-vocabulary-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.library-vocabulary-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(360px, 100%);
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink-muted);
+}
+.library-vocabulary-search:focus-within {
+  border-color: var(--action);
+  outline: 2px solid color-mix(in srgb, var(--action) 20%, transparent);
+}
+.library-vocabulary-search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  outline: none;
+}
+
+.library-vocabulary-sort {
+  display: inline-flex;
+  gap: 4px;
+  margin: 0;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+}
+.library-vocabulary-sort button {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: calc(var(--radius-control) - 3px);
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: var(--type-compact-size);
+  cursor: pointer;
+}
+.library-vocabulary-sort button:hover {
+  color: var(--action);
+}
+.library-vocabulary-sort button.active {
+  background: var(--action-subtle);
+  color: var(--action);
+}
+
+.library-vocabulary-export {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+.library-vocabulary-export button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--type-compact-size);
+  cursor: pointer;
+}
+.library-vocabulary-export button:hover:not(:disabled) {
+  border-color: var(--action);
+  color: var(--action);
+}
+.library-vocabulary-export button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.library-vocabulary-notice {
+  min-height: 1.2em;
+  margin: -6px 0 0;
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+}
+.library-vocabulary-notice:empty {
+  display: none;
+}
+
+.library-vocabulary-paper {
+  display: grid;
+  gap: 10px;
+}
+.library-vocabulary-paper h3 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--type-body-size);
+}
+.library-vocabulary-paper h3 span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.library-vocabulary-paper h3 small {
+  flex: none;
+  color: var(--ink-muted);
+  font-size: var(--type-compact-size);
+  font-variant-numeric: tabular-nums;
+}
+
+.library-vocabulary-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.library-vocabulary-entry {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
+  gap: 6px 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.library-vocabulary-word {
+  overflow-wrap: anywhere;
+  font-size: var(--type-title-size);
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.library-vocabulary-meanings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: meaning;
+  line-height: 1.5;
+}
+.library-vocabulary-meanings li {
+  counter-increment: meaning;
+}
+.library-vocabulary-meanings li::before {
+  content: counter(meaning) ". ";
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.library-vocabulary-meanings li:first-child {
+  font-weight: 650;
+}
+
+.library-vocabulary-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.library-vocabulary-sources button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  min-height: 26px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: var(--type-compact-size);
+  cursor: pointer;
+}
+.library-vocabulary-sources button span {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.library-vocabulary-sources button small {
+  font-size: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.library-vocabulary-sources button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--action) 24%, transparent);
+  background: var(--action-subtle);
+  color: var(--action);
+}
+.library-vocabulary-sources button:disabled {
+  cursor: default;
+}
+
+@media (max-width: 720px) {
+  .library-vocabulary-entry {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

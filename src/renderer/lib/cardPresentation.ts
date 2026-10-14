@@ -12,7 +12,8 @@ export function translationSelectionTitle(value: string): string | null {
   return /^[A-Za-z][A-Za-z'-]*$/u.test(trimmed) ? trimmed : null
 }
 
-function shortEnglishSelection(value: string): boolean {
+/** A word or a phrase of a few English words: a translation of it is a word translation. */
+export function shortEnglishSelection(value: string): boolean {
   const normalized = value.trim().replace(/\s+/gu, " ")
   if (normalized.length > 60) return false
   const words = normalized.split(" ")
@@ -57,6 +58,14 @@ function legacyMeanings(value: string): readonly string[] {
     .map(cleanMeaning)
     .filter((meaning) => /[가-힣]/u.test(meaning))
     .slice(0, 3)
+}
+
+/** The meanings a word translation card lists, in order, without their numbering or emphasis. */
+export function translationMeanings(body: string): readonly string[] {
+  const lines = body.trim().split("\n")
+  const meanings = lines.map((line) => line.match(/^\s*\d+[.)]\s*(.+)$/u)?.[1])
+  if (meanings.length === 0 || meanings.some((meaning) => !meaning)) return []
+  return meanings.map((meaning) => (meaning ?? "").replace(/\*\*/gu, "").trim()).filter(Boolean)
 }
 
 function formatMeanings(meanings: readonly string[]): string {
