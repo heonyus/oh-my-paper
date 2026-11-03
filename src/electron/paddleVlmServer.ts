@@ -7,8 +7,8 @@ import { join } from "node:path"
 import { z } from "zod"
 import { buildOfflineSubprocessEnv } from "./offlineSubprocessEnvironment"
 
-export type PaddleVlmBackend = "mlx-vlm-server" | "vllm-server"
-export type PaddleAcceleration = "mlx" | "vllm"
+export type PaddleVlmBackend = "mlx-vlm-server" | "vllm-server" | "llama-cpp-server"
+export type PaddleAcceleration = "mlx" | "vllm" | "llamacpp"
 
 export type PaddleVlmConnection = {
   readonly backend: PaddleVlmBackend
@@ -413,9 +413,189 @@ export class WslPaddleVlmServer implements PaddleVlmServer {
   }
 }
 
-/** Picks the accelerated VLM server this platform supports. */
+const llamaCppRuntimeSchema = z.object({
+  version: z.literal(1),
+  server: z.string().min(1),
+  model: z.string().min(1),
+  mmproj: z.string().min(1),
+})
+
+export type LlamaCppRuntime = z.infer<typeof llamaCppRuntimeSchema>
+
+/** Written by scripts/setup-paddle-vl-runtime.mjs once llama.cpp and the GGUF model are in place. */
+export function llamaCppRuntimeConfigPath(home: string): string {
+  return join(home, ".ohmypaper", "paddle-vl-llamacpp", "runtime.json")
+}
+
+export async function readLlamaCppRuntime(home: string): Promise<LlamaCppRuntime | null> {
+  try {
+    const raw: unknown = JSON.parse(await readFile(llamaCppRuntimeConfigPath(home), "utf8"))
+    const runtime = llamaCppRuntimeSchema.parse(raw)
+    await Promise.all([access(runtime.server), access(runtime.model), access(runtime.mmproj)])
+    return runtime
+  } catch (error) {
+    if (isMissingFile(error) || error instanceof z.ZodError || error instanceof SyntaxError)
+      return null
+    throw error
+  }
+}
+
+export function llamaCppServeArguments(
+  runtime: LlamaCppRuntime,
+  port: number,
+  apiKey: string,
+): string[] {
+  return [
+    "--model",
+    runtime.model,
+    "--mmproj",
+    runtime.mmproj,
+    "--host",
+    "127.0.0.1",
+    "--port",
+    String(port),
+    "--api-key",
+    apiKey,
+    // PaddleOCR-VL's chat template needs llama.cpp's Jinja engine.
+    "--jinja",
+    // Every layer on the GPU when there is one (Vulkan reaches NVIDIA, AMD and Intel alike).
+    "--n-gpu-layers",
+    "99",
+    "--ctx-size",
+    "8192",
+  ]
+}
+
+export type LlamaCppPaddleVlmServerOptions = {
+  readonly home?: string
+  readonly platform?: NodeJS.Platform
+  readonly spawnProcess?: typeof spawn
+  readonly readyTimeoutMs?: number
+}
+
+/**
+ * Runs PaddleOCR-VL in llama.cpp's server on Windows: through Vulkan on any GPU, and still on
+ * the CPU far faster than the in-process engine. The counterpart of the MLX server on macOS.
+ */
+export class LlamaCppPaddleVlmServer implements PaddleVlmServer {
+  readonly #options: LlamaCppPaddleVlmServerOptions
+  #process: ChildProcess | null = null
+  #current: PaddleVlmLaunch | null = null
+  #launching: Promise<PaddleVlmLaunch | null> | null = null
+
+  constructor(options: LlamaCppPaddleVlmServerOptions = {}) {
+    this.#options = options
+  }
+
+  async acceleration(): Promise<PaddleAcceleration | null> {
+    if ((this.#options.platform ?? process.platform) !== "win32") return null
+    return (await readLlamaCppRuntime(this.#options.home ?? homedir())) ? "llamacpp" : null
+  }
+
+  launch(): Promise<PaddleVlmLaunch | null> {
+    if ((this.#options.platform ?? process.platform) !== "win32") return Promise.resolve(null)
+    if (this.#process?.exitCode === null && this.#current) return Promise.resolve(this.#current)
+    if (this.#launching) return this.#launching
+    this.#launching = this.#launch().finally(() => {
+      this.#launching = null
+    })
+    return this.#launching
+  }
+
+  stop(): void {
+    this.#current = null
+    this.#launching = null
+    this.#process?.kill()
+    this.#process = null
+  }
+
+  async #launch(): Promise<PaddleVlmLaunch | null> {
+    const runtime = await readLlamaCppRuntime(this.#options.home ?? homedir())
+    if (!runtime) return null
+    const port = await reserveLoopbackPort()
+    const apiKey = randomUUID()
+    const server = (this.#options.spawnProcess ?? spawn)(
+      runtime.server,
+      llamaCppServeArguments(runtime, port, apiKey),
+      {
+        env: buildOfflineSubprocessEnv({}),
+        stdio: ["ignore", "ignore", "pipe"],
+        windowsHide: true,
+      },
+    )
+    this.#process = server
+    server.once("error", (error) => console.warn("[paddle-llamacpp] could not start", error))
+    const log: string[] = []
+    server.stderr?.setEncoding("utf8")
+    server.stderr?.on("data", (chunk: string) => appendLogTail(log, chunk))
+    server.once("exit", () => {
+      if (this.#process === server) {
+        this.#process = null
+        this.#current = null
+      }
+    })
+    const serverUrl = `http://127.0.0.1:${port}/v1`
+    const ready = waitForOpenAiServer(
+      server,
+      serverUrl,
+      apiKey,
+      this.#options.readyTimeoutMs ?? READY_TIMEOUT_MS,
+    ).catch((error: unknown) => {
+      if (this.#process === server) {
+        console.warn(`[paddle-llamacpp] server did not start:\n${log.join("\n")}`)
+        this.stop()
+      }
+      throw error
+    })
+    ready.catch(() => undefined)
+    const launch: PaddleVlmLaunch = {
+      connection: { backend: "llama-cpp-server", serverUrl, model: "PaddleOCR-VL-1.6", apiKey },
+      ready,
+    }
+    this.#current = launch
+    return launch
+  }
+}
+
+/** The first of several servers that this machine has installed, in order of preference. */
+export class PreferredPaddleVlmServer implements PaddleVlmServer {
+  #chosen: PaddleVlmServer | null = null
+
+  constructor(readonly servers: readonly PaddleVlmServer[]) {}
+
+  async acceleration(): Promise<PaddleAcceleration | null> {
+    for (const server of this.servers) {
+      const acceleration = await server.acceleration()
+      if (acceleration) return acceleration
+    }
+    return null
+  }
+
+  async launch(): Promise<PaddleVlmLaunch | null> {
+    if (this.#chosen) return this.#chosen.launch()
+    for (const server of this.servers) {
+      if (await server.acceleration()) {
+        this.#chosen = server
+        return server.launch()
+      }
+    }
+    return null
+  }
+
+  stop(): void {
+    this.#chosen?.stop()
+  }
+}
+
+/**
+ * Picks the accelerated VLM server this platform supports. On Windows vLLM in WSL comes first
+ * (an NVIDIA GPU, set up for it), then llama.cpp, which runs on any GPU or the CPU.
+ */
 export function createPaddleVlmServer(options: { readonly home?: string } = {}): PaddleVlmServer {
   return process.platform === "win32"
-    ? new WslPaddleVlmServer(options)
+    ? new PreferredPaddleVlmServer([
+        new WslPaddleVlmServer(options),
+        new LlamaCppPaddleVlmServer(options),
+      ])
     : new ApplePaddleVlmServer(options)
 }

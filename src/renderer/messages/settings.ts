@@ -85,6 +85,7 @@ const ko = {
   "settings.ocr.accelerated": "{acceleration} 준비됨",
   "settings.ocr.noAcceleration": "로컬 런타임 준비됨 · 가속 없음",
   "settings.ocr.vllm": "GPU 가속 (vLLM)",
+  "settings.ocr.llamacpp": "GPU 가속 (llama.cpp)",
   "settings.ocr.mlx": "Apple 칩 가속 (MLX)",
   "settings.ocr.installingDetail":
     "설치가 끝나면 자동으로 켜집니다. 그동안에도 문서는 바로 읽을 수 있습니다.",
@@ -178,6 +179,7 @@ const en: Readonly<Record<keyof typeof ko, string>> = {
   "settings.ocr.accelerated": "{acceleration} ready",
   "settings.ocr.noAcceleration": "Local runtime ready · no acceleration",
   "settings.ocr.vllm": "GPU acceleration (vLLM)",
+  "settings.ocr.llamacpp": "GPU acceleration (llama.cpp)",
   "settings.ocr.mlx": "Apple silicon acceleration (MLX)",
   "settings.ocr.installingDetail":
     "It turns on by itself when the install finishes. You can read documents in the meantime.",

@@ -8,8 +8,11 @@ export const documentOcrProviderStatusSchema = z.object({
   configured: z.boolean(),
   provider: z.literal("paddle"),
   model: z.literal("PaddleOCR-VL-1.6"),
-  /** GPU server that recognizes text: vLLM in WSL on Windows, MLX on Apple silicon. */
-  acceleration: z.enum(["vllm", "mlx"]).nullable().default(null),
+  /**
+   * Server that recognizes text: vLLM in WSL or llama.cpp (any GPU, through Vulkan) on Windows,
+   * MLX on Apple silicon.
+   */
+  acceleration: z.enum(["vllm", "llamacpp", "mlx"]).nullable().default(null),
   /** A background setup is still downloading or installing the runtime. */
   installing: z.boolean().optional(),
   /** How far that setup is, when it has reported progress. */

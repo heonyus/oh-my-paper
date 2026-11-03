@@ -8,6 +8,7 @@ type Translate = ReturnType<typeof useTranslator<(typeof settingsMessages)["ko"]
 
 const accelerationLabels = {
   vllm: "settings.ocr.vllm",
+  llamacpp: "settings.ocr.llamacpp",
   mlx: "settings.ocr.mlx",
 } as const satisfies Readonly<
   Record<NonNullable<DocumentOcrProviderStatus["acceleration"]>, string>

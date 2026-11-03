@@ -1,7 +1,19 @@
 import { spawn, spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+import {
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs"
 import { homedir } from "node:os"
 import { delimiter, dirname, join } from "node:path"
+import { Readable } from "node:stream"
+import { pipeline } from "node:stream/promises"
 import { fileURLToPath } from "node:url"
 import { downloadRepository, modelSources } from "./model-download.mjs"
 
@@ -23,6 +35,13 @@ const mlxPython = join(mlxRuntimeRoot, "bin", "python")
 const mlxModelRepository = "PaddlePaddle/PaddleOCR-VL-1.6"
 const mlxModelDirectory = join(mlxRuntimeRoot, "models", "PaddleOCR-VL-1.6")
 const mlxReadinessMarker = join(mlxRuntimeRoot, ".ready-mlx-v1.6")
+// On Windows, PaddleOCR-VL also runs in llama.cpp's server: through Vulkan on any GPU, and on the
+// CPU still far faster than in-process recognition (src/electron/paddleVlmServer.ts reads this).
+const llamaCppAcceleration = process.platform === "win32"
+const llamaCppRoot =
+  process.env.OH_MY_PAPER_PADDLE_VL_LLAMACPP ?? join(dirname(runtimeRoot), "paddle-vl-llamacpp")
+const ggufRepository =
+  process.env.OH_MY_PAPER_PADDLE_VL_GGUF_REPO ?? "tieubaoca/PaddleOCR-VL-1.6-GGUF"
 // Beside the runtime folders, matching paddleInstallPaths() in src/electron/paddleInstallState.ts.
 const installLock = join(dirname(runtimeRoot), "paddle-vl-install.pid")
 const installProgress = join(dirname(runtimeRoot), "paddle-vl-install.progress.json")
@@ -38,7 +57,9 @@ const children = new Set()
 /** Share of the install each part takes; on Apple silicon the model download is the long pole. */
 const weights = appleAcceleration
   ? { paddle: 5, paddleocr: 10, layout: 5, mlx: 5, model: 65, pipeline: 10 }
-  : { paddle: 15, paddleocr: 25, layout: 15, pipeline: 45 }
+  : llamaCppAcceleration
+    ? { paddle: 10, paddleocr: 20, layout: 10, llamacpp: 20, pipeline: 40 }
+    : { paddle: 15, paddleocr: 25, layout: 15, pipeline: 45 }
 const finished = new Set()
 const model = { total: 1_930_000_000, bytes: 0, samples: [] }
 let installStarted = Date.now()
@@ -359,6 +380,102 @@ async function modelLane() {
   writeProgress()
 }
 
+const requestHeaders = { "user-agent": "oh-my-paper-installer" }
+
+async function fetchJson(url) {
+  const response = await fetch(url, { headers: { ...requestHeaders, accept: "application/json" } })
+  if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`)
+  return response.json()
+}
+
+/** Downloads to a temporary name first, so a cut download never looks complete. */
+async function downloadFile(url, target) {
+  const response = await fetch(url, { headers: requestHeaders, redirect: "follow" })
+  if (!response.ok || !response.body) throw new Error(`${url}: HTTP ${response.status}`)
+  mkdirSync(dirname(target), { recursive: true })
+  const partial = `${target}.partial`
+  await pipeline(Readable.fromWeb(response.body), createWriteStream(partial))
+  renameSync(partial, target)
+}
+
+function findFile(directory, name) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name)
+    if (entry.isFile() && entry.name.toLowerCase() === name) return path
+    if (entry.isDirectory()) {
+      const found = findFile(path, name)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+/** The first file matching each preference in turn, else the first file. */
+function preferred(files, preferences) {
+  for (const preference of preferences) {
+    const match = files.find((file) => preference.test(file))
+    if (match) return match
+  }
+  return files[0]
+}
+
+/**
+ * llama.cpp's Windows build (Vulkan on x64, the CPU build on ARM) and PaddleOCR-VL as GGUF with
+ * its vision projector. Optional: when it fails, recognition stays in-process as before.
+ */
+async function llamaCppLane() {
+  const started = Date.now()
+  say("[llamacpp] ▶ llama.cpp + PaddleOCR-VL GGUF")
+  const release = await fetchJson("https://api.github.com/repos/ggml-org/llama.cpp/releases/latest")
+  const wanted = process.arch === "arm64" ? /-bin-win-cpu-arm64\.zip$/ : /-bin-win-vulkan-x64\.zip$/
+  const asset = release.assets?.find((candidate) => wanted.test(candidate.name))
+  if (!asset) throw new Error(`no Windows build in llama.cpp ${release.tag_name}`)
+  const bin = join(llamaCppRoot, "bin")
+  const zip = join(llamaCppRoot, asset.name)
+  await downloadFile(asset.browser_download_url, zip)
+  rmSync(bin, { recursive: true, force: true })
+  mkdirSync(bin, { recursive: true })
+  // Windows' own bsdtar opens zip files; a Git for Windows tar earlier on PATH would not.
+  const tar = join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe")
+  await run("llamacpp", tar, ["-xf", zip, "-C", bin])
+  rmSync(zip, { force: true })
+  const server = findFile(bin, "llama-server.exe")
+  if (!server) throw new Error(`no llama-server.exe in ${asset.name}`)
+
+  const hub = process.env.HF_ENDPOINT ?? "https://huggingface.co"
+  const info = await fetchJson(`${hub}/api/models/${ggufRepository}`)
+  const files = (info.siblings ?? [])
+    .map((sibling) => sibling.rfilename)
+    .filter((name) => name.toLowerCase().endsWith(".gguf"))
+  const mmprojName = preferred(
+    files.filter((name) => /mmproj/i.test(name)),
+    [/f16/i, /bf16/i, /q8/i],
+  )
+  const modelName = preferred(
+    files.filter((name) => !/mmproj/i.test(name)),
+    [/q8_0/i, /bf16/i, /f16/i],
+  )
+  if (!modelName || !mmprojName)
+    throw new Error(`no GGUF model with a projector in ${ggufRepository}`)
+  const models = join(llamaCppRoot, "models")
+  const model = join(models, modelName.split("/").at(-1))
+  const mmproj = join(models, mmprojName.split("/").at(-1))
+  for (const [name, target] of [
+    [modelName, model],
+    [mmprojName, mmproj],
+  ]) {
+    if (!existsSync(target))
+      await downloadFile(`${hub}/${ggufRepository}/resolve/main/${name}`, target)
+  }
+  writeFileSync(
+    join(llamaCppRoot, "runtime.json"),
+    `${JSON.stringify({ version: 1, server, model, mmproj, release: release.tag_name }, null, 2)}\n`,
+  )
+  say(
+    `[llamacpp] ✔ ${release.tag_name} · ${modelName} (${Math.round((Date.now() - started) / 1000)}초)`,
+  )
+}
+
 async function main() {
   takeLock()
   rmSync(installDeclined, { force: true })
@@ -382,7 +499,20 @@ async function main() {
       { env: { ...process.env, OH_MY_PAPER_MLX_MODEL_DIR: mlxModelDirectory }, key: "pipeline" },
     )
   } else {
-    await paddleLane()
+    await Promise.all([
+      paddleLane(),
+      llamaCppAcceleration
+        ? llamaCppLane().then(
+            () => finished.add("llamacpp"),
+            (error) => {
+              finished.add("llamacpp")
+              say(
+                `[llamacpp] ▲ 건너뜀, CPU로 읽습니다: ${error instanceof Error ? error.message : error}`,
+              )
+            },
+          )
+        : Promise.resolve(),
+    ])
     await step(
       "paddle",
       "문서 분석 파이프라인",

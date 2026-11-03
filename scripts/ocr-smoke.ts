@@ -50,6 +50,10 @@ async function main(): Promise<void> {
     const status = await parser.status()
     console.log(`engine: ${JSON.stringify(status)}`)
     if (!status.configured) throw new Error("the document engine is not installed")
+    // CI names the accelerator it expects, so a fallback to the slow in-process engine fails.
+    const expected = process.env["OH_MY_PAPER_EXPECT_ACCELERATION"]
+    if (expected && status.acceleration !== expected)
+      throw new Error(`expected ${expected} acceleration, got ${status.acceleration ?? "none"}`)
 
     await store.save(defaultWorkspace())
     const pdf = join(root, "sample.pdf")
