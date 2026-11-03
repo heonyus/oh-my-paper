@@ -10,8 +10,17 @@ import { importDocument } from "../../src/electron/documentService"
 import { WorkspaceStore } from "../../src/electron/workspaceStore"
 
 const temporaryDirectories: string[] = []
+const stores: WorkspaceStore[] = []
+
+/** A store closed after the test, before its folder is removed. */
+function openStore(root: string): WorkspaceStore {
+  const store = new WorkspaceStore(root)
+  stores.push(store)
+  return store
+}
 
 afterEach(async () => {
+  await Promise.all(stores.splice(0).map((store) => store.close()))
   await Promise.all(
     temporaryDirectories
       .splice(0)
@@ -32,7 +41,7 @@ describe("document import", () => {
 
     const imported = await importDocument(
       source,
-      new WorkspaceStore(join(directory, "store")),
+      openStore(join(directory, "store")),
       "original-paper-name.pdf",
     )
 
@@ -49,7 +58,7 @@ describe("document import", () => {
     pdf.addPage()
     const bytes = await pdf.save()
     await writeFile(source, bytes)
-    const store = new WorkspaceStore(join(directory, "store"))
+    const store = openStore(join(directory, "store"))
 
     const first = await importDocument(source, store)
     if (!first) throw new Error("Expected imported document")
@@ -72,7 +81,7 @@ describe("document import", () => {
     const bytes = await pdf.save()
     await writeFile(source, bytes)
     const hash = createHash("sha256").update(bytes).digest("hex")
-    const store = new WorkspaceStore(join(directory, "store"))
+    const store = openStore(join(directory, "store"))
     await mkdir(store.documentsDirectory, { recursive: true })
     await writeFile(join(store.documentsDirectory, `${hash}.pdf`), Buffer.from("not this PDF"))
 

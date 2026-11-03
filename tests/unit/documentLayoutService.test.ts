@@ -83,6 +83,7 @@ describe("document layout service paths", () => {
       })
       expect(second).toEqual(first)
     } finally {
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })
@@ -138,6 +139,7 @@ describe("document layout service paths", () => {
 
       expect(result).toMatchObject({ status: "ready", layout: { sourceHash, pages: [] } })
     } finally {
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })

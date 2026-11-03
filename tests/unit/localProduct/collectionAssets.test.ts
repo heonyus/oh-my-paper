@@ -22,7 +22,7 @@ describe("collection raster asset boundary", () => {
     expect(nestedNotePath).toBe(`../../${asset}`)
     expect(assetMarkdown(asset, "notes/root.md")).toBe(`![이미지](../${asset})`)
     const noteFile = join("/tmp", "collection", "notes", "research", "inner.md")
-    expect(resolve(dirname(noteFile), nestedNotePath)).toBe(join("/tmp", "collection", asset))
+    expect(resolve(dirname(noteFile), nestedNotePath)).toBe(resolve("/tmp", "collection", asset))
     expect(assetMarkdown(asset)).toBe(`![이미지](${asset})`)
   })
 

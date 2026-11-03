@@ -82,6 +82,7 @@ describe("PageTranslationCacheService", () => {
         status: "missing",
       })
     } finally {
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })
@@ -170,6 +171,7 @@ describe("PageTranslationCacheService", () => {
       })
       expect(await earlier("claude-haiku-5-5")).toEqual({ status: "missing" })
     } finally {
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })

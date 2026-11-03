@@ -28,12 +28,25 @@ async function repositories(root: string) {
   const app = join(root, "app")
   git(root, "init", "--bare", "--initial-branch=main", remote)
   git(root, "init", "--initial-branch=main", author)
+  // Both working trees keep line endings as written, even where Git for Windows sets autocrlf.
+  git(author, "config", "core.autocrlf", "false")
   git(author, "remote", "add", "origin", remote)
   await writeFile(join(author, "README.md"), "v1\n")
   git(author, "add", ".")
   git(author, "commit", "-m", "first")
   git(author, "push", "origin", "main")
-  git(root, "clone", "--depth", "1", "--branch", "main", `file://${remote}`, app)
+  git(
+    root,
+    "clone",
+    "--config",
+    "core.autocrlf=false",
+    "--depth",
+    "1",
+    "--branch",
+    "main",
+    `file://${remote}`,
+    app,
+  )
   return { remote, author, app }
 }
 

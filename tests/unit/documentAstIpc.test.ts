@@ -53,8 +53,8 @@ describe("document:ast IPC contract and service", () => {
 
   it("coalesces local rebuilds and returns safe stale/unknown states", async () => {
     const root = await mkdtemp(join(tmpdir(), "ohmypaper-ast-ipc-"))
+    const store = new WorkspaceStore(root)
     try {
-      const store = new WorkspaceStore(root)
       await store.save({ ...defaultWorkspace(), documents: [document()] })
       await mkdir(join(root, "documents"), { recursive: true })
       await writeFile(join(root, "documents", `${sourceHash}.pdf`), "%PDF-", "utf8")
@@ -94,14 +94,15 @@ describe("document:ast IPC contract and service", () => {
         service.request({ id: documentIdSchema.parse("bbccddeeff001122") }),
       ).resolves.toEqual({ status: "failed", reason: "unknown_document" })
     } finally {
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })
 
   it("hands a long paper's AST to the page parser though it is too large for IPC", async () => {
     const root = await mkdtemp(join(tmpdir(), "ohmypaper-ast-large-"))
+    const store = new WorkspaceStore(root)
     try {
-      const store = new WorkspaceStore(root)
       await store.save({ ...defaultWorkspace(), documents: [document()] })
       await mkdir(join(root, "documents"), { recursive: true })
       await writeFile(join(root, "documents", `${sourceHash}.pdf`), "%PDF-", "utf8")
@@ -149,6 +150,7 @@ describe("document:ast IPC contract and service", () => {
       expect((await service.read({ id })).status).toBe("ready")
       expect(build).toHaveBeenCalledOnce()
     } finally {
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })

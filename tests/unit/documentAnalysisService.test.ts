@@ -94,6 +94,7 @@ describe("DocumentAnalysisService", () => {
       expect(parser.parse).toHaveBeenCalledTimes(3)
     } finally {
       await service.dispose()
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })
@@ -129,6 +130,7 @@ describe("DocumentAnalysisService", () => {
       )
     } finally {
       await service.dispose()
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })
@@ -158,6 +160,7 @@ describe("DocumentAnalysisService", () => {
       expect(parser.parse).toHaveBeenCalledTimes(callsAfterFirstRun)
     } finally {
       await reopened.dispose()
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })
@@ -229,6 +232,7 @@ describe("DocumentAnalysisService", () => {
       await vi.waitFor(() => expect(service.isReady(document.id)).toBe(true))
     } finally {
       await service.dispose()
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })
@@ -306,6 +310,7 @@ describe("DocumentAnalysisService", () => {
       )
     } finally {
       await service.dispose()
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })
@@ -362,6 +367,7 @@ describe("DocumentAnalysisService", () => {
       expect(["queued", "running", "failed"]).toContain(firstJobAfter?.state)
     } finally {
       await service.dispose()
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })
@@ -401,6 +407,7 @@ describe("DocumentAnalysisService", () => {
     })
     expect(parseAttempts).toBe(6)
     await service2.dispose()
+    await store.close()
     await rm(root, { recursive: true, force: true })
   })
 
@@ -510,6 +517,7 @@ describe("DocumentAnalysisService", () => {
       await vi.waitFor(() => expect(service.isReady(paper.id)).toBe(true))
     } finally {
       await service.dispose()
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })
@@ -547,6 +555,7 @@ describe("DocumentAnalysisService", () => {
       expect(service.snapshot().jobs.find((job) => job.id === document.id)).toBeUndefined()
     } finally {
       await service.dispose()
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })
@@ -575,6 +584,7 @@ describe("DocumentAnalysisService", () => {
       expect(service.snapshot().jobs).toEqual([])
     } finally {
       await service.dispose()
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })
@@ -610,6 +620,7 @@ describe("DocumentAnalysisService", () => {
       expect(order.slice(8)).toEqual(["O1", "O2"])
     } finally {
       await service.dispose()
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })

@@ -8,8 +8,11 @@ import { mostVisiblePage } from "../../src/renderer/lib/viewport"
 import { documentRecordSchema } from "../../src/shared/schemas"
 
 const temporaryRoots: string[] = []
+const stores: WorkspaceStore[] = []
 
 afterEach(async () => {
+  // Windows cannot delete a folder while a database inside it is still open.
+  for (const store of stores.splice(0)) await store.close()
   await Promise.all(
     temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })),
   )
@@ -59,6 +62,7 @@ describe("reader position continuity", () => {
     })
 
     const store = new WorkspaceStore(root)
+    stores.push(store)
     await store.save({ ...defaultWorkspace(), documents: [first], activeDocumentId: first.id })
 
     const saved = await store.read()

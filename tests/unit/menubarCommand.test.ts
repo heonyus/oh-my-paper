@@ -27,7 +27,7 @@ describe("oh-my-paper menubar", () => {
       uid: 501,
       run: (command, args) => {
         const name =
-          command === "launchctl" ? `launchctl ${args[0]}` : (command.split("/").at(-1) ?? "")
+          command === "launchctl" ? `launchctl ${args[0]}` : (command.split(/[\\/]/).at(-1) ?? "")
         calls.push([name, ...args.slice(command === "launchctl" ? 1 : 0)].join(" "))
         return { ok: answers[name]?.shift() ?? true, output: `${name} said no` }
       },

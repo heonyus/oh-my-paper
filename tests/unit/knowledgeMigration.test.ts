@@ -7,12 +7,22 @@ import { documentVersionIdSchema } from "../../src/shared/knowledgeSchemas"
 import { documentIdSchema, sha256Schema } from "../../src/shared/schemas"
 
 const temporaryRoots: string[] = []
+const stores: WorkspaceStore[] = []
 
 afterEach(async () => {
+  // Windows cannot delete a folder while a database inside it is still open.
+  for (const store of stores.splice(0)) await store.close()
   await Promise.all(
     temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })),
   )
 })
+
+/** Opens a store whose knowledge database is closed after the test. */
+function openStore(root: string): WorkspaceStore {
+  const store = new WorkspaceStore(root)
+  stores.push(store)
+  return store
+}
 
 describe("Knowledge Storage & Migration", () => {
   it("migrates legacy workspace.json transactionally with backup and does not re-import on repeat open", async () => {
@@ -70,7 +80,7 @@ describe("Knowledge Storage & Migration", () => {
     }
     await writeFile(join(root, "workspace.json"), JSON.stringify(legacy), "utf8")
 
-    const store1 = new WorkspaceStore(root)
+    const store1 = openStore(root)
     const readWs = await store1.read()
 
     // Assert migration preserved all attributes
@@ -104,7 +114,7 @@ describe("Knowledge Storage & Migration", () => {
     })
 
     // Open second store instance: verify DB is source of truth, not stale workspace.json
-    const store2 = new WorkspaceStore(root)
+    const store2 = openStore(root)
     const readWs2 = await store2.read()
     expect(readWs2.documents[0]?.title).toBe("Modified Paper In DB")
   })
@@ -115,7 +125,7 @@ describe("Knowledge Storage & Migration", () => {
 
     await writeFile(join(root, "workspace.json"), "{ corrupt json !!", "utf8")
 
-    const store = new WorkspaceStore(root)
+    const store = openStore(root)
     await expect(store.read()).rejects.toThrow("Failed to parse corrupt legacy workspace JSON")
 
     // Old file remains untouched
@@ -127,7 +137,7 @@ describe("Knowledge Storage & Migration", () => {
     const root = await mkdtemp(join(tmpdir(), "ohmypaper-version-"))
     temporaryRoots.push(root)
 
-    const store = new WorkspaceStore(root)
+    const store = openStore(root)
     const paperNode = store.repository.createNode({
       kind: "paper",
       title: "Document Version Test",
@@ -168,7 +178,7 @@ describe("Knowledge Storage & Migration", () => {
     const root = await mkdtemp(join(tmpdir(), "ohmypaper-placements-"))
     temporaryRoots.push(root)
 
-    const store = new WorkspaceStore(root)
+    const store = openStore(root)
     const boardA = store.repository.createBoard("Board A")
     const boardB = store.repository.createBoard("Board B")
 
