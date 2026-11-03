@@ -41,7 +41,7 @@ const llamaCppAcceleration = process.platform === "win32"
 const llamaCppRoot =
   process.env.OH_MY_PAPER_PADDLE_VL_LLAMACPP ?? join(dirname(runtimeRoot), "paddle-vl-llamacpp")
 const ggufRepository =
-  process.env.OH_MY_PAPER_PADDLE_VL_GGUF_REPO ?? "tieubaoca/PaddleOCR-VL-1.6-GGUF"
+  process.env.OH_MY_PAPER_PADDLE_VL_GGUF_REPO ?? "PaddlePaddle/PaddleOCR-VL-1.6-GGUF"
 // Beside the runtime folders, matching paddleInstallPaths() in src/electron/paddleInstallState.ts.
 const installLock = join(dirname(runtimeRoot), "paddle-vl-install.pid")
 const installProgress = join(dirname(runtimeRoot), "paddle-vl-install.progress.json")
