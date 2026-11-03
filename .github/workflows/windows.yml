@@ -68,7 +68,8 @@ jobs:
         run: |
           Add-Content -Path $env:GITHUB_ENV -Value "OH_MY_PAPER_HOME=$env:RUNNER_TEMP\omp\app"
           Add-Content -Path $env:GITHUB_ENV -Value "OH_MY_PAPER_BIN_DIR=$env:RUNNER_TEMP\omp\bin"
-          Add-Content -Path $env:GITHUB_ENV -Value "OH_MY_PAPER_WEB_DATA_DIR=$env:RUNNER_TEMP\omp\data"
+          # A Korean folder name, as a Korean user's data folder may have.
+          Add-Content -Path $env:GITHUB_ENV -Value "OH_MY_PAPER_WEB_DATA_DIR=$env:RUNNER_TEMP\omp\논문 데이터"
 
       - name: Install with scripts/install.ps1 (Windows PowerShell 5.1, -File)
         shell: powershell
@@ -79,11 +80,12 @@ jobs:
           $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
           if (-not (($userPath -split ';') -contains $env:OH_MY_PAPER_BIN_DIR)) { throw "user PATH lacks the command: $userPath" }
 
-      - name: Install again through Invoke-Expression, as irm | iex runs it (an update)
+      - name: Install again through Invoke-Expression, as irm | iex runs it (an update, in Korean)
         shell: powershell
         run: |
           $env:OH_MY_PAPER_YES = '1'
           $env:OH_MY_PAPER_NO_OCR = '1'
+          $env:OH_MY_PAPER_LANG = 'ko'
           Get-Content -Raw scripts\install.ps1 | Invoke-Expression
           if ($LASTEXITCODE -ne 0) { throw "install.ps1 through iex ended with $LASTEXITCODE" }
 
@@ -110,7 +112,7 @@ jobs:
           $server = Start-Process -FilePath $env:ComSpec -NoNewWindow -PassThru `
             -ArgumentList "/d /s /c `"`"$env:OH_MY_PAPER_BIN_DIR\oh-my-paper.cmd`" start --no-open > `"$log`" 2>&1`""
           try {
-            if (-not (Wait-Port 120)) { Get-Content $log; throw 'the server did not start' }
+            if (-not (Wait-Port 120)) { Get-Content $log -Encoding UTF8; throw 'the server did not start' }
             $page = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8788/
             if ($page.StatusCode -ne 200 -or $page.Content -notmatch 'oh-my-paper') { throw "unexpected page: $($page.StatusCode)" }
             $workspace = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8788/api/workspace
@@ -118,7 +120,7 @@ jobs:
             Write-Host "app answered: $($page.Content.Length) bytes of HTML, workspace $($workspace.Content.Length) bytes"
           } finally {
             taskkill /PID $server.Id /T /F | Out-Null
-            Get-Content $log
+            Get-Content $log -Encoding UTF8
           }
 
       - name: Tray companion, an update while it runs, and off
@@ -144,10 +146,20 @@ jobs:
           if (-not (Wait-Port $true 120)) { throw 'the tray did not start the server' }
           Write-Host "sign-in start: $((Get-ItemProperty $run -Name oh-my-paper).'oh-my-paper')"
 
-          # npm ci replaces node_modules while the tray's server holds programs in it.
-          & $omp update
-          if ($LASTEXITCODE -ne 0) { throw "update exited with $LASTEXITCODE" }
-          $page = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8788/
+          # An update that rewrites the launcher while it runs (cmd must not read on in the new
+          # file) and replaces node_modules while the tray's server holds programs in it.
+          git -C $env:GITHUB_WORKSPACE checkout -q windows-ci
+          Add-Content -Path "$env:GITHUB_WORKSPACE\bin\oh-my-paper.cmd" -Value 'rem a change an update brings'
+          git -C $env:GITHUB_WORKSPACE -c user.name=ci -c user.email=ci@example.invalid commit -q -am 'Change the launcher'
+          $log = "$env:RUNNER_TEMP\omp\update.log"
+          cmd /d /s /c "`"$omp`" update > `"$log`" 2>&1"
+          $status = $LASTEXITCODE
+          $out = Get-Content $log -Raw -Encoding UTF8
+          Write-Host $out
+          if ($status -ne 0) { throw "update exited with $status" }
+          if ($out -match 'is not recognized|was unexpected|cannot find the') { throw 'cmd read on in the rewritten launcher' }
+          if (-not (Select-String -Path "$env:OH_MY_PAPER_HOME\bin\oh-my-paper.cmd" -Pattern 'a change an update brings' -Quiet)) { throw 'the update did not bring the change' }
+          $page = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8788/api/health
           if ($page.StatusCode -ne 200) { throw 'the server stopped answering after the update' }
 
           & $omp menubar off
@@ -161,6 +173,6 @@ jobs:
         shell: powershell
         run: |
           foreach ($file in @("$env:LOCALAPPDATA\oh-my-paper\Logs\tray.log", "$env:USERPROFILE\.ohmypaper\meaning-model-install.log")) {
-            if (Test-Path $file) { Write-Host "== $file"; Get-Content $file -Tail 80 }
+            if (Test-Path $file) { Write-Host "== $file"; Get-Content $file -Tail 80 -Encoding UTF8 }
           }
-          Get-ChildItem $env:TEMP -Filter 'oh-my-paper-install.*.log' -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "== $($_.FullName)"; Get-Content $_.FullName -Tail 80 }
+          Get-ChildItem $env:TEMP -Filter 'oh-my-paper-install.*.log' -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "== $($_.FullName)"; Get-Content $_.FullName -Tail 80 -Encoding UTF8 }

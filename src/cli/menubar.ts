@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, renameSync, rmSync, statSync } from "node:fs"
+import { existsSync, mkdirSync, realpathSync, renameSync, rmSync, statSync } from "node:fs"
 import { homedir, userInfo } from "node:os"
 import { dirname, join, win32 } from "node:path"
 import { log } from "@clack/prompts"
@@ -17,6 +17,9 @@ const TRAY = "oh-my-paper-tray.exe"
 
 /** Where Windows starts per-user programs at sign-in; the companion writes its value there. */
 const RUN_KEY = "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+/** Where Task Manager and Settings mark a startup app as turned off. */
+const APPROVED_KEY =
+  "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run"
 const RUN_VALUE = "oh-my-paper"
 
 type Ran = { readonly ok: boolean; readonly output: string }
@@ -29,8 +32,8 @@ export type MenubarSystem = {
   readonly run: (command: string, args: readonly string[]) => Ran
   readonly waitForPort: (host: string, port: number, timeoutMs: number) => Promise<boolean>
   readonly pause: (ms: number) => Promise<void>
-  /** Starts a program that outlives this one: the Windows companion. */
-  readonly launch?: (command: string, args: readonly string[]) => boolean
+  /** Starts a program that outlives this one (the Windows companion); false if it did not start. */
+  readonly launch?: (command: string, args: readonly string[]) => Promise<boolean>
   /** The C# compiler of the .NET Framework that ships with Windows, or null. */
   readonly compiler?: () => string | null
   /** The node that runs this CLI, which the Windows companion runs the server with. */
@@ -65,19 +68,33 @@ const system: MenubarSystem = {
   },
   waitForPort,
   pause: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-  launch: (command, args) => {
-    try {
-      spawn(command, args, { detached: true, stdio: "ignore" })
-        .once("error", () => undefined)
-        .unref()
-      return true
-    } catch {
-      return false
-    }
-  },
+  launch: (command, args) =>
+    new Promise((resolve) => {
+      try {
+        const child = spawn(command, args, { detached: true, stdio: "ignore" })
+        child.once("spawn", () => resolve(true))
+        child.once("error", () => resolve(false))
+        child.unref()
+      } catch {
+        resolve(false)
+      }
+    }),
   compiler: () => findCsharpCompiler(),
-  node: process.execPath,
+  node: companionNode(),
   localAppData: process.env["LOCALAPPDATA"] ?? join(homedir(), "AppData", "Local"),
+}
+
+/**
+ * The node the Windows companion runs the server with at sign-in. fnm puts the node of a
+ * console in a folder that goes away with that console, so its real location is used instead.
+ */
+function companionNode(execPath = process.execPath): string {
+  if (!/fnm_multishells/i.test(execPath)) return execPath
+  try {
+    return realpathSync.native(execPath)
+  } catch {
+    return execPath
+  }
 }
 
 /** Whether `binary` is missing or older than `source`, so it needs building again. */
@@ -160,17 +177,22 @@ async function trayCommand(
   action: string | undefined,
   host: MenubarSystem,
 ): Promise<void> {
-  // /T takes the server the companion started along; Windows has no signal it could act on.
-  const stopRunning = (): Ran => host.run("taskkill", ["/IM", TRAY, "/T", "/F"])
+  const source = join(appRoot, "menubar", "windows", "OhMyPaperTray.cs")
+  const binary = join(appRoot, "menubar", "bin", TRAY)
+  // A running companion is asked to stop (it closes its server's library first) and waited for;
+  // taskkill ends one that does not answer, /T with everything it started.
+  const stopRunning = (): void => {
+    if (existsSync(binary)) host.run(binary, ["--quit"])
+    host.run("taskkill", ["/IM", TRAY, "/T", "/F"])
+  }
   if (action === "off") {
     stopRunning()
     host.run("reg", ["delete", RUN_KEY, "/v", RUN_VALUE, "/f"])
+    host.run("reg", ["delete", APPROVED_KEY, "/v", RUN_VALUE, "/f"])
     log.success(t("tray.off"))
     return
   }
 
-  const source = join(appRoot, "menubar", "windows", "OhMyPaperTray.cs")
-  const binary = join(appRoot, "menubar", "bin", TRAY)
   const fresh = join(appRoot, "menubar", "bin", "oh-my-paper-tray.new.exe")
   const rebuild = stale(binary, source)
   if (rebuild) {
@@ -179,6 +201,8 @@ async function trayCommand(
     mkdirSync(dirname(binary), { recursive: true })
     const built = host.run(compiler, [
       "/nologo",
+      // Its messages in UTF-8, which this reads, whatever language Windows speaks.
+      "/utf8output",
       "/target:winexe",
       "/optimize+",
       // The source is UTF-8 (its Korean labels); this compiler reads the ANSI code page otherwise.
@@ -212,7 +236,8 @@ async function trayCommand(
   if (host.node) options.push("--node", host.node)
   const written = host.run(binary, [...options, "--write-login-item"])
   if (!written.ok) return fail(t("tray.failed"), written.output)
-  if (!(host.launch?.(binary, options) ?? false)) return fail(t("tray.failed"), binary)
+  if (!(await (host.launch?.(binary, options) ?? Promise.resolve(false))))
+    return fail(t("tray.failed"), binary)
 
   const url = appUrl(config.host, config.port)
   if (await host.waitForPort(config.host, config.port, 30_000))

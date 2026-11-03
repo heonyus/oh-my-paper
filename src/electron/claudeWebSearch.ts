@@ -3,7 +3,7 @@ import type { ClaudeEffort } from "../shared/claudeTypes"
 import { parseJsonObject } from "./agentCompletion"
 import type { ClaudeCompletionOptions } from "./claudeCliCompletion"
 import { PaperSourceError } from "./paperSourceHttp"
-import { ProviderConfigurationError } from "./providerConfigStore"
+import { ProviderConfigurationError } from "./providerConfigurationError"
 import type { WebSearchEngine, WebSearchHit } from "./webSearchEngines"
 
 /** The slice of the Claude subscription adapter a web search needs. */

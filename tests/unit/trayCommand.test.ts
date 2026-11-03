@@ -13,6 +13,8 @@ import { readWebServerConfig } from "../../src/server/config"
 
 const config = readWebServerConfig({ OH_MY_PAPER_WEB_PORT: "8790" })
 const RUN_KEY = "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+const APPROVED_KEY =
+  "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run"
 const CSC = "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe"
 
 describe("oh-my-paper menubar on Windows", () => {
@@ -40,7 +42,7 @@ describe("oh-my-paper menubar on Windows", () => {
       },
       waitForPort: async () => true,
       pause: async () => undefined,
-      launch: (command, args) => {
+      launch: async (command, args) => {
         launched.push([command.split(/[\\/]/).at(-1), ...args].join(" "))
         return true
       },
@@ -77,7 +79,7 @@ describe("oh-my-paper menubar on Windows", () => {
 
     const options = `--repo ${appRoot} --port 8790 --node C:\\Program Files\\nodejs\\node.exe`
     expect(calls).toEqual([
-      `csc.exe /nologo /target:winexe /optimize+ /codepage:65001 /out:${fresh} /reference:System.Windows.Forms.dll /reference:System.Drawing.dll ${source}`,
+      `csc.exe /nologo /utf8output /target:winexe /optimize+ /codepage:65001 /out:${fresh} /reference:System.Windows.Forms.dll /reference:System.Drawing.dll ${source}`,
       "taskkill /IM oh-my-paper-tray.exe /T /F",
       `oh-my-paper-tray.exe ${options} --write-login-item`,
     ])
@@ -101,7 +103,22 @@ describe("oh-my-paper menubar on Windows", () => {
     await menubarCommand(config, appRoot, undefined, system())
 
     expect(calls.some((call) => call.startsWith("csc.exe"))).toBe(false)
+    // The running companion is asked to stop first; taskkill only ends one that does not answer.
+    expect(calls.slice(0, 2)).toEqual([
+      "oh-my-paper-tray.exe --quit",
+      "taskkill /IM oh-my-paper-tray.exe /T /F",
+    ])
     expect(launched).toHaveLength(1)
+  })
+
+  it("says the companion did not start when Windows would not run it", async () => {
+    const written = vi.spyOn(process.stderr, "write").mockReturnValue(true)
+
+    await menubarCommand(config, appRoot, undefined, system({}, { launch: async () => false }))
+
+    written.mockRestore()
+    expect(log.success).not.toHaveBeenCalled()
+    expect(process.exitCode).toBe(1)
   })
 
   it("stops with the compiler's words when the build fails, leaving a running companion be", async () => {
@@ -136,11 +153,16 @@ describe("oh-my-paper menubar on Windows", () => {
   })
 
   it("off stops the companion with its server and forgets the sign-in start", async () => {
+    await mkdir(join(appRoot, "menubar", "bin"))
+    await writeFile(join(appRoot, "menubar", "bin", "oh-my-paper-tray.exe"), "")
+
     await menubarCommand(config, appRoot, "off", system())
 
     expect(calls).toEqual([
+      "oh-my-paper-tray.exe --quit",
       "taskkill /IM oh-my-paper-tray.exe /T /F",
       `reg delete ${RUN_KEY} /v oh-my-paper /f`,
+      `reg delete ${APPROVED_KEY} /v oh-my-paper /f`,
     ])
     expect(launched).toEqual([])
     expect(log.success).toHaveBeenCalledOnce()

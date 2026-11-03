@@ -1,7 +1,7 @@
 import OpenAI from "openai"
 import { APIError } from "openai/error"
 import type { ProviderConfig } from "../shared/ipc"
-import { ProviderConfigurationError } from "./providerConfigStore"
+import { ProviderConfigurationError } from "./providerConfigurationError"
 
 export function providerClient(config: ProviderConfig): OpenAI {
   const bases: Readonly<Record<ProviderConfig["provider"], string>> = {

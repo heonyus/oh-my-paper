@@ -12,9 +12,10 @@ type Release = (
   options?: {
     platform?: NodeJS.Platform
     isInUse?: (path: string) => boolean
+    move?: (from: string, to: string) => void
     log?: (line: string) => void
   },
-) => string[]
+) => { moved: string[]; stuck: string[] }
 
 const release = releaseLockedFiles as Release
 const empty = emptyTrash as (trash: string) => number
@@ -44,9 +45,13 @@ describe("release-locked-files", () => {
     const script = await file("node_modules/tsx/dist/cli.mjs")
     const busy = new Set([esbuild, addon, script])
 
-    const moved = release(root, { platform: "win32", isInUse: (path) => busy.has(path) })
+    const { moved, stuck } = release(root, {
+      platform: "win32",
+      isInUse: (path) => busy.has(path),
+    })
 
     expect(moved.sort()).toEqual([addon, esbuild].sort())
+    expect(stuck).toEqual([])
     expect(existsSync(esbuild)).toBe(false)
     expect(existsSync(addon)).toBe(false)
     expect(existsSync(idle)).toBe(true)
@@ -59,7 +64,7 @@ describe("release-locked-files", () => {
   it("leaves node_modules alone elsewhere, where a file in use can be deleted", async () => {
     const esbuild = await file("node_modules/@esbuild/darwin-arm64/bin/esbuild.exe")
 
-    const moved = release(root, { platform: "darwin", isInUse: () => true })
+    const { moved } = release(root, { platform: "darwin", isInUse: () => true })
 
     expect(moved).toEqual([])
     expect(existsSync(esbuild)).toBe(true)
@@ -74,6 +79,25 @@ describe("release-locked-files", () => {
   })
 
   it("does nothing without node_modules", () => {
-    expect(release(root, { platform: "win32", isInUse: () => true })).toEqual([])
+    expect(release(root, { platform: "win32", isInUse: () => true })).toEqual({
+      moved: [],
+      stuck: [],
+    })
+  })
+
+  it("names a file in use that cannot move, so the update stops before npm ci", async () => {
+    const codex = await file("node_modules/@openai/codex-win32-x64/vendor/codex.exe")
+
+    const { moved, stuck } = release(root, {
+      platform: "win32",
+      isInUse: () => true,
+      move: () => {
+        throw Object.assign(new Error("EPERM: operation not permitted"), { code: "EPERM" })
+      },
+    })
+
+    expect(moved).toEqual([])
+    expect(stuck).toEqual([codex])
+    expect(existsSync(codex)).toBe(true)
   })
 })

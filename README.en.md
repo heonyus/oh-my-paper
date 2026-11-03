@@ -11,7 +11,7 @@ The PDF stays as it is, on your computer.
 
 **English** · [한국어](README.md)
 
-<img alt="Status: beta" src="https://img.shields.io/badge/status-beta-efc245"> <img alt="macOS on Apple Silicon" src="https://img.shields.io/badge/macOS-Apple%20Silicon-111?logo=apple&logoColor=white"> <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-285644"></a>
+<img alt="Status: beta" src="https://img.shields.io/badge/status-beta-efc245"> <img alt="macOS on Apple Silicon" src="https://img.shields.io/badge/macOS-Apple%20Silicon-111?logo=apple&logoColor=white"> <img alt="Windows 10, 11" src="https://img.shields.io/badge/Windows-10%20%C2%B7%2011-0078D4?logo=windows&logoColor=white"> <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-285644"></a>
 
 <br>
 
@@ -26,11 +26,23 @@ The PDF stays as it is, on your computer.
 
 ## Install
 
+**macOS** (Terminal)
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.sh | bash
 ```
 
-You need an Apple Silicon Mac, git and Node.js 22 or later (`brew install node`). A setup wizard follows the install:
+You need an Apple Silicon Mac, git and Node.js 22 or later (`brew install node`).
+
+**Windows** (PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.ps1 | iex
+```
+
+You need Windows 10 or 11 (x64), Git (`winget install --id Git.Git -e`) and Node.js 22 or later (`winget install --id OpenJS.NodeJS.LTS -e`). The `oh-my-paper` command goes into `~\.local\bin`, which is added to your user PATH; terminals opened from then on have it.
+
+A setup wizard follows the install:
 
 1. **Runtime check.** Node.js, plus the ChatGPT sign-in runtime (Codex) and Claude Code used for AI connections.
 2. **Document engine.** PaddleOCR-VL (about 3 GB) starts downloading in the background.
@@ -47,6 +59,12 @@ Give an AI coding agent this repository's link, `https://github.com/heonyus/oh-m
 >
 > ```bash
 > curl -fsSL https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.sh | bash -s -- --yes
+> ```
+>
+> On Windows, in PowerShell:
+>
+> ```powershell
+> $env:OH_MY_PAPER_YES = "1"; irm https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.ps1 | iex
 > ```
 
 ## Reading
@@ -129,11 +147,14 @@ Scanned PDFs, figures, tables and equations are read on your computer by PaddleO
 | `oh-my-paper update` | Update to the latest version and rebuild |
 | `oh-my-paper language` | Switch between Korean and English, in the terminal and the app |
 | `oh-my-paper start --no-open` | Start without opening a browser |
-| `oh-my-paper menubar` | Keep it running from the macOS menu bar (`menubar off` undoes it) |
+| `oh-my-paper menubar` | Keep it running from the macOS menu bar or the Windows notification area (`menubar off` undoes it) |
 
-The app runs at `http://127.0.0.1:8788` and keeps its data in `~/.ohmypaper`.
+The app runs at `http://127.0.0.1:8788` and keeps its data in `~/.ohmypaper` (`%USERPROFILE%\.ohmypaper` on Windows).
 
-An app started with `oh-my-paper` stops when that terminal closes. Started with `oh-my-paper menubar` it gets a leaf icon in the menu bar, stays on when the terminal closes, restarts the server if it stops, and starts again at login. To stop it, choose **Quit** from the leaf icon. The log is at `~/Library/Logs/oh-my-paper/menubar.log`. Building it needs the Xcode Command Line Tools.
+An app started with `oh-my-paper` stops when that terminal closes. Started with `oh-my-paper menubar` it gets a leaf icon, stays on when the terminal closes, restarts the server if it stops, and starts again at login. To stop it, choose **Quit** from the leaf icon.
+
+- **macOS:** the icon sits in the menu bar. The log is at `~/Library/Logs/oh-my-paper/menubar.log`, and building it needs the Xcode Command Line Tools.
+- **Windows:** the icon sits in the taskbar's notification area. The log is at `%LOCALAPPDATA%\oh-my-paper\Logs\tray.log`. It is built with the .NET Framework that comes with Windows, so there is nothing else to install.
 
 ## Privacy
 

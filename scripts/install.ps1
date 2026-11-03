@@ -21,14 +21,18 @@ function Install-OhMyPaper {
 
   function U([string]$Text) { [regex]::Unescape($Text) }
 
+  # The user profile, as Node's homedir() and the data folder use it. Windows PowerShell's $HOME
+  # follows HOMEDRIVE and HOMEPATH instead, a network share on some company computers.
+  $UserHome = [Environment]::GetFolderPath('UserProfile')
   $Repo = if ($env:OH_MY_PAPER_REPO) { $env:OH_MY_PAPER_REPO } else { 'https://github.com/heonyus/oh-my-paper.git' }
   $Branch = if ($env:OH_MY_PAPER_BRANCH) { $env:OH_MY_PAPER_BRANCH } else { 'main' }
-  $AppDir = if ($env:OH_MY_PAPER_HOME) { $env:OH_MY_PAPER_HOME } else { Join-Path $HOME '.oh-my-paper\app' }
-  $BinDir = if ($env:OH_MY_PAPER_BIN_DIR) { $env:OH_MY_PAPER_BIN_DIR } else { Join-Path $HOME '.local\bin' }
+  $AppDir = if ($env:OH_MY_PAPER_HOME) { $env:OH_MY_PAPER_HOME } else { Join-Path $UserHome '.oh-my-paper\app' }
+  $BinDir = if ($env:OH_MY_PAPER_BIN_DIR) { $env:OH_MY_PAPER_BIN_DIR } else { Join-Path $UserHome '.local\bin' }
 
   # The installer's language: OH_MY_PAPER_LANG, then the POSIX locale variables, then the languages
   # Windows lists as preferred (its display language when it lists none); English otherwise.
-  # Exported so the setup wizard speaks the same language.
+  # The setup wizard gets it too, but this console keeps its own: a language chosen in the
+  # wizard has to win in the commands typed here afterwards.
   function Get-UiLanguage {
     foreach ($tag in @($env:OH_MY_PAPER_LANG, $env:LC_ALL, $env:LC_MESSAGES, $env:LANG)) {
       if (-not $tag -or $tag -eq 'C' -or $tag -like 'C.*' -or $tag -eq 'POSIX') { continue }
@@ -44,7 +48,6 @@ function Install-OhMyPaper {
     return 'en'
   }
   $UiLang = Get-UiLanguage
-  $env:OH_MY_PAPER_LANG = $UiLang
 
   # The Korean or the English wording, by the installer's language.
   function M([string]$Ko, [string]$En) { if ($UiLang -eq 'ko') { U $Ko } else { U $En } }
@@ -278,8 +281,9 @@ function Install-OhMyPaper {
   Out-Line @($G.Bar, 'DarkGray', "  $(M '\uCC98\uC74C\uC5D0\uB294 \uBA87 \uBD84 \uAC78\uB9BD\uB2C8\uB2E4' 'The first run takes a few minutes')", 'DarkGray')
   # A running oh-my-paper holds its programs open, and Windows deletes no program in use, so they
   # move aside first (scripts/release-locked-files.mjs); npm ci then replaces node_modules whole.
+  # One that cannot move stops the install here, before npm ci empties the folder.
   $release = Join-Path $AppDir 'scripts\release-locked-files.mjs'
-  $prepare = if (Test-Path -LiteralPath $release) { "node `"$release`" `"$AppDir`" & " } else { '' }
+  $prepare = if (Test-Path -LiteralPath $release) { "node `"$release`" `"$AppDir`" && " } else { '' }
   Invoke-Logged (M '\uC758\uC874\uC131 \uC124\uCE58' 'Install dependencies') `
     "$($prepare)call npm --prefix `"$AppDir`" ci --no-audit --no-fund --loglevel=http --foreground-scripts"
   Invoke-Logged (M '\uC6F9 \uC571 \uBE4C\uB4DC' 'Build the web app') "call npm --prefix `"$AppDir`" run build:web"
@@ -336,9 +340,15 @@ function Install-OhMyPaper {
   # The wizard gets this console itself (Start-Process -NoNewWindow hands it over), so it can
   # read the keyboard; without one, or with -Yes, it prepares what it can on its own.
   $onboard = if (-not $Yes -and (Test-Console)) { 'onboard' } elseif ($NoOcr) { 'onboard --yes --no-ocr' } else { 'onboard --yes' }
-  $wizard = Start-Process -FilePath $env:ComSpec -ArgumentList "/d /s /c `"`"$shim`" $onboard`"" -NoNewWindow -PassThru
-  $null = $wizard.Handle
-  $wizard.WaitForExit()
+  $previousLang = $env:OH_MY_PAPER_LANG
+  $env:OH_MY_PAPER_LANG = $UiLang
+  try {
+    $wizard = Start-Process -FilePath $env:ComSpec -ArgumentList "/d /s /c `"`"$shim`" $onboard`"" -NoNewWindow -PassThru
+    $null = $wizard.Handle
+    $wizard.WaitForExit()
+  } finally {
+    $env:OH_MY_PAPER_LANG = $previousLang
+  }
   return $wizard.ExitCode
 }
 
@@ -354,5 +364,8 @@ try {
 } catch {
   if ("$_" -match '^oh-my-paper-install-stopped:(\d+)$') { $ohMyPaperStatus = [int]$Matches[1] } else { throw }
 }
+# `irm | iex` runs this in the caller's own scope, so nothing of it stays behind there.
+Remove-Item function:Install-OhMyPaper -ErrorAction SilentlyContinue
 if ($ohMyPaperOneShot) { exit $ohMyPaperStatus }
 $global:LASTEXITCODE = $ohMyPaperStatus
+Remove-Variable ohMyPaperOneShot, ohMyPaperStatus -ErrorAction SilentlyContinue

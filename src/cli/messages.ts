@@ -169,6 +169,7 @@ const ko = {
   "start.skipCheck": "설정 확인을 건너뜁니다: {reason}",
   "start.opened": "열림",
   "start.quit": "종료: Ctrl+C",
+  "start.slow": "아직 시작하는 중입니다 — 잠시 뒤 {url}을 여세요",
   "start.ocrStarted":
     "문서 분석 엔진(OCR)이 없어서 뒤에서 설치를 시작했어요 — 준비되면 알아서 켜집니다",
 
@@ -204,6 +205,9 @@ const ko = {
   "update.build": "웹 앱 빌드",
   "update.failed": "{step} 실패",
   "update.notFinished": "업데이트를 마치지 못했습니다",
+  "update.noGit": "git을 실행하지 못했습니다 — git이 설치돼 있고 PATH에 있는지 확인하세요",
+  "update.locked":
+    "실행 중인 oh-my-paper가 쓰는 파일이 있어 멈췄습니다. oh-my-paper 창과 알림 영역 앱(oh-my-paper menubar off)을 모두 닫고 oh-my-paper update를 다시 실행하세요",
   "update.more": "  외 {count}개",
   "update.ocrStarted": "문서 분석 엔진(OCR)이 없어서 뒤에서 설치를 시작했어요",
   "update.ocrStartedHint": "· 앱은 바로 쓸 수 있고, 진행 상황은 oh-my-paper doctor",
@@ -246,7 +250,7 @@ const ko = {
   "tray.failed": "알림 영역 앱을 시작하지 못했습니다",
   "tray.on": "알림 영역에서 실행 중 → {url}",
   "tray.onHint":
-    "터미널을 닫아도 켜져 있고, 꺼지면 다시 켜지며, 로그인하면 다시 시작합니다. 끄려면 작업 표시줄 알림 영역의 잎 아이콘 → 종료.",
+    "터미널을 닫아도 켜져 있고, 꺼지면 다시 켜지며, 로그인하면 다시 시작합니다. 끄려면 작업 표시줄 알림 영역의 잎 아이콘 → 종료. 아이콘이 안 보이면 작업 표시줄의 ^(숨겨진 아이콘 표시)를 누르세요.",
   "tray.slow": "알림 영역 앱은 떴지만 서버가 아직 응답하지 않습니다 — 로그: {log}",
   "tray.off": "알림 영역 실행을 껐습니다. 로그인해도 다시 시작하지 않습니다.",
 
@@ -426,6 +430,7 @@ const en: Readonly<Record<Key, string>> = {
   "start.skipCheck": "Skipping the setup check: {reason}",
   "start.opened": "open",
   "start.quit": "quit: Ctrl+C",
+  "start.slow": "Still starting — open {url} in a moment",
   "start.ocrStarted":
     "The document engine (OCR) was missing, so it is installing in the background — it turns on by itself when ready",
 
@@ -459,6 +464,9 @@ const en: Readonly<Record<Key, string>> = {
   "update.build": "Build the web app",
   "update.failed": "{step} failed",
   "update.notFinished": "The update did not finish",
+  "update.noGit": "Could not run git — check that git is installed and on your PATH",
+  "update.locked":
+    "Stopped: a running oh-my-paper still uses some files. Close every oh-my-paper window and the tray (oh-my-paper menubar off), then run oh-my-paper update again",
   "update.more": "  and {count} more",
   "update.ocrStarted":
     "The document engine (OCR) was missing, so it is installing in the background",
@@ -500,7 +508,7 @@ const en: Readonly<Record<Key, string>> = {
   "tray.failed": "Could not start the tray app",
   "tray.on": "Running from the notification area → {url}",
   "tray.onHint":
-    "It stays on when this terminal closes, comes back if it stops, and starts again at sign-in. To stop it: the leaf icon in the taskbar's notification area → Quit.",
+    "It stays on when this terminal closes, comes back if it stops, and starts again at sign-in. To stop it: the leaf icon in the taskbar's notification area → Quit. No icon? It may be under the ^ arrow on the taskbar.",
   "tray.slow": "The tray app is up but the server is not answering yet — log: {log}",
   "tray.off": "The tray companion is off and no longer starts at sign-in.",
 

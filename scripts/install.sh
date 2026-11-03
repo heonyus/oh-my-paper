@@ -53,6 +53,31 @@ for arg in "$@"; do
       ;;
   esac
 done
+
+# Git Bash, MSYS2 and Cygwin on Windows, where AI agents run this: a POSIX launcher in ~/.local/bin
+# would not start from cmd or PowerShell, so the Windows installer takes over with the same
+# options. Its own copy comes from the same repository and branch as this install.
+case "$(uname -s)" in
+  MINGW* | MSYS* | CYGWIN*)
+    windows_installer="https://raw.githubusercontent.com/heonyus/oh-my-paper/$BRANCH/scripts/install.ps1"
+    if [[ "$REPO" =~ ^https://github\.com/([^/]+/[^/]+)$ ]]; then
+      windows_installer="https://raw.githubusercontent.com/${BASH_REMATCH[1]%.git}/$BRANCH/scripts/install.ps1"
+    fi
+    # Nobody to answer under curl | bash without a terminal, or with --yes: no questions there either.
+    if [ -n "$YES" ] || ! (: </dev/tty) 2>/dev/null; then export OH_MY_PAPER_YES=1; fi
+    [ -n "$NO_OCR" ] && export OH_MY_PAPER_NO_OCR=1
+    for name in OH_MY_PAPER_HOME OH_MY_PAPER_BIN_DIR; do
+      if [ -n "${!name:-}" ] && command -v cygpath >/dev/null 2>&1; then
+        export "$name=$(cygpath -w "${!name}")"
+      fi
+    done
+    export OH_MY_PAPER_INSTALL_URL="$windows_installer"
+    # MSYS2_ARG_CONV_EXCL keeps MSYS from rewriting the PowerShell command as a path.
+    MSYS2_ARG_CONV_EXCL='*' exec powershell.exe -NoProfile -ExecutionPolicy Bypass \
+      -Command 'irm $env:OH_MY_PAPER_INSTALL_URL | iex' </dev/null
+    ;;
+esac
+
 LOG="$(mktemp -t oh-my-paper-install.XXXXXX)"
 
 # Whether someone at a terminal can answer the wizard. /dev/tty passes -r and -w even where no

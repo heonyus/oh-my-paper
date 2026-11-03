@@ -100,19 +100,25 @@ describe("Windows launcher", () => {
     expect(launcher.replace(/\r\n/g, "")).not.toContain("\n")
   })
 
-  it("runs the CLI through tsx's own entry point, which exists", () => {
-    expect(launcher).toContain("node_modules\\tsx\\dist\\cli.mjs")
-    expect(launcher).toContain("src\\cli\\main.ts")
-    expect(existsSync("node_modules/tsx/dist/cli.mjs")).toBe(true)
+  it("runs the CLI in one node process with tsx's loader, which the checkout has", () => {
+    expect(launcher).toContain(
+      'node --import "file:///%~dp0..\\node_modules\\tsx\\dist\\loader.mjs" "%~dp0..\\src\\cli\\main.ts"',
+    )
     const tsx = JSON.parse(readFileSync("node_modules/tsx/package.json", "utf8")) as {
-      readonly bin: string | Readonly<Record<string, string>>
+      readonly exports: Readonly<Record<string, unknown>>
     }
-    const bin = typeof tsx.bin === "string" ? tsx.bin : tsx.bin["tsx"]
-    expect(bin?.replace(/^\.\//, "")).toBe("dist/cli.mjs")
+    expect(tsx.exports["."]).toBe("./dist/loader.mjs")
+    expect(existsSync("node_modules/tsx/dist/loader.mjs")).toBe(true)
+  })
+
+  it("ends its batch file before node runs, so an update that rewrites it is never read on", () => {
+    const last = launcher.trimEnd().split("\r\n").at(-1) ?? ""
+    expect(last).toMatch(/^goto #_undefined_# 2>NUL \|\| title %COMSPEC% & node /)
+    expect(launcher).not.toMatch(/setlocal|pushd/i)
   })
 
   it("passes every argument on and keeps the CLI's exit status", () => {
-    expect(launcher).toContain("%*")
-    expect(launcher).toMatch(/exit \/b %OH_MY_PAPER_STATUS%/)
+    expect(launcher.trimEnd().endsWith("%*")).toBe(true)
+    expect(launcher).toContain("the install is incomplete")
   })
 })

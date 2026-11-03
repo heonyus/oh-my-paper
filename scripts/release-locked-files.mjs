@@ -6,7 +6,8 @@
 //
 //   node scripts/release-locked-files.mjs [app folder]
 //
-// `oh-my-paper update` and scripts/install.ps1 run it before `npm ci`.
+// `oh-my-paper update` and scripts/install.ps1 run it before `npm ci`. It exits with status 1
+// when a file in use cannot be moved, so they stop before npm ci leaves half a node_modules.
 import {
   closeSync,
   existsSync,
@@ -62,35 +63,44 @@ export function emptyTrash(trash) {
 }
 
 /**
- * Moves the native files in use under `appRoot/node_modules` into `appRoot/.update-trash` and
- * returns their paths. `isInUse` and `platform` stand in for Windows in tests.
+ * Moves the native files in use under `appRoot/node_modules` into `appRoot/.update-trash`, and
+ * returns the ones it moved and the ones it could not. `isInUse`, `move` and `platform` stand in
+ * for Windows in tests.
  */
 export function releaseLockedFiles(
   appRoot,
-  { platform = process.platform, isInUse = inUse, log = () => undefined } = {},
+  { platform = process.platform, isInUse = inUse, move = renameSync, log = () => undefined } = {},
 ) {
   const trash = join(appRoot, ".update-trash")
   const kept = emptyTrash(trash)
   if (kept > 0) log(`${kept} file(s) from an earlier update are still in use`)
-  if (platform !== "win32") return []
   const moved = []
+  const stuck = []
+  if (platform !== "win32") return { moved, stuck }
   for (const path of nativeFiles(join(appRoot, "node_modules"))) {
     if (!isInUse(path)) continue
     mkdirSync(trash, { recursive: true })
-    const target = join(trash, `${Date.now()}-${moved.length}-${basename(path)}`)
+    const target = join(trash, `${Date.now()}-${moved.length + stuck.length}-${basename(path)}`)
     try {
-      renameSync(path, target)
+      move(path, target)
       moved.push(path)
       log(`moved aside: ${path}`)
     } catch (error) {
+      stuck.push(path)
       log(`could not move ${path}: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
-  return moved
+  return { moved, stuck }
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const appRoot = resolve(process.argv[2] ?? join(fileURLToPath(import.meta.url), "..", ".."))
-  const moved = releaseLockedFiles(appRoot, { log: (line) => process.stdout.write(`${line}\n`) })
+  const { moved, stuck } = releaseLockedFiles(appRoot, {
+    log: (line) => process.stdout.write(`${line}\n`),
+  })
   process.stdout.write(`release-locked-files: ${moved.length} file(s) moved aside\n`)
+  if (stuck.length > 0) {
+    process.stderr.write(`release-locked-files: ${stuck.length} file(s) in use could not move\n`)
+    process.exitCode = 1
+  }
 }

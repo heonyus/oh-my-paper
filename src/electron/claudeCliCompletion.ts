@@ -7,7 +7,7 @@ import {
   buildClaudeEnv,
   sanitizeClaudeMessage,
 } from "./claudeCliEnvironment"
-import { ProviderConfigurationError } from "./providerConfigStore"
+import { ProviderConfigurationError } from "./providerConfigurationError"
 
 export type ClaudeCompletionOptions = {
   readonly systemPrompt: string

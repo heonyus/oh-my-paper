@@ -9,14 +9,22 @@ import { appUrl } from "./tutorial"
 
 const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY)
 
-export function portOpen(host: string, port: number): Promise<boolean> {
+/**
+ * Whether something answers on the port. A loopback connection succeeds at once; Windows only
+ * reports a closed port after retrying it for about a second, so silence counts as closed.
+ */
+export function portOpen(host: string, port: number, timeoutMs = 500): Promise<boolean> {
   return new Promise((resolve) => {
     const socket = connect({ host, port })
-    socket.once("connect", () => {
-      socket.end()
-      resolve(true)
-    })
-    socket.once("error", () => resolve(false))
+    const settle = (open: boolean): void => {
+      socket.setTimeout(0)
+      if (open) socket.end()
+      else socket.destroy()
+      resolve(open)
+    }
+    socket.setTimeout(timeoutMs, () => settle(false))
+    socket.once("connect", () => settle(true))
+    socket.once("error", () => settle(false))
   })
 }
 
@@ -59,5 +67,8 @@ export async function startApp(config: WebServerConfig, openAfter: boolean): Pro
     // After an update, or an install that stopped, the missing engine starts installing here.
     const ocr = await ensureOcrInstall().catch(() => null)
     if (ocr === "started") process.stdout.write(`  ${gray(t("start.ocrStarted"))}\n\n`)
+  } else {
+    // A first start can take longer, for one while antivirus software looks the files over.
+    process.stdout.write(`  ${gray(t("start.slow", { url: link(url) }))}\n`)
   }
 }

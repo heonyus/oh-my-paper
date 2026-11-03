@@ -1,5 +1,5 @@
 import type { AiJobErrorCode, AiJobEvent, AiJobId, AiRole } from "../shared/documentAiJobs"
-import { ProviderConfigurationError } from "./providerConfigStore"
+import { ProviderConfigurationError } from "./providerConfigurationError"
 
 export type ProviderCompletionResult = {
   readonly text: string

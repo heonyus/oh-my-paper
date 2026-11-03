@@ -4,7 +4,7 @@ import { type ClaudeAccountStatus, claudeAccountStatusSchema } from "../shared/c
 import { ClaudeLoginProcess, readClaudeAuthStatus } from "./claudeCliAuth"
 import { type ClaudeCompletionOptions, runClaudeCompletion } from "./claudeCliCompletion"
 import { findClaudeExecutable, sanitizeClaudeMessage } from "./claudeCliEnvironment"
-import { ProviderConfigurationError } from "./providerConfigStore"
+import { ProviderConfigurationError } from "./providerConfigurationError"
 
 export type ClaudeSubscriptionAdapterOptions = {
   readonly appRoot: string
