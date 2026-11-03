@@ -112,15 +112,21 @@ export class CodexSubprocess {
 
     this.#process = child
 
-    child.stdout.on("data", (chunk: Buffer) => {
+    // Decoded as a stream, so a Korean character split between two reads stays whole.
+    child.stdout.setEncoding("utf8")
+    child.stdout.on("data", (chunk: string) => {
       if (this.#process !== child) return
-      this.#handleChunk(chunk.toString("utf8"))
+      this.#handleChunk(chunk)
     })
 
     // Drain stderr safely without leaking sensitive tokens/prompts
     child.stderr.on("data", (_chunk: Buffer) => {
       // Safely discarded to avoid pipe deadlock
     })
+
+    // A write that races the app-server's exit (EPIPE, or "write EOF" on Windows) is not an
+    // error to report: its exit is.
+    child.stdin.on("error", () => undefined)
 
     child.on("error", (err) => {
       if (this.#process !== child) return
@@ -180,6 +186,9 @@ export class CodexSubprocess {
   stop(): void {
     if (!this.#process) return
     try {
+      // The end of its input lets the app-server shut down cleanly; on Windows it also reaches
+      // the codex.exe behind the node launcher, which kill() alone would not.
+      this.#process.stdin.end()
       this.#process.kill()
     } catch (error) {
       if (!(error instanceof Error)) {

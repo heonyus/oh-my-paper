@@ -3,12 +3,12 @@ import { type JSX, useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { useTranslator } from "../../lib/locale"
 import { NOTE_CARD_MAX_CHARACTERS, type NoteCardTarget } from "../../lib/noteCard"
+import { APPLE_KEYBOARD } from "../../lib/platform"
 import type { NoteCardState } from "../../lib/useNoteCard"
 import { noteMessages } from "../../messages/note"
 import { useCardPlacement } from "./useCardPlacement"
 
-const APPLE = /Mac|iPhone|iPad/u.test(globalThis.navigator?.platform ?? "")
-const SAVE_KEYS = APPLE ? ["⌘", "↵"] : ["Ctrl", "↵"]
+const SAVE_KEYS = APPLE_KEYBOARD ? ["⌘", "↵"] : ["Ctrl", "↵"]
 
 /**
  * The note card and the short confirmation after it is added to a note. On a paper the card is

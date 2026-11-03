@@ -7,6 +7,7 @@ import {
 } from "react"
 import type { Viewport } from "../../shared/schemas"
 import type { BoardTool } from "../types"
+import { APPLE_KEYBOARD } from "./platform"
 import { nextWheelAxis, panViewport, zoomViewportAt } from "./viewport"
 
 /**
@@ -34,6 +35,34 @@ type UseBoardGesturesProps = {
   readonly constrainPan?: ((viewport: Viewport) => Viewport) | undefined
   readonly onClearSelection: () => void
   readonly tool: BoardTool
+}
+
+/**
+ * The wheel event with its deltas in pixels. Firefox counts mouse-wheel lines (deltaMode 1) and
+ * Windows' "one screen at a time" setting counts pages (deltaMode 2); both would otherwise move
+ * the board by a pixel or two per notch.
+ */
+export function pixelWheel(event: WheelEvent, pageHeight: number): WheelEvent {
+  if (event.deltaMode === 0) return event
+  const unit = event.deltaMode === 1 ? 16 : pageHeight
+  return new Proxy(event, {
+    get(target, property) {
+      if (property === "deltaX") return target.deltaX * unit
+      if (property === "deltaY") return target.deltaY * unit
+      const value = Reflect.get(target, property, target)
+      return typeof value === "function" ? value.bind(target) : value
+    },
+  })
+}
+
+/**
+ * How much one Ctrl+wheel event zooms. A trackpad pinch arrives as many small deltas; a Windows
+ * mouse wheel sends 100 px per notch, which zoomed the board by 82% at once. Elsewhere than on an
+ * Apple keyboard each event's step is capped, so a notch zooms about a browser zoom step (15%).
+ */
+export function wheelZoomFactor(deltaY: number, apple = APPLE_KEYBOARD): number {
+  const step = apple ? deltaY : Math.max(-24, Math.min(24, deltaY))
+  return Math.exp(-step * 0.006)
 }
 
 export function useBoardGestures({
@@ -238,7 +267,8 @@ export function useBoardGestures({
     if (wasPanning) window.getSelection()?.removeAllRanges()
   }
 
-  function handleWheel(event: WheelEvent, currentTarget: HTMLElement): void {
+  function handleWheel(rawEvent: WheelEvent, currentTarget: HTMLElement): void {
+    const event = pixelWheel(rawEvent, currentTarget.clientHeight)
     // Cards keep the wheel for their own scrolling text; a note left on the board does not.
     if (
       event.target instanceof Element &&
@@ -259,7 +289,7 @@ export function useBoardGestures({
     if (event.ctrlKey || event.metaKey) {
       wheelAxis.current = null
       const rect = currentTarget.getBoundingClientRect()
-      const factor = Math.exp(-event.deltaY * 0.006)
+      const factor = wheelZoomFactor(event.deltaY)
       const next = zoomViewportAt(
         pendingViewport.current,
         { x: event.clientX - rect.left, y: event.clientY - rect.top },
