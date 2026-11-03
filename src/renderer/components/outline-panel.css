@@ -67,7 +67,7 @@
 }
 .outline-panel li button > span:last-child {
   color: var(--ink-muted);
-  font-family: "SF Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
 }
 .outline-panel > p {
   margin: 20px 16px;

@@ -425,7 +425,7 @@
   display: block;
   margin-top: 6px;
   color: var(--ink-muted);
-  font-family: var(--font-mono, ui-monospace, monospace);
+  font-family: var(--font-mono);
   font-size: 0.9em;
   overflow-wrap: anywhere;
 }

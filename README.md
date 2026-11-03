@@ -129,7 +129,7 @@ PDF를 끌어다 놓으면 바로 열립니다. 제목, 저자, 페이지 구조
 
 ## 문서 분석 엔진
 
-스캔 PDF와 그림·표·수식은 PaddleOCR-VL 1.6이 이 컴퓨터에서 읽습니다. Apple Silicon에서는 MLX로 가속합니다.
+스캔 PDF와 그림·표·수식은 PaddleOCR-VL 1.6이 이 컴퓨터에서 읽습니다. Apple Silicon에서는 MLX로 가속합니다. Windows에서는 NVIDIA GPU가 있으면 GPU로 돌고(WSL이 있으면 vLLM으로 한 쪽에 약 2초), 없으면 CPU로 돌아 한 쪽에 수십 초가 걸립니다.
 
 - 마법사가 설치하고, 진행 상황은 앱 설정과 `oh-my-paper doctor`에 나옵니다.
 - 준비되면 다시 시작하지 않아도 알아서 켜집니다.

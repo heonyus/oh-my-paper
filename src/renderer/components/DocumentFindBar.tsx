@@ -2,7 +2,23 @@ import { ChevronDown, ChevronUp, Search, X } from "lucide-react"
 import { type JSX, useCallback, useEffect, useRef, useState } from "react"
 import { useTranslator } from "../lib/locale"
 import { IDLE_FIND_STATE, type PdfFindRuntime, type PdfFindState } from "../lib/pdfFindRuntime"
+import { APPLE_KEYBOARD } from "../lib/platform"
 import { readerMessages } from "../messages/reader"
+
+/**
+ * Which way a "find next" key goes: F3 everywhere, and Ctrl+G off Apple keyboards, as Windows
+ * browsers use them (Shift goes back); null for any other key.
+ */
+export function findStepKey(
+  event: KeyboardEvent,
+  apple = APPLE_KEYBOARD,
+): "next" | "previous" | null {
+  const step =
+    event.key === "F3" ||
+    (!apple && event.ctrlKey && !event.altKey && event.key.toLocaleLowerCase() === "g")
+  if (!step) return null
+  return event.shiftKey ? "previous" : "next"
+}
 
 /** Whether a keystroke is the plain find shortcut: ⌘F or Ctrl+F, with no Shift. */
 export function isFindShortcut(event: KeyboardEvent): boolean {
@@ -61,6 +77,15 @@ export function DocumentFindBar({
         close()
         return
       }
+      // With the bar open, these keys step through its matches; the browser's own find bar
+      // would otherwise open on top, counting other text.
+      const step = open ? findStepKey(event) : null
+      if (step) {
+        event.preventDefault()
+        if (step === "next") runtime?.next()
+        else runtime?.previous()
+        return
+      }
       if (!isFindShortcut(event)) return
       event.preventDefault()
       if (!open) {
@@ -74,7 +99,7 @@ export function DocumentFindBar({
     }
     window.addEventListener("keydown", handleShortcut)
     return () => window.removeEventListener("keydown", handleShortcut)
-  }, [close, open])
+  }, [close, open, runtime])
 
   useEffect(() => {
     if (!open) return

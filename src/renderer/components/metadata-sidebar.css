@@ -125,7 +125,7 @@
 .outline-page {
   color: var(--ink-muted);
   font-size: var(--type-compact-size);
-  font-family: "SF Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
 }
 
 .tag-list {

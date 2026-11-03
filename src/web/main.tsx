@@ -1,6 +1,7 @@
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 import { type LanguagePreference, LocaleProvider } from "../renderer/lib/locale"
+import { markClassicScrollbars } from "../renderer/lib/platform"
 import { languageStatusSchema } from "../shared/i18n/locale"
 import { installLocalReaderApi } from "./localReaderApi"
 import { localRpc } from "./localTransport"
@@ -57,6 +58,8 @@ async function savedLanguage(): Promise<LanguagePreference | undefined> {
 function keepLanguage(language: LanguagePreference): void {
   void localRpc("saveLanguage", { language }, languageStatusSchema).catch(() => undefined)
 }
+
+markClassicScrollbars()
 
 void savedLanguage().then((initialPreference) => {
   createRoot(mount).render(
