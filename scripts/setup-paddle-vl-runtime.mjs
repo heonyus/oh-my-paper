@@ -426,10 +426,29 @@ function preferred(files, preferences) {
 async function llamaCppLane() {
   const started = Date.now()
   say("[llamacpp] ▶ llama.cpp + PaddleOCR-VL GGUF")
-  const release = await fetchJson("https://api.github.com/repos/ggml-org/llama.cpp/releases/latest")
+  // Not just the release marked latest: some releases carry no Windows build. The newest that
+  // does, among the recent ones.
+  const releases = await fetchJson(
+    "https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=30",
+  )
   const wanted = process.arch === "arm64" ? /-bin-win-cpu-arm64\.zip$/ : /-bin-win-vulkan-x64\.zip$/
-  const asset = release.assets?.find((candidate) => wanted.test(candidate.name))
-  if (!asset) throw new Error(`no Windows build in llama.cpp ${release.tag_name}`)
+  let release = null
+  let asset = null
+  for (const candidate of Array.isArray(releases) ? releases : []) {
+    if (candidate.draft || candidate.prerelease) continue
+    asset = candidate.assets?.find((file) => wanted.test(file.name)) ?? null
+    if (asset) {
+      release = candidate
+      break
+    }
+  }
+  if (!release || !asset) {
+    const newest = Array.isArray(releases) ? releases[0] : null
+    const names = (newest?.assets ?? []).map((file) => file.name).slice(0, 12)
+    throw new Error(
+      `no recent llama.cpp release has a Windows build (${newest?.tag_name}: ${names})`,
+    )
+  }
   const bin = join(llamaCppRoot, "bin")
   const zip = join(llamaCppRoot, asset.name)
   await downloadFile(asset.browser_download_url, zip)
