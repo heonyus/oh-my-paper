@@ -53,9 +53,6 @@ jobs:
     env:
       OH_MY_PAPER_REPO: ${{ github.workspace }}
       OH_MY_PAPER_BRANCH: windows-ci
-      OH_MY_PAPER_HOME: ${{ runner.temp }}\omp\app
-      OH_MY_PAPER_BIN_DIR: ${{ runner.temp }}\omp\bin
-      OH_MY_PAPER_WEB_DATA_DIR: ${{ runner.temp }}\omp\data
       OH_MY_PAPER_LANG: en
     steps:
       - uses: actions/checkout@v4
@@ -65,6 +62,13 @@ jobs:
           cache: npm
       # The installer clones a branch; checkout leaves a detached commit.
       - run: git branch windows-ci HEAD
+      # The runner context is not available to job-level env, so the install's folders are set here.
+      - name: Where the install goes
+        shell: pwsh
+        run: |
+          Add-Content -Path $env:GITHUB_ENV -Value "OH_MY_PAPER_HOME=$env:RUNNER_TEMP\omp\app"
+          Add-Content -Path $env:GITHUB_ENV -Value "OH_MY_PAPER_BIN_DIR=$env:RUNNER_TEMP\omp\bin"
+          Add-Content -Path $env:GITHUB_ENV -Value "OH_MY_PAPER_WEB_DATA_DIR=$env:RUNNER_TEMP\omp\data"
 
       - name: Install with scripts/install.ps1 (Windows PowerShell 5.1, -File)
         shell: powershell
