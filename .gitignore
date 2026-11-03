@@ -26,4 +26,5 @@ output/
 __pycache__/
 *.py[cod]
 menubar/bin/
+.update-trash/
 .codegraph

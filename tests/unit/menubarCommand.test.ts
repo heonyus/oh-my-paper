@@ -112,7 +112,7 @@ describe("oh-my-paper menubar", () => {
     expect(existsSync(plist)).toBe(false)
   })
 
-  it("refuses anywhere but macOS", async () => {
+  it("refuses anywhere but macOS and Windows", async () => {
     const written = vi.spyOn(process.stderr, "write").mockReturnValue(true)
 
     await menubarCommand(config, appRoot, undefined, { ...system(), platform: "linux" })

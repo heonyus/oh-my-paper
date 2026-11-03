@@ -159,7 +159,20 @@ async function update(): Promise<void> {
     },
     {
       title: t("update.deps"),
-      run: npm(["ci", "--no-audit", "--no-fund", "--loglevel=http", "--foreground-scripts"]),
+      run: async (onLine) => {
+        // Windows deletes no program in use, and a running oh-my-paper (this command's own tsx,
+        // the tray companion, another terminal) holds some under node_modules, so they move
+        // aside before npm ci replaces it.
+        if (process.platform === "win32")
+          await runStreaming(
+            process.execPath,
+            [join(appRoot, "scripts", "release-locked-files.mjs"), appRoot],
+            { cwd: appRoot, onLine },
+          )
+        return npm(["ci", "--no-audit", "--no-fund", "--loglevel=http", "--foreground-scripts"])(
+          onLine,
+        )
+      },
       summary: npmSummary,
     },
     { title: t("update.build"), run: npm(["run", "build:web"]), summary: buildSummary },
@@ -257,6 +270,7 @@ async function main(): Promise<void> {
       await languageCommand(config, rest[0])
       return
     case "menubar":
+    case "tray":
       await menubarCommand(config, appRoot, rest[0])
       return
     case "-v":

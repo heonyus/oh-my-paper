@@ -20,6 +20,14 @@ export type EnvironmentReport = {
 
 const sourceRoot = fileURLToPath(new URL("../..", import.meta.url))
 
+/**
+ * Runs a TypeScript file with this node and tsx's own entry point: node_modules/.bin/tsx is a
+ * cmd shim on Windows, which only a shell can start.
+ */
+export function tsxCommand(script: string, root = sourceRoot): readonly [string, string[]] {
+  return [process.execPath, [join(root, "node_modules", "tsx", "dist", "cli.mjs"), script]]
+}
+
 /** Whether the OCR engine is installed and ready to analyse pages. */
 async function ocrEngineReady(): Promise<boolean> {
   const paddle = new PaddlePageParserService({
@@ -55,7 +63,16 @@ export async function checkEnvironment(
     ocrInstalling: !ocrReady && paddleInstallRunning(homedir()),
     // The OCR install keeps its own uv beside the runtimes when the computer has none.
     uvAvailable:
-      findOnPath("uv") !== null || existsSync(join(homedir(), ".ohmypaper", "tools", "uv", "uv")),
+      findOnPath("uv") !== null ||
+      existsSync(
+        join(
+          homedir(),
+          ".ohmypaper",
+          "tools",
+          "uv",
+          process.platform === "win32" ? "uv.exe" : "uv",
+        ),
+      ),
     nodeModules,
   }
 }
@@ -73,11 +90,15 @@ export function startOcrInstallInBackground(
   rmSync(declined, { force: true })
   const output = openSync(log, "w")
   try {
+    // windowsHide: detached, it has no console, so each program it starts would open a window.
     spawn(process.execPath, [script], {
       detached: true,
       stdio: ["ignore", output, output],
       env: process.env,
-    }).unref()
+      windowsHide: true,
+    })
+      .once("error", () => undefined)
+      .unref()
   } finally {
     closeSync(output)
   }
@@ -93,11 +114,16 @@ export function startMeaningModelFetchInBackground(home = homedir()): string {
   mkdirSync(dirname(log), { recursive: true })
   const output = openSync(log, "w")
   try {
-    spawn(
-      join(sourceRoot, "node_modules", ".bin", "tsx"),
-      [join(sourceRoot, "scripts", "fetch-meaning-model.ts")],
-      { detached: true, stdio: ["ignore", output, output], env: process.env, cwd: sourceRoot },
-    ).unref()
+    const [command, args] = tsxCommand(join(sourceRoot, "scripts", "fetch-meaning-model.ts"))
+    spawn(command, args, {
+      detached: true,
+      stdio: ["ignore", output, output],
+      env: process.env,
+      cwd: sourceRoot,
+      windowsHide: true,
+    })
+      .once("error", () => undefined)
+      .unref()
   } finally {
     closeSync(output)
   }

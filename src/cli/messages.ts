@@ -229,9 +229,9 @@ const ko = {
   "help.quickstart": "빠른 시작",
   "help.unknown": "알 수 없는 명령: {command}",
   "help.language": "언어를 바꿉니다 (한국어 · English)",
-  "help.menubar": "메뉴 막대에 띄워 꺼지지 않게 합니다 (macOS)",
+  "help.menubar": "메뉴 막대(macOS)나 알림 영역(Windows)에 띄워 꺼지지 않게 합니다",
 
-  "menubar.macOnly": "메뉴 막대 실행은 macOS에서만 됩니다.",
+  "menubar.unsupported": "메뉴 막대 실행은 macOS와 Windows에서만 됩니다.",
   "menubar.buildFailed":
     "메뉴 막대 앱을 빌드하지 못했습니다 — Xcode Command Line Tools가 필요합니다: xcode-select --install",
   "menubar.failed": "메뉴 막대 앱을 시작하지 못했습니다",
@@ -240,6 +240,15 @@ const ko = {
     "터미널을 닫아도 켜져 있고, 꺼지면 다시 켜지며, 로그인하면 다시 시작합니다. 끄려면 메뉴 막대의 잎 아이콘 → 종료.",
   "menubar.slow": "메뉴 막대 앱은 떴지만 서버가 아직 응답하지 않습니다 — 로그: {log}",
   "menubar.off": "메뉴 막대 실행을 껐습니다. 로그인해도 다시 시작하지 않습니다.",
+  "tray.noCompiler":
+    "알림 영역 앱을 빌드할 C# 컴파일러를 찾지 못했습니다 — Windows 기능 켜기/끄기에서 .NET Framework 4.8을 켜세요",
+  "tray.buildFailed": "알림 영역 앱을 빌드하지 못했습니다",
+  "tray.failed": "알림 영역 앱을 시작하지 못했습니다",
+  "tray.on": "알림 영역에서 실행 중 → {url}",
+  "tray.onHint":
+    "터미널을 닫아도 켜져 있고, 꺼지면 다시 켜지며, 로그인하면 다시 시작합니다. 끄려면 작업 표시줄 알림 영역의 잎 아이콘 → 종료.",
+  "tray.slow": "알림 영역 앱은 떴지만 서버가 아직 응답하지 않습니다 — 로그: {log}",
+  "tray.off": "알림 영역 실행을 껐습니다. 로그인해도 다시 시작하지 않습니다.",
 
   "language.ask": "언어 · Language",
   "language.saved": "이제 터미널과 앱이 한국어로 나옵니다",
@@ -474,9 +483,9 @@ const en: Readonly<Record<Key, string>> = {
   "help.quickstart": "Quick start",
   "help.unknown": "Unknown command: {command}",
   "help.language": "Change the language (한국어 · English)",
-  "help.menubar": "Keep it running from the menu bar (macOS)",
+  "help.menubar": "Keep it running from the menu bar (macOS) or the notification area (Windows)",
 
-  "menubar.macOnly": "The menu bar companion runs on macOS only.",
+  "menubar.unsupported": "The menu bar companion runs on macOS and Windows only.",
   "menubar.buildFailed":
     "Could not build the menu bar app — it needs the Xcode Command Line Tools: xcode-select --install",
   "menubar.failed": "Could not start the menu bar app",
@@ -485,6 +494,15 @@ const en: Readonly<Record<Key, string>> = {
     "It stays on when this terminal closes, comes back if it stops, and starts again at login. To stop it: the leaf icon in the menu bar → Quit.",
   "menubar.slow": "The menu bar app is up but the server is not answering yet — log: {log}",
   "menubar.off": "The menu bar companion is off and no longer starts at login.",
+  "tray.noCompiler":
+    "Could not find the C# compiler that builds the tray app — turn on .NET Framework 4.8 in Windows Features",
+  "tray.buildFailed": "Could not build the tray app",
+  "tray.failed": "Could not start the tray app",
+  "tray.on": "Running from the notification area → {url}",
+  "tray.onHint":
+    "It stays on when this terminal closes, comes back if it stops, and starts again at sign-in. To stop it: the leaf icon in the taskbar's notification area → Quit.",
+  "tray.slow": "The tray app is up but the server is not answering yet — log: {log}",
+  "tray.off": "The tray companion is off and no longer starts at sign-in.",
 
   "language.ask": "Language · 언어",
   "language.saved": "The terminal and the app now use English",
