@@ -39,6 +39,16 @@ Apple Silicon Mac, git, Node.js 22 이상(`brew install node`)이 필요합니�
 
 엔진을 받는 동안에도 논문은 바로 열어 읽을 수 있고, 엔진이 준비되면 알아서 분석됩니다.
 
+### AI 에이전트에게 맡기기
+
+AI 코딩 에이전트에게 이 저장소 링크 `https://github.com/heonyus/oh-my-paper`를 주고 "설치해 줘"라고 하면 됩니다. 에이전트는 [에이전트용 설치 안내](docs/agent-install.md)를 따라 아무것도 묻지 않고 설치와 빌드, 점검까지 마치고, AI 로그인처럼 직접 하셔야 하는 일만 알려 드립니다. GitHub 별은 에이전트가 달지 않습니다. 별은 마법사에서 직접 고를 때만 달리고, 그냥 Enter를 누르면 건너뜁니다.
+
+> **AI 에이전트라면** [docs/agent-install.md](https://raw.githubusercontent.com/heonyus/oh-my-paper/main/docs/agent-install.md)를 순서대로 따르세요. 설치는 이 한 줄이고, 아무것도 묻지 않습니다.
+>
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.sh | bash -s -- --yes
+> ```
+
 ## 읽기
 
 <table>
@@ -114,6 +124,7 @@ PDF를 끌어다 놓으면 바로 열립니다. 제목, 저자, 페이지 구조
 |:--|:--|
 | `oh-my-paper` | 앱을 켜고 브라우저를 엽니다 (AI 연결이 없으면 마법사부터) |
 | `oh-my-paper onboard` | 설정 마법사를 다시 실행합니다 |
+| `oh-my-paper onboard --yes` | 묻지 않고 설정합니다. AI 에이전트와 스크립트용이고, `--no-ocr`를 붙이면 문서 분석 엔진을 뺍니다 |
 | `oh-my-paper doctor` | 실행 환경, 로그인, 모델, 엔진, 데이터 폴더를 점검합니다 |
 | `oh-my-paper update` | 최신 버전으로 업데이트하고 다시 빌드합니다 |
 | `oh-my-paper language` | 터미널과 앱의 언어를 한국어와 영어 중에서 바꿉니다 |

@@ -86,7 +86,13 @@ terminal install that explains itself as it goes, and short per-feature tutorial
   a first connection saves GPT-6 Luna when the account lists it, otherwise the runtime's default
   model (2026-09-30). The bundled list is only a fallback.
 - Terminal: `scripts/install.sh` (curl one-liner) clones, installs, builds, links `oh-my-paper` and
-  starts the wizard. The wizard has four explained steps (runtime, optional OCR, AI connection,
+  starts the wizard. Where no one can answer it (2026-11-03), with no terminal attached as in an AI
+  agent's shell or a script (`/dev/tty` is opened to check, since it passes `-r` and `-w` either
+  way), or with `bash -s -- --yes`, it runs `oh-my-paper onboard --yes` instead: no questions; the
+  note model and, unless `--no-ocr` (kept like the wizard's no), the OCR engine start in the
+  background; AI sign-in is left for the person; no star is asked for or given. `oh-my-paper
+  onboard` without a terminal does the same instead of stopping at its first question.
+  `docs/agent-install.md` is the agents' procedure, and both READMEs point agents to it. The wizard has four explained steps (runtime, optional OCR, AI connection,
   usage tour); OCR comes before AI so its download overlaps the sign-in. The AI step lists ChatGPT
   first and preselects it; only a connection this app saved moves the cursor to `지금 연결 유지` (a Claude
   Code login on the machine alone does not). The OCR step (2026-09-30) defaults to
@@ -103,13 +109,16 @@ terminal install that explains itself as it goes, and short per-feature tutorial
   means a tip shows again, and a fresh data folder's welcome clears it. A tip whose clip is
   missing shows without one. The header `?` (사용법) lists every tip with its clip and can show them
   again. Recordings for tips and the README video hide tips and use the quiet note companion.
-- GitHub star invitation (2026-09-29; direct star 2026-09-30): the app asks and never
-  stars without that choice or with credentials of its own. The wizard asks once, after the usage
-  tour: `oh-my-paper가 도움이 된다면 GitHub에서 ⭐ 하나 부탁드려요`. With a `gh` login on the machine the choice is
-  `⭐ 별 달기`, which stars through that login (`gh api --method PUT
+- GitHub star invitation (2026-09-29; direct star 2026-09-30; skip preselected 2026-11-03): the
+  app asks and never stars without that choice or with credentials of its own. The wizard asks
+  once, after the usage tour: `oh-my-paper가 도움이 된다면 GitHub에서 ⭐ 하나 부탁드려요 (선택)`. The first choice,
+  where the cursor starts, is `괜찮아요, 건너뛸게요` (`Enter · 다시 묻지 않아요`), so Enter alone skips, and Ctrl+C
+  counts as skipping too. Starring takes moving to the second choice: with a `gh` login on the
+  machine it is `⭐ 별 달기`, which stars through that login (`gh api --method PUT
   /user/starred/heonyus/oh-my-paper`); without one, or if that call fails, it is `⭐ GitHub 열고 별 달기`
-  and opens `https://github.com/heonyus/oh-my-paper`. The other choice is `괜찮아요, 건너뛸게요` (Ctrl+C
-  counts as skipping). In-app star actions only open the page in a new tab. The answer is kept in
+  and opens `https://github.com/heonyus/oh-my-paper`. Setup without questions never shows it, and
+  the agent install guide forbids starring for the person. In-app star actions only open the page
+  in a new tab. The answer is kept in
   the data folder (`github-star.json`), so neither `oh-my-paper onboard` nor `oh-my-paper` asks
   again; runs without a terminal on both ends, or with `CI` set, skip it silently. In the browser
   one small card (`oh-my-paper가 도움이 되고 있나요?`) may appear in the Library's bottom-left corner after
