@@ -440,7 +440,8 @@ async function llamaCppLane() {
   let release = null
   let asset = null
   for (const candidate of Array.isArray(releases) ? releases : []) {
-    if (candidate.draft || candidate.prerelease) continue
+    // Every llama.cpp build (bNNNN) is published as a prerelease, so only drafts are skipped.
+    if (candidate.draft) continue
     asset = candidate.assets?.find((file) => wanted.test(file.name)) ?? null
     if (asset) {
       release = candidate
