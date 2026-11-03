@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { delimiter, dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -88,12 +88,18 @@ function say(line) {
   process.stdout.write(`${line}\n`)
 }
 
-/** Runs one command, prefixing its output with the lane so parallel lanes stay readable. */
+/**
+ * Runs one command, prefixing its output with the lane so parallel lanes stay readable. Python
+ * writes UTF-8 to the pipe whatever the Windows code page, so paths with Korean names read right,
+ * and windowsHide gives the command a hidden console that the programs it starts share: started
+ * in the background, this script has no console, and each would otherwise open a window.
+ */
 function run(lane, command, args, env = process.env) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
-      env: { TQDM_MININTERVAL: "10", ...env },
+      env: { TQDM_MININTERVAL: "10", PYTHONUTF8: "1", PYTHONIOENCODING: "utf-8", ...env },
       stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
     })
     children.add(child)
     for (const stream of [child.stdout, child.stderr]) {
@@ -129,10 +135,24 @@ async function step(lane, title, command, args, { env, key } = {}) {
   writeProgress()
 }
 
+/** Stops the running commands with what they started: on Windows, killing one leaves its children. */
 function stopChildren() {
-  for (const child of children) child.kill("SIGTERM")
+  for (const child of children) {
+    if (process.platform === "win32" && child.pid)
+      spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
+        stdio: "ignore",
+        windowsHide: true,
+      })
+    else child.kill("SIGTERM")
+  }
 }
 
+/**
+ * Whether another install holds the lock: its process is alive and it rewrote its progress lately
+ * (every 2 s). A lock left by an install cut short, at a sign-out or a reboot, can name a process
+ * id that Windows has since given to another program; the stale progress tells them apart. Matches
+ * paddleInstallRunning() in src/electron/paddleInstallState.ts.
+ */
 function lockHolderAlive() {
   let pid
   try {
@@ -141,6 +161,11 @@ function lockHolderAlive() {
     return false
   }
   if (!Number.isInteger(pid) || pid <= 0) return false
+  try {
+    if (Date.now() - statSync(installProgress).mtimeMs > 120_000) return false
+  } catch {
+    return false
+  }
   try {
     process.kill(pid, 0)
     return true
@@ -183,7 +208,7 @@ function takeLock() {
 
 const nvidiaGpu = (() => {
   if (appleAcceleration) return false
-  const probe = spawnSync("nvidia-smi", [], { stdio: "ignore" })
+  const probe = spawnSync("nvidia-smi", [], { stdio: "ignore", windowsHide: true })
   return !probe.error && probe.status === 0
 })()
 // The CPU wheels are on PyPI, whose CDN is much faster outside China than Paddle's own index.
@@ -193,12 +218,24 @@ const paddleSource = nvidiaGpu
 const paddlePackage = nvidiaGpu ? "paddlepaddle-gpu==3.2.1" : "paddlepaddle==3.2.1"
 
 /**
+ * The environment for Windows PowerShell 5.1 started from here. Started from PowerShell 7, this
+ * script inherits a PSModulePath that points at PowerShell 7's modules, which 5.1 cannot load
+ * ("the module could not be loaded"); without the variable, 5.1 uses its own module folders.
+ */
+function windowsPowerShellEnv(env) {
+  return Object.fromEntries(
+    Object.entries(env).filter(([name]) => name.toLowerCase() !== "psmodulepath"),
+  )
+}
+
+/**
  * uv from PATH, or else a copy of its own: the official installer puts it in ~/.ohmypaper/tools
  * without touching shell profiles, and uv fetches Python 3.12 itself, so a computer with
  * neither still gets the engine. `OH_MY_PAPER_UV_INSTALLER` points at another installer.
  */
 async function ensureUv() {
-  const names = process.platform === "win32" ? ["uv.exe", "uv.cmd"] : ["uv"]
+  // A uv.cmd wrapper on PATH cannot be started without a shell, so only uv.exe counts there.
+  const names = process.platform === "win32" ? ["uv.exe"] : ["uv"]
   const onPath = (process.env.PATH ?? "")
     .split(delimiter)
     .some((directory) => directory && names.some((name) => existsSync(join(directory, name))))
@@ -219,7 +256,7 @@ async function ensureUv() {
       await step(
         "uv",
         "uv 설치 (이 컴퓨터에 없어서 함께 받습니다)",
-        "powershell",
+        "powershell.exe",
         [
           "-NoProfile",
           "-ExecutionPolicy",
@@ -227,7 +264,7 @@ async function ensureUv() {
           "-Command",
           "irm $env:OH_MY_PAPER_UV_INSTALLER_URL | iex",
         ],
-        { env },
+        { env: windowsPowerShellEnv(env) },
       )
     else
       await step(
@@ -357,7 +394,6 @@ async function main() {
       { key: "pipeline" },
     )
   }
-  clearInterval(ticker)
   writeFileSync(readinessMarker, "PaddleOCR-VL-1.6 + PP-DocLayoutV3\n", { mode: 0o600 })
   say(`oh-my-paper PaddleOCR-VL runtime: ${runtimeRoot}`)
   if (appleAcceleration) say(`oh-my-paper PaddleOCR-VL MLX runtime: ${mlxRuntimeRoot}`)
@@ -367,6 +403,8 @@ async function main() {
       join(dirname(fileURLToPath(import.meta.url)), "setup-paddle-vllm-wsl.mjs"),
       "--optional",
     ])
+  // The progress stays fresh to the end, so the lock reads as alive while the WSL step runs.
+  clearInterval(ticker)
 }
 
 // Exit explicitly so a slow model-size request cannot hold the finished install open.

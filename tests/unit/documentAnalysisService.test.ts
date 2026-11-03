@@ -429,15 +429,18 @@ describe("DocumentAnalysisService", () => {
         JSON.stringify({ version: 3, parserVersion, pendingIds: [], readyIds }),
         "utf8",
       )
+    const services: DocumentAnalysisService[] = []
 
     try {
       await analysedBy("parser-v2", [current.id, earlier.id])
       const unchanged = new DocumentAnalysisService(store, parser, { parserVersion: "parser-v2" })
+      services.push(unchanged)
       await unchanged.resumePending()
       await unchanged.dispose()
       expect(parser.parse).not.toHaveBeenCalled()
 
       const upgraded = new DocumentAnalysisService(store, parser, { parserVersion: "parser-v3" })
+      services.push(upgraded)
       await upgraded.resumePending()
       await vi.waitFor(() => {
         expect(upgraded.isReady(current.id)).toBe(true)
@@ -459,6 +462,7 @@ describe("DocumentAnalysisService", () => {
         "utf8",
       )
       const migrated = new DocumentAnalysisService(store, parser, { parserVersion: "parser-v3" })
+      services.push(migrated)
       await migrated.resumePending()
       await vi.waitFor(() => {
         expect(migrated.isReady(current.id)).toBe(true)
@@ -467,6 +471,9 @@ describe("DocumentAnalysisService", () => {
       await migrated.dispose()
       expect(parser.parse).toHaveBeenCalledTimes(8)
     } finally {
+      // A service a failed assertion left running stops before the store it reads is closed;
+      // disposing one again only returns its finished disposal.
+      for (const service of services) await service.dispose()
       await store.close()
       await rm(root, { recursive: true, force: true })
     }
