@@ -129,7 +129,7 @@ Models are listed from your account, so new ones appear without an app update. Y
 
 ## Document engine
 
-Scanned PDFs, figures, tables and equations are read on your computer by PaddleOCR-VL 1.6, accelerated with MLX on Apple Silicon. On Windows it runs on an NVIDIA GPU when there is one (about 2 seconds a page through vLLM when WSL is set up), and otherwise on the CPU, at tens of seconds a page.
+Scanned PDFs, figures, tables and equations are read on your computer by PaddleOCR-VL 1.6, accelerated with MLX on Apple Silicon. On Windows it is accelerated with llama.cpp: on the graphics card through Vulkan when there is one, otherwise on the CPU, where the engine starts in about 15 seconds and reads a page in about 15 seconds. With an NVIDIA GPU and WSL, vLLM reads a page in about 2 seconds.
 
 - The wizard installs it; progress shows in the app's settings and in `oh-my-paper doctor`.
 - It turns itself on when ready, without a restart.
