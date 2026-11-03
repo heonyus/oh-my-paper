@@ -4,16 +4,18 @@
 #   curl -fsSL https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.sh | bash
 #
 # Clones (or updates) the app into ~/.oh-my-paper/app, installs dependencies, builds the web
-# app, links an `oh-my-paper` command into ~/.local/bin and starts the setup wizard.
+# app, links an `oh-my-paper` command into ~/.local/bin and starts the setup wizard. Where no one
+# can answer it (no terminal: an AI agent, a script), or with `bash -s -- --yes`, it sets up
+# without questions instead (`oh-my-paper onboard --yes`); add `--no-ocr` to leave out the
+# document engine there.
 # Override with OH_MY_PAPER_HOME, OH_MY_PAPER_BIN_DIR, OH_MY_PAPER_REPO, OH_MY_PAPER_BRANCH.
-# Set OH_MY_PAPER_NO_ONBOARD=1 to skip the wizard.
+# Set OH_MY_PAPER_NO_ONBOARD=1 to skip any setup after the install.
 set -euo pipefail
 
 REPO="${OH_MY_PAPER_REPO:-https://github.com/heonyus/oh-my-paper.git}"
 BRANCH="${OH_MY_PAPER_BRANCH:-main}"
 APP_DIR="${OH_MY_PAPER_HOME:-$HOME/.oh-my-paper/app}"
 BIN_DIR="${OH_MY_PAPER_BIN_DIR:-$HOME/.local/bin}"
-LOG="$(mktemp -t oh-my-paper-install.XXXXXX)"
 
 # The installer's language: OH_MY_PAPER_LANG, then the POSIX locale variables, then macOS's
 # preferred language; English otherwise. Exported so the setup wizard speaks the same language.
@@ -39,6 +41,23 @@ export OH_MY_PAPER_LANG="$UI_LANG"
 m() {
   if [ "$UI_LANG" = ko ]; then printf '%s' "$1"; else printf '%s' "$2"; fi
 }
+
+YES="" NO_OCR=""
+for arg in "$@"; do
+  case "$arg" in
+    -y | --yes) YES=1 ;;
+    --no-ocr) NO_OCR=1 ;;
+    *)
+      printf '%s %s (--yes, --no-ocr)\n' "$(m '모르는 옵션입니다:' 'Unknown option:')" "$arg" >&2
+      exit 2
+      ;;
+  esac
+done
+LOG="$(mktemp -t oh-my-paper-install.XXXXXX)"
+
+# Whether someone at a terminal can answer the wizard. /dev/tty passes -r and -w even where no
+# terminal is attached (an AI agent's shell, a script), so it is opened to check.
+has_terminal() { (: </dev/tty) 2>/dev/null; }
 
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
   BOLD=$'\033[1m' DIM=$'\033[2m' GREEN=$'\033[32m' YELLOW=$'\033[33m' RED=$'\033[31m'
@@ -185,10 +204,15 @@ esac
 printf '%s└%s  %s%s%s\n' "$DIM" "$RESET" "$GREEN" "$(m '설치 완료' 'Installed')" "$RESET"
 rm -f "$LOG"
 
-if [ -z "${OH_MY_PAPER_NO_ONBOARD:-}" ] && [ -r /dev/tty ] && [ -w /dev/tty ]; then
+if [ -n "${OH_MY_PAPER_NO_ONBOARD:-}" ]; then
+  printf '\n  %s %soh-my-paper onboard%s  → %s\n       %soh-my-paper%s          → %s\n\n' \
+    "$(m '다음:' 'Next:')" "$BOLD" "$RESET" "$(m '설정 마법사' 'setup wizard')" \
+    "$BOLD" "$RESET" "$(m '앱 시작' 'start the app')"
+elif [ -z "$YES" ] && has_terminal; then
   # stdin is the piped script under `curl | bash`, so the wizard reads the terminal directly.
   exec "$BIN_DIR/oh-my-paper" onboard </dev/tty
+else
+  # Nobody to answer, or --yes: what the wizard prepares on its own. It never reads stdin, which
+  # is the rest of this script under `curl | bash`.
+  exec "$BIN_DIR/oh-my-paper" onboard --yes ${NO_OCR:+"--no-ocr"} </dev/null
 fi
-printf '\n  %s %soh-my-paper onboard%s  → %s\n       %soh-my-paper%s          → %s\n\n' \
-  "$(m '다음:' 'Next:')" "$BOLD" "$RESET" "$(m '설정 마법사' 'setup wizard')" \
-  "$BOLD" "$RESET" "$(m '앱 시작' 'start the app')"

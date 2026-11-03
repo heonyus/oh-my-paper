@@ -18,6 +18,13 @@ const ko = {
   "wizard.starting": "시작합니다",
   "wizard.readyLater": "준비 완료 — 언제든 {app} 로 시작하세요",
 
+  // Setup without questions (no terminal, or onboard --yes)
+  "headless.title": "설정 · 묻지 않고 진행",
+  "headless.intro": "기본값으로 준비합니다. AI 로그인만 직접 하시도록 남겨 둡니다.",
+  "headless.ocrDeclined":
+    "OCR 엔진은 전에 설치하지 않기로 해서 건너뜁니다 — 원하면 터미널에서 oh-my-paper onboard",
+  "headless.aiLeft": "AI 연결은 직접 해 주세요 — 터미널에서 {app} 를 실행하면 로그인을 안내합니다",
+
   "env.title": "실행 환경",
   "env.detail": "필요한 것들이 이 컴퓨터에 준비돼 있는지 확인합니다.",
   "env.nodeOld": "Node.js {version} — 22 이상을 권장합니다",
@@ -143,13 +150,13 @@ const ko = {
   "api.saveFailedTitle": "저장 실패",
 
   // GitHub star
-  "star.ask": "oh-my-paper가 도움이 된다면 GitHub에서 ⭐ 하나 부탁드려요",
+  "star.ask": "oh-my-paper가 도움이 된다면 GitHub에서 ⭐ 하나 부탁드려요 (선택)",
   "star.star": "⭐ 별 달기",
   "star.starHint": "이 컴퓨터의 GitHub 로그인(gh)으로 바로 달아요",
   "star.open": "⭐ GitHub 열고 별 달기",
   "star.openHint": "브라우저에서 저장소 페이지가 열려요",
   "star.skip": "괜찮아요, 건너뛸게요",
-  "star.skipHint": "다시 묻지 않아요",
+  "star.skipHint": "Enter · 다시 묻지 않아요",
   "star.starred": "⭐ 별을 달았어요. 고마워요!",
   "star.openedFallback": "바로 달지 못해서 페이지를 열었어요.",
   "star.thanks": "고마워요!",
@@ -215,6 +222,7 @@ const ko = {
   "help.usage": "사용법",
   "help.start": "앱을 시작하고 브라우저를 엽니다 (처음이면 설정부터)",
   "help.onboard": "설정 마법사 — AI 연결, OCR, 사용법",
+  "help.onboardYes": "묻지 않고 설정합니다 (AI 에이전트·스크립트용, --no-ocr: 엔진 제외)",
   "help.doctor": "환경과 연결 상태를 점검합니다",
   "help.update": "최신 버전으로 업데이트합니다",
   "help.noOpen": "브라우저를 열지 않고 시작합니다",
@@ -256,6 +264,14 @@ const en: Readonly<Record<Key, string>> = {
   "wizard.openNow": "Open it now?",
   "wizard.starting": "Starting",
   "wizard.readyLater": "Ready — start it any time with {app}",
+
+  "headless.title": "Setup · no questions",
+  "headless.intro":
+    "Preparing everything with the defaults. Only signing in to AI is left for you.",
+  "headless.ocrDeclined":
+    "The OCR engine was declined before, so it is left out — oh-my-paper onboard in a terminal offers it again",
+  "headless.aiLeft":
+    "Connecting AI is yours to do — run {app} in a terminal and it guides the sign-in",
 
   "env.title": "Runtime",
   "env.detail": "Checking that this computer has what the app needs.",
@@ -383,13 +399,13 @@ const en: Readonly<Record<Key, string>> = {
   "api.saveFailed": "Could not save it",
   "api.saveFailedTitle": "Save failed",
 
-  "star.ask": "If oh-my-paper helps you, a ⭐ on GitHub would mean a lot",
+  "star.ask": "If oh-my-paper helps you, a ⭐ on GitHub would mean a lot (optional)",
   "star.star": "⭐ Star it",
   "star.starHint": "Stars it right away with this computer's GitHub login (gh)",
   "star.open": "⭐ Open GitHub to star it",
   "star.openHint": "Opens the repository page in your browser",
   "star.skip": "No thanks",
-  "star.skipHint": "Won't ask again",
+  "star.skipHint": "Enter · won't ask again",
   "star.starred": "⭐ Starred. Thank you!",
   "star.openedFallback": "Couldn't star it directly, so the page is open.",
   "star.thanks": "Thank you!",
@@ -451,6 +467,7 @@ const en: Readonly<Record<Key, string>> = {
   "help.usage": "Usage",
   "help.start": "Start the app and open the browser (setup first on a new install)",
   "help.onboard": "Setup wizard — AI connection, OCR, tour",
+  "help.onboardYes": "Set up without questions (AI agents, scripts; --no-ocr skips the engine)",
   "help.doctor": "Check the environment and connections",
   "help.update": "Update to the latest version",
   "help.noOpen": "Start without opening a browser",

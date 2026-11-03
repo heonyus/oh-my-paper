@@ -42,9 +42,10 @@ export const githubCli: GithubCli = {
 }
 
 /**
- * The wizard's one optional ask after the tour. Choosing the star stars the repository with the
- * person's own `gh` login, or opens the GitHub page when there is none or starring fails. It is
- * asked once per data folder and skipped silently without a terminal.
+ * The wizard's one optional ask after the tour. The cursor starts on skipping, so Enter alone
+ * never stars: only moving to the star and choosing it stars the repository with the person's
+ * own `gh` login, or opens the GitHub page when there is none or starring fails. It is asked once
+ * per data folder and skipped silently without a terminal.
  */
 export async function offerGithubStar(
   dataDir: string,
@@ -61,6 +62,7 @@ export async function offerGithubStar(
   const choice = await select({
     message: t("star.ask"),
     options: [
+      { value: "skipped" as const, label: t("star.skip"), hint: t("star.skipHint") },
       direct
         ? {
             value: "starred" as const,
@@ -72,8 +74,8 @@ export async function offerGithubStar(
             label: t("star.open"),
             hint: t("star.openHint"),
           },
-      { value: "skipped" as const, label: t("star.skip"), hint: t("star.skipHint") },
     ],
+    initialValue: "skipped" as const,
   })
   const picked: GithubStarAnswer = isCancel(choice) ? "skipped" : choice
   const answer: GithubStarAnswer = picked === "starred" && !gh.star() ? "opened" : picked

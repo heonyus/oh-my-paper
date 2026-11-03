@@ -18,6 +18,8 @@ import { cliLocale } from "./locale"
 import { menubarCommand } from "./menubar"
 import { t } from "./messages"
 import { readOnboardingState, runOnboarding } from "./onboarding"
+import { runHeadlessSetup } from "./onboardingHeadless"
+import { canPrompt } from "./onboardingStar"
 import { portOpen, startApp } from "./startApp"
 import { banner, bold, gray, inverse, link } from "./style"
 import { appUrl, quickstart } from "./tutorial"
@@ -215,6 +217,7 @@ function help(config: WebServerConfig): void {
       bold(t("help.usage")),
       command("oh-my-paper", t("help.start")),
       command("oh-my-paper onboard", t("help.onboard")),
+      command("oh-my-paper onboard --yes", t("help.onboardYes")),
       command("oh-my-paper doctor", t("help.doctor")),
       command("oh-my-paper update", t("help.update")),
       command("oh-my-paper language", t("help.language")),
@@ -235,6 +238,11 @@ async function main(): Promise<void> {
       return
     case "onboard":
     case "setup": {
+      // Nobody can answer without a terminal (an AI agent, a script), so then it asks nothing.
+      if (rest.includes("--yes") || !canPrompt()) {
+        await runHeadlessSetup(config, { ocr: !rest.includes("--no-ocr") })
+        return
+      }
       const outcome = await runOnboarding(config)
       if (outcome.launch) await startApp(config, true)
       return

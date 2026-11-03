@@ -5,7 +5,13 @@ import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const prompts = vi.hoisted(() => ({
-  select: vi.fn<() => Promise<unknown>>(),
+  select:
+    vi.fn<
+      (prompt: {
+        readonly options: readonly { readonly value: unknown }[]
+        readonly initialValue?: unknown
+      }) => Promise<unknown>
+    >(),
   cancel: Symbol("clack:cancel"),
 }))
 
@@ -54,6 +60,20 @@ describe("wizard GitHub star step", () => {
     expect(await readGithubStarAnswer(dataDir)).toBe("starred")
   })
 
+  it("starts on skipping, so pressing Enter alone never stars", async () => {
+    const gh = fakeGh(true)
+    // Enter on an untouched list answers with the option the cursor starts on: the initial
+    // value, or else the first option.
+    prompts.select.mockImplementation(async ({ initialValue, options }) =>
+      initialValue === undefined ? options[0]?.value : initialValue,
+    )
+    await offerGithubStar(dataDir, true, gh)
+
+    expect(gh.star).not.toHaveBeenCalled()
+    expect(openBrowser).not.toHaveBeenCalled()
+    expect(await readGithubStarAnswer(dataDir)).toBe("skipped")
+  })
+
   it("never stars when the person skips, even with a gh login", async () => {
     const gh = fakeGh(true)
     prompts.select.mockResolvedValue("skipped")
@@ -72,11 +92,11 @@ describe("wizard GitHub star step", () => {
     expect(await readGithubStarAnswer(dataDir)).toBe("opened")
   })
 
-  it("offers the direct star only with a gh login", async () => {
+  it("offers the direct star only with a gh login, after skipping", async () => {
     prompts.select.mockResolvedValue("skipped")
     await offerGithubStar(dataDir, true, fakeGh(true))
     const [withGh] = prompts.select.mock.calls[0] as unknown as [{ options: { value: string }[] }]
-    expect(withGh.options.map((option) => option.value)).toEqual(["starred", "skipped"])
+    expect(withGh.options.map((option) => option.value)).toEqual(["skipped", "starred"])
 
     const otherDir = await mkdtemp(join(tmpdir(), "ohmypaper-star-"))
     try {
@@ -87,7 +107,7 @@ describe("wizard GitHub star step", () => {
     const [withoutGh] = prompts.select.mock.calls[1] as unknown as [
       { options: { value: string }[] },
     ]
-    expect(withoutGh.options.map((option) => option.value)).toEqual(["opened", "skipped"])
+    expect(withoutGh.options.map((option) => option.value)).toEqual(["skipped", "opened"])
   })
 
   it("opens the repository page without a gh login, and never stars itself", async () => {

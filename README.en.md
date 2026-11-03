@@ -39,6 +39,16 @@ You need an Apple Silicon Mac, git and Node.js 22 or later (`brew install node`)
 
 Papers open and read right away while the engine downloads; each one is analysed once the engine is ready.
 
+### Let an AI agent install it
+
+Give an AI coding agent this repository's link, `https://github.com/heonyus/oh-my-paper`, and ask it to install it. It follows [the agent install guide](docs/agent-install.md): it installs, builds and checks without asking anything, then tells you what only you can do, such as signing in to AI. An agent never stars the repository for you. A star happens only when you choose it in the wizard; pressing Enter skips it.
+
+> **AI agents:** follow [docs/agent-install.md](https://raw.githubusercontent.com/heonyus/oh-my-paper/main/docs/agent-install.md) step by step. The install is this one line, and it asks nothing:
+>
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.sh | bash -s -- --yes
+> ```
+
 ## Reading
 
 <table>
@@ -114,6 +124,7 @@ Scanned PDFs, figures, tables and equations are read on your computer by PaddleO
 |:--|:--|
 | `oh-my-paper` | Start the app and open the browser (the wizard first if no AI is connected) |
 | `oh-my-paper onboard` | Run the setup wizard again |
+| `oh-my-paper onboard --yes` | Set up without questions, for AI agents and scripts; `--no-ocr` leaves out the document engine |
 | `oh-my-paper doctor` | Check the runtime, sign-ins, models, engine and data folder |
 | `oh-my-paper update` | Update to the latest version and rebuild |
 | `oh-my-paper language` | Switch between Korean and English, in the terminal and the app |
