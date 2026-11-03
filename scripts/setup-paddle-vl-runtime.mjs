@@ -431,7 +431,12 @@ async function llamaCppLane() {
   const releases = await fetchJson(
     "https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=30",
   )
-  const wanted = process.arch === "arm64" ? /-bin-win-cpu-arm64\.zip$/ : /-bin-win-vulkan-x64\.zip$/
+  // Matched by parts, since llama.cpp renames its builds now and then (win/windows, order).
+  const parts = process.arch === "arm64" ? [/win/i, /arm64/i, /cpu/i] : [/win/i, /vulkan/i, /x64/i]
+  const wanted = {
+    test: (name) =>
+      name.endsWith(".zip") && !/cudart/i.test(name) && parts.every((part) => part.test(name)),
+  }
   let release = null
   let asset = null
   for (const candidate of Array.isArray(releases) ? releases : []) {
@@ -444,7 +449,9 @@ async function llamaCppLane() {
   }
   if (!release || !asset) {
     const newest = Array.isArray(releases) ? releases[0] : null
-    const names = (newest?.assets ?? []).map((file) => file.name).slice(0, 12)
+    const names = (newest?.assets ?? [])
+      .map((file) => file.name)
+      .filter((name) => /win/i.test(name))
     throw new Error(
       `no recent llama.cpp release has a Windows build (${newest?.tag_name}: ${names})`,
     )
