@@ -62,7 +62,9 @@
   max-width: 34rem;
   margin: 24px 0 0;
   color: var(--ink-muted);
-  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", "Malgun Gothic", sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", "Malgun Gothic",
+    sans-serif;
   font-size: 18px;
   line-height: 1.65;
   text-wrap: pretty;
