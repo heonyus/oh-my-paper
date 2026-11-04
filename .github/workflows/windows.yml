@@ -9,6 +9,7 @@ on:
       - ".github/workflows/windows.yml"
       - ".gitattributes"
       - "bin/**"
+      - "docs/agent-install.md"
       - "menubar/windows/**"
       - "scripts/install.ps1"
       - "scripts/release-locked-files.mjs"
@@ -176,3 +177,57 @@ jobs:
             if (Test-Path $file) { Write-Host "== $file"; Get-Content $file -Tail 80 -Encoding UTF8 }
           }
           Get-ChildItem $env:TEMP -Filter 'oh-my-paper-install.*.log' -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "== $($_.FullName)"; Get-Content $_.FullName -Tail 80 -Encoding UTF8 }
+
+  # An agent in WSL: the command docs/agent-install.md gives for it, taken from the guide itself,
+  # must install on the Windows side, never inside Linux.
+  wsl:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: git branch windows-ci HEAD
+      # A user's Node.js is on the PATH Windows stores, which is what a program started from WSL
+      # finds; setup-node only changes this job's PATH.
+      - name: Put this Node.js on the stored PATH
+        shell: pwsh
+        run: |
+          $node = Split-Path (Get-Command node).Source
+          $machine = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+          [Environment]::SetEnvironmentVariable('Path', "$node;$machine", 'Machine')
+      - uses: Vampire/setup-wsl@v6
+      - name: Install from WSL with the guide's command
+        shell: wsl-bash {0}
+        env:
+          OH_MY_PAPER_REPO: ${{ github.workspace }}
+          OH_MY_PAPER_BRANCH: windows-ci
+          OH_MY_PAPER_NO_OCR: "1"
+          OH_MY_PAPER_LANG: en
+          OH_MY_PAPER_INSTALLER: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.event.pull_request.head.sha || github.sha }}/scripts/install.ps1
+          WSLENV: OH_MY_PAPER_REPO/p:OH_MY_PAPER_BRANCH:OH_MY_PAPER_NO_OCR:OH_MY_PAPER_LANG
+        run: |
+          uname -r | grep -qi microsoft || { echo "not WSL: $(uname -r)"; exit 1; }
+          command=$(sed -n 's/^ *\(cd \/mnt\/c && powershell\.exe .*\)$/\1/p' docs/agent-install.md | head -n 1)
+          [ -n "$command" ] || { echo "no WSL command in docs/agent-install.md"; exit 1; }
+          main=https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.ps1
+          command=${command//"$main"/"$OH_MY_PAPER_INSTALLER"}
+          echo "$command"
+          powershell.exe -NoProfile -Command 'node -v; git --version' || true
+          eval "$command"
+          [ ! -e "$HOME/.oh-my-paper" ] || { echo "it installed inside Linux"; exit 1; }
+      - name: The install is the Windows one
+        shell: powershell
+        run: |
+          $cmd = "$env:USERPROFILE\.local\bin\oh-my-paper.cmd"
+          if (-not (Test-Path $cmd)) { throw "no $cmd" }
+          $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+          if (-not (($userPath -split ';') -contains "$env:USERPROFILE\.local\bin")) { throw "user PATH lacks the command: $userPath" }
+          & $cmd --version
+          if ($LASTEXITCODE -ne 0) { throw "--version exited with $LASTEXITCODE" }
+          & $cmd doctor
+          if ($LASTEXITCODE -ne 0) { throw "doctor exited with $LASTEXITCODE" }
+      - name: doctor from WSL, as the guide checks it
+        shell: wsl-bash {0}
+        run: cd /mnt/c && powershell.exe -NoProfile -Command '& "$env:USERPROFILE\.local\bin\oh-my-paper.cmd" doctor; exit $LASTEXITCODE'
