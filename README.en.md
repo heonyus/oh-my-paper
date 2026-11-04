@@ -26,7 +26,9 @@ The PDF stays as it is, on your computer.
 
 ## Install
 
-**macOS** (Terminal)
+### macOS
+
+In Terminal:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.sh | bash
@@ -34,13 +36,39 @@ curl -fsSL https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/in
 
 You need an Apple Silicon Mac, git and Node.js 22 or later (`brew install node`).
 
-**Windows** (PowerShell)
+### Windows
 
-```powershell
-irm https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.ps1 | iex
-```
+Windows 10 or 11 (x64). No administrator rights or execution-policy change needed.
 
-You need Windows 10 or 11 (x64), Git (`winget install --id Git.Git -e`) and Node.js 22 or later (`winget install --id OpenJS.NodeJS.LTS -e`). The `oh-my-paper` command goes into `~\.local\bin`, which is added to your user PATH; terminals opened from then on have it.
+1. **Prerequisites (once).** Open PowerShell and install Git and Node.js; skip any you already have.
+
+   ```powershell
+   winget install --id Git.Git -e --accept-source-agreements --accept-package-agreements
+   winget install --id OpenJS.NodeJS.LTS -e --accept-source-agreements --accept-package-agreements
+   ```
+
+2. **Install.** The same window is fine: the installer finds the Git and Node.js you just installed.
+
+   ```powershell
+   irm https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.ps1 | iex
+   ```
+
+3. **Run.** Open a new terminal and type `oh-my-paper`.
+
+Only names and places differ from macOS; the features are the same.
+
+| | macOS | Windows |
+|:--|:--|:--|
+| Command | `~/.local/bin/oh-my-paper` | `%USERPROFILE%\.local\bin\oh-my-paper.cmd` (added to your user PATH) |
+| App and data | `~/.oh-my-paper/app`, `~/.ohmypaper` | `%USERPROFILE%\.oh-my-paper\app`, `%USERPROFILE%\.ohmypaper` |
+| Keep it running | Menu bar icon (`oh-my-paper menubar`) | Notification-area icon (same command, nothing to install) |
+| Document engine acceleration | MLX | llama.cpp (on the graphics card when there is one, else the CPU) |
+
+- In Git Bash, the macOS command (`curl … | bash`) hands over to the Windows installer.
+- If `oh-my-paper` is not found, the window was opened before the install: open a new one.
+- The first install can take longer than on macOS while Windows Defender scans the new files. If a step fails, the installer names it and its log file; fix the cause and run the same command again.
+
+### Setup wizard
 
 A setup wizard follows the install:
 
@@ -53,7 +81,7 @@ Papers open and read right away while the engine downloads; each one is analysed
 
 ### Let an AI agent install it
 
-Give an AI coding agent this repository's link, `https://github.com/heonyus/oh-my-paper`, and ask it to install it. It follows [the agent install guide](docs/agent-install.md): it installs, builds and checks without asking anything, then tells you what only you can do, such as signing in to AI. An agent never stars the repository for you. A star happens only when you choose it in the wizard; pressing Enter skips it.
+Give an AI coding agent this repository's link, `https://github.com/heonyus/oh-my-paper`, and ask it to install it. It works the same on macOS and Windows. It follows [the agent install guide](docs/agent-install.md): it works out the computer and the shell (PowerShell, Git Bash, WSL), installs a missing Git or Node.js once you agree, then installs, builds and checks, and tells you what only you can do, such as signing in to AI. An agent never stars the repository for you. A star happens only when you choose it in the wizard; pressing Enter skips it.
 
 > **AI agents:** follow [docs/agent-install.md](https://raw.githubusercontent.com/heonyus/oh-my-paper/main/docs/agent-install.md) step by step. The install is this one line, and it asks nothing:
 >
@@ -66,6 +94,8 @@ Give an AI coding agent this repository's link, `https://github.com/heonyus/oh-m
 > ```powershell
 > $env:OH_MY_PAPER_YES = "1"; irm https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.ps1 | iex
 > ```
+>
+> Running inside WSL, install on the Windows side, not in Linux; the guide's Windows section has the command.
 
 ## Reading
 

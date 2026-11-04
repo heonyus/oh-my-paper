@@ -26,7 +26,9 @@ PDF는 그대로, 이 컴퓨터 안에 있습니다.
 
 ## 설치
 
-**macOS** (터미널)
+### macOS
+
+터미널에서:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.sh | bash
@@ -34,13 +36,39 @@ curl -fsSL https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/in
 
 Apple Silicon Mac, git, Node.js 22 이상(`brew install node`)이 필요합니다.
 
-**Windows** (PowerShell)
+### Windows
 
-```powershell
-irm https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.ps1 | iex
-```
+Windows 10이나 11(x64)에서 됩니다. 관리자 권한이나 실행 정책 변경은 필요 없습니다.
 
-Windows 10이나 11(x64), Git(`winget install --id Git.Git -e`), Node.js 22 이상(`winget install --id OpenJS.NodeJS.LTS -e`)이 필요합니다. `oh-my-paper` 명령은 `~\.local\bin`에 생기고 사용자 PATH에 추가되며, 새로 여는 터미널부터 쓸 수 있습니다.
+1. **준비물 (처음 한 번).** PowerShell을 열고 Git과 Node.js를 설치합니다. 이미 있으면 건너뛰세요.
+
+   ```powershell
+   winget install --id Git.Git -e --accept-source-agreements --accept-package-agreements
+   winget install --id OpenJS.NodeJS.LTS -e --accept-source-agreements --accept-package-agreements
+   ```
+
+2. **설치.** 같은 창에서 바로 실행해도 됩니다. 설치 스크립트가 방금 설치한 Git과 Node.js를 찾아 씁니다.
+
+   ```powershell
+   irm https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.ps1 | iex
+   ```
+
+3. **실행.** 새 터미널 창을 열고 `oh-my-paper`를 입력합니다.
+
+맥과 다른 점은 이름과 위치뿐이고, 기능은 같습니다.
+
+| | macOS | Windows |
+|:--|:--|:--|
+| 명령 | `~/.local/bin/oh-my-paper` | `%USERPROFILE%\.local\bin\oh-my-paper.cmd` (사용자 PATH에 추가됨) |
+| 앱과 데이터 | `~/.oh-my-paper/app`, `~/.ohmypaper` | `%USERPROFILE%\.oh-my-paper\app`, `%USERPROFILE%\.ohmypaper` |
+| 늘 켜 두기 | 메뉴 막대 아이콘 (`oh-my-paper menubar`) | 알림 영역 아이콘 (같은 명령, 따로 설치할 것 없음) |
+| 문서 분석 가속 | MLX | llama.cpp (그래픽카드가 있으면 GPU, 없으면 CPU) |
+
+- Git Bash에서는 맥 명령(`curl … | bash`)을 그대로 써도 Windows 설치로 넘어갑니다.
+- `oh-my-paper`를 찾을 수 없다고 나오면, 설치 전에 열어 둔 창이라서 그렇습니다. 새 창을 여세요.
+- 처음 설치는 Windows Defender가 새 파일을 검사하느라 맥보다 오래 걸릴 수 있습니다. 실패하면 어느 단계인지와 로그 파일 위치를 알려 주니, 원인을 고친 뒤 같은 명령을 다시 실행하면 됩니다.
+
+### 설정 마법사
 
 설치가 끝나면 설정 마법사가 이어집니다.
 
@@ -53,7 +81,7 @@ Windows 10이나 11(x64), Git(`winget install --id Git.Git -e`), Node.js 22 이�
 
 ### AI 에이전트에게 맡기기
 
-AI 코딩 에이전트에게 이 저장소 링크 `https://github.com/heonyus/oh-my-paper`를 주고 "설치해 줘"라고 하면 됩니다. 에이전트는 [에이전트용 설치 안내](docs/agent-install.md)를 따라 아무것도 묻지 않고 설치와 빌드, 점검까지 마치고, AI 로그인처럼 직접 하셔야 하는 일만 알려 드립니다. GitHub 별은 에이전트가 달지 않습니다. 별은 마법사에서 직접 고를 때만 달리고, 그냥 Enter를 누르면 건너뜁니다.
+AI 코딩 에이전트에게 이 저장소 링크 `https://github.com/heonyus/oh-my-paper`를 주고 "설치해 줘"라고 하면 됩니다. macOS든 Windows든 같습니다. 에이전트는 [에이전트용 설치 안내](docs/agent-install.md)를 따라 컴퓨터와 셸(PowerShell, Git Bash, WSL)을 알아보고, 없는 Git·Node.js는 허락을 받아 설치한 뒤 설치와 빌드, 점검까지 마칩니다. 그다음 AI 로그인처럼 직접 하셔야 하는 일만 알려 드립니다. GitHub 별은 에이전트가 달지 않습니다. 별은 마법사에서 직접 고를 때만 달리고, 그냥 Enter를 누르면 건너뜁니다.
 
 > **AI 에이전트라면** [docs/agent-install.md](https://raw.githubusercontent.com/heonyus/oh-my-paper/main/docs/agent-install.md)를 순서대로 따르세요. 설치는 이 한 줄이고, 아무것도 묻지 않습니다.
 >
@@ -66,6 +94,8 @@ AI 코딩 에이전트에게 이 저장소 링크 `https://github.com/heonyus/oh
 > ```powershell
 > $env:OH_MY_PAPER_YES = "1"; irm https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.ps1 | iex
 > ```
+>
+> WSL 안에서 돌고 있다면 리눅스가 아니라 Windows 쪽에 설치합니다. 안내의 Windows 절에 명령이 있습니다.
 
 ## 읽기
 

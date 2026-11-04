@@ -11,6 +11,7 @@ import {
   paddleInstallPaths,
   readPaddleInstallProgress,
 } from "../electron/paddleInstallState"
+import { createPaddleVlmServer, type PaddleAcceleration } from "../electron/paddleVlmServer"
 import { readWebServerConfig, type WebServerConfig } from "../server/config"
 import { checkEnvironment, ensureOcrInstall } from "./environment"
 import { languageCommand } from "./language"
@@ -38,6 +39,12 @@ import {
 import { packageVersion, readPackageVersion } from "./version"
 
 const appRoot = fileURLToPath(new URL("../..", import.meta.url))
+
+const acceleratorNames: Record<PaddleAcceleration, string> = {
+  mlx: "MLX",
+  vllm: "vLLM (WSL)",
+  llamacpp: "llama.cpp",
+}
 async function doctor(config: WebServerConfig): Promise<void> {
   process.stdout.write(`${banner(packageVersion())}\n`)
   intro(inverse(` ${t("doctor.title")} `))
@@ -105,7 +112,17 @@ async function doctor(config: WebServerConfig): Promise<void> {
       log.info(
         `${t("doctor.ocrInstalling", { progress })}\n${gray(t("doctor.log", { path: paddleInstallPaths(homedir()).log }))}`,
       )
-    } else line(report.ocrReady, t("doctor.ocr"), "npm run setup:paddle-vl")
+    } else if (report.ocrReady) {
+      // Which accelerator reads pages (MLX, vLLM in WSL, llama.cpp), so a slow engine is visible.
+      const acceleration = await createPaddleVlmServer()
+        .acceleration()
+        .catch(() => null)
+      log.success(
+        acceleration
+          ? t("doctor.ocrAccelerated", { accelerator: acceleratorNames[acceleration] })
+          : t("doctor.ocrCpu"),
+      )
+    } else line(false, t("doctor.ocr"), "npm run setup:paddle-vl")
     log.info(
       `${running ? t("doctor.running") : t("doctor.stopped")} · ${link(appUrl(config.host, config.port))}`,
     )
