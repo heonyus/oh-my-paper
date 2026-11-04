@@ -107,7 +107,7 @@ and a notification-area icon in place of the menu bar one.
 - **Git Bash, MSYS2 or Cygwin** (`uname -s` starts with `MINGW`, `MSYS` or `CYGWIN`): the macOS
   one-liner `curl … install.sh | bash -s -- --yes` hands over to the Windows installer by itself.
   It is done when the output ends with `Installed` (`설치 완료` in Korean). Then follow step 3.
-- **WSL** (`uname -r` contains `microsoft`): install on Windows, not inside Linux. The browser,
+- **WSL** (`uname -r` contains `microsoft` or `Microsoft`): install on Windows, not inside Linux. The browser,
   the notification-area icon and the GPU engine are all on the Windows side, and an install in
   Linux would not be the one they open. From WSL, Windows' own PowerShell runs it:
 
