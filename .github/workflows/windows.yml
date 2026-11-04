@@ -206,7 +206,7 @@ jobs:
           OH_MY_PAPER_NO_OCR: "1"
           OH_MY_PAPER_LANG: en
           OH_MY_PAPER_INSTALLER: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.event.pull_request.head.sha || github.sha }}/scripts/install.ps1
-          WSLENV: OH_MY_PAPER_REPO/p:OH_MY_PAPER_BRANCH:OH_MY_PAPER_NO_OCR:OH_MY_PAPER_LANG
+          WSLENV: OH_MY_PAPER_REPO/p:OH_MY_PAPER_BRANCH:OH_MY_PAPER_NO_OCR:OH_MY_PAPER_LANG:OH_MY_PAPER_INSTALLER
         run: |
           uname -r | grep -qi microsoft || { echo "not WSL: $(uname -r)"; exit 1; }
           command=$(sed -n 's/^ *\(cd \/mnt\/c && powershell\.exe .*\)$/\1/p' docs/agent-install.md | head -n 1)
