@@ -39,5 +39,5 @@ export function infographicDocument(html: string, style: CSSStyleDeclaration | n
     const value = style?.getPropertyValue(source).trim()
     return value ? `${name}:${value};` : ""
   }).join("")
-  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:"><style>:root{${variables}}html,body{margin:0;background:transparent;color:var(--ink);font:13px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",sans-serif;overflow-wrap:anywhere}body{padding:2px}svg{max-width:100%;height:auto}table{border-collapse:collapse}*{box-sizing:border-box;max-width:100%}</style></head><body>${html}</body></html>`
+  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:"><style>:root{${variables}}html,body{margin:0;background:transparent;color:var(--ink);font:13px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Segoe UI","Malgun Gothic",sans-serif;overflow-wrap:anywhere}body{padding:2px}svg{max-width:100%;height:auto}table{border-collapse:collapse}*{box-sizing:border-box;max-width:100%}</style></head><body>${html}</body></html>`
 }

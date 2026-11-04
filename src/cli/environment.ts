@@ -3,7 +3,7 @@ import { closeSync, existsSync, mkdirSync, openSync, rmSync, writeFileSync } fro
 import { access } from "node:fs/promises"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 import { findOnPath } from "../electron/executableLookup"
 import { paddleInstallPaths, paddleInstallRunning } from "../electron/paddleInstallState"
 import { PaddlePageParserService } from "../electron/paddlePageParserService"
@@ -19,6 +19,49 @@ export type EnvironmentReport = {
 }
 
 const sourceRoot = fileURLToPath(new URL("../..", import.meta.url))
+
+/**
+ * Runs a TypeScript file in one process: this node with tsx's loader. node_modules/.bin/tsx is
+ * a cmd shim on Windows, which only a shell can start, and tsx's own CLI would start a second
+ * node, which gets a console window of its own under a parent without one. --import takes a URL
+ * there; a bare C:\ path is read as a scheme.
+ */
+export function tsxCommand(script: string, root = sourceRoot): readonly [string, string[]] {
+  const loader = pathToFileURL(join(root, "node_modules", "tsx", "dist", "loader.mjs")).href
+  return [process.execPath, ["--import", loader, script]]
+}
+
+/** Starts a background program that outlives this one, its output and any start error in `log`. */
+function startDetached(
+  command: string,
+  args: readonly string[],
+  log: string,
+  options: { readonly cwd?: string } = {},
+): void {
+  const output = openSync(log, "w")
+  try {
+    // windowsHide: detached, the program has no console, so each console program it starts
+    // without hiding would open a window. It hides none of the programs that one starts;
+    // they hide themselves (scripts/setup-paddle-vl-runtime.mjs).
+    spawn(command, [...args], {
+      detached: true,
+      stdio: ["ignore", output, output],
+      env: process.env,
+      windowsHide: true,
+      ...options,
+    })
+      .once("error", (error) => {
+        try {
+          writeFileSync(log, `${error.message}\n`, { flag: "a" })
+        } catch {
+          // The log itself is out of reach; nothing else can be told.
+        }
+      })
+      .unref()
+  } finally {
+    closeSync(output)
+  }
+}
 
 /** Whether the OCR engine is installed and ready to analyse pages. */
 async function ocrEngineReady(): Promise<boolean> {
@@ -55,7 +98,16 @@ export async function checkEnvironment(
     ocrInstalling: !ocrReady && paddleInstallRunning(homedir()),
     // The OCR install keeps its own uv beside the runtimes when the computer has none.
     uvAvailable:
-      findOnPath("uv") !== null || existsSync(join(homedir(), ".ohmypaper", "tools", "uv", "uv")),
+      findOnPath("uv") !== null ||
+      existsSync(
+        join(
+          homedir(),
+          ".ohmypaper",
+          "tools",
+          "uv",
+          process.platform === "win32" ? "uv.exe" : "uv",
+        ),
+      ),
     nodeModules,
   }
 }
@@ -71,16 +123,7 @@ export function startOcrInstallInBackground(
   const { log, declined } = paddleInstallPaths(options.home ?? homedir())
   mkdirSync(dirname(log), { recursive: true })
   rmSync(declined, { force: true })
-  const output = openSync(log, "w")
-  try {
-    spawn(process.execPath, [script], {
-      detached: true,
-      stdio: ["ignore", output, output],
-      env: process.env,
-    }).unref()
-  } finally {
-    closeSync(output)
-  }
+  startDetached(process.execPath, [script], log)
   return log
 }
 
@@ -91,16 +134,8 @@ export function startOcrInstallInBackground(
 export function startMeaningModelFetchInBackground(home = homedir()): string {
   const log = join(home, ".ohmypaper", "meaning-model-install.log")
   mkdirSync(dirname(log), { recursive: true })
-  const output = openSync(log, "w")
-  try {
-    spawn(
-      join(sourceRoot, "node_modules", ".bin", "tsx"),
-      [join(sourceRoot, "scripts", "fetch-meaning-model.ts")],
-      { detached: true, stdio: ["ignore", output, output], env: process.env, cwd: sourceRoot },
-    ).unref()
-  } finally {
-    closeSync(output)
-  }
+  const [command, args] = tsxCommand(join(sourceRoot, "scripts", "fetch-meaning-model.ts"))
+  startDetached(command, args, log, { cwd: sourceRoot })
   return log
 }
 

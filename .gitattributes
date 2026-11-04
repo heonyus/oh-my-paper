@@ -1,4 +1,7 @@
 * text=auto eol=lf
+# cmd.exe misreads batch files with LF line endings in places, so they check out with CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
 
 *.dmg binary
 *.gif binary

@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { DocumentFindBar } from "../../src/renderer/components/DocumentFindBar"
+import { DocumentFindBar, findStepKey } from "../../src/renderer/components/DocumentFindBar"
 import {
   IDLE_FIND_STATE,
   type PdfFindRuntime,
@@ -88,5 +88,22 @@ describe("DocumentFindBar", () => {
     expect(runtime.find).not.toHaveBeenCalled()
     view.rerender(<DocumentFindBar runtime={runtime} />)
     expect(runtime.find).toHaveBeenLastCalledWith("map")
+  })
+})
+
+describe("find next keys", () => {
+  const key = (init: KeyboardEventInit) => new KeyboardEvent("keydown", init)
+
+  it("steps with F3 everywhere and Ctrl+G off Apple keyboards, Shift going back", () => {
+    expect(findStepKey(key({ key: "F3" }), true)).toBe("next")
+    expect(findStepKey(key({ key: "F3", shiftKey: true }), false)).toBe("previous")
+    expect(findStepKey(key({ key: "g", ctrlKey: true }), false)).toBe("next")
+    expect(findStepKey(key({ key: "G", ctrlKey: true, shiftKey: true }), false)).toBe("previous")
+  })
+
+  it("leaves Ctrl+G on a Mac, and other keys, alone", () => {
+    expect(findStepKey(key({ key: "g", ctrlKey: true }), true)).toBeNull()
+    expect(findStepKey(key({ key: "g" }), false)).toBeNull()
+    expect(findStepKey(key({ key: "g", ctrlKey: true, altKey: true }), false)).toBeNull()
   })
 })

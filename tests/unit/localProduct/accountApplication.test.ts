@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -23,7 +23,7 @@ describe("application account bootstrap", () => {
     const onStatusChanged = vi.fn()
 
     const account = await createApplicationAccount({
-      userDataRoot: "/unused",
+      userDataRoot: await uncreatableUserDataRoot(),
       getStore: unavailableStore,
       switchStore: vi.fn(async () => undefined),
       onStatusChanged,
@@ -47,7 +47,7 @@ describe("application account bootstrap", () => {
     vi.stubEnv("OH_MY_PAPER_GOOGLE_CLIENT_ID", "test-client")
 
     const account = await createApplicationAccount({
-      userDataRoot: "/unused",
+      userDataRoot: await uncreatableUserDataRoot(),
       getStore: unavailableStore,
       switchStore: vi.fn(async () => undefined),
       onStatusChanged: vi.fn(),
@@ -92,4 +92,18 @@ describe("application account bootstrap", () => {
 
 function unavailableStore(): never {
   throw new Error("unavailable account bootstrap must not read the store")
+}
+
+/**
+ * A user data folder no one can read or create, root included, on every system: a link (a
+ * junction on Windows) to a folder that does not exist, so no local profile can be made in it.
+ * A folder inside a regular file would not do: there macOS and Linux fail the profile read with
+ * ENOTDIR, which bootstrap reports as an unreadable profile instead of falling back.
+ */
+async function uncreatableUserDataRoot(): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), "ohmypaper-account-"))
+  roots.push(root)
+  const userDataRoot = join(root, "user-data")
+  await symlink(join(root, "missing"), userDataRoot, "junction")
+  return userDataRoot
 }

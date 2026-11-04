@@ -6,12 +6,22 @@ import { defaultWorkspace, WorkspaceStore } from "../../src/electron/workspaceSt
 import { documentRecordSchema } from "../../src/shared/schemas"
 
 const temporaryRoots: string[] = []
+const stores: WorkspaceStore[] = []
 
 afterEach(async () => {
+  // Windows cannot delete a folder while a database inside it is still open.
+  for (const store of stores.splice(0)) await store.close()
   await Promise.all(
     temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })),
   )
 })
+
+/** Opens a store whose knowledge database is closed after the test. */
+function openStore(root: string): WorkspaceStore {
+  const store = new WorkspaceStore(root)
+  stores.push(store)
+  return store
+}
 
 describe("WorkspaceStore", () => {
   it("uses the compact research sidebar width for new workspaces", () => {
@@ -30,7 +40,7 @@ describe("WorkspaceStore", () => {
     const legacy = { ...defaultWorkspace(), researchSidebarWidth: 340 }
     await writeFile(join(root, "workspace.json"), JSON.stringify(legacy), "utf8")
 
-    const store = new WorkspaceStore(root)
+    const store = openStore(root)
     const workspace = await store.read()
     await store.save(workspace)
     const persisted = JSON.parse(await readFile(join(root, "workspace.json"), "utf8"))
@@ -42,7 +52,7 @@ describe("WorkspaceStore", () => {
   it("preserves a user-resized research sidebar", async () => {
     const root = await mkdtemp(join(tmpdir(), "ohmypaper-workspace-"))
     temporaryRoots.push(root)
-    const store = new WorkspaceStore(root)
+    const store = openStore(root)
 
     await store.save({ ...defaultWorkspace(), researchSidebarWidth: 412 })
 
@@ -73,7 +83,7 @@ describe("WorkspaceStore", () => {
     }
     await writeFile(join(root, "workspace.json"), JSON.stringify(legacy), "utf8")
 
-    const workspace = await new WorkspaceStore(root).read()
+    const workspace = await openStore(root).read()
 
     expect(workspace.cards).toHaveLength(1)
     expect(workspace.cards[0]?.anchor.fragments).toEqual([])
@@ -82,7 +92,7 @@ describe("WorkspaceStore", () => {
   it("serializes rapid workspace saves without losing the newest state", async () => {
     const root = await mkdtemp(join(tmpdir(), "ohmypaper-workspace-"))
     temporaryRoots.push(root)
-    const store = new WorkspaceStore(root)
+    const store = openStore(root)
     const workspace = defaultWorkspace()
 
     await Promise.all([
@@ -97,7 +107,7 @@ describe("WorkspaceStore", () => {
   it("does not erase a newly imported document when a stale renderer snapshot saves", async () => {
     const root = await mkdtemp(join(tmpdir(), "ohmypaper-workspace-"))
     temporaryRoots.push(root)
-    const store = new WorkspaceStore(root)
+    const store = openStore(root)
     const stale = defaultWorkspace()
     const imported = documentRecordSchema.parse({
       id: "aabbccddeeff0011",

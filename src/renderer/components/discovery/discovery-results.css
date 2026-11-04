@@ -48,7 +48,7 @@
 }
 
 .discovery-identity {
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: var(--type-compact-size);
 }
 

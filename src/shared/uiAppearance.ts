@@ -41,7 +41,8 @@ const fontStacks = {
   pretendard: '"Pretendard Variable", "Apple SD Gothic Neo", sans-serif',
   suit: '"SUIT Variable", "Apple SD Gothic Neo", sans-serif',
   "geist-wanted": '"Geist Variable", "Wanted Sans Variable", "Apple SD Gothic Neo", sans-serif',
-  system: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Apple SD Gothic Neo", sans-serif',
+  system:
+    '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Apple SD Gothic Neo", "Segoe UI Variable Text", "Segoe UI", "Malgun Gothic", sans-serif',
 } satisfies Readonly<Record<UiFontFamily, string>>
 
 export function uiFontFamilyStack(font: UiFontFamily): string {

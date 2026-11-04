@@ -10,7 +10,7 @@ import type { ClaudeSubscriptionAdapter } from "../electron/claudeSubscriptionAd
 import type { CodexSubscriptionAdapter } from "../electron/codexSubscriptionAdapter"
 import { providerClient, providerFailure } from "../electron/providerClient"
 import { completeChat, streamChat } from "../electron/providerCompletion"
-import { ProviderConfigurationError } from "../electron/providerConfigStore"
+import { ProviderConfigurationError } from "../electron/providerConfigurationError"
 import { CODEX_DEFAULT_MODEL } from "../shared/codexTypes"
 import {
   aiRequestSchema,

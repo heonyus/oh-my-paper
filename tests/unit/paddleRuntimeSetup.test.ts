@@ -3,7 +3,7 @@
 import { spawn } from "node:child_process"
 import { createHash } from "node:crypto"
 import { appendFileSync } from "node:fs"
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { chmod, mkdir, mkdtemp, readFile, rm, utimes, writeFile } from "node:fs/promises"
 import { createServer, type Server } from "node:http"
 import { tmpdir } from "node:os"
 import { delimiter, join } from "node:path"
@@ -218,7 +218,9 @@ describe("PaddleOCR-VL runtime setup", () => {
     })
 
     it("leaves a running install alone", async () => {
+      // A live install: its process is alive and it rewrites its progress every few seconds.
       await writeFile(join(root, "paddle-vl-install.pid"), `${process.pid}\n`)
+      await writeFile(join(root, "paddle-vl-install.progress.json"), '{"percent":40}\n')
 
       const { code, output } = await runSetup(env)
 
@@ -228,6 +230,21 @@ describe("PaddleOCR-VL runtime setup", () => {
       await expect(readFile(join(root, "paddle-vl-install.pid"), "utf8")).resolves.toBe(
         `${process.pid}\n`,
       )
+    })
+
+    it("takes over a lock whose install stopped writing progress long ago", async () => {
+      // Cut short by a sign-out: its process id may now belong to another live program.
+      await writeFile(join(root, "paddle-vl-install.pid"), `${process.pid}\n`)
+      const progress = join(root, "paddle-vl-install.progress.json")
+      await writeFile(progress, '{"percent":40}\n')
+      const hourAgo = new Date(Date.now() - 3_600_000)
+      await utimes(progress, hourAgo, hourAgo)
+
+      const { code, output } = await runSetup(env)
+
+      expect(code).toBe(0)
+      expect(output).not.toContain("이미 다른 설치가 진행 중입니다")
+      await expect(readFile(join(root, "paddle-vl-install.pid"))).rejects.toThrow()
     })
 
     it("reports a failed step and exits non-zero", async () => {

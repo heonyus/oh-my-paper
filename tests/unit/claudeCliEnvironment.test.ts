@@ -108,4 +108,16 @@ describe("Claude CLI environment", () => {
 
     expect(message).toBe("failed [redacted] Bearer [redacted]")
   })
+
+  it("passes a company proxy and its certificates on, but no API key", () => {
+    const env = buildClaudeEnv({
+      HTTPS_PROXY: "http://proxy.example:8080",
+      NODE_EXTRA_CA_CERTS: "C:\\certs\\company.pem",
+      ANTHROPIC_API_KEY: "sk-ant-secret",
+    })
+
+    expect(env["HTTPS_PROXY"]).toBe("http://proxy.example:8080")
+    expect(env["NODE_EXTRA_CA_CERTS"]).toBe("C:\\certs\\company.pem")
+    expect(env["ANTHROPIC_API_KEY"]).toBeUndefined()
+  })
 })

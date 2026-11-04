@@ -126,13 +126,25 @@ type UpdateStep = {
 }
 
 function gitOutput(args: readonly string[]): string {
-  return spawnSync("git", args, { cwd: appRoot, encoding: "utf8" }).stdout.trim()
+  // No stdout at all when git cannot be started (not installed, or not on this console's PATH).
+  return spawnSync("git", args, { cwd: appRoot, encoding: "utf8" }).stdout?.trim() ?? ""
+}
+
+/** Whether npm failed on a file something holds open: Windows deletes no file in use. */
+function lockedFileFailure(lines: readonly string[]): boolean {
+  return lines.some((line) => /\b(EPERM|EBUSY|ENOTEMPTY)\b/.test(line))
 }
 
 async function update(): Promise<void> {
   process.stdout.write(`${banner(packageVersion())}\n`)
   intro(inverse(` ${t("update.title")} `))
   const before = gitOutput(["rev-parse", "HEAD"])
+  if (!before) {
+    log.error(t("update.noGit"))
+    outro(t("update.notFinished"))
+    process.exitCode = 1
+    return
+  }
   const newCommits = (): readonly string[] => {
     const after = gitOutput(["rev-parse", "HEAD"])
     if (!before || after === before) return []
@@ -159,7 +171,30 @@ async function update(): Promise<void> {
     },
     {
       title: t("update.deps"),
-      run: npm(["ci", "--no-audit", "--no-fund", "--loglevel=http", "--foreground-scripts"]),
+      run: async (onLine) => {
+        const ci = npm(["ci", "--no-audit", "--no-fund", "--loglevel=http", "--foreground-scripts"])
+        if (process.platform !== "win32") return ci(onLine)
+        // Windows deletes no program in use, and a running oh-my-paper (this command's own tsx,
+        // the tray companion, another terminal) holds some under node_modules, so they move
+        // aside first. One that cannot move stops the update before npm ci empties the folder.
+        const release = async (): Promise<StepResult> => {
+          const moved = await runStreaming(
+            process.execPath,
+            [join(appRoot, "scripts", "release-locked-files.mjs"), appRoot],
+            { cwd: appRoot, onLine },
+          )
+          return moved.ok ? moved : { ok: false, lines: [...moved.lines, t("update.locked")] }
+        }
+        const released = await release()
+        if (!released.ok) return released
+        const first = await ci(onLine)
+        if (first.ok || !lockedFileFailure(first.lines)) return first
+        // Something opened a program there after the move (a server starting up): once more.
+        await new Promise((resolve) => setTimeout(resolve, 3_000))
+        const again = await release()
+        if (!again.ok) return { ok: false, lines: [...first.lines, ...again.lines] }
+        return ci(onLine)
+      },
       summary: npmSummary,
     },
     { title: t("update.build"), run: npm(["run", "build:web"]), summary: buildSummary },
@@ -230,6 +265,9 @@ function help(config: WebServerConfig): void {
 }
 
 async function main(): Promise<void> {
+  // The app reads .env and its web build from the working folder; the POSIX launcher changes
+  // into the checkout, and the Windows one cannot without cmd reading it again.
+  process.chdir(appRoot)
   const [command = "start", ...rest] = process.argv.slice(2)
   const config = readWebServerConfig()
   switch (command) {
@@ -257,6 +295,7 @@ async function main(): Promise<void> {
       await languageCommand(config, rest[0])
       return
     case "menubar":
+    case "tray":
       await menubarCommand(config, appRoot, rest[0])
       return
     case "-v":

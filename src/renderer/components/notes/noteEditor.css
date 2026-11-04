@@ -217,7 +217,7 @@
   padding: 0 var(--space-1);
   border-radius: 4px;
   background: var(--surface-muted);
-  font-family: "SF Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
 }
 
 .note-rich-strong {

@@ -304,7 +304,12 @@ describe("Paddle page parser service", () => {
     try {
       await expect(service.status()).resolves.not.toHaveProperty("installing")
       await mkdir(join(root, ".ohmypaper"), { recursive: true })
+      // A live install: its process is alive and it rewrites its progress every few seconds.
       await writeFile(join(root, ".ohmypaper", "paddle-vl-install.pid"), `${process.pid}\n`)
+      await writeFile(
+        join(root, ".ohmypaper", "paddle-vl-install.progress.json"),
+        JSON.stringify({ percent: 5, etaSeconds: null }),
+      )
       await expect(service.status()).resolves.toMatchObject({
         configured: false,
         installing: true,

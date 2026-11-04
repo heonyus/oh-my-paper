@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { spawnSync } from "node:child_process"
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, utimes, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -70,9 +70,19 @@ describe("PaddleOCR-VL install state", () => {
     expect(paddleInstallRunning(home)).toBe(false)
   })
 
-  it("is running while the process in the lock is alive", async () => {
+  it("is running while the process in the lock is alive and its progress is fresh", async () => {
     await writeLock(`${process.pid}\n`)
+    await writeFile(paddleInstallPaths(home).progress, '{"percent":40}\n')
     expect(paddleInstallRunning(home)).toBe(true)
+  })
+
+  it("is not running when its progress stopped long ago, whoever has its process id now", async () => {
+    await writeLock(`${process.pid}\n`)
+    const { progress } = paddleInstallPaths(home)
+    await writeFile(progress, '{"percent":40}\n')
+    const hourAgo = new Date(Date.now() - 3_600_000)
+    await utimes(progress, hourAgo, hourAgo)
+    expect(paddleInstallRunning(home)).toBe(false)
   })
 
   it("treats a lock left by a finished process as stale", async () => {
@@ -115,6 +125,7 @@ describe("PaddleOCR-VL install state", () => {
         "ready",
       )
       await writeLock(`${process.pid}\n`)
+      await writeFile(paddleInstallPaths(home).progress, '{"percent":40}\n')
       await expect(ensureOcrInstall({ home, ready: async () => false, start })).resolves.toBe(
         "installing",
       )

@@ -1,6 +1,8 @@
 @import "./glass-chrome.css";
 
 :root {
+  /* Windows has none of the Apple monospace fonts and would fall back to Gulimche. */
+  --font-mono: "SF Mono", ui-monospace, Menlo, "Cascadia Mono", Consolas, monospace;
   color-scheme: light;
   color: var(--ink);
   font-family: var(--ui-font-family);
@@ -1197,7 +1199,7 @@ button:focus-visible {
   color: var(--ink-muted);
 }
 .markdown-content code {
-  font-family: "SF Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 0.9em;
 }
 .markdown-content pre,
@@ -2121,4 +2123,15 @@ button:focus-visible {
     transition-duration: 0.01ms;
     animation-duration: 0.01ms;
   }
+}
+
+/* Classic scrollbars (Windows) take room; in narrow panels a thin one crowds the text less, and a
+   card reserves no empty strip for one it may never show. */
+[data-scrollbars="classic"] .card-body,
+[data-scrollbars="classic"] .note-card-input,
+[data-scrollbars="classic"] .settings-page {
+  scrollbar-width: thin;
+}
+[data-scrollbars="classic"] .card-body {
+  scrollbar-gutter: auto;
 }

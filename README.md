@@ -11,7 +11,7 @@ PDF는 그대로, 이 컴퓨터 안에 있습니다.
 
 [English](README.en.md) · **한국어**
 
-<img alt="상태: 베타" src="https://img.shields.io/badge/status-beta-efc245"> <img alt="macOS Apple Silicon" src="https://img.shields.io/badge/macOS-Apple%20Silicon-111?logo=apple&logoColor=white"> <a href="LICENSE"><img alt="MIT 라이선스" src="https://img.shields.io/badge/license-MIT-285644"></a>
+<img alt="상태: 베타" src="https://img.shields.io/badge/status-beta-efc245"> <img alt="macOS Apple Silicon" src="https://img.shields.io/badge/macOS-Apple%20Silicon-111?logo=apple&logoColor=white"> <img alt="Windows 10, 11" src="https://img.shields.io/badge/Windows-10%20%C2%B7%2011-0078D4?logo=windows&logoColor=white"> <a href="LICENSE"><img alt="MIT 라이선스" src="https://img.shields.io/badge/license-MIT-285644"></a>
 
 <br>
 
@@ -26,11 +26,23 @@ PDF는 그대로, 이 컴퓨터 안에 있습니다.
 
 ## 설치
 
+**macOS** (터미널)
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.sh | bash
 ```
 
-Apple Silicon Mac, git, Node.js 22 이상(`brew install node`)이 필요합니다. 설치가 끝나면 설정 마법사가 이어집니다.
+Apple Silicon Mac, git, Node.js 22 이상(`brew install node`)이 필요합니다.
+
+**Windows** (PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.ps1 | iex
+```
+
+Windows 10이나 11(x64), Git(`winget install --id Git.Git -e`), Node.js 22 이상(`winget install --id OpenJS.NodeJS.LTS -e`)이 필요합니다. `oh-my-paper` 명령은 `~\.local\bin`에 생기고 사용자 PATH에 추가되며, 새로 여는 터미널부터 쓸 수 있습니다.
+
+설치가 끝나면 설정 마법사가 이어집니다.
 
 1. **실행 환경 확인.** Node.js와, AI 연결에 쓰는 ChatGPT 로그인 런타임(Codex)과 Claude Code를 확인합니다.
 2. **문서 분석 엔진.** PaddleOCR-VL(약 3GB)을 백그라운드로 받기 시작합니다.
@@ -47,6 +59,12 @@ AI 코딩 에이전트에게 이 저장소 링크 `https://github.com/heonyus/oh
 >
 > ```bash
 > curl -fsSL https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.sh | bash -s -- --yes
+> ```
+>
+> Windows에서는 PowerShell에서:
+>
+> ```powershell
+> $env:OH_MY_PAPER_YES = "1"; irm https://raw.githubusercontent.com/heonyus/oh-my-paper/main/scripts/install.ps1 | iex
 > ```
 
 ## 읽기
@@ -111,7 +129,7 @@ PDF를 끌어다 놓으면 바로 열립니다. 제목, 저자, 페이지 구조
 
 ## 문서 분석 엔진
 
-스캔 PDF와 그림·표·수식은 PaddleOCR-VL 1.6이 이 컴퓨터에서 읽습니다. Apple Silicon에서는 MLX로 가속합니다.
+스캔 PDF와 그림·표·수식은 PaddleOCR-VL 1.6이 이 컴퓨터에서 읽습니다. Apple Silicon에서는 MLX로 가속합니다. Windows에서는 llama.cpp로 가속합니다. 그래픽카드가 있으면 Vulkan으로 GPU에서, 없으면 CPU에서 돌고, GPU 없는 PC에서도 엔진을 켜는 데 약 15초, 한 쪽에 약 15초가 걸립니다. NVIDIA GPU와 WSL이 있으면 vLLM으로 한 쪽에 약 2초입니다.
 
 - 마법사가 설치하고, 진행 상황은 앱 설정과 `oh-my-paper doctor`에 나옵니다.
 - 준비되면 다시 시작하지 않아도 알아서 켜집니다.
@@ -129,11 +147,14 @@ PDF를 끌어다 놓으면 바로 열립니다. 제목, 저자, 페이지 구조
 | `oh-my-paper update` | 최신 버전으로 업데이트하고 다시 빌드합니다 |
 | `oh-my-paper language` | 터미널과 앱의 언어를 한국어와 영어 중에서 바꿉니다 |
 | `oh-my-paper start --no-open` | 브라우저를 열지 않고 켭니다 |
-| `oh-my-paper menubar` | macOS 메뉴 막대에 띄워 두고 꺼지지 않게 합니다 (`menubar off`로 해제) |
+| `oh-my-paper menubar` | macOS 메뉴 막대나 Windows 알림 영역에 띄워 두고 꺼지지 않게 합니다 (`menubar off`로 해제) |
 
-앱은 `http://127.0.0.1:8788`에서 돌고, 데이터는 `~/.ohmypaper`에 있습니다.
+앱은 `http://127.0.0.1:8788`에서 돌고, 데이터는 `~/.ohmypaper`(Windows에서는 `%USERPROFILE%\.ohmypaper`)에 있습니다.
 
-`oh-my-paper`로 켠 앱은 그 터미널을 닫으면 같이 꺼집니다. `oh-my-paper menubar`로 켜면 메뉴 막대에 잎 아이콘이 생기고, 터미널을 닫아도 켜져 있으며, 서버가 꺼지면 다시 켜고, 로그인할 때 자동으로 시작합니다. 끄려면 잎 아이콘에서 **종료**를 누르세요. 로그는 `~/Library/Logs/oh-my-paper/menubar.log`에 쌓입니다. 빌드에 Xcode Command Line Tools가 필요합니다.
+`oh-my-paper`로 켠 앱은 그 터미널을 닫으면 같이 꺼집니다. `oh-my-paper menubar`로 켜면 잎 아이콘이 생기고, 터미널을 닫아도 켜져 있으며, 서버가 꺼지면 다시 켜고, 로그인할 때 자동으로 시작합니다. 끄려면 잎 아이콘에서 **종료**를 누르세요.
+
+- **macOS:** 메뉴 막대에 아이콘이 생깁니다. 로그는 `~/Library/Logs/oh-my-paper/menubar.log`에 쌓이고, 빌드에 Xcode Command Line Tools가 필요합니다.
+- **Windows:** 작업 표시줄 알림 영역에 아이콘이 생깁니다. 로그는 `%LOCALAPPDATA%\oh-my-paper\Logs\tray.log`에 쌓입니다. 빌드는 Windows에 기본으로 들어 있는 .NET Framework로 하므로 따로 설치할 것이 없습니다.
 
 ## 개인정보
 

@@ -1,0 +1,178 @@
+name: Windows
+
+# ci.yml runs on Linux only, to keep within the free minutes. This workflow checks the Windows
+# side on a real Windows machine, and only when a change touches it: the installer, the
+# launcher, the CLI, the tray companion and the code that starts other programs.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/windows.yml"
+      - ".gitattributes"
+      - "bin/**"
+      - "menubar/windows/**"
+      - "scripts/install.ps1"
+      - "scripts/release-locked-files.mjs"
+      - "scripts/setup-paddle-vl-runtime.mjs"
+      - "scripts/setup-paddle-vllm-wsl.mjs"
+      - "scripts/model-download.mjs"
+      - "src/cli/**"
+      - "src/server/**"
+      - "src/layout/**"
+      - "src/electron/claudeCli*.ts"
+      - "src/electron/codex*.ts"
+      - "src/electron/executableLookup.ts"
+      - "src/electron/offlineSubprocessEnvironment.ts"
+      - "src/electron/paddle*.ts"
+      - "package.json"
+      - "package-lock.json"
+  workflow_dispatch:
+
+concurrency:
+  group: windows-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run
+
+  install:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      OH_MY_PAPER_REPO: ${{ github.workspace }}
+      OH_MY_PAPER_BRANCH: windows-ci
+      OH_MY_PAPER_LANG: en
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # The installer clones a branch; checkout leaves a detached commit.
+      - run: git branch windows-ci HEAD
+      # The runner context is not available to job-level env, so the install's folders are set here.
+      - name: Where the install goes
+        shell: pwsh
+        run: |
+          Add-Content -Path $env:GITHUB_ENV -Value "OH_MY_PAPER_HOME=$env:RUNNER_TEMP\omp\app"
+          Add-Content -Path $env:GITHUB_ENV -Value "OH_MY_PAPER_BIN_DIR=$env:RUNNER_TEMP\omp\bin"
+          # A Korean folder name, as a Korean user's data folder may have.
+          Add-Content -Path $env:GITHUB_ENV -Value "OH_MY_PAPER_WEB_DATA_DIR=$env:RUNNER_TEMP\omp\논문 데이터"
+
+      - name: Install with scripts/install.ps1 (Windows PowerShell 5.1, -File)
+        shell: powershell
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts\install.ps1 -Yes -NoOcr
+          if ($LASTEXITCODE -ne 0) { throw "install.ps1 exited with $LASTEXITCODE" }
+          if (-not (Test-Path "$env:OH_MY_PAPER_BIN_DIR\oh-my-paper.cmd")) { throw 'no oh-my-paper.cmd' }
+          $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+          if (-not (($userPath -split ';') -contains $env:OH_MY_PAPER_BIN_DIR)) { throw "user PATH lacks the command: $userPath" }
+
+      - name: Install again through Invoke-Expression, as irm | iex runs it (an update, in Korean)
+        shell: powershell
+        run: |
+          $env:OH_MY_PAPER_YES = '1'
+          $env:OH_MY_PAPER_NO_OCR = '1'
+          $env:OH_MY_PAPER_LANG = 'ko'
+          Get-Content -Raw scripts\install.ps1 | Invoke-Expression
+          if ($LASTEXITCODE -ne 0) { throw "install.ps1 through iex ended with $LASTEXITCODE" }
+
+      - name: The command, from cmd.exe
+        shell: cmd
+        run: |
+          set "PATH=%OH_MY_PAPER_BIN_DIR%;%PATH%"
+          call oh-my-paper --version || exit /b 1
+          call oh-my-paper help || exit /b 1
+          call oh-my-paper doctor || exit /b 1
+          call oh-my-paper language en || exit /b 1
+
+      - name: Start the app and read it over HTTP
+        shell: powershell
+        run: |
+          function Wait-Port([int]$Seconds) {
+            $deadline = (Get-Date).AddSeconds($Seconds)
+            while ((Get-Date) -lt $deadline) {
+              try { $c = New-Object Net.Sockets.TcpClient; $c.Connect('127.0.0.1', 8788); $c.Close(); return $true } catch { Start-Sleep -Milliseconds 500 }
+            }
+            return $false
+          }
+          $log = "$env:RUNNER_TEMP\omp\start.log"
+          $server = Start-Process -FilePath $env:ComSpec -NoNewWindow -PassThru `
+            -ArgumentList "/d /s /c `"`"$env:OH_MY_PAPER_BIN_DIR\oh-my-paper.cmd`" start --no-open > `"$log`" 2>&1`""
+          try {
+            if (-not (Wait-Port 120)) { Get-Content $log -Encoding UTF8; throw 'the server did not start' }
+            $page = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8788/
+            if ($page.StatusCode -ne 200 -or $page.Content -notmatch 'oh-my-paper') { throw "unexpected page: $($page.StatusCode)" }
+            $workspace = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8788/api/workspace
+            if ($workspace.StatusCode -ne 200) { throw "workspace answered $($workspace.StatusCode)" }
+            Write-Host "app answered: $($page.Content.Length) bytes of HTML, workspace $($workspace.Content.Length) bytes"
+          } finally {
+            taskkill /PID $server.Id /T /F | Out-Null
+            Get-Content $log -Encoding UTF8
+          }
+
+      - name: Tray companion, an update while it runs, and off
+        shell: powershell
+        run: |
+          function Wait-Port([bool]$Open, [int]$Seconds) {
+            $deadline = (Get-Date).AddSeconds($Seconds)
+            while ((Get-Date) -lt $deadline) {
+              $up = $false
+              try { $c = New-Object Net.Sockets.TcpClient; $c.Connect('127.0.0.1', 8788); $c.Close(); $up = $true } catch { }
+              if ($up -eq $Open) { return $true }
+              Start-Sleep -Milliseconds 500
+            }
+            return $false
+          }
+          $omp = "$env:OH_MY_PAPER_BIN_DIR\oh-my-paper.cmd"
+          $run = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+
+          & $omp menubar
+          if ($LASTEXITCODE -ne 0) { throw "menubar exited with $LASTEXITCODE" }
+          if (-not (Get-Process oh-my-paper-tray -ErrorAction SilentlyContinue)) { throw 'the tray is not running' }
+          if (-not (Get-ItemProperty $run -Name oh-my-paper -ErrorAction SilentlyContinue)) { throw 'no sign-in start' }
+          if (-not (Wait-Port $true 120)) { throw 'the tray did not start the server' }
+          Write-Host "sign-in start: $((Get-ItemProperty $run -Name oh-my-paper).'oh-my-paper')"
+
+          # An update that rewrites the launcher while it runs (cmd must not read on in the new
+          # file) and replaces node_modules while the tray's server holds programs in it.
+          git -C $env:GITHUB_WORKSPACE checkout -q windows-ci
+          Add-Content -Path "$env:GITHUB_WORKSPACE\bin\oh-my-paper.cmd" -Value 'rem a change an update brings'
+          git -C $env:GITHUB_WORKSPACE -c user.name=ci -c user.email=ci@example.invalid commit -q -am 'Change the launcher'
+          $log = "$env:RUNNER_TEMP\omp\update.log"
+          cmd /d /s /c "`"$omp`" update > `"$log`" 2>&1"
+          $status = $LASTEXITCODE
+          $out = Get-Content $log -Raw -Encoding UTF8
+          Write-Host $out
+          if ($status -ne 0) { throw "update exited with $status" }
+          if ($out -match 'is not recognized|was unexpected|cannot find the') { throw 'cmd read on in the rewritten launcher' }
+          if (-not (Select-String -Path "$env:OH_MY_PAPER_HOME\bin\oh-my-paper.cmd" -Pattern 'a change an update brings' -Quiet)) { throw 'the update did not bring the change' }
+          $page = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8788/api/health
+          if ($page.StatusCode -ne 200) { throw 'the server stopped answering after the update' }
+
+          & $omp menubar off
+          if ($LASTEXITCODE -ne 0) { throw "menubar off exited with $LASTEXITCODE" }
+          if (Get-Process oh-my-paper-tray -ErrorAction SilentlyContinue) { throw 'the tray still runs' }
+          if (Get-ItemProperty $run -Name oh-my-paper -ErrorAction SilentlyContinue) { throw 'the sign-in start is still there' }
+          if (-not (Wait-Port $false 30)) { throw 'the server outlived the tray' }
+
+      - name: Logs
+        if: always()
+        shell: powershell
+        run: |
+          foreach ($file in @("$env:LOCALAPPDATA\oh-my-paper\Logs\tray.log", "$env:USERPROFILE\.ohmypaper\meaning-model-install.log")) {
+            if (Test-Path $file) { Write-Host "== $file"; Get-Content $file -Tail 80 -Encoding UTF8 }
+          }
+          Get-ChildItem $env:TEMP -Filter 'oh-my-paper-install.*.log' -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "== $($_.FullName)"; Get-Content $_.FullName -Tail 80 -Encoding UTF8 }

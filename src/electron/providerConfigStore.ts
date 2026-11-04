@@ -3,27 +3,10 @@ import { join } from "node:path"
 import { safeStorage } from "electron"
 import { type ProviderConfig, providerConfigSchema } from "../shared/ipc"
 import { DEFAULT_OPENROUTER_MODEL, isOpenRouterModel } from "../shared/providerModels"
+import { ProviderConfigurationError } from "./providerConfigurationError"
 import { DEFAULT_OPENAI_MODEL } from "./providerEnvironment"
 
-export class ProviderConfigurationError extends Error {
-  readonly name = "ProviderConfigurationError"
-  constructor(
-    readonly kind:
-      | "missing_key"
-      | "encryption_unavailable"
-      | "corrupt_config"
-      | "request_failed"
-      | "cancelled"
-      | "auth"
-      | "rate_limited"
-      | "timeout"
-      | "privacy_denied"
-      | "unsupported_capability"
-      | "malformed_output",
-  ) {
-    super(kind)
-  }
-}
+export { ProviderConfigurationError }
 
 function missingFile(error: unknown): boolean {
   return error instanceof Error && "code" in error && error.code === "ENOENT"

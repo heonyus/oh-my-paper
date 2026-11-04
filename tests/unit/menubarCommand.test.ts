@@ -27,7 +27,7 @@ describe("oh-my-paper menubar", () => {
       uid: 501,
       run: (command, args) => {
         const name =
-          command === "launchctl" ? `launchctl ${args[0]}` : (command.split("/").at(-1) ?? "")
+          command === "launchctl" ? `launchctl ${args[0]}` : (command.split(/[\\/]/).at(-1) ?? "")
         calls.push([name, ...args.slice(command === "launchctl" ? 1 : 0)].join(" "))
         return { ok: answers[name]?.shift() ?? true, output: `${name} said no` }
       },
@@ -112,7 +112,7 @@ describe("oh-my-paper menubar", () => {
     expect(existsSync(plist)).toBe(false)
   })
 
-  it("refuses anywhere but macOS", async () => {
+  it("refuses anywhere but macOS and Windows", async () => {
     const written = vi.spyOn(process.stderr, "write").mockReturnValue(true)
 
     await menubarCommand(config, appRoot, undefined, { ...system(), platform: "linux" })

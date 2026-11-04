@@ -223,6 +223,12 @@ export function createLocalWebServer(config: WebServerConfig, services: WebServi
         }
       }
 
+      // What the tray companion asks every few seconds: cheap, whatever the size of the library.
+      if (pathname === "/api/health" && req.method === "GET") {
+        sendJson(res, 200, { ok: true })
+        return
+      }
+
       if (pathname === "/api/workspace" && req.method === "GET") {
         const ws = await readWorkspace(services)
         sendJson(res, 200, ws)

@@ -39,7 +39,7 @@ PREDICT_OPTIONS: Final[dict[str, Any]] = {
     "markdown_ignore_labels": [],
 }
 
-VlmBackend = Literal["native", "mlx-vlm-server", "vllm-server"]
+VlmBackend = Literal["native", "mlx-vlm-server", "vllm-server", "llama-cpp-server"]
 
 
 class ParserInputError(RuntimeError):

@@ -15,7 +15,7 @@ import { CodexEnvironmentError, sanitizeErrorMessage } from "./codexEnvironment"
 import { CodexSession } from "./codexSession"
 import { findCodexExecutable } from "./codexSubprocess"
 import { createCodexWebSearchPort } from "./codexWebSearch"
-import { ProviderConfigurationError } from "./providerConfigStore"
+import { ProviderConfigurationError } from "./providerConfigurationError"
 import type { OfficialWebSearchPort } from "./webDiscovery"
 
 const MODEL_LIST_TTL_MS = 10 * 60_000

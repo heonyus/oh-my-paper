@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest"
-import { detectCliLocale } from "../../src/cli/locale"
+import { detectCliLocale, parseWindowsLanguages } from "../../src/cli/locale"
 import { cliMessages } from "../../src/cli/messages"
 import { settingsMessages } from "../../src/renderer/messages/settings"
 import { formatOcrInstallProgress } from "../../src/shared/documentOcr"
@@ -26,6 +26,20 @@ describe("locale", () => {
     expect(detectCliLocale({ LANG: "en_US.UTF-8" }, system)).toBe("en")
     expect(detectCliLocale({ LANG: "C" }, system)).toBe("ko")
     expect(detectCliLocale({}, () => [])).toBe("en")
+  })
+
+  it("reads Windows' preferred languages from reg's listing, most preferred first", () => {
+    const listing = [
+      "",
+      "HKEY_CURRENT_USER\\Control Panel\\International\\User Profile",
+      "    Languages    REG_MULTI_SZ    ko-KR\\0en-US",
+      "",
+    ].join("\r\n")
+    expect(parseWindowsLanguages(listing)).toEqual(["ko-KR", "en-US"])
+    expect(detectCliLocale({}, () => parseWindowsLanguages(listing))).toBe("ko")
+    expect(
+      parseWindowsLanguages("ERROR: The system was unable to find the specified registry key"),
+    ).toEqual([])
   })
 
   it("fills placeholders and leaves unknown ones", () => {

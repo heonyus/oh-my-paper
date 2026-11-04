@@ -7,13 +7,23 @@ import { WorkspaceStore } from "../../src/electron/workspaceStore"
 import { documentIdSchema, documentRecordSchema } from "../../src/shared/schemas"
 
 const temporaryRoots: string[] = []
+const stores: WorkspaceStore[] = []
 const paperRowSchema = z.object({ id: z.string(), updated_at: z.string() })
 
 afterEach(async () => {
+  // Windows cannot delete a folder while a database inside it is still open.
+  for (const store of stores.splice(0)) await store.close()
   await Promise.all(
     temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })),
   )
 })
+
+/** Opens a store whose knowledge database is closed after the test. */
+function openStore(root: string): WorkspaceStore {
+  const store = new WorkspaceStore(root)
+  stores.push(store)
+  return store
+}
 
 function paper(index: number) {
   return documentRecordSchema.parse({
@@ -36,7 +46,7 @@ describe("WorkspaceStore document lookups", () => {
   it("finds one document and lists all of them as the full projection does", async () => {
     const root = await mkdtemp(join(tmpdir(), "ohmypaper-documents-"))
     temporaryRoots.push(root)
-    const store = new WorkspaceStore(root)
+    const store = openStore(root)
     for (let index = 1; index <= 3; index += 1) await store.addDocument(paper(index))
     const workspace = await store.read()
     await store.save({
@@ -61,7 +71,7 @@ describe("WorkspaceStore document lookups", () => {
   it("rewrites only the paper whose reading position changed", async () => {
     const root = await mkdtemp(join(tmpdir(), "ohmypaper-documents-"))
     temporaryRoots.push(root)
-    const store = new WorkspaceStore(root)
+    const store = openStore(root)
     for (let index = 1; index <= 3; index += 1) await store.addDocument(paper(index))
     const updatedAt = () =>
       new Map(
@@ -93,7 +103,7 @@ describe("WorkspaceStore document lookups", () => {
   it("forgets a deleted document", async () => {
     const root = await mkdtemp(join(tmpdir(), "ohmypaper-documents-"))
     temporaryRoots.push(root)
-    const store = new WorkspaceStore(root)
+    const store = openStore(root)
     await store.addDocument(paper(1))
     await store.deleteDocument(paper(1).id)
 

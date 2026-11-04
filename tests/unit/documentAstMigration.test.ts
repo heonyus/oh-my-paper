@@ -83,6 +83,7 @@ describe("document AST migration", () => {
 
   it("rebuilds a malformed sidecar without changing the workspace or source", async () => {
     const root = await mkdtemp(join(tmpdir(), "ohmypaper-ast-migration-"))
+    const store = new WorkspaceStore(root)
     try {
       const document = documentRecordSchema.parse({
         id,
@@ -99,7 +100,6 @@ describe("document AST migration", () => {
         overview: "",
         quality: { textCharacters: 0, needsOcr: true, warnings: [] },
       })
-      const store = new WorkspaceStore(root)
       await store.save({ ...defaultWorkspace(), documents: [document] })
       await mkdir(join(root, "documents"), { recursive: true })
       await writeFile(join(root, "documents", `${sourceHash}.pdf`), "%PDF-", "utf8")
@@ -132,6 +132,7 @@ describe("document AST migration", () => {
       expect(await store.read()).toEqual(before)
       expect(network).not.toHaveBeenCalled()
     } finally {
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })

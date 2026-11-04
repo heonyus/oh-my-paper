@@ -7,6 +7,7 @@ import {
 } from "react"
 import type { Viewport } from "../../shared/schemas"
 import type { BoardTool } from "../types"
+import { APPLE_KEYBOARD } from "./platform"
 import { nextWheelAxis, panViewport, zoomViewportAt } from "./viewport"
 
 /**
@@ -36,6 +37,38 @@ type UseBoardGesturesProps = {
   readonly tool: BoardTool
 }
 
+/**
+ * The wheel event with its deltas in pixels. Firefox counts mouse-wheel lines (deltaMode 1) and
+ * Windows' "one screen at a time" setting counts pages (deltaMode 2); both would otherwise move
+ * the board by a pixel or two per notch.
+ */
+export function pixelWheel(event: WheelEvent, pageHeight: number): WheelEvent {
+  if (event.deltaMode === 0) return event
+  const unit = event.deltaMode === 1 ? 16 : pageHeight
+  return new Proxy(event, {
+    get(target, property) {
+      if (property === "deltaX") return target.deltaX * unit
+      if (property === "deltaY") return target.deltaY * unit
+      const value = Reflect.get(target, property, target)
+      return typeof value === "function" ? value.bind(target) : value
+    },
+  })
+}
+
+/**
+ * How much one Ctrl+wheel event zooms. A trackpad pinch arrives as many small deltas; a Windows
+ * mouse wheel sends 100 px per notch, which zoomed the board by 82% at once. Elsewhere than on an
+ * Apple keyboard each event's step is capped, so a notch zooms about a browser zoom step (15%).
+ */
+export function wheelZoomFactor(deltaY: number, apple = APPLE_KEYBOARD): number {
+  const step = apple ? deltaY : Math.max(-24, Math.min(24, deltaY))
+  return Math.exp(-step * 0.006)
+}
+
+function pointDistance(a: { x: number; y: number }, b: { x: number; y: number }): number {
+  return Math.hypot(a.x - b.x, a.y - b.y)
+}
+
 export function useBoardGestures({
   wheelTargetRef,
   viewport,
@@ -47,6 +80,9 @@ export function useBoardGestures({
   tool,
 }: UseBoardGesturesProps) {
   const dragOrigin = useRef<{ x: number; y: number; viewport: Viewport } | null>(null)
+  // Fingers on a touchscreen (Surface and the like), and the pinch two of them make.
+  const touches = useRef(new Map<number, { x: number; y: number }>())
+  const pinch = useRef<{ distance: number; viewport: Viewport } | null>(null)
   const panFrame = useRef<number | null>(null)
   const panSettleFrame = useRef<number | null>(null)
   const panMoved = useRef(false)
@@ -177,7 +213,20 @@ export function useBoardGestures({
   function startPan(event: ReactPointerEvent<HTMLDivElement>): void {
     if (event.button !== 0 || !(event.target instanceof HTMLElement)) return
     if (event.target.closest("button, .board-card, .paper-structure-overlay")) return
-    if (tool === "select" && event.target.closest(".page")) return
+    const touch = event.pointerType === "touch"
+    if (touch) {
+      // A third finger is ignored; a second one turns the drag into a pinch.
+      if (touches.current.size >= 2) return
+      touches.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+      if (touches.current.size === 2) {
+        const [a, b] = [...touches.current.values()]
+        if (a && b) pinch.current = { distance: pointDistance(a, b), viewport: pendingPan.current }
+        event.currentTarget.setPointerCapture(event.pointerId)
+        return
+      }
+    }
+    // A finger moves the board even over a page; a mouse or pen there selects text.
+    if (tool === "select" && !touch && event.target.closest(".page")) return
     finishWheelPan()
     if (panSettleFrame.current !== null) {
       cancelAnimationFrame(panSettleFrame.current)
@@ -199,6 +248,21 @@ export function useBoardGestures({
   }
 
   function movePan(event: ReactPointerEvent<HTMLDivElement>): void {
+    if (event.pointerType === "touch" && touches.current.has(event.pointerId)) {
+      touches.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+      const start = pinch.current
+      if (start) {
+        const [a, b] = [...touches.current.values()]
+        // After a pinch, the finger left behind waits for the others instead of jumping.
+        if (!a || !b || start.distance <= 0) return
+        const rect = event.currentTarget.getBoundingClientRect()
+        const middle = { x: (a.x + b.x) / 2 - rect.left, y: (a.y + b.y) / 2 - rect.top }
+        const zoom = start.viewport.zoom * (pointDistance(a, b) / start.distance)
+        const next = zoomViewportAt(start.viewport, middle, zoom)
+        queuePan(constrainPan?.(next) ?? next)
+        return
+      }
+    }
     const origin = dragOrigin.current
     if (!origin) return
     const next = panViewport(origin.viewport, {
@@ -209,6 +273,12 @@ export function useBoardGestures({
   }
 
   function endPan(event: ReactPointerEvent<HTMLDivElement>): void {
+    if (event.pointerType === "touch") {
+      touches.current.delete(event.pointerId)
+      // The gesture ends with the last finger.
+      if (touches.current.size > 0) return
+      pinch.current = null
+    }
     const wasPanning = dragOrigin.current !== null
     dragOrigin.current = null
     const framePending = panFrame.current !== null
@@ -238,7 +308,8 @@ export function useBoardGestures({
     if (wasPanning) window.getSelection()?.removeAllRanges()
   }
 
-  function handleWheel(event: WheelEvent, currentTarget: HTMLElement): void {
+  function handleWheel(rawEvent: WheelEvent, currentTarget: HTMLElement): void {
+    const event = pixelWheel(rawEvent, currentTarget.clientHeight)
     // Cards keep the wheel for their own scrolling text; a note left on the board does not.
     if (
       event.target instanceof Element &&
@@ -259,7 +330,7 @@ export function useBoardGestures({
     if (event.ctrlKey || event.metaKey) {
       wheelAxis.current = null
       const rect = currentTarget.getBoundingClientRect()
-      const factor = Math.exp(-event.deltaY * 0.006)
+      const factor = wheelZoomFactor(event.deltaY)
       const next = zoomViewportAt(
         pendingViewport.current,
         { x: event.clientX - rect.left, y: event.clientY - rect.top },

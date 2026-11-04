@@ -64,8 +64,8 @@ function parserResult(
 describe("local document workflow", () => {
   it("starts bounded Paddle preparation immediately after importing a scan", async () => {
     const root = await mkdtemp(join(tmpdir(), "ohmypaper-local-workflow-"))
+    const store = new WorkspaceStore(root)
     try {
-      const store = new WorkspaceStore(root)
       await store.save(defaultWorkspace())
       const paddleParse = vi.fn().mockResolvedValue({
         status: "unavailable",
@@ -79,25 +79,35 @@ describe("local document workflow", () => {
         { pageConcurrency: 1 },
       )
 
-      const imported = await importPaths({ sender: { send: vi.fn() } }, [pdfPath], analysis, store)
+      try {
+        const imported = await importPaths(
+          { sender: { send: vi.fn() } },
+          [pdfPath],
+          analysis,
+          store,
+        )
 
-      expect(imported).toHaveLength(1)
-      await vi.waitFor(() =>
-        expect(
-          analysis.snapshot().jobs.find((job) => job.id === imported[0]?.document.id)?.state,
-        ).toBe("failed"),
-      )
-      await analysis.dispose()
+        expect(imported).toHaveLength(1)
+        await vi.waitFor(() =>
+          expect(
+            analysis.snapshot().jobs.find((job) => job.id === imported[0]?.document.id)?.state,
+          ).toBe("failed"),
+        )
+      } finally {
+        // The analysis reads the store, so it stops before the store is closed.
+        await analysis.dispose()
+      }
       expect(paddleParse).toHaveBeenCalledTimes(2)
     } finally {
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })
 
   it("merges PDF.js text with Paddle structures for a digital page", async () => {
     const root = await mkdtemp(join(tmpdir(), "ohmypaper-hybrid-parse-"))
+    const store = new WorkspaceStore(root)
     try {
-      const store = new WorkspaceStore(root)
       await store.save(defaultWorkspace())
       const document = await importFixture(
         root,
@@ -128,14 +138,15 @@ describe("local document workflow", () => {
       }
       expect(paddleParse).toHaveBeenCalledOnce()
     } finally {
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })
 
   it("uses the complete Paddle page when the PDF has no usable text", async () => {
     const root = await mkdtemp(join(tmpdir(), "ohmypaper-scan-parse-"))
+    const store = new WorkspaceStore(root)
     try {
-      const store = new WorkspaceStore(root)
       await store.save(defaultWorkspace())
       const document = await importFixture(root, store, "scanned.pdf", await buildScannedMixedPdf())
       const page = paddlePage(document)
@@ -150,14 +161,15 @@ describe("local document workflow", () => {
       expect(result).toEqual({ status: "ready", page })
       expect(paddleParse).toHaveBeenCalledOnce()
     } finally {
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })
 
   it("reuses the hybrid cache and rejects invalid page numbers", async () => {
     const root = await mkdtemp(join(tmpdir(), "ohmypaper-hybrid-cache-"))
+    const store = new WorkspaceStore(root)
     try {
-      const store = new WorkspaceStore(root)
       await store.save(defaultWorkspace())
       const document = await importFixture(
         root,
@@ -201,14 +213,15 @@ describe("local document workflow", () => {
         })
       }
     } finally {
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })
 
   it("gives a hybrid page cached before layouts existed its layout from Paddle's cache", async () => {
     const root = await mkdtemp(join(tmpdir(), "ohmypaper-hybrid-layout-"))
+    const store = new WorkspaceStore(root)
     try {
-      const store = new WorkspaceStore(root)
       await store.save(defaultWorkspace())
       const document = await importFixture(
         root,
@@ -252,14 +265,15 @@ describe("local document workflow", () => {
       }
       expect(paddleParse).toHaveBeenCalledOnce()
     } finally {
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })
 
   it("builds the hybrid page from Paddle's cache at once instead of handing out PDF.js first", async () => {
     const root = await mkdtemp(join(tmpdir(), "ohmypaper-hybrid-rebuild-"))
+    const store = new WorkspaceStore(root)
     try {
-      const store = new WorkspaceStore(root)
       await store.save(defaultWorkspace())
       const document = await importFixture(
         root,
@@ -287,14 +301,15 @@ describe("local document workflow", () => {
       )
       expect(paddleParse).not.toHaveBeenCalled()
     } finally {
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })
 
   it("gives a translation the structured page even while a prepared-only look runs", async () => {
     const root = await mkdtemp(join(tmpdir(), "ohmypaper-await-structure-"))
+    const store = new WorkspaceStore(root)
     try {
-      const store = new WorkspaceStore(root)
       await store.save(defaultWorkspace())
       const document = await importFixture(
         root,
@@ -334,6 +349,7 @@ describe("local document workflow", () => {
       )
       expect(paddleParse).toHaveBeenCalledTimes(1)
     } finally {
+      await store.close()
       await rm(root, { recursive: true, force: true })
     }
   })

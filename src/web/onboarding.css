@@ -5,7 +5,8 @@
   background: var(--ink);
   color: var(--surface);
   font-family:
-    "Geist Variable", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+    "Geist Variable", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI",
+    "Malgun Gothic", sans-serif;
 }
 
 .onboarding-hero {
@@ -133,7 +134,9 @@
   max-width: 32rem;
   margin: 16px 0 0 64px;
   color: color-mix(in srgb, var(--surface) 88%, transparent);
-  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", "Malgun Gothic",
+    sans-serif;
   font-size: var(--type-onboarding-body);
   font-weight: 500;
   line-height: 1.5;
@@ -184,7 +187,9 @@
   max-width: 270px;
   margin: 0;
   color: color-mix(in srgb, var(--surface) 72%, transparent);
-  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", "Malgun Gothic",
+    sans-serif;
   font-size: var(--type-compact-size);
   line-height: 1.45;
   text-align: right;
@@ -200,7 +205,9 @@
   align-items: center;
   gap: 6px;
   color: color-mix(in srgb, var(--surface) 68%, transparent);
-  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", "Malgun Gothic",
+    sans-serif;
   font-size: var(--type-compact-size);
   text-decoration: none;
   transform: translateX(-50%);

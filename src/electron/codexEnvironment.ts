@@ -13,6 +13,16 @@ const SAFE_ENV_KEYS: readonly string[] = [
   "COMSPEC",
   "PATHEXT",
   "WINDIR",
+  // A proxy and its certificates, which company networks (Windows ones above all) need to reach
+  // the service at all; none of them can send a request to another account.
+  "HTTPS_PROXY",
+  "HTTP_PROXY",
+  "NO_PROXY",
+  "https_proxy",
+  "http_proxy",
+  "no_proxy",
+  "NODE_EXTRA_CA_CERTS",
+  "SSL_CERT_FILE",
 ]
 
 export class CodexEnvironmentError extends Error {

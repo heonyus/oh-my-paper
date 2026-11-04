@@ -34,7 +34,7 @@
   min-width: 0;
   overflow-wrap: anywhere;
   color: var(--action);
-  font-family: "SF Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: var(--type-compact-size);
 }
 .citation-item header > div {

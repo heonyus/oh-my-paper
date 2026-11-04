@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs"
+import { readFileSync, statSync } from "node:fs"
 import { join } from "node:path"
 import { formatOcrInstallProgress } from "../shared/documentOcr"
 import type { Locale } from "../shared/i18n/locale"
@@ -76,7 +76,24 @@ export function lockHolderAlive(lock: string): boolean {
   }
 }
 
-/** A setup is downloading or installing the OCR runtime right now. */
+/** How long a running install may leave its progress unwritten; it rewrites it every 2 s. */
+const PROGRESS_STALE_MS = 120_000
+
+/** Whether a file was written within the last `withinMs`. */
+function writtenLately(path: string, withinMs: number, now = Date.now()): boolean {
+  try {
+    return now - statSync(path).mtimeMs < withinMs
+  } catch {
+    return false
+  }
+}
+
+/**
+ * A setup is downloading or installing the OCR runtime right now: its lock names a live process
+ * and its progress is fresh. A lock left by an install cut short (a sign-out, a reboot) can name a
+ * process id that Windows has since given to another program; the stale progress tells them apart.
+ */
 export function paddleInstallRunning(home: string): boolean {
-  return lockHolderAlive(paddleInstallPaths(home).lock)
+  const { lock, progress } = paddleInstallPaths(home)
+  return lockHolderAlive(lock) && writtenLately(progress, PROGRESS_STALE_MS)
 }

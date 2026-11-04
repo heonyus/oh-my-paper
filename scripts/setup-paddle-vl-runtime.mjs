@@ -1,7 +1,19 @@
 import { spawn, spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import {
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs"
 import { homedir } from "node:os"
 import { delimiter, dirname, join } from "node:path"
+import { Readable } from "node:stream"
+import { pipeline } from "node:stream/promises"
 import { fileURLToPath } from "node:url"
 import { downloadRepository, modelSources } from "./model-download.mjs"
 
@@ -23,6 +35,13 @@ const mlxPython = join(mlxRuntimeRoot, "bin", "python")
 const mlxModelRepository = "PaddlePaddle/PaddleOCR-VL-1.6"
 const mlxModelDirectory = join(mlxRuntimeRoot, "models", "PaddleOCR-VL-1.6")
 const mlxReadinessMarker = join(mlxRuntimeRoot, ".ready-mlx-v1.6")
+// On Windows, PaddleOCR-VL also runs in llama.cpp's server: through Vulkan on any GPU, and on the
+// CPU still far faster than in-process recognition (src/electron/paddleVlmServer.ts reads this).
+const llamaCppAcceleration = process.platform === "win32"
+const llamaCppRoot =
+  process.env.OH_MY_PAPER_PADDLE_VL_LLAMACPP ?? join(dirname(runtimeRoot), "paddle-vl-llamacpp")
+const ggufRepository =
+  process.env.OH_MY_PAPER_PADDLE_VL_GGUF_REPO ?? "PaddlePaddle/PaddleOCR-VL-1.6-GGUF"
 // Beside the runtime folders, matching paddleInstallPaths() in src/electron/paddleInstallState.ts.
 const installLock = join(dirname(runtimeRoot), "paddle-vl-install.pid")
 const installProgress = join(dirname(runtimeRoot), "paddle-vl-install.progress.json")
@@ -38,7 +57,9 @@ const children = new Set()
 /** Share of the install each part takes; on Apple silicon the model download is the long pole. */
 const weights = appleAcceleration
   ? { paddle: 5, paddleocr: 10, layout: 5, mlx: 5, model: 65, pipeline: 10 }
-  : { paddle: 15, paddleocr: 25, layout: 15, pipeline: 45 }
+  : llamaCppAcceleration
+    ? { paddle: 10, paddleocr: 20, layout: 10, llamacpp: 20, pipeline: 40 }
+    : { paddle: 15, paddleocr: 25, layout: 15, pipeline: 45 }
 const finished = new Set()
 const model = { total: 1_930_000_000, bytes: 0, samples: [] }
 let installStarted = Date.now()
@@ -88,12 +109,18 @@ function say(line) {
   process.stdout.write(`${line}\n`)
 }
 
-/** Runs one command, prefixing its output with the lane so parallel lanes stay readable. */
+/**
+ * Runs one command, prefixing its output with the lane so parallel lanes stay readable. Python
+ * writes UTF-8 to the pipe whatever the Windows code page, so paths with Korean names read right,
+ * and windowsHide gives the command a hidden console that the programs it starts share: started
+ * in the background, this script has no console, and each would otherwise open a window.
+ */
 function run(lane, command, args, env = process.env) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
-      env: { TQDM_MININTERVAL: "10", ...env },
+      env: { TQDM_MININTERVAL: "10", PYTHONUTF8: "1", PYTHONIOENCODING: "utf-8", ...env },
       stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
     })
     children.add(child)
     for (const stream of [child.stdout, child.stderr]) {
@@ -129,10 +156,24 @@ async function step(lane, title, command, args, { env, key } = {}) {
   writeProgress()
 }
 
+/** Stops the running commands with what they started: on Windows, killing one leaves its children. */
 function stopChildren() {
-  for (const child of children) child.kill("SIGTERM")
+  for (const child of children) {
+    if (process.platform === "win32" && child.pid)
+      spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
+        stdio: "ignore",
+        windowsHide: true,
+      })
+    else child.kill("SIGTERM")
+  }
 }
 
+/**
+ * Whether another install holds the lock: its process is alive and it rewrote its progress lately
+ * (every 2 s). A lock left by an install cut short, at a sign-out or a reboot, can name a process
+ * id that Windows has since given to another program; the stale progress tells them apart. Matches
+ * paddleInstallRunning() in src/electron/paddleInstallState.ts.
+ */
 function lockHolderAlive() {
   let pid
   try {
@@ -141,6 +182,11 @@ function lockHolderAlive() {
     return false
   }
   if (!Number.isInteger(pid) || pid <= 0) return false
+  try {
+    if (Date.now() - statSync(installProgress).mtimeMs > 120_000) return false
+  } catch {
+    return false
+  }
   try {
     process.kill(pid, 0)
     return true
@@ -183,7 +229,7 @@ function takeLock() {
 
 const nvidiaGpu = (() => {
   if (appleAcceleration) return false
-  const probe = spawnSync("nvidia-smi", [], { stdio: "ignore" })
+  const probe = spawnSync("nvidia-smi", [], { stdio: "ignore", windowsHide: true })
   return !probe.error && probe.status === 0
 })()
 // The CPU wheels are on PyPI, whose CDN is much faster outside China than Paddle's own index.
@@ -193,12 +239,24 @@ const paddleSource = nvidiaGpu
 const paddlePackage = nvidiaGpu ? "paddlepaddle-gpu==3.2.1" : "paddlepaddle==3.2.1"
 
 /**
+ * The environment for Windows PowerShell 5.1 started from here. Started from PowerShell 7, this
+ * script inherits a PSModulePath that points at PowerShell 7's modules, which 5.1 cannot load
+ * ("the module could not be loaded"); without the variable, 5.1 uses its own module folders.
+ */
+function windowsPowerShellEnv(env) {
+  return Object.fromEntries(
+    Object.entries(env).filter(([name]) => name.toLowerCase() !== "psmodulepath"),
+  )
+}
+
+/**
  * uv from PATH, or else a copy of its own: the official installer puts it in ~/.ohmypaper/tools
  * without touching shell profiles, and uv fetches Python 3.12 itself, so a computer with
  * neither still gets the engine. `OH_MY_PAPER_UV_INSTALLER` points at another installer.
  */
 async function ensureUv() {
-  const names = process.platform === "win32" ? ["uv.exe", "uv.cmd"] : ["uv"]
+  // A uv.cmd wrapper on PATH cannot be started without a shell, so only uv.exe counts there.
+  const names = process.platform === "win32" ? ["uv.exe"] : ["uv"]
   const onPath = (process.env.PATH ?? "")
     .split(delimiter)
     .some((directory) => directory && names.some((name) => existsSync(join(directory, name))))
@@ -219,7 +277,7 @@ async function ensureUv() {
       await step(
         "uv",
         "uv 설치 (이 컴퓨터에 없어서 함께 받습니다)",
-        "powershell",
+        "powershell.exe",
         [
           "-NoProfile",
           "-ExecutionPolicy",
@@ -227,7 +285,7 @@ async function ensureUv() {
           "-Command",
           "irm $env:OH_MY_PAPER_UV_INSTALLER_URL | iex",
         ],
-        { env },
+        { env: windowsPowerShellEnv(env) },
       )
     else
       await step(
@@ -322,6 +380,129 @@ async function modelLane() {
   writeProgress()
 }
 
+const requestHeaders = { "user-agent": "oh-my-paper-installer" }
+
+async function fetchJson(url) {
+  const response = await fetch(url, { headers: { ...requestHeaders, accept: "application/json" } })
+  if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`)
+  return response.json()
+}
+
+/** Downloads to a temporary name first, so a cut download never looks complete. */
+async function downloadFile(url, target) {
+  const response = await fetch(url, { headers: requestHeaders, redirect: "follow" })
+  if (!response.ok || !response.body) throw new Error(`${url}: HTTP ${response.status}`)
+  mkdirSync(dirname(target), { recursive: true })
+  const partial = `${target}.partial`
+  await pipeline(Readable.fromWeb(response.body), createWriteStream(partial))
+  renameSync(partial, target)
+}
+
+function findFile(directory, name) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name)
+    if (entry.isFile() && entry.name.toLowerCase() === name) return path
+    if (entry.isDirectory()) {
+      const found = findFile(path, name)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+/** The first file matching each preference in turn, else the first file. */
+function preferred(files, preferences) {
+  for (const preference of preferences) {
+    const match = files.find((file) => preference.test(file))
+    if (match) return match
+  }
+  return files[0]
+}
+
+/**
+ * llama.cpp's Windows build (Vulkan on x64, the CPU build on ARM) and PaddleOCR-VL as GGUF with
+ * its vision projector. Optional: when it fails, recognition stays in-process as before.
+ */
+async function llamaCppLane() {
+  const started = Date.now()
+  say("[llamacpp] ▶ llama.cpp + PaddleOCR-VL GGUF")
+  // Not just the release marked latest: some releases carry no Windows build. The newest that
+  // does, among the recent ones.
+  const releases = await fetchJson(
+    "https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=30",
+  )
+  // Matched by parts, since llama.cpp renames its builds now and then (win/windows, order).
+  const parts = process.arch === "arm64" ? [/win/i, /arm64/i, /cpu/i] : [/win/i, /vulkan/i, /x64/i]
+  const wanted = {
+    test: (name) =>
+      name.endsWith(".zip") && !/cudart/i.test(name) && parts.every((part) => part.test(name)),
+  }
+  let release = null
+  let asset = null
+  for (const candidate of Array.isArray(releases) ? releases : []) {
+    // Every llama.cpp build (bNNNN) is published as a prerelease, so only drafts are skipped.
+    if (candidate.draft) continue
+    asset = candidate.assets?.find((file) => wanted.test(file.name)) ?? null
+    if (asset) {
+      release = candidate
+      break
+    }
+  }
+  if (!release || !asset) {
+    const newest = Array.isArray(releases) ? releases[0] : null
+    const names = (newest?.assets ?? [])
+      .map((file) => file.name)
+      .filter((name) => /win/i.test(name))
+    throw new Error(
+      `no recent llama.cpp release has a Windows build (${newest?.tag_name}: ${names})`,
+    )
+  }
+  const bin = join(llamaCppRoot, "bin")
+  const zip = join(llamaCppRoot, asset.name)
+  await downloadFile(asset.browser_download_url, zip)
+  rmSync(bin, { recursive: true, force: true })
+  mkdirSync(bin, { recursive: true })
+  // Windows' own bsdtar opens zip files; a Git for Windows tar earlier on PATH would not.
+  const tar = join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe")
+  await run("llamacpp", tar, ["-xf", zip, "-C", bin])
+  rmSync(zip, { force: true })
+  const server = findFile(bin, "llama-server.exe")
+  if (!server) throw new Error(`no llama-server.exe in ${asset.name}`)
+
+  const hub = process.env.HF_ENDPOINT ?? "https://huggingface.co"
+  const info = await fetchJson(`${hub}/api/models/${ggufRepository}`)
+  const files = (info.siblings ?? [])
+    .map((sibling) => sibling.rfilename)
+    .filter((name) => name.toLowerCase().endsWith(".gguf"))
+  const mmprojName = preferred(
+    files.filter((name) => /mmproj/i.test(name)),
+    [/f16/i, /bf16/i, /q8/i],
+  )
+  const modelName = preferred(
+    files.filter((name) => !/mmproj/i.test(name)),
+    [/q8_0/i, /bf16/i, /f16/i],
+  )
+  if (!modelName || !mmprojName)
+    throw new Error(`no GGUF model with a projector in ${ggufRepository}`)
+  const models = join(llamaCppRoot, "models")
+  const model = join(models, modelName.split("/").at(-1))
+  const mmproj = join(models, mmprojName.split("/").at(-1))
+  for (const [name, target] of [
+    [modelName, model],
+    [mmprojName, mmproj],
+  ]) {
+    if (!existsSync(target))
+      await downloadFile(`${hub}/${ggufRepository}/resolve/main/${name}`, target)
+  }
+  writeFileSync(
+    join(llamaCppRoot, "runtime.json"),
+    `${JSON.stringify({ version: 1, server, model, mmproj, release: release.tag_name }, null, 2)}\n`,
+  )
+  say(
+    `[llamacpp] ✔ ${release.tag_name} · ${modelName} (${Math.round((Date.now() - started) / 1000)}초)`,
+  )
+}
+
 async function main() {
   takeLock()
   rmSync(installDeclined, { force: true })
@@ -345,7 +526,20 @@ async function main() {
       { env: { ...process.env, OH_MY_PAPER_MLX_MODEL_DIR: mlxModelDirectory }, key: "pipeline" },
     )
   } else {
-    await paddleLane()
+    await Promise.all([
+      paddleLane(),
+      llamaCppAcceleration
+        ? llamaCppLane().then(
+            () => finished.add("llamacpp"),
+            (error) => {
+              finished.add("llamacpp")
+              say(
+                `[llamacpp] ▲ 건너뜀, CPU로 읽습니다: ${error instanceof Error ? error.message : error}`,
+              )
+            },
+          )
+        : Promise.resolve(),
+    ])
     await step(
       "paddle",
       "문서 분석 파이프라인",
@@ -357,7 +551,6 @@ async function main() {
       { key: "pipeline" },
     )
   }
-  clearInterval(ticker)
   writeFileSync(readinessMarker, "PaddleOCR-VL-1.6 + PP-DocLayoutV3\n", { mode: 0o600 })
   say(`oh-my-paper PaddleOCR-VL runtime: ${runtimeRoot}`)
   if (appleAcceleration) say(`oh-my-paper PaddleOCR-VL MLX runtime: ${mlxRuntimeRoot}`)
@@ -367,6 +560,8 @@ async function main() {
       join(dirname(fileURLToPath(import.meta.url)), "setup-paddle-vllm-wsl.mjs"),
       "--optional",
     ])
+  // The progress stays fresh to the end, so the lock reads as alive while the WSL step runs.
+  clearInterval(ticker)
 }
 
 // Exit explicitly so a slow model-size request cannot hold the finished install open.

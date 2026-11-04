@@ -22,9 +22,14 @@ function npmClaudeBinary(prefix: string): string {
 
 function windowsClaudeSearchPaths(env: NodeJS.ProcessEnv, home: string): string[] {
   const appData = envValue(env, "APPDATA")
+  const localAppData = envValue(env, "LOCALAPPDATA")
   return [
     // The native installer's default location.
     win32.join(home, ".local", "bin", "claude.exe"),
+    // winget's link, which consoles opened before the install do not have on PATH yet.
+    ...(localAppData
+      ? [win32.join(localAppData, "Microsoft", "WinGet", "Links", "claude.exe")]
+      : []),
     ...(appData ? [npmClaudeBinary(win32.join(appData, "npm"))] : []),
   ]
 }
@@ -92,6 +97,16 @@ const INHERITED_ENV_KEYS = [
   "TEMP",
   "TMP",
   "CLAUDE_CODE_GIT_BASH_PATH",
+  // A proxy and its certificates, which company networks (Windows ones above all) need to reach
+  // the service at all; none of them can send a request to another account.
+  "HTTPS_PROXY",
+  "HTTP_PROXY",
+  "NO_PROXY",
+  "https_proxy",
+  "http_proxy",
+  "no_proxy",
+  "NODE_EXTRA_CA_CERTS",
+  "SSL_CERT_FILE",
 ] as const
 
 export function buildClaudeEnv(

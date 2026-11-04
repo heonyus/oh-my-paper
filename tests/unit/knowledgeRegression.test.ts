@@ -14,6 +14,15 @@ import {
   sha256Schema,
 } from "../../src/shared/schemas"
 
+const stores: WorkspaceStore[] = []
+
+/** Opens a store whose knowledge database is closed after the test. */
+function openStore(root: string): WorkspaceStore {
+  const store = new WorkspaceStore(root)
+  stores.push(store)
+  return store
+}
+
 describe("Knowledge Review Regressions", () => {
   let tmpRoot: string
 
@@ -22,11 +31,13 @@ describe("Knowledge Review Regressions", () => {
   })
 
   afterEach(async () => {
+    // Windows cannot delete a folder while a database inside it is still open.
+    for (const store of stores.splice(0)) await store.close()
     await rm(tmpRoot, { recursive: true, force: true })
   })
 
   it("regression 2: saving an old reader snapshot (e.g. pan viewport) must NOT overwrite title/body edits made via knowledge repo", async () => {
-    const store = new WorkspaceStore(tmpRoot)
+    const store = openStore(tmpRoot)
     await store.read()
 
     // Add a document and card
@@ -185,15 +196,18 @@ describe("Knowledge Review Regressions", () => {
   it("regression 3: durable migration marker and corrupt data safety", async () => {
     // Setup corrupt file
     await writeFile(join(tmpRoot, "workspace.json"), "{ corrupt !!", "utf8")
-    const store = new WorkspaceStore(tmpRoot)
+    const store = openStore(tmpRoot)
 
     await expect(store.read()).rejects.toThrow()
 
     // Ensure database did not initialize defaults over corrupt workspace
     const rawDb = openKnowledgeDatabase(join(tmpRoot, "knowledge.sqlite"))
-    const rawCount = rawDb.prepare("SELECT COUNT(*) FROM knowledge_nodes").get()
-    expect(Object.values(rawCount ?? {})[0]).toBe(0)
-    rawDb.close()
+    try {
+      const rawCount = rawDb.prepare("SELECT COUNT(*) FROM knowledge_nodes").get()
+      expect(Object.values(rawCount ?? {})[0]).toBe(0)
+    } finally {
+      rawDb.close()
+    }
   })
 
   it("regression 3: backup has private permissions 0o600 and durable marker prevents reimport if nodes deleted", async () => {
@@ -230,7 +244,7 @@ describe("Knowledge Review Regressions", () => {
       activeDocumentId: null,
     }
     await writeFile(join(tmpRoot, "workspace.json"), JSON.stringify(legacy), "utf8")
-    const store = new WorkspaceStore(tmpRoot)
+    const store = openStore(tmpRoot)
     await store.read()
 
     // Check backup permissions
@@ -240,7 +254,8 @@ describe("Knowledge Review Regressions", () => {
     expect(backup).toBeDefined()
     if (backup) {
       const st = await stat(join(tmpRoot, backup))
-      expect(st.mode & 0o777).toBe(0o600)
+      // Windows has no POSIX permission bits: chmod there only sets or clears read-only.
+      if (process.platform !== "win32") expect(st.mode & 0o777).toBe(0o600)
     }
 
     // User deletes all nodes in knowledge store
@@ -251,7 +266,7 @@ describe("Knowledge Review Regressions", () => {
     expect(store.repository.findNodes().length).toBe(0)
 
     // Reopening workspace store MUST NOT reimport legacy workspace.json!
-    const store2 = new WorkspaceStore(tmpRoot)
+    const store2 = openStore(tmpRoot)
     const ws2 = await store2.read()
     expect(ws2.cards.length).toBe(0)
   })
@@ -281,7 +296,7 @@ describe("Knowledge Review Regressions", () => {
   })
 
   it("projects all canonical paper documents and preserves exact card source ranges", async () => {
-    const store = new WorkspaceStore(tmpRoot)
+    const store = openStore(tmpRoot)
     const documents = Array.from({ length: 101 }, (_, index) =>
       documentRecordSchema.parse({
         id: String(index + 1).padStart(16, "0"),
@@ -376,7 +391,7 @@ describe("Knowledge Review Regressions", () => {
   })
 
   it("does not infer a card anchor from an unrelated document anchor", async () => {
-    const store = new WorkspaceStore(tmpRoot)
+    const store = openStore(tmpRoot)
     const paper = store.repository.createNode({ kind: "paper", title: "Paper" })
     const version = store.repository.createDocumentVersion({
       id: documentVersionIdSchema.parse("44444444-4444-4444-8444-444444444444"),
@@ -409,7 +424,7 @@ describe("Knowledge Review Regressions", () => {
   })
 
   it("returns a committed save acknowledgement and does not reimport its first projection", async () => {
-    const store = new WorkspaceStore(tmpRoot)
+    const store = openStore(tmpRoot)
     const document = documentRecordSchema.parse({
       id: "6666666666666666",
       name: "fresh.pdf",
@@ -431,12 +446,12 @@ describe("Knowledge Review Regressions", () => {
     if (!paper) throw new Error("Expected fresh paper")
     store.repository.updateNode({ id: paper.id, title: "Canonical title" })
 
-    const reopened = await new WorkspaceStore(tmpRoot).read()
+    const reopened = await openStore(tmpRoot).read()
     expect(reopened.documents[0]?.title).toBe("Canonical title")
   })
 
   it("rejects same-field stale content conflicts while preserving concurrent movement and insights", async () => {
-    const store = new WorkspaceStore(tmpRoot)
+    const store = openStore(tmpRoot)
     const card = boardCardSchema.parse({
       id: "c5555555-5555-4555-8555-555555555555",
       documentId: "5555555555555555",
@@ -491,7 +506,7 @@ describe("Knowledge Review Regressions", () => {
   })
 
   it("uses distinct acknowledgement tokens when repository edits share a settings revision", async () => {
-    const store = new WorkspaceStore(tmpRoot)
+    const store = openStore(tmpRoot)
     const document = documentRecordSchema.parse({
       id: "8888888888888888",
       name: "token.pdf",

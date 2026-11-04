@@ -1,0 +1,49 @@
+name: Windows document engine
+
+# Installs the document engine (PaddleOCR-VL with llama.cpp; runners have no GPU, so llama.cpp
+# runs on the CPU) on a real Windows machine and reads a page with it. It takes a while, so it runs
+# only when a change touches the engine's install or its workers, and on request.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/windows-ocr.yml"
+      - "scripts/setup-paddle-vl-runtime.mjs"
+      - "scripts/model-download.mjs"
+      - "scripts/ocr-smoke.ts"
+      - "src/layout/**"
+      - "src/electron/paddle*.ts"
+      - "src/electron/offlineSubprocessEnvironment.ts"
+  workflow_dispatch:
+
+concurrency:
+  group: windows-ocr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  engine:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install the document engine, as the wizard does in the background
+        run: node scripts/setup-paddle-vl-runtime.mjs
+      - name: Read a page with it, through llama.cpp
+        run: node --import tsx scripts/ocr-smoke.ts
+        env:
+          OH_MY_PAPER_EXPECT_ACCELERATION: llamacpp
+      - name: Logs
+        if: always()
+        shell: powershell
+        run: |
+          foreach ($file in @("$env:USERPROFILE\.ohmypaper\paddle-vl-install.log")) {
+            if (Test-Path $file) { Write-Host "== $file"; Get-Content $file -Tail 120 -Encoding UTF8 }
+          }
+          Get-ChildItem "$env:USERPROFILE\.ohmypaper" -ErrorAction SilentlyContinue | Format-Table Name, Length, LastWriteTime

@@ -3,6 +3,7 @@ import { type JSX, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useTranslator } from "../lib/locale"
 import type { PdfRetrievalRuntime } from "../lib/pdfRetrievalRuntime"
 import { rankPdfPassages } from "../lib/pdfSearch"
+import { APPLE_KEYBOARD } from "../lib/platform"
 import { readerMessages } from "../messages/reader"
 
 /** ⇧⌘F or Ctrl+Shift+F opens the related-passage search; plain ⌘F is the text find. */
@@ -145,7 +146,7 @@ export function DocumentRetrievalSwitcher({
           <span className="document-retrieval-count" role="status" aria-live="polite">
             {query.trim() ? t("search.count", { count: results.length }) : t("search.whole")}
           </span>
-          <kbd>⇧⌘F</kbd>
+          <kbd>{APPLE_KEYBOARD ? "⇧⌘F" : "Ctrl+Shift+F"}</kbd>
           <button type="button" aria-label={t("search.close")} onClick={() => close(true)}>
             <X size={17} />
           </button>
