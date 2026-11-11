@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { BoardTextSelection } from "../../src/renderer/lib/boardSelection"
-import { addSelectionContext } from "../../src/renderer/lib/selectionContext"
+import { addSelectionContext, locateQuote } from "../../src/renderer/lib/selectionContext"
 
 type Box = {
   readonly left: number
@@ -49,6 +49,29 @@ describe("selection context", () => {
 
     expect(contextual.context.before).toBe("Before ")
     expect(contextual.context.after).toBe(" after")
+  })
+
+  it("keeps the context when the selection joins lines without a space", () => {
+    const page = document.createElement("article")
+    const layer = document.createElement("div")
+    layer.className = "textLayer"
+    layer.innerHTML =
+      "<span>Some graphs carry several relation types.</span><span>In these cases, the edge</span><span>notation is extended.</span>"
+    page.append(layer)
+
+    const contextual = addSelectionContext(
+      { ...selection, quote: "In these cases, the edgenotation is extended." },
+      page,
+    )
+
+    expect(contextual.context.before).toBe("Some graphs carry several relation types. ")
+  })
+
+  it("matches ligatures and soft hyphens in the text layer", () => {
+    expect(locateQuote("the \uFB01rst re\u00ADlation here", "first relation")).toEqual({
+      start: 4,
+      end: 18,
+    })
   })
 
   it("adds the complete section when the selected quote is an unnumbered heading", () => {
