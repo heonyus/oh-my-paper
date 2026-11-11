@@ -17,6 +17,7 @@ import type { BoardTextSelection } from "../lib/boardSelection"
 import { boardSelectionOf } from "../lib/boardSelectionSource"
 import { parsedCardResponse, parsedTranslationResponse } from "../lib/cardPresentation"
 import { useLocale, useTranslator } from "../lib/locale"
+import { paperContextForQuestion } from "../lib/pdfSearch"
 import { useSelectionShortcuts } from "../lib/selectionActions"
 import { selectionAiRequest } from "../lib/selectionAiRequest"
 import { worldRectToScreen } from "../lib/selectionGeometry"
@@ -249,7 +250,11 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
     if (kind === "note") setCreatedMemoId(card.id)
     setSelectionMenu(null)
     window.getSelection()?.removeAllRanges()
-    const request = selectionAiRequest(kind, selectionMenu)
+    const related =
+      kind === "explanation" || kind === "infographic"
+        ? paperContextForQuestion(selectionMenu.quote, selectionMenu.page)
+        : ""
+    const request = selectionAiRequest(kind, selectionMenu, related)
     if (request) {
       void props
         .onAiRequest(request, (delta) => {

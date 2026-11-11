@@ -54,3 +54,21 @@ describe("selection AI request", () => {
     expect(request).toBeNull()
   })
 })
+
+describe("selection AI request with related passages", () => {
+  it("sends passages from the rest of the document with an explanation", () => {
+    const request = selectionAiRequest(
+      "explanation",
+      selection,
+      "Page 3: A is the adjacency matrix",
+    )
+
+    expect(request?.paperContext).toContain("Page 3: A is the adjacency matrix")
+  })
+
+  it("leaves a translation without them", () => {
+    const request = selectionAiRequest("translation", selection, "Page 3: unrelated")
+
+    expect(request).not.toHaveProperty("paperContext")
+  })
+})
