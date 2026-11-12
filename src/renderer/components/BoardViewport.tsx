@@ -54,7 +54,10 @@ type TranslationHover = {
 
 type BoardWorldStyle = CSSProperties & { readonly "--board-zoom": number }
 
-/** Cards counter-scale their text by `--board-zoom` so it reads at the same size as the sidebar. */
+/**
+ * Cards counter-scale their text by `--board-zoom` so it reads at the same size as the sidebar,
+ * until the board is zoomed out past the floor board-card.css sets.
+ */
 function boardWorldStyle(viewport: {
   readonly x: number
   readonly y: number

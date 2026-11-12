@@ -1,16 +1,21 @@
 /* The board world scales with the PDF zoom, so text tokens inside a card are divided back
-   by `--board-zoom`: card text then reads at the same size as the sidebar at any zoom. */
+   by the zoom: card text then reads at the same size as the sidebar while the paper is at a
+   reading size. A card itself still shrinks with the board, so the further the board was zoomed
+   out the fewer letters fitted on a line, down to three or four in a card a third its width.
+   Below `--board-text-floor` the text stops being held up and shrinks with its card instead. */
 .board-world {
   --board-type-title-size: var(--type-title-size);
   --board-type-body-size: var(--type-body-size);
   --board-type-compact-size: var(--type-compact-size);
   --board-type-toolbar-size: var(--type-toolbar-size);
+  --board-text-floor: 0.8;
+  --board-text-zoom: max(var(--board-zoom, 1), var(--board-text-floor));
 }
 .board-card {
-  --type-title-size: calc(var(--board-type-title-size) / var(--board-zoom, 1));
-  --type-body-size: calc(var(--board-type-body-size) / var(--board-zoom, 1));
-  --type-compact-size: calc(var(--board-type-compact-size) / var(--board-zoom, 1));
-  --type-toolbar-size: calc(var(--board-type-toolbar-size) / var(--board-zoom, 1));
+  --type-title-size: calc(var(--board-type-title-size) / var(--board-text-zoom, 1));
+  --type-body-size: calc(var(--board-type-body-size) / var(--board-text-zoom, 1));
+  --type-compact-size: calc(var(--board-type-compact-size) / var(--board-text-zoom, 1));
+  --type-toolbar-size: calc(var(--board-type-toolbar-size) / var(--board-text-zoom, 1));
   position: absolute;
   z-index: 4;
   width: 300px;
@@ -169,7 +174,7 @@
 }
 /* The shared h2 rule subtracts 2px from the title size; that step shrinks with the zoom too. */
 .board-card .markdown-content h2 {
-  font-size: calc(var(--type-title-size) - 2px / var(--board-zoom, 1));
+  font-size: calc(var(--type-title-size) - 2px / var(--board-text-zoom, 1));
 }
 .card-markdown {
   min-height: 22px;
