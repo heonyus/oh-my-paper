@@ -113,7 +113,10 @@ export function MemoEditor({
   }, [editor, markdown])
 
   useEffect(() => {
-    if (editor && (autoFocus || focusRequest > 0)) editor.commands.focus("end")
+    // A memo sits on a board that moves under a transform; scrolling it into view would shove
+    // the page aside instead.
+    if (editor && (autoFocus || focusRequest > 0))
+      editor.commands.focus("end", { scrollIntoView: false })
   }, [editor, autoFocus, focusRequest])
 
   useEffect(() => flush, [flush])

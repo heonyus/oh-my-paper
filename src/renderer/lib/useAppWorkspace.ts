@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { DocumentOcrProviderStatus } from "../../shared/documentOcr"
 import type { PreparationUpdate, ProviderStatus } from "../../shared/ipc"
 import type { KnowledgeNodeId } from "../../shared/knowledgeSchemas"
@@ -23,6 +23,7 @@ import { usePaperAiRequest } from "./usePaperAiRequest"
 import { useReaderLearning } from "./useReaderLearning"
 import { useWorkspaceHistory } from "./useWorkspaceHistory"
 import { useWorkspacePersistence } from "./useWorkspacePersistence"
+import { rememberWindowDocument, windowDocument } from "./windowView"
 
 export function useAppWorkspace() {
   const history = useWorkspaceHistory()
@@ -55,6 +56,25 @@ export function useAppWorkspace() {
   const [credentialsChecked, setCredentialsChecked] = useState(false)
   const [bootstrapError, setBootstrapError] = useState<string | null>(null)
   const activeId = history.workspace?.activeDocumentId ?? null
+  // The paper open in this window is its own: after a reload it comes back, even when another
+  // window has opened a different paper since.
+  const loaded = history.workspace !== null
+  const windowDocumentRestored = useRef(false)
+  useEffect(() => {
+    if (!loaded) return
+    if (!windowDocumentRestored.current) {
+      windowDocumentRestored.current = true
+      const mine = windowDocument()
+      if (mine !== null && mine !== activeId) {
+        history.setWorkspaceTransient((current) => {
+          const document = current?.documents.find((item) => item.id === mine)
+          return current && document ? { ...current, activeDocumentId: document.id } : current
+        })
+        return
+      }
+    }
+    rememberWindowDocument(activeId)
+  }, [loaded, activeId, history.setWorkspaceTransient])
   // Background analysis follows the reader: this paper first, the pages ahead of this one next.
   useEffect(() => {
     if (!activeId) return

@@ -4,6 +4,9 @@ const ko = {
   // Reader toolbar
   "topbar.documentPicker": "읽는 논문",
   "topbar.noDocument": "열린 논문 없음",
+  "tabs.label": "열린 논문",
+  "tabs.close": "{title} 탭 닫기",
+  "tabs.open": "다른 논문 열기",
   "topbar.tools": "논문 읽기 도구",
   "topbar.select": "선택 도구",
   "topbar.pan": "이동 도구",
@@ -32,6 +35,9 @@ const ko = {
 const en: Readonly<Record<keyof typeof ko, string>> = {
   "topbar.documentPicker": "Paper",
   "topbar.noDocument": "No paper open",
+  "tabs.label": "Open papers",
+  "tabs.close": "Close the {title} tab",
+  "tabs.open": "Open another paper",
   "topbar.tools": "Reading tools",
   "topbar.select": "Select tool",
   "topbar.pan": "Pan tool",

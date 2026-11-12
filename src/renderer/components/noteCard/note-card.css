@@ -1,4 +1,4 @@
-/* The note card: a small sheet of note paper that floats over any screen until it is added. */
+/* The note card: a small sheet of note paper that floats over a screen with no paper open. */
 .note-card,
 .note-card-saved {
   position: fixed;
@@ -6,23 +6,10 @@
   bottom: 24px;
   z-index: 50;
 }
-/* On a paper the card is pinned to the board and moves with the pages. */
-.note-card[data-placement="board"] {
-  position: absolute;
-  right: auto;
-  bottom: auto;
-  z-index: 6;
-  max-height: none;
-}
 /* A card placed at the pointer floats there instead of in the corner. */
 .note-card[data-placement="point"] {
   right: auto;
   bottom: auto;
-}
-/* While it follows the pointer it is faint and lets clicks through; a click puts it down. */
-.note-card[data-following="true"] {
-  opacity: 0.5;
-  pointer-events: none;
 }
 .note-card[data-minimized="true"] > :not(.note-card-head) {
   display: none;
@@ -31,7 +18,7 @@
   pointer-events: auto;
   transition: opacity 120ms ease;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   width: min(360px, calc(100vw - 32px));
   max-height: calc(100vh - 32px);
   border: 1px solid color-mix(in srgb, var(--warning) 22%, var(--line));
@@ -85,7 +72,7 @@
   font-size: var(--type-body-size);
   line-height: 1.6;
 }
-.note-card-input .memo-prose {
+.note-card-input .memo-editor .memo-prose {
   min-height: 116px;
   font-size: inherit;
   line-height: inherit;
@@ -95,32 +82,6 @@
   padding: 0 var(--space-3) var(--space-2);
   color: var(--error);
   font-size: var(--type-compact-size);
-}
-.note-card-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
-}
-.note-card-keys {
-  display: inline-flex;
-  gap: var(--space-1);
-}
-.note-card-keys kbd {
-  min-width: 22px;
-  padding: 1px 6px;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  background: var(--surface);
-  color: var(--ink-muted);
-  font: inherit;
-  font-size: var(--type-compact-size);
-  text-align: center;
-}
-.note-card-foot .primary-action:disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 .note-card-saved {
   display: flex;
