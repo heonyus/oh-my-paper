@@ -25,6 +25,7 @@ export const initialOcrProviderStatus: DocumentOcrProviderStatus = {
 export function useAppBootstrap({
   preparation,
   resetWorkspace,
+  onWorkspaceRead,
   setPreparation,
   setProvider,
   setOcrStatus,
@@ -33,6 +34,8 @@ export function useAppBootstrap({
 }: {
   readonly preparation: readonly PreparationUpdate[]
   readonly resetWorkspace: (workspace: Workspace) => void
+  /** Given the workspace exactly as the backend returned it, before it is tidied for the screen. */
+  readonly onWorkspaceRead?: ((stored: Workspace) => void) | undefined
   readonly setPreparation: Dispatch<SetStateAction<PreparationUpdate[]>>
   readonly setProvider: Dispatch<SetStateAction<ProviderStatus>>
   readonly setOcrStatus: Dispatch<SetStateAction<DocumentOcrProviderStatus>>
@@ -54,10 +57,12 @@ export function useAppBootstrap({
   useEffect(() => {
     void window.ohmypaper
       .readWorkspace()
-      .then(normalizeWorkspaceTranslations)
-      // Only at start: a reload during a session may meet a card still being generated.
-      .then(settleInterruptedCards)
-      .then(resetWorkspace)
+      .then((stored) => {
+        onWorkspaceRead?.(stored)
+        // Settling only at start: a reload during a session may meet a card still being
+        // generated.
+        resetWorkspace(settleInterruptedCards(normalizeWorkspaceTranslations(stored)))
+      })
       .catch(report)
     void Promise.all([
       window.ohmypaper.providerStatus().then(setProvider),
@@ -68,7 +73,15 @@ export function useAppBootstrap({
     return window.ohmypaper.onPreparation((update) => {
       setPreparation((current) => [...current.filter((item) => item.step !== update.step), update])
     })
-  }, [resetWorkspace, setCredentialsChecked, setOcrStatus, setPreparation, setProvider, report])
+  }, [
+    resetWorkspace,
+    onWorkspaceRead,
+    setCredentialsChecked,
+    setOcrStatus,
+    setPreparation,
+    setProvider,
+    report,
+  ])
 
   useEffect(() => {
     const complete =

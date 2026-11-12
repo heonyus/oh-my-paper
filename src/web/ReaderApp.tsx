@@ -5,7 +5,11 @@ import { Topbar } from "../renderer/components/AppChrome"
 import { AppStatusOverlays } from "../renderer/components/AppStatusOverlays"
 import { LibraryHome } from "../renderer/components/LibraryHome"
 import { NoteCardOverlays } from "../renderer/components/noteCard/NoteCardOverlays"
-import { ReaderWorkspace, warmReader } from "../renderer/components/ReaderWorkspaceLoader"
+import {
+  ReaderWorkspace,
+  startReaderAhead,
+  warmReader,
+} from "../renderer/components/ReaderWorkspaceLoader"
 import { useLocale, useTranslator } from "../renderer/lib/locale"
 import { noteCardTarget } from "../renderer/lib/noteCard"
 import { prefetchWhenIdle } from "../renderer/lib/prefetchWhenIdle"
@@ -72,6 +76,7 @@ export function ReaderApp(): JSX.Element {
   // 설정 opens at once: its code is fetched while the app is idle, not on the first click.
   useEffect(() => prefetchWhenIdle(loadSettingsDialog), [])
   // So does the first paper: the reader and its PDF worker are ready before it is chosen.
+  useState(startReaderAhead)
   useEffect(() => prefetchWhenIdle(warmReader), [])
 
   useEffect(() => {
@@ -338,6 +343,7 @@ export function ReaderApp(): JSX.Element {
             />
             <Suspense fallback={<p role="status">{t("shell.openingPaper")}</p>}>
               <ReaderWorkspace
+                fallback={<p role="status">{t("shell.openingPaper")}</p>}
                 key={app.activeDocument?.id ?? "empty"}
                 document={app.activeDocument}
                 workspace={workspace}

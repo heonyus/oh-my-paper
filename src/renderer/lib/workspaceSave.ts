@@ -47,7 +47,10 @@ export async function saveWorkspaceChanges(
       throw error
     }
   }
-  const result = await savePatch({ baseSnapshotToken: token, patch: diffWorkspace(baseline, next) })
+  const patch = diffWorkspace(baseline, next)
+  // Nothing changed since the backend acknowledged it: there is nothing to send.
+  if (Object.keys(patch).length === 0) return next
+  const result = await savePatch({ baseSnapshotToken: token, patch })
   switch (result.status) {
     case "saved":
       try {

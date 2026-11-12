@@ -4,6 +4,7 @@ import { type RefObject, useEffect, useMemo, useRef, useState } from "react"
 import { readerMessages } from "../messages/reader"
 import type { DocumentRecord } from "../types"
 import { BoardPdfViewer } from "./boardPdfViewer"
+import { takeDocumentBytes } from "./documentBytesPrefetch"
 import { clearParsedDocumentPages } from "./documentPageRuntime"
 import { useTranslator } from "./locale"
 import { yieldToMain } from "./mainThread"
@@ -180,8 +181,7 @@ export function usePdfViewerLifecycle({
     overlayRefreshRef.current = bridge.scheduleOverlayRefresh
 
     const download = new AbortController()
-    void window.ohmypaper
-      .readDocument(resourceDocument.id, download.signal)
+    void takeDocumentBytes(resourceDocument.id, download.signal)
       .then(async (bytes) => {
         // Page canvases on the GPU: without this PDF.js makes them software canvases
         // (`willReadFrequently`), and every frame of a pan or zoom re-uploaded each visible
