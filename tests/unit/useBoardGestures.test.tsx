@@ -246,6 +246,65 @@ describe("board pan gestures", () => {
     expect(overCard.defaultPrevented).toBe(true)
   })
 
+  it("keeps later swipes with the board when a card slid under a still pointer", async () => {
+    vi.useFakeTimers()
+    render(<Harness />)
+    const board = screen.getByTestId("board")
+    const body = scrollableCard(board, 0)
+    const wheelAt = (target: HTMLElement, clientX: number): boolean => {
+      const event = new WheelEvent("wheel", {
+        deltaY: 40,
+        clientX,
+        clientY: 300,
+        bubbles: true,
+        cancelable: true,
+      })
+      target.dispatchEvent(event)
+      return event.defaultPrevented
+    }
+
+    expect(wheelAt(board, 500)).toBe(true)
+    // The swipe is long over; the next one starts on the card the board carried there.
+    await act(async () => vi.advanceTimersByTimeAsync(400))
+    expect(wheelAt(body, 500)).toBe(true)
+    await act(async () => vi.advanceTimersByTimeAsync(400))
+    // A mouse wheel nudges the pointer a pixel or two as it turns.
+    expect(wheelAt(body, 502)).toBe(true)
+
+    // Moving the pointer onto the card hands it the wheel.
+    await act(async () => vi.advanceTimersByTimeAsync(400))
+    expect(wheelAt(body, 540)).toBe(false)
+  })
+
+  it("lets a card under a still pointer scroll once it is pressed", async () => {
+    vi.useFakeTimers()
+    Object.defineProperty(window, "PointerEvent", { value: MouseEvent, configurable: true })
+    render(<Harness />)
+    const board = screen.getByTestId("board")
+    const body = scrollableCard(board, 0)
+    const at = { clientX: 500, clientY: 300 }
+
+    fireEvent.wheel(board, { deltaY: 40, ...at })
+    await act(async () => vi.advanceTimersByTimeAsync(400))
+    fireEvent.pointerDown(body, { button: 0, pointerId: 1, ...at })
+    fireEvent.pointerUp(body, { pointerId: 1, ...at })
+
+    expect(fireEvent.wheel(body, { deltaY: 40, ...at })).toBe(true)
+  })
+
+  it("keeps scrolling the card the pointer is on after its text ran into the board", async () => {
+    vi.useFakeTimers()
+    render(<Harness />)
+    const board = screen.getByTestId("board")
+    const body = scrollableCard(board, 400)
+    const at = { clientX: 500, clientY: 300 }
+
+    // Nothing left below, so the board moves; back up, the card still has its text to show.
+    expect(fireEvent.wheel(body, { deltaY: 40, ...at })).toBe(false)
+    await act(async () => vi.advanceTimersByTimeAsync(400))
+    expect(fireEvent.wheel(body, { deltaY: -40, ...at })).toBe(true)
+  })
+
   it("preserves native text selection when the pointerup was not a pan", () => {
     render(<Harness />)
     const page = screen.getByTestId("page")
