@@ -28,6 +28,12 @@
   background: var(--surface);
   box-shadow: 0 2px 10px rgb(25 35 45 / 8%);
   pointer-events: auto;
+  /* A paper keeps dozens of cards and shows a few. One out of view is not styled, laid out or
+     painted until it comes near, and keeps the height it last had so nothing jumps when it
+     does. PDF.js adds a page's fonts to the document as it draws the page, and each time the
+     browser lays out every piece of text there is: this keeps that to the cards in view. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 300px auto 240px;
 }
 .board-card[data-minimized="true"] {
   min-height: 0;

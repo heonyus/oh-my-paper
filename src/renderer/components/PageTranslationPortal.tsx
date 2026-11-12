@@ -9,10 +9,39 @@ import {
   usePageTranslationSession,
 } from "../lib/pageTranslationToggle"
 import type { CitationIndexEntry } from "../lib/pdfCitationIndex"
+import { usePaperShown } from "../lib/usePaperShown"
 import type { AiRequestRunner, DocumentRecord } from "../types"
 import { PageTranslationPane } from "./PageTranslationPane"
 
 export const autoOpenDelayMs = 700
+
+/** Pages either side of the one being read whose translations are built ahead of the reader. */
+const PAGES_AHEAD = 1
+
+/**
+ * The open translations to build now. A paper remembers every page whose translation was left
+ * open, and reopening it used to build all of them at once: each one parsed its page, drew
+ * the page a second time and fitted its text, before the page being read had been drawn. A
+ * paper read through with translation on took seconds to come back. Translations are now built
+ * once the paper is showing, for the page being read and the pages beside it; one that has
+ * been built stays, so a translation in progress is not cut off when the reader moves on.
+ */
+export function useTranslationsToBuild(
+  openPages: readonly number[],
+  currentPage: number,
+): readonly number[] {
+  const paperShown = usePaperShown()
+  const [built, setBuilt] = useState<ReadonlySet<number>>(new Set())
+  const near = (page: number): boolean => Math.abs(page - currentPage) <= PAGES_AHEAD
+  const building = paperShown ? openPages.filter((page) => built.has(page) || near(page)) : []
+  const added = building.filter((page) => !built.has(page))
+  const addedKey = added.join(",")
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `added` is new on every render; its pages are what matter
+  useEffect(() => {
+    if (added.length > 0) setBuilt((current) => new Set([...current, ...added]))
+  }, [addedKey])
+  return building
+}
 
 export function visibleResearchSidebarWidth(
   flyout: string | undefined,
@@ -85,7 +114,10 @@ export function PageTranslationPortal({
     return () => window.clearTimeout(timer)
   }, [currentPage, document.id, translation.auto, translation.documentId])
 
-  const openPages = translation.documentId === document.id ? translation.openPages : []
+  const openPages = useTranslationsToBuild(
+    translation.documentId === document.id ? translation.openPages : [],
+    currentPage,
+  )
 
   return portalRoot
     ? createPortal(
