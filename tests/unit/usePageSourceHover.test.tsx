@@ -40,7 +40,7 @@ describe("hovering English source text", () => {
     vi.unstubAllGlobals()
   })
 
-  it("highlights the matching translation and its whole source block", () => {
+  it("highlights the matching translation and only the sentence pointed at", () => {
     const { first, second } = pdfPage()
     const { container } = render(<Pane page={3} />)
     const [translationOne, translationTwo] = container.querySelectorAll("article")
@@ -49,13 +49,33 @@ describe("hovering English source text", () => {
 
     expect(translationTwo).toHaveAttribute("data-source-hover", "true")
     expect(translationOne).not.toHaveAttribute("data-source-hover")
+    // The paragraph's other sentence, p3-b2, stays unlit.
     expect(second).toHaveAttribute("data-page-translation-active", "true")
-    expect(document.querySelectorAll('[data-page-translation-active="true"]')).toHaveLength(2)
+    expect(document.querySelectorAll('[data-page-translation-active="true"]')).toHaveLength(1)
 
     hover(first)
 
     expect(translationOne).toHaveAttribute("data-source-hover", "true")
     expect(translationTwo).not.toHaveAttribute("data-source-hover")
+    expect(second).not.toHaveAttribute("data-page-translation-active")
+  })
+
+  it("moves the light from sentence to sentence within one translated paragraph", () => {
+    const { second } = pdfPage()
+    const shared = document.querySelectorAll<HTMLElement>(".textLayer span")[1]
+    if (!shared) throw new Error("spans missing")
+    const { container } = render(<Pane page={3} />)
+    const translationTwo = container.querySelectorAll("article")[1]
+
+    hover(second)
+    expect(second).toHaveAttribute("data-page-translation-active", "true")
+
+    // The pointer is on the line that sentence p3-b2 shares with the paragraph before.
+    shared.setAttribute("data-page-translation-block", "p3-b2")
+    hover(shared)
+
+    expect(translationTwo).toHaveAttribute("data-source-hover", "true")
+    expect(shared).toHaveAttribute("data-page-translation-active", "true")
     expect(second).not.toHaveAttribute("data-page-translation-active")
   })
 

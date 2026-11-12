@@ -27,9 +27,14 @@ function revealWithin(container: HTMLElement, article: HTMLElement): void {
   container.scrollBy({ top: (rect.top - target) / (scale || 1), behavior: "smooth" })
 }
 
+function sameIds(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((id, index) => id === right[index])
+}
+
 /**
- * Hovering English text on the PDF page lights up that source block and its translation
- * in this page's pane — the reverse of hovering a translation block.
+ * Hovering English text on the PDF page lights up the sentence under the pointer and, in this
+ * page's pane, the translation it belongs to: the reverse of hovering a translation block,
+ * which lights up the whole of its source.
  */
 export function usePageSourceHover(
   pageNumber: number,
@@ -38,22 +43,24 @@ export function usePageSourceHover(
   useEffect(() => {
     let lastTarget: EventTarget | null = null
     let active: HTMLElement | null = null
+    let lit: readonly string[] = []
     let revealTimer: number | null = null
 
-    function activate(article: HTMLElement | null): void {
+    function activate(article: HTMLElement | null, ids: readonly string[]): void {
+      const sentences = article ? ids.filter((id) => blockIds(article).includes(id)) : []
+      if (article === active && sameIds(sentences, lit)) return
+      // Moving straight onto the same translation keeps the highlight it sets itself.
+      if (!active?.matches(":hover"))
+        for (const id of lit) setPageSourceActive(pageNumber, id, false)
+      lit = sentences
+      for (const id of lit) setPageSourceActive(pageNumber, id, true)
       if (article === active) return
       if (revealTimer !== null) window.clearTimeout(revealTimer)
       revealTimer = null
-      if (active) {
-        active.removeAttribute("data-source-hover")
-        // Moving straight onto the same translation keeps the highlight it sets itself.
-        if (!active.matches(":hover"))
-          for (const id of blockIds(active)) setPageSourceActive(pageNumber, id, false)
-      }
+      active?.removeAttribute("data-source-hover")
       active = article
       if (!article) return
       article.setAttribute("data-source-hover", "true")
-      for (const id of blockIds(article)) setPageSourceActive(pageNumber, id, true)
       revealTimer = window.setTimeout(() => {
         revealTimer = null
         if (bodyRef.current && article.isConnected) revealWithin(bodyRef.current, article)
@@ -62,11 +69,16 @@ export function usePageSourceHover(
 
     function onPointerMove(event: PointerEvent): void {
       const target = event.target
-      // A mapped span always resolves to the same blocks; bounds need a fresh hit-test.
+      const span =
+        target instanceof Element
+          ? target.closest<HTMLElement>("[data-page-translation-block]")
+          : null
+      // A span of one sentence always resolves to it; one shared by sentences, and a bound,
+      // depend on where in it the pointer is.
       if (
         target === lastTarget &&
-        target instanceof Element &&
-        target.closest("[data-page-translation-block]")
+        span &&
+        !span.getAttribute("data-page-translation-block")?.includes(",")
       )
         return
       lastTarget = target
@@ -81,13 +93,13 @@ export function usePageSourceHover(
               blockIds(candidate).some((id) => ids.includes(id)),
             ) ?? null)
           : null
-      activate(article)
+      activate(article, ids)
     }
 
     document.addEventListener("pointermove", onPointerMove, { passive: true })
     return () => {
       document.removeEventListener("pointermove", onPointerMove)
-      activate(null)
+      activate(null, [])
     }
   }, [pageNumber, bodyRef])
 }
