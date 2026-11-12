@@ -1,10 +1,20 @@
 import { Placeholder } from "@tiptap/extensions"
-import { Markdown } from "@tiptap/markdown"
-import { EditorContent, useEditor } from "@tiptap/react"
-import StarterKit from "@tiptap/starter-kit"
+import { type Editor, EditorContent, useEditor } from "@tiptap/react"
 import { type JSX, useCallback, useEffect, useRef } from "react"
-import { MathNode } from "./readerNote/mathNode"
+import { memoContentExtensions } from "./memoPreview"
 import { noteMarkdown } from "./readerNote/noteMarkdown"
+
+/** A point on screen, in client coordinates. */
+export type MemoFocusPoint = { readonly x: number; readonly y: number }
+
+/** The document position drawn at `point`, or null where the page cannot be asked. */
+function positionUnder(editor: Editor, point: MemoFocusPoint): number | null {
+  try {
+    return editor.view.posAtCoords({ left: point.x, top: point.y })?.pos ?? null
+  } catch {
+    return null
+  }
+}
 
 /** Typing settles into the card after a short pause instead of on every keystroke. */
 const SAVE_DELAY_MS = 400
@@ -21,6 +31,7 @@ export function MemoEditor({
   ariaLabel,
   autoFocus = false,
   focusRequest = 0,
+  focusAt,
   maxLength,
   onSubmit,
   onEscape,
@@ -32,6 +43,8 @@ export function MemoEditor({
   readonly autoFocus?: boolean | undefined
   /** Each change moves the caret to the end of the memo. */
   readonly focusRequest?: number | undefined
+  /** Opens with the caret at the text under this point, as a click there would leave it. */
+  readonly focusAt?: MemoFocusPoint | undefined
   readonly maxLength?: number | undefined
   /** Ctrl/⌘+Enter. */
   readonly onSubmit?: ((markdown: string) => void) | undefined
@@ -54,10 +67,8 @@ export function MemoEditor({
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] }, link: { openOnClick: false } }),
+      ...memoContentExtensions(),
       Placeholder.configure({ placeholder: () => placeholder }),
-      Markdown,
-      MathNode,
     ],
     content: markdown,
     contentType: "markdown",
@@ -115,6 +126,14 @@ export function MemoEditor({
   useEffect(() => {
     if (editor && (autoFocus || focusRequest > 0)) editor.commands.focus("end")
   }, [editor, autoFocus, focusRequest])
+
+  const openedAt = useRef(focusAt)
+  useEffect(() => {
+    const point = openedAt.current
+    if (!editor || !point) return
+    openedAt.current = undefined
+    editor.commands.focus(positionUnder(editor, point) ?? "end")
+  }, [editor])
 
   useEffect(() => flush, [flush])
 

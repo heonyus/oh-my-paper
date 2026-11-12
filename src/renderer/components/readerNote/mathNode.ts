@@ -21,6 +21,17 @@ function renderInto(element: HTMLElement, latex: string, display: boolean): void
 }
 
 /**
+ * Typesets a formula element this node wrote as HTML (`renderHTML`), the way its node view
+ * shows it in an editor, for places that draw a note's content without one.
+ */
+export function typesetMathElement(element: HTMLElement): void {
+  const latex = latexOf(element.getAttribute("data-latex"))
+  const display = element.getAttribute("data-display") === "true"
+  element.title = mathSource(latex, display)
+  renderInto(element, latex, display)
+}
+
+/**
  * A formula written as `$…$` or `$$…$$`, shown typeset. Typing the closing `$` turns the text
  * into one; a double click turns it back into text to edit. Saved as the same `$…$`.
  */

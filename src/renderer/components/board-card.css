@@ -263,6 +263,26 @@
   font-size: var(--type-body-size);
   line-height: 1.55;
 }
+/* A memo before it is clicked: plain elements laid out as the editor lays its own out. */
+.memo-preview {
+  position: relative;
+  overflow-wrap: break-word;
+  white-space: break-spaces;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0;
+  cursor: text;
+}
+.memo-preview .note-math {
+  white-space: normal;
+}
+/* The editor's own stylesheet, which gives these rules, is only added once an editor exists. */
+.memo-preview img.ProseMirror-separator {
+  display: inline;
+  width: 0;
+  height: 0;
+  margin: 0;
+  border: none;
+}
 .board-card[data-kind="sticky"] .memo-prose {
   min-height: 150px;
 }
