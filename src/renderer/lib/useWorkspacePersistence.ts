@@ -4,6 +4,17 @@ import { mergeWorkspaceForSave } from "../../shared/workspaceMerge"
 import type { WorkspaceSetter } from "./useWorkspaceHistory"
 import { saveWorkspaceChanges } from "./workspaceSave"
 
+/** `workspace` with this window's own paper open, when that paper is still in it. */
+export function withWindowDocument(
+  workspace: Workspace,
+  documentId: Workspace["activeDocumentId"],
+): Workspace {
+  if (workspace.activeDocumentId === documentId) return workspace
+  if (documentId !== null && !workspace.documents.some((item) => item.id === documentId))
+    return workspace
+  return { ...workspace, activeDocumentId: documentId }
+}
+
 /**
  * Keeps the workspace saved, and reports why the latest save failed while one does: the reason
  * is shown with the failure so it can be read off the screen rather than dug out of a console.
@@ -29,8 +40,11 @@ export function useWorkspacePersistence(
       while (latest.current && latest.current !== saved.current) {
         const next = latest.current
         try {
-          const acknowledged = await saveWorkspaceChanges(baseline.current, next)
-          baseline.current = acknowledged
+          const stored = await saveWorkspaceChanges(baseline.current, next)
+          baseline.current = stored
+          // Which paper is open belongs to this window: the paper another window opened comes
+          // back with the save and must not replace the one being read here.
+          const acknowledged = withWindowDocument(stored, next.activeDocumentId)
           const pending = latest.current ?? next
           const merged =
             pending === next ? acknowledged : mergeWorkspaceForSave(next, acknowledged, pending)

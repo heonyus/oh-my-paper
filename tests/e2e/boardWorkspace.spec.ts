@@ -433,18 +433,26 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
         .toBeGreaterThan(beforeResize.width)
     }
     await expect(explanationCard.getByLabel("카드에 후속 질문")).toBeVisible()
-    // A note card opens with N over the paper and goes into this page's note.
+    // N over the paper leaves a memo on the board, written in place; leaving it needs no save,
+    // and what was written joins this page's note.
     await expect(page.getByRole("button", { name: "포스트잇 모드" })).toHaveCount(0)
     await page.locator(".board-viewport").click({ position: { x: 620, y: 720 } })
     await page.keyboard.press("n")
-    const noteCard = page.getByRole("region", { name: "노트 카드" })
-    await noteCard.getByRole("textbox", { name: "노트 카드 내용" }).fill("검토 메모")
-    await page.keyboard.press("Meta+Enter")
-    await expect(noteCard).toHaveCount(0)
-    await page.getByRole("button", { name: "열기", exact: true }).click()
-    const readerNote = page.getByRole("region", { name: "내 노트" })
-    await expect(readerNote.getByText("검토 메모")).toBeVisible()
-    await readerNote.getByRole("button", { name: "노트 닫기" }).click()
+    await expect(page.getByRole("region", { name: "노트 카드" })).toHaveCount(0)
+    const memo = page.locator('.board-card[data-kind="sticky"]').last()
+    await memo.getByRole("textbox", { name: "포스트잇 내용" }).fill("**검토** 메모")
+    await expect(memo.locator("strong", { hasText: "검토" })).toBeVisible()
+    await page.locator(".board-viewport").click({ position: { x: 40, y: 40 } })
+    await expect(memo).toContainText("검토 메모")
+    await expect
+      .poll(async () =>
+        page.evaluate(async () =>
+          (await window.ohmypaper.readWorkspace()).readerNotes
+            .map((note) => note.markdown)
+            .join("\n"),
+        ),
+      )
+      .toContain("**검토** 메모")
 
     await researchRail.hover()
     const resize = page.getByRole("separator", { name: "연구 사이드바 너비 조절" })

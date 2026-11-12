@@ -4,8 +4,10 @@ import {
   ListTree,
   LogOut,
   MousePointer2,
+  Plus,
   Redo2,
   Undo2,
+  X,
   ZoomIn,
   ZoomOut,
 } from "lucide-react"
@@ -16,6 +18,7 @@ import {
   toggleAutomaticPageTranslation,
   usePageTranslationSession,
 } from "../lib/pageTranslationToggle"
+import { useReaderTabs } from "../lib/useReaderTabs"
 import { zoomViewportAt } from "../lib/viewport"
 import { chromeMessages } from "../messages/chrome"
 import type { BoardTool, DocumentId, DocumentRecord, Viewport } from "../types"
@@ -58,6 +61,7 @@ export function Topbar({
 }: TopbarProps): JSX.Element {
   const t = useTranslator(chromeMessages)
   const pageTranslation = usePageTranslationSession()
+  const { tabs, close: closeTab } = useReaderTabs(documents, activeDocumentId, onDocumentChange)
   function changeZoom(delta: number): void {
     const board = document.querySelector<HTMLElement>(".board-viewport")
     const focalPoint = board
@@ -68,26 +72,62 @@ export function Topbar({
 
   return (
     <header className="topbar reader-toolbar">
-      <label className="reader-document-picker">
-        <span>{t("topbar.documentPicker")}</span>
-        <select
-          value={activeDocumentId ?? ""}
-          disabled={documents.length === 0}
-          onChange={(event) => {
-            const document = documents.find((item) => item.id === event.target.value)
-            if (document) onDocumentChange(document.id)
-          }}
-        >
-          <option value="" disabled>
-            {t("topbar.noDocument")}
-          </option>
-          {documents.map((document) => (
-            <option key={document.id} value={document.id}>
-              {document.title}
-            </option>
+      <div className="reader-tabs">
+        <div className="reader-tab-list" role="tablist" aria-label={t("tabs.label")}>
+          {tabs.map((document) => (
+            <div
+              key={document.id}
+              className="reader-tab"
+              role="presentation"
+              data-active={document.id === activeDocumentId}
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={document.id === activeDocumentId}
+                title={document.title}
+                onClick={() => {
+                  if (document.id !== activeDocumentId) onDocumentChange(document.id)
+                }}
+              >
+                {document.title}
+              </button>
+              {tabs.length > 1 ? (
+                <button
+                  type="button"
+                  className="reader-tab-close"
+                  aria-label={t("tabs.close", { title: document.title })}
+                  onClick={() => closeTab(document.id)}
+                >
+                  <X size={13} />
+                </button>
+              ) : null}
+            </div>
           ))}
-        </select>
-      </label>
+        </div>
+        {/* A native list of every paper under the plus: choosing one opens it as a tab. */}
+        <label className="reader-tab-add" title={t("tabs.open")}>
+          <Plus size={16} aria-hidden="true" />
+          <select
+            aria-label={t("topbar.documentPicker")}
+            value={activeDocumentId ?? ""}
+            disabled={documents.length === 0}
+            onChange={(event) => {
+              const document = documents.find((item) => item.id === event.target.value)
+              if (document) onDocumentChange(document.id)
+            }}
+          >
+            <option value="" disabled>
+              {t("topbar.noDocument")}
+            </option>
+            {documents.map((document) => (
+              <option key={document.id} value={document.id}>
+                {document.title}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       <fieldset
         className="reader-tools"
         disabled={!activeDocumentId}

@@ -8,13 +8,13 @@ import { LibraryWorkspace } from "./components/LibraryWorkspace"
 import { NoteCardOverlays } from "./components/noteCard/NoteCardOverlays"
 import { ResearchNavigation } from "./components/ResearchNavigation"
 import { WorkspaceSections } from "./components/WorkspaceSections"
-import { createPinnedNoteCard } from "./lib/board"
 import { useLocale } from "./lib/locale"
 import { noteCardTarget } from "./lib/noteCard"
 import { appShellStyle } from "./lib/uiFontScale"
 import { useAppWorkspace } from "./lib/useAppWorkspace"
 import { useCrossDocumentCardJump } from "./lib/useCrossDocumentCardJump"
 import { useNoteCard } from "./lib/useNoteCard"
+import { useQuickMemo } from "./lib/useQuickMemo"
 import { withCardExample } from "./lib/vocabulary"
 import type { DocumentId } from "./types"
 
@@ -97,17 +97,11 @@ export function App({
   const [dataExchangeOpen, setDataExchangeOpen] = useState(false)
   const [proposalOpen, setProposalOpen] = useState(false)
   const [looseNoteOpen, setLooseNoteOpen] = useState(false)
-  // A note card goes to the paper on screen; anywhere else, to the loose note.
+  // N over a paper leaves a memo on its board; anywhere else, a card for the loose note.
   const noteCard = useNoteCard(
     noteCardTarget(readerMode && !libraryView ? activeDocument : null, currentPage),
     app.appendToNote,
-    (target, text, at) => {
-      if (target.documentId !== app.activeDocument?.id) return
-      app.updateCards([
-        ...app.activeCards,
-        createPinnedNoteCard(target.documentId, target.page, at, text, locale),
-      ])
-    },
+    useQuickMemo(app, locale),
     Boolean(workspace) && provider.configured,
   )
 

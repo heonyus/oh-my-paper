@@ -1,6 +1,7 @@
 import { type JSX, useMemo, useRef } from "react"
 import { drawnOnPassage } from "../lib/board"
 import { conciseCardTitle } from "../lib/cardPresentation"
+import { isQuickMemo, settleQuickMemo } from "../lib/quickMemos"
 import type { AiDeltaHandler, BoardCard, CardId } from "../types"
 import { BoardCard as BoardCardView } from "./BoardCard"
 
@@ -94,6 +95,16 @@ export function BoardCardsLayer({
         if (active === id) setActive(null)
         commit(latest.current.getCards().filter((item) => item.id !== id))
       },
+      // A memo opened with N settles once the reader leaves it: empty, it is taken away again.
+      onLeave: (id: CardId): void => {
+        if (!isQuickMemo(id)) return
+        // After the editor's own blur has handed over its last words.
+        window.setTimeout(() => {
+          const memo = latest.current.getCards().find((item) => item.id === id)
+          if (!memo || settleQuickMemo(id, memo.body) !== "discard") return
+          latest.current.commitCards(latest.current.getCards().filter((item) => item.id !== id))
+        }, 0)
+      },
       onBodyChange: (id: CardId, body: string): void =>
         latest.current.commitCards(patched(id, (item) => ({ ...item, body }))),
       onMinimize: (id: CardId): void =>
@@ -136,7 +147,7 @@ export function BoardCardsLayer({
             key={card.id}
             card={card}
             active={card.id === activeId}
-            autoEdit={card.id === autoEditId}
+            autoEdit={card.id === autoEditId || isQuickMemo(card.id)}
             streaming={streamingCardIds.has(card.id)}
             zoom={zoom}
             {...handlers}

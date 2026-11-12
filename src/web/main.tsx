@@ -1,5 +1,6 @@
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
+import { preventHistorySwipe } from "../renderer/lib/historySwipe"
 import { type LanguagePreference, LocaleProvider } from "../renderer/lib/locale"
 import { markClassicScrollbars } from "../renderer/lib/platform"
 import { languageStatusSchema } from "../shared/i18n/locale"
@@ -38,6 +39,7 @@ const root = document.getElementById("root")
 if (!root) throw new Error("oh-my-paper web root is missing")
 const mount = root
 installLocalReaderApi()
+preventHistorySwipe()
 
 /**
  * The language picked in the terminal or in settings is kept with the app's data, so it wins over

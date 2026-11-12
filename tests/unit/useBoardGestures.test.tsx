@@ -171,6 +171,21 @@ describe("board pan gestures", () => {
     fireEvent.pointerUp(board, { pointerId: 1 })
   })
 
+  it("leaves a memo being written on the board when the board beside it is pressed", () => {
+    Object.defineProperty(window, "PointerEvent", { value: MouseEvent, configurable: true })
+    render(<Harness />)
+    const board = screen.getByTestId("board")
+    Object.defineProperty(board, "setPointerCapture", { value: vi.fn() })
+    const memo = document.createElement("textarea")
+    board.append(memo)
+    memo.focus()
+
+    fireEvent.pointerDown(board, { button: 0, pointerId: 1, clientX: 20, clientY: 30 })
+
+    expect(memo).not.toHaveFocus()
+    fireEvent.pointerUp(board, { pointerId: 1 })
+  })
+
   it("scrolls the board under a note left on it, and under a card with nothing to scroll", () => {
     render(<Harness />)
     const board = screen.getByTestId("board")

@@ -1,20 +1,17 @@
 import { Maximize2, Minus, NotebookPen, X } from "lucide-react"
 import { type JSX, useEffect, useRef, useState } from "react"
-import { createPortal } from "react-dom"
 import { useTranslator } from "../../lib/locale"
 import { NOTE_CARD_MAX_CHARACTERS, type NoteCardTarget } from "../../lib/noteCard"
-import { APPLE_KEYBOARD } from "../../lib/platform"
 import type { NoteCardState } from "../../lib/useNoteCard"
 import { noteMessages } from "../../messages/note"
 import { MemoEditor } from "../MemoEditor"
 import { useCardPlacement } from "./useCardPlacement"
 
-const SAVE_KEYS = APPLE_KEYBOARD ? ["⌘", "↵"] : ["Ctrl", "↵"]
-
 /**
- * The note card and the short confirmation after it is added to a note. On a paper the card is
- * pinned to the board where it opened and scrolls with the pages; elsewhere it floats on the
- * screen. It stays faint while the reader is elsewhere and comes forward when pressed.
+ * The floating note card and the short confirmation after it is added to a note. It opens where
+ * the pointer was, shows its Markdown as it is written, and keeps what was written when it is
+ * closed: the close button, `Esc` and `⌘↵` all add the text to the note. An empty card just
+ * closes. Over a paper `N` puts a memo on the board instead; see useNoteCard.
  */
 export function NoteCardLayer({
   state,
@@ -26,7 +23,7 @@ export function NoteCardLayer({
   const t = useTranslator(noteMessages)
   const card = useRef<HTMLElement>(null)
   const { openTarget, saved, focusRequest } = state
-  const position = useCardPlacement(openTarget !== null, openTarget?.kind === "paper", state.close)
+  const position = useCardPlacement(openTarget !== null)
   const [minimized, setMinimized] = useState(false)
 
   // Focus returns to where the reader was once the card closes.
@@ -44,8 +41,6 @@ export function NoteCardLayer({
       if (returnFocus.current?.isConnected) returnFocus.current.focus({ preventScroll: true })
     }
   }, [isOpen])
-  // A card kept from last time continues where its text ends, once it has its place.
-  const placed = position.placed
 
   if (!openTarget) {
     if (!saved) return null
@@ -69,17 +64,15 @@ export function NoteCardLayer({
     )
   }
 
-  if (!position.style && position.following) return null
   const destination =
     openTarget.kind === "paper"
       ? t("card.paperTarget", { page: openTarget.page, title: openTarget.title })
       : t("card.looseTarget")
-  const element = (
+  return (
     <section
       ref={card}
       className="note-card"
-      data-placement={position.world ? "board" : position.style ? "point" : "corner"}
-      data-following={position.following}
+      data-placement={position.style ? "point" : "corner"}
       data-minimized={minimized}
       aria-label={t("card.label")}
       style={position.style}
@@ -107,6 +100,7 @@ export function NoteCardLayer({
           type="button"
           className="note-card-close"
           aria-label={t("card.close")}
+          title={t("card.closeHint")}
           onClick={state.close}
         >
           <X size={15} />
@@ -119,8 +113,8 @@ export function NoteCardLayer({
           placeholder={t("card.placeholder")}
           ariaLabel={t("card.content")}
           maxLength={NOTE_CARD_MAX_CHARACTERS}
-          focusRequest={placed ? focusRequest : 0}
-          onSubmit={(text) => state.save(position.pin, text)}
+          focusRequest={position.placed ? focusRequest : 0}
+          onSubmit={state.close}
           onEscape={state.close}
         />
       </div>
@@ -129,14 +123,6 @@ export function NoteCardLayer({
           {t("card.full")}
         </p>
       ) : null}
-      <footer className="note-card-foot">
-        <span className="note-card-keys" aria-hidden="true">
-          {SAVE_KEYS.map((key) => (
-            <kbd key={key}>{key}</kbd>
-          ))}
-        </span>
-      </footer>
     </section>
   )
-  return position.world ? createPortal(element, position.world) : element
 }

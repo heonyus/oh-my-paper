@@ -218,6 +218,8 @@
   box-shadow: 0 3px 12px rgb(76 59 11 / 10%);
 }
 .board-card:is([data-kind="sticky"], [data-kind="note"]) .card-head {
+  display: flex;
+  gap: 2px;
   min-height: 26px;
   padding: 2px 6px 0 10px;
   border-bottom: 0;
@@ -226,10 +228,15 @@
 .board-card:is([data-kind="sticky"], [data-kind="note"]) .card-head > svg {
   display: none;
 }
+.board-card:is([data-kind="sticky"], [data-kind="note"]) .card-head strong {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .board-card:is([data-kind="sticky"], [data-kind="note"]):not([data-minimized="true"])
   .card-head
   strong {
   visibility: hidden;
+  height: 0;
 }
 .board-card:is([data-kind="sticky"], [data-kind="note"]) .card-head button {
   opacity: 0;
@@ -257,13 +264,14 @@
 .board-card:is([data-kind="sticky"], [data-kind="note"])[data-minimized="true"] {
   min-height: 0;
 }
-.memo-prose {
+/* Over .note-prose, which keeps a half-screen tail for the full note page. */
+.memo-editor .memo-prose {
   min-height: 72px;
   padding-bottom: 0;
   font-size: var(--type-body-size);
   line-height: 1.55;
 }
-.board-card[data-kind="sticky"] .memo-prose {
+.board-card[data-kind="sticky"] .memo-editor .memo-prose {
   min-height: 150px;
 }
 .memo-prose h1 {
