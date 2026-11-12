@@ -26,6 +26,37 @@ function scrollsTranslationText(event: WheelEvent): boolean {
     : body.scrollTop + body.clientHeight < body.scrollHeight - 1
 }
 
+/**
+ * Whether the wheel would scroll something inside a card: its body or a wide table or code block
+ * in it, with room left to go that way. A card with nothing to scroll leaves the wheel to the
+ * board, so a pan never stalls on it.
+ */
+export function scrollsWithinCard(event: WheelEvent, card: Element): boolean {
+  if (!(event.target instanceof Element)) return false
+  const vertical = Math.abs(event.deltaY) >= Math.abs(event.deltaX)
+  const delta = vertical ? event.deltaY : event.deltaX
+  if (delta === 0) return false
+  for (
+    let element: Element | null = event.target;
+    element && card.contains(element);
+    element = element.parentElement
+  ) {
+    if (!(element instanceof HTMLElement)) continue
+    const style = getComputedStyle(element)
+    const overflow = vertical ? style.overflowY : style.overflowX
+    if (overflow !== "auto" && overflow !== "scroll") continue
+    const room = vertical
+      ? delta < 0
+        ? element.scrollTop > 0
+        : element.scrollTop + element.clientHeight < element.scrollHeight - 1
+      : delta < 0
+        ? element.scrollLeft > 0
+        : element.scrollLeft + element.clientWidth < element.scrollWidth - 1
+    if (room) return true
+  }
+  return false
+}
+
 type UseBoardGesturesProps = {
   readonly wheelTargetRef: RefObject<HTMLElement | null>
   readonly viewport: Viewport
@@ -94,6 +125,9 @@ export function useBoardGestures({
   const wheelAxis = useRef<"x" | "y" | null>(null)
   const wheelAxisTimer = useRef<number | null>(null)
   const nativeWheelTimer = useRef<number | null>(null)
+  // Set while a wheel burst is moving the board, so a card or translation sliding under the
+  // cursor mid-swipe does not catch the rest of it.
+  const boardWheelTimer = useRef<number | null>(null)
   const pendingViewport = useRef(viewport)
   const wheelHandlerRef = useRef<(event: WheelEvent, target: HTMLElement) => void>(() => undefined)
   const [panning, setPanning] = useState(false)
@@ -123,6 +157,7 @@ export function useBoardGestures({
       if (wheelAxisTimer.current !== null) window.clearTimeout(wheelAxisTimer.current)
       if (wheelPanCommitTimer.current !== null) window.clearTimeout(wheelPanCommitTimer.current)
       if (nativeWheelTimer.current !== null) window.clearTimeout(nativeWheelTimer.current)
+      if (boardWheelTimer.current !== null) window.clearTimeout(boardWheelTimer.current)
     },
     [],
   )
@@ -132,6 +167,14 @@ export function useBoardGestures({
     if (nativeWheelTimer.current !== null) window.clearTimeout(nativeWheelTimer.current)
     nativeWheelTimer.current = window.setTimeout(() => {
       nativeWheelTimer.current = null
+    }, 160)
+  }
+
+  /** A burst that began moving the board stays with the board. */
+  function latchBoardWheel(): void {
+    if (boardWheelTimer.current !== null) window.clearTimeout(boardWheelTimer.current)
+    boardWheelTimer.current = window.setTimeout(() => {
+      boardWheelTimer.current = null
     }, 160)
   }
 
@@ -310,23 +353,26 @@ export function useBoardGestures({
 
   function handleWheel(rawEvent: WheelEvent, currentTarget: HTMLElement): void {
     const event = pixelWheel(rawEvent, currentTarget.clientHeight)
-    // Cards keep the wheel for their own scrolling text; a note left on the board does not.
-    if (
-      event.target instanceof Element &&
-      event.target.closest(".board-card:not([data-kind='sticky'])")
-    )
-      return
-    // A pan already under way keeps moving the board when a translation slides under the cursor.
+    // Cards scroll their own text; a note left on the board never does.
+    const card =
+      event.target instanceof Element
+        ? event.target.closest(".board-card:not([data-kind='sticky'])")
+        : null
+    // A pan already under way keeps moving the board when a card or translation slides under
+    // the cursor; a burst that started on scrolling text stays with that text.
+    const boardPanning = boardWheelTimer.current !== null || wheelPanActive.current
     if (
       !event.ctrlKey &&
       !event.metaKey &&
       (nativeWheelTimer.current !== null ||
-        (!wheelPanActive.current && scrollsTranslationText(event)))
+        (!boardPanning &&
+          (scrollsTranslationText(event) || (card !== null && scrollsWithinCard(event, card)))))
     ) {
       latchNativeWheel()
       return
     }
     event.preventDefault()
+    latchBoardWheel()
     if (event.ctrlKey || event.metaKey) {
       wheelAxis.current = null
       const rect = currentTarget.getBoundingClientRect()

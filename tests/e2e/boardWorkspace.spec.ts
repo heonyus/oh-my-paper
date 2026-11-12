@@ -358,9 +358,16 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
       .poll(async () => (await firstPage.boundingBox())?.width ?? 0)
       .toBeCloseTo(firstPageBeforeTranslationZoom?.width ?? 0, 0)
     await page.getByRole("button", { name: "카드 모드" }).click()
+    // A card keeps the wheel only while its own text has room to scroll.
+    const cardBody = explanationCard.locator(".card-body")
+    await cardBody.evaluate((body) => {
+      body.style.maxHeight = "40px"
+      body.scrollTop = 0
+    })
     const beforeCardWheel = await surfaceTranslation()
-    await explanationCard.locator(".card-body").dispatchEvent("wheel", { deltaY: 120 })
+    await cardBody.dispatchEvent("wheel", { deltaY: 120 })
     expect(await surfaceTranslation()).toEqual(beforeCardWheel)
+    await cardBody.evaluate((body) => body.style.removeProperty("max-height"))
     const beforeZoomRoundTrip = await firstPage.boundingBox()
     await page.getByRole("button", { name: "확대" }).click()
     await expect

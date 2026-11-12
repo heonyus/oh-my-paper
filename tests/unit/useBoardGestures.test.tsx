@@ -93,6 +93,22 @@ function TranslationPane(): JSX.Element {
   )
 }
 
+/** An explanation card whose body has 400px of text left to scroll below `scrollTop`. */
+function scrollableCard(board: HTMLElement, scrollTop: number): HTMLElement {
+  const card = document.createElement("div")
+  card.className = "board-card"
+  card.dataset["kind"] = "explanation"
+  const body = document.createElement("div")
+  body.className = "card-body"
+  body.style.overflowY = "auto"
+  Object.defineProperty(body, "scrollHeight", { value: 800, configurable: true })
+  Object.defineProperty(body, "clientHeight", { value: 400, configurable: true })
+  body.scrollTop = scrollTop
+  card.append(body)
+  board.append(card)
+  return body
+}
+
 function scrollableBody(scrollTop: number, overflowY = "auto"): HTMLElement {
   const body = screen.getByTestId("translation-body")
   body.style.overflowY = overflowY
@@ -155,8 +171,8 @@ describe("board pan gestures", () => {
     fireEvent.pointerUp(board, { pointerId: 1 })
   })
 
-  it("scrolls the board under a note left on it, but not under other cards", () => {
-    const { container } = render(<Harness />)
+  it("scrolls the board under a note left on it, and under a card with nothing to scroll", () => {
+    render(<Harness />)
     const board = screen.getByTestId("board")
     const note = document.createElement("div")
     note.className = "board-card"
@@ -166,13 +182,53 @@ describe("board pan gestures", () => {
     explanation.dataset["kind"] = "explanation"
     board.append(note, explanation)
 
-    const overExplanation = new WheelEvent("wheel", { deltaY: 40, bubbles: true, cancelable: true })
-    explanation.dispatchEvent(overExplanation)
-    expect(overExplanation.defaultPrevented).toBe(false)
     const overNote = new WheelEvent("wheel", { deltaY: 40, bubbles: true, cancelable: true })
     note.dispatchEvent(overNote)
     expect(overNote.defaultPrevented).toBe(true)
-    expect(container).toBeTruthy()
+    const overExplanation = new WheelEvent("wheel", { deltaY: 40, bubbles: true, cancelable: true })
+    explanation.dispatchEvent(overExplanation)
+    expect(overExplanation.defaultPrevented).toBe(true)
+  })
+
+  it("lets a card scroll its own text when the wheel starts over it", () => {
+    render(<Harness />)
+    const body = scrollableCard(screen.getByTestId("board"), 0)
+
+    const overCard = new WheelEvent("wheel", { deltaY: 40, bubbles: true, cancelable: true })
+    body.dispatchEvent(overCard)
+    expect(overCard.defaultPrevented).toBe(false)
+  })
+
+  it("keeps a board pan going when a scrollable card slides under the cursor", () => {
+    const frames: FrameRequestCallback[] = []
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      frames.push(callback)
+      return frames.length
+    })
+    const onPreview = vi.fn()
+    render(<PreviewHarness onPreview={onPreview} onCommit={vi.fn()} />)
+    const board = screen.getByTestId("preview-board")
+    const body = scrollableCard(board, 0)
+
+    fireEvent.wheel(board, { deltaX: 0, deltaY: 30 })
+    const overCard = new WheelEvent("wheel", { deltaY: 40, bubbles: true, cancelable: true })
+    body.dispatchEvent(overCard)
+    expect(overCard.defaultPrevented).toBe(true)
+    act(() => frames.shift()?.(0))
+
+    expect(onPreview).toHaveBeenLastCalledWith({ x: 0, y: -70, zoom: 1 })
+  })
+
+  it("keeps a board pan going over a card without a pan preview", () => {
+    render(<Harness />)
+    const board = screen.getByTestId("board")
+    const body = scrollableCard(board, 0)
+
+    fireEvent.wheel(board, { deltaX: 0, deltaY: 30 })
+    const overCard = new WheelEvent("wheel", { deltaY: 40, bubbles: true, cancelable: true })
+    body.dispatchEvent(overCard)
+
+    expect(overCard.defaultPrevented).toBe(true)
   })
 
   it("preserves native text selection when the pointerup was not a pan", () => {
