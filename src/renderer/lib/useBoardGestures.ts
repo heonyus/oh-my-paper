@@ -29,7 +29,8 @@ function scrollsTranslationText(event: WheelEvent): boolean {
 /**
  * Whether the wheel would scroll something inside a card: its body or a wide table or code block
  * in it, with room left to go that way. A card with nothing to scroll leaves the wheel to the
- * board, so a pan never stalls on it.
+ * board, so a pan never stalls on it. A card takes the wheel only once the reader has pointed at
+ * it; see `pointedHost`.
  */
 export function scrollsWithinCard(event: WheelEvent, card: Element): boolean {
   if (!(event.target instanceof Element)) return false
@@ -55,6 +56,17 @@ export function scrollsWithinCard(event: WheelEvent, card: Element): boolean {
     if (room) return true
   }
   return false
+}
+
+/** How far the pointer may drift, in CSS pixels, and still be resting where it was. */
+const POINTER_REST_SLOP = 4
+
+/** The scrolling text a wheel could go to instead of the board: a card, or a translation's body. */
+function wheelHost(target: EventTarget | null): Element | null {
+  if (!(target instanceof Element)) return null
+  return target.closest(
+    ".page-translation-body, .translation-peek-body, .board-card:not([data-kind='sticky'])",
+  )
 }
 
 type UseBoardGesturesProps = {
@@ -128,6 +140,9 @@ export function useBoardGestures({
   // Set while a wheel burst is moving the board, so a card or translation sliding under the
   // cursor mid-swipe does not catch the rest of it.
   const boardWheelTimer = useRef<number | null>(null)
+  // Where the pointer last moved or pressed, and the scrolling text it was on then. A card the
+  // board carries under a still pointer is not that text, so swipe after swipe keeps panning.
+  const pointerRest = useRef<{ x: number; y: number; host: Element | null } | null>(null)
   const pendingViewport = useRef(viewport)
   const wheelHandlerRef = useRef<(event: WheelEvent, target: HTMLElement) => void>(() => undefined)
   const [panning, setPanning] = useState(false)
@@ -176,6 +191,27 @@ export function useBoardGestures({
     boardWheelTimer.current = window.setTimeout(() => {
       boardWheelTimer.current = null
     }, 160)
+  }
+
+  /**
+   * The scrolling text the reader pointed at. It changes when the pointer moves or presses, not
+   * when the board moves under it.
+   */
+  function pointedHost(
+    point: { readonly clientX: number; readonly clientY: number },
+    target: EventTarget | null,
+    pressed = false,
+  ): Element | null {
+    const rest = pointerRest.current
+    if (
+      !pressed &&
+      rest &&
+      Math.hypot(point.clientX - rest.x, point.clientY - rest.y) <= POINTER_REST_SLOP
+    )
+      return rest.host
+    const host = wheelHost(target)
+    pointerRest.current = { x: point.clientX, y: point.clientY, host }
+    return host
   }
 
   function resetWheelAxisAfterIdle(): void {
@@ -254,6 +290,7 @@ export function useBoardGestures({
   }
 
   function startPan(event: ReactPointerEvent<HTMLDivElement>): void {
+    pointedHost(event, event.target, true)
     if (event.button !== 0 || !(event.target instanceof HTMLElement)) return
     if (event.target.closest("button, .board-card, .paper-structure-overlay")) return
     const touch = event.pointerType === "touch"
@@ -291,6 +328,7 @@ export function useBoardGestures({
   }
 
   function movePan(event: ReactPointerEvent<HTMLDivElement>): void {
+    pointedHost(event, event.target)
     if (event.pointerType === "touch" && touches.current.has(event.pointerId)) {
       touches.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
       const start = pinch.current
@@ -358,6 +396,11 @@ export function useBoardGestures({
       event.target instanceof Element
         ? event.target.closest(".board-card:not([data-kind='sticky'])")
         : null
+    // Text scrolls only where the reader put the pointer. The wheel itself may nudge a mouse a
+    // pixel or two, so each event becomes the new resting place.
+    const pointed = pointedHost(event, event.target)
+    pointerRest.current = { x: event.clientX, y: event.clientY, host: pointed }
+    const onPointedText = pointed !== null && pointed === wheelHost(event.target)
     // A pan already under way keeps moving the board when a card or translation slides under
     // the cursor; a burst that started on scrolling text stays with that text.
     const boardPanning = boardWheelTimer.current !== null || wheelPanActive.current
@@ -366,6 +409,7 @@ export function useBoardGestures({
       !event.metaKey &&
       (nativeWheelTimer.current !== null ||
         (!boardPanning &&
+          onPointedText &&
           (scrollsTranslationText(event) || (card !== null && scrollsWithinCard(event, card)))))
     ) {
       latchNativeWheel()

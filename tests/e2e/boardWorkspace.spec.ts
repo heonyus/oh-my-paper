@@ -364,9 +364,27 @@ test("post-it, resizable sidebar, cached Markdown, and Retina PDF stay usable", 
       body.style.maxHeight = "40px"
       body.scrollTop = 0
     })
+    const cardBodyBox = await cardBody.boundingBox()
+    if (!cardBodyBox) throw new Error("explanation card body must be rendered")
+    const onCard = {
+      clientX: cardBodyBox.x + cardBodyBox.width / 2,
+      clientY: cardBodyBox.y + cardBodyBox.height / 2,
+    }
     const beforeCardWheel = await surfaceTranslation()
-    await cardBody.dispatchEvent("wheel", { deltaY: 120 })
+    await cardBody.dispatchEvent("wheel", { deltaY: 120, ...onCard })
     expect(await surfaceTranslation()).toEqual(beforeCardWheel)
+    // A card the board carried under a still pointer leaves later swipes to the board.
+    await page.waitForTimeout(400)
+    const away = { clientX: onCard.clientX + 300, clientY: onCard.clientY }
+    await board.dispatchEvent("wheel", { deltaY: 20, ...away })
+    await expect.poll(async () => (await surfaceTranslation()).y).toBeLessThan(beforeCardWheel.y)
+    await page.waitForTimeout(400)
+    const beforeStillWheel = await surfaceTranslation()
+    await cardBody.dispatchEvent("wheel", { deltaY: 20, ...away })
+    await expect.poll(async () => (await surfaceTranslation()).y).toBeLessThan(beforeStillWheel.y)
+    await board.dispatchEvent("wheel", { deltaY: -40, ...away })
+    await expect.poll(async () => (await surfaceTranslation()).y).toBeCloseTo(beforeCardWheel.y)
+    await page.waitForTimeout(400)
     await cardBody.evaluate((body) => body.style.removeProperty("max-height"))
     const beforeZoomRoundTrip = await firstPage.boundingBox()
     await page.getByRole("button", { name: "확대" }).click()
