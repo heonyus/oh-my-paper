@@ -48,4 +48,19 @@ describe("document preparation design contract", () => {
     expect(stylesheet).toContain("@keyframes page-translation-progress")
     expect(stylesheet).toContain("@media (prefers-reduced-motion: reduce)")
   })
+
+  it("stops holding card text at screen size once the board is zoomed out past a floor", async () => {
+    const stylesheet = await readFile("src/renderer/components/board-card.css", "utf8")
+    const card = stylesheet.slice(
+      stylesheet.indexOf(".board-card {"),
+      stylesheet.indexOf("position: absolute"),
+    )
+
+    expect(stylesheet).toContain(
+      "--board-text-zoom: max(var(--board-zoom, 1), var(--board-text-floor));",
+    )
+    // Every text size a card sets is divided by the floored zoom, never by the board's own.
+    expect(card.match(/\/ var\(--board-text-zoom, 1\)/gu)).toHaveLength(4)
+    expect(card).not.toContain("var(--board-zoom")
+  })
 })

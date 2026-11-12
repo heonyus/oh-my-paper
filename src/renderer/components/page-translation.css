@@ -494,10 +494,15 @@
 .page-translation-body .page-translation-block .markdown-content ol {
   margin: 0;
 }
-.textLayer span[data-page-translation-active="true"] {
+/* A run of a line lit whole, where the lit sentence's own letters in it cannot be told. */
+.textLayer span[data-page-translation-active="true"]:not([data-page-translation-exact]) {
   border-radius: 2px;
   background: color-mix(in srgb, var(--action) 9%, transparent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--action) 18%, transparent);
+}
+/* The lit sentence itself, which seldom starts or ends where a line does. */
+::highlight(page-translation-source) {
+  background-color: color-mix(in srgb, var(--action) 16%, transparent);
 }
 .page-translation-source-bound {
   position: absolute;

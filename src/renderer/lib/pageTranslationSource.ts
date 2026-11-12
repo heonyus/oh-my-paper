@@ -1,7 +1,14 @@
 import type { ParsedDocumentPage } from "../../shared/documentPageModel"
 import type { PageStructureKind } from "../../shared/pageStructure"
 import { parsePageTranslationResponse } from "./pageTranslationJson"
-import { bindPageTranslationSpans, sourceElementMatchesBlock } from "./pageTranslationSpanMapping"
+import {
+  bindPageTranslationSpans,
+  forgetSourceText,
+  sourceBlockIdsAtPoint,
+  sourceElementMatchesBlock,
+  sourceTextIsExact,
+  sourceTextRange,
+} from "./pageTranslationSpanMapping"
 import { normalizeExtractedPdfText } from "./pdfTextLines"
 
 type SourceBox = {
@@ -70,12 +77,41 @@ function sentenceEnds(value: string): boolean {
   return /[.!?](?:[”’"')\]])?(?:\s*\d+(?:[–,-]\d+)*)?$/u.test(value)
 }
 
+/** The registered name `::highlight()` styles in page-translation.css. */
+export const sourceHighlightName = "page-translation-source"
+
+/** The lit sentences' own text, by page and block; painted together as one highlight. */
+const litText = new Map<string, readonly Range[]>()
+
+function highlightRegistry(): HighlightRegistry | null {
+  return typeof Highlight === "function" && typeof CSS !== "undefined" && "highlights" in CSS
+    ? CSS.highlights
+    : null
+}
+
+function paintLitText(): void {
+  const registry = highlightRegistry()
+  if (!registry) return
+  const ranges = [...litText.values()].flat()
+  if (ranges.length === 0) registry.delete(sourceHighlightName)
+  else registry.set(sourceHighlightName, new Highlight(...ranges))
+}
+
 export function clearPageSourceMapping(pageNumber: number): void {
   const page = document.querySelector<HTMLElement>(`.page[data-page-number="${pageNumber}"]`)
   for (const span of page?.querySelectorAll<HTMLElement>("[data-page-translation-block]") ?? []) {
     span.removeAttribute("data-page-translation-block")
     span.removeAttribute("data-page-translation-active")
+    span.removeAttribute("data-page-translation-exact")
+    forgetSourceText(span)
   }
+  let lit = false
+  for (const key of [...litText.keys()]) {
+    if (!key.startsWith(`${pageNumber}:`)) continue
+    litText.delete(key)
+    lit = true
+  }
+  if (lit) paintLitText()
   const overlay = document.querySelector<HTMLElement>(
     `.paper-structure-host > [data-page-number="${pageNumber}"]`,
   )
@@ -88,6 +124,10 @@ export function bindPageSourceBounds(pageNumber: number, blocks: readonly PageSo
   clearPageSourceMapping(pageNumber)
   const page = document.querySelector<HTMLElement>(`.page[data-page-number="${pageNumber}"]`)
   const matched = bindPageTranslationSpans(page, blocks)
+  // Where a sentence's own letters can be painted, the span is not tinted whole as well.
+  if (highlightRegistry())
+    for (const span of page?.querySelectorAll<HTMLElement>("[data-page-translation-block]") ?? [])
+      if (sourceTextIsExact(span)) span.setAttribute("data-page-translation-exact", "")
   const overlay = document.querySelector<HTMLElement>(
     `.paper-structure-host > [data-page-number="${pageNumber}"]`,
   )
@@ -132,16 +172,24 @@ export function setPageSourceActive(pageNumber: number, blockId: string, active:
     ...(page?.querySelectorAll<HTMLElement>("[data-page-translation-block]") ?? []),
     ...(overlay?.querySelectorAll<HTMLElement>("[data-page-translation-block]") ?? []),
   ]
+  const text: Range[] = []
   for (const span of elements) {
     if (!sourceElementMatchesBlock(span, blockId)) continue
     if (active) span.setAttribute("data-page-translation-active", "true")
     else span.removeAttribute("data-page-translation-active")
+    const range = active ? sourceTextRange(span, blockId) : null
+    if (range) text.push(range)
   }
+  const key = `${pageNumber}:${blockId}`
+  if (text.length === 0 && !litText.has(key)) return
+  if (text.length > 0) litText.set(key, text)
+  else litText.delete(key)
+  paintLitText()
 }
 
 /**
- * Translation block ids under a pointer on a PDF page: a mapped text-layer span, or a
- * source bound drawn for a block whose spans could not be matched.
+ * Translation block ids under a pointer on a PDF page: the sentence pointed at in a mapped
+ * text-layer span, or a source bound drawn for a block whose spans could not be matched.
  */
 export function pageSourceBlockIdsAt(
   pageNumber: number,
@@ -152,8 +200,7 @@ export function pageSourceBlockIdsAt(
   const page = target.closest<HTMLElement>(".page[data-page-number]")
   if (page?.getAttribute("data-page-number") !== String(pageNumber)) return []
   const span = target.closest<HTMLElement>("[data-page-translation-block]")
-  if (span && page.contains(span))
-    return span.getAttribute("data-page-translation-block")?.split(",").filter(Boolean) ?? []
+  if (span && page.contains(span)) return sourceBlockIdsAtPoint(span, point)
   const overlay = document.querySelector<HTMLElement>(
     `.paper-structure-host > [data-page-number="${pageNumber}"]`,
   )
