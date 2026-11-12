@@ -6,6 +6,11 @@ import { moveWorldPointByScreenDelta } from "../lib/viewport"
 import { boardMessages } from "../messages/board"
 import type { BoardCard, CardId } from "../types"
 
+/** The reader's own memos, named by their first line rather than a fixed title. */
+function isMemo(card: BoardCard): boolean {
+  return card.kind === "sticky" || card.kind === "note"
+}
+
 export function BoardCardHeader({
   card,
   zoom,
@@ -61,7 +66,11 @@ export function BoardCardHeader({
       }}
     >
       <GripVertical size={15} aria-hidden="true" />
-      <strong>{conciseCardTitle(card.title, card.title)}</strong>
+      <strong>
+        {isMemo(card)
+          ? conciseCardTitle(card.body.replace(/[*_`$]+/gu, ""), card.title)
+          : conciseCardTitle(card.title, card.title)}
+      </strong>
       {onRegenerateTitle && !card.minimized ? (
         <button
           type="button"

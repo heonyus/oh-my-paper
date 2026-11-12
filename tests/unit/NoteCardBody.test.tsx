@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
+import { act, fireEvent, render, screen } from "@testing-library/react"
+import type { Editor } from "@tiptap/core"
 import { describe, expect, it, vi } from "vitest"
 import { NoteCardBody } from "../../src/renderer/components/NoteCardBody"
 import { boardCardSchema } from "../../src/shared/schemas"
@@ -22,6 +22,12 @@ const card = boardCardSchema.parse({
   },
 })
 
+function tiptapOf(element: HTMLElement): Editor {
+  const editor: unknown = Reflect.get(element, "editor")
+  if (!editor) throw new Error("memo editor must be mounted")
+  return editor as Editor
+}
+
 describe("NoteCardBody", () => {
   it("opens the old fixed annotation text as an empty memo", () => {
     render(
@@ -31,15 +37,36 @@ describe("NoteCardBody", () => {
         onBodyChange={vi.fn()}
       />,
     )
-    expect(screen.getByRole("textbox", { name: "메모 내용" })).toHaveValue("")
+    expect(screen.getByRole("textbox", { name: "메모 내용" })).toHaveTextContent("")
   })
 
-  it("saves what the reader writes and offers no grading", async () => {
+  it("shows a saved memo rendered and still editable", () => {
+    render(
+      <NoteCardBody
+        card={{ ...card, body: "## 요지\n\n- 먼저 쓴다" }}
+        autoEdit={false}
+        onBodyChange={vi.fn()}
+      />,
+    )
+    const memo = screen.getByRole("textbox", { name: "메모 내용" })
+
+    expect(screen.getByRole("heading", { name: "요지" })).toBeInTheDocument()
+    expect(memo.querySelector("li")).toHaveTextContent("먼저 쓴다")
+    expect(memo).toHaveAttribute("contenteditable", "true")
+  })
+
+  it("saves what the reader writes when they leave it, and offers no grading", () => {
     const onBodyChange = vi.fn()
     render(<NoteCardBody card={card} autoEdit onBodyChange={onBodyChange} />)
+    const memo = screen.getByRole("textbox", { name: "메모 내용" })
 
-    await userEvent.type(screen.getByRole("textbox", { name: "메모 내용" }), "요지를 먼저 쓴다")
-    await userEvent.tab()
+    act(() => {
+      tiptapOf(memo).commands.insertContent("요지를 먼저 쓴다")
+    })
+    act(() => {
+      tiptapOf(memo).commands.blur()
+    })
+    fireEvent.blur(memo)
 
     expect(onBodyChange).toHaveBeenCalledWith("요지를 먼저 쓴다")
     expect(screen.queryByRole("button", { name: /대조/u })).not.toBeInTheDocument()

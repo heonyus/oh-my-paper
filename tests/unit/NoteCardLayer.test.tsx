@@ -1,5 +1,6 @@
-import { act, render, renderHook, screen } from "@testing-library/react"
+import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import type { Editor } from "@tiptap/core"
 import { useCallback, useState } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { NoteCardLayer } from "../../src/renderer/components/noteCard/NoteCardLayer"
@@ -29,6 +30,23 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals()
 })
+
+/** The card's text box: a live Markdown editor, written through Tiptap as jsdom cannot type into it. */
+function cardInput(): HTMLElement {
+  return screen.getByRole("textbox", { name: "노트 카드 내용" })
+}
+
+function write(text: string): void {
+  const editor: unknown = Reflect.get(cardInput(), "editor")
+  if (!editor) throw new Error("note card editor must be mounted")
+  act(() => {
+    ;(editor as Editor).commands.insertContent(text)
+  })
+}
+
+function submit(): void {
+  fireEvent.keyDown(cardInput(), { key: "Enter", metaKey: true })
+}
 
 function Harness({
   target,
@@ -61,12 +79,12 @@ describe("note card", () => {
     await userEvent.click(document.body)
     const card = screen.getByRole("region", { name: "노트 카드" })
     expect(card).toHaveTextContent("4쪽 · Attention Paper")
-    const input = screen.getByRole("textbox", { name: "노트 카드 내용" })
-    expect(input).toHaveFocus()
-    expect(input).toHaveValue("")
+    // Tiptap moves the caret in on the next frame.
+    await waitFor(() => expect(cardInput()).toHaveFocus())
+    expect(cardInput()).toHaveTextContent("")
 
-    await userEvent.type(input, "어텐션은 모든 토큰을 본다")
-    await userEvent.keyboard("{Meta>}{Enter}{/Meta}")
+    write("어텐션은 모든 토큰을 본다")
+    submit()
 
     expect(onAppend).toHaveBeenCalledWith(documentId, "[[p.4]] 어텐션은 모든 토큰을 본다")
     expect(screen.queryByRole("region", { name: "노트 카드" })).not.toBeInTheDocument()
@@ -90,7 +108,8 @@ describe("note card", () => {
     await userEvent.click(document.body)
     expect(world).toContainElement(screen.getByRole("region", { name: "노트 카드" }))
     expect(screen.queryByRole("button", { name: "노트에 붙이기" })).not.toBeInTheDocument()
-    await userEvent.keyboard("그 자리에 남는 카드{Meta>}{Enter}{/Meta}")
+    write("그 자리에 남는 카드")
+    submit()
 
     expect(onAppend).toHaveBeenCalledWith(documentId, "[[p.4]] 그 자리에 남는 카드")
     expect(onPin).toHaveBeenCalledWith(onPage4, "그 자리에 남는 카드", { x: 0, y: 0 })
@@ -113,18 +132,19 @@ describe("note card", () => {
     expect(card).toHaveAttribute("data-following", "true")
     await userEvent.click(document.body)
     expect(card).toHaveAttribute("data-following", "false")
-    expect(screen.getByRole("textbox", { name: "노트 카드 내용" })).toHaveFocus()
+    // Tiptap moves the caret in on the next frame.
+    await waitFor(() => expect(cardInput()).toHaveFocus())
 
     await userEvent.click(screen.getByRole("button", { name: "노트 카드 최소화" }))
     expect(card).toHaveAttribute("data-minimized", "true")
     await userEvent.click(screen.getByRole("button", { name: "노트 카드 펼치기" }))
-    await userEvent.type(screen.getByRole("textbox", { name: "노트 카드 내용" }), "떠오른 생각")
+    write("떠오른 생각")
     await userEvent.click(screen.getByRole("button", { name: "닫기" }))
     expect(screen.queryByRole("region", { name: "노트 카드" })).not.toBeInTheDocument()
 
     await userEvent.keyboard("{Alt>}n{/Alt}")
     await userEvent.click(document.body)
-    expect(screen.getByRole("textbox", { name: "노트 카드 내용" })).toHaveValue("")
+    expect(cardInput()).toHaveTextContent("")
   })
 
   it("cancels a card that is still following the pointer on Esc", async () => {
@@ -141,11 +161,11 @@ describe("note card", () => {
     await userEvent.keyboard("n")
     // The card follows the pointer until a click puts it down.
     await userEvent.click(document.body)
-    await userEvent.keyboard("한 줄 더")
-    await userEvent.keyboard("{Meta>}{Enter}{/Meta}")
+    write("한 줄 더")
+    submit()
 
     expect(screen.getByRole("alert")).toHaveTextContent("노트가 가득 차서 더 붙일 수 없습니다")
-    expect(screen.getByRole("textbox", { name: "노트 카드 내용" })).toHaveValue("한 줄 더")
+    expect(cardInput()).toHaveTextContent("한 줄 더")
   })
 })
 

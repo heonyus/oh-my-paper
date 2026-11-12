@@ -163,13 +163,6 @@
   margin-left: 20px;
   background: var(--action-subtle);
 }
-.board-card[data-kind="sticky"] .card-head,
-.board-card[data-kind="sticky"] .card-body {
-  background: transparent;
-}
-.board-card[data-kind="sticky"] .card-head {
-  border-bottom-color: color-mix(in srgb, var(--warning) 20%, transparent);
-}
 .board-card .markdown-content {
   overflow-wrap: break-word;
   word-break: keep-all;
@@ -177,26 +170,6 @@
 /* The shared h2 rule subtracts 2px from the title size; that step shrinks with the zoom too. */
 .board-card .markdown-content h2 {
   font-size: calc(var(--type-title-size) - 2px / var(--board-zoom, 1));
-}
-.post-it-preview {
-  width: 100%;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  text-align: start;
-}
-.post-it-editor {
-  width: 100%;
-  min-height: 132px;
-  padding: 0;
-  border: 0;
-  outline: 0;
-  resize: vertical;
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  line-height: 1.55;
 }
 .card-markdown {
   min-height: 22px;
@@ -234,12 +207,76 @@
     opacity: 0.65;
   }
 }
-/* Memo cards hold the reader's own words on the note surface; see NoteCardBody.tsx. */
-.board-card[data-kind="note"] .card-body {
+/*
+ * Memos hold the reader's own words: a sheet of note paper with a thin strip to drag it by,
+ * whose buttons show while the memo is pointed at or in use. See MemoEditor.tsx.
+ */
+.board-card[data-kind="note"] {
+  border-color: color-mix(in srgb, var(--warning) 18%, var(--line));
+  border-radius: 4px;
   background: var(--note);
+  box-shadow: 0 3px 12px rgb(76 59 11 / 10%);
 }
-.note-card-editor {
-  min-height: 88px;
+.board-card:is([data-kind="sticky"], [data-kind="note"]) .card-head {
+  min-height: 26px;
+  padding: 2px 6px 0 10px;
+  border-bottom: 0;
+  background: transparent;
+}
+.board-card:is([data-kind="sticky"], [data-kind="note"]) .card-head > svg {
+  display: none;
+}
+.board-card:is([data-kind="sticky"], [data-kind="note"]):not([data-minimized="true"])
+  .card-head
+  strong {
+  visibility: hidden;
+}
+.board-card:is([data-kind="sticky"], [data-kind="note"]) .card-head button {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.board-card:is([data-kind="sticky"], [data-kind="note"]):is(
+    :hover,
+    :focus-within,
+    [data-active="true"],
+    [data-minimized="true"]
+  )
+  .card-head
+  button {
+  opacity: 1;
+}
+.board-card:is([data-kind="sticky"], [data-kind="note"]) .card-body {
+  padding: 2px 16px 16px;
+  background: transparent;
+}
+.board-card[data-kind="note"] .card-source-footer {
+  border-top-color: color-mix(in srgb, var(--warning) 16%, transparent);
+  background: transparent;
+}
+/* Folded, a memo is one line of its own text; its 196px sheet height stays with the open memo. */
+.board-card:is([data-kind="sticky"], [data-kind="note"])[data-minimized="true"] {
+  min-height: 0;
+}
+.memo-prose {
+  min-height: 72px;
+  padding-bottom: 0;
+  font-size: var(--type-body-size);
+  line-height: 1.55;
+}
+.board-card[data-kind="sticky"] .memo-prose {
+  min-height: 150px;
+}
+.memo-prose h1 {
+  font-size: 1.3em;
+}
+.memo-prose h2 {
+  font-size: 1.15em;
+}
+.memo-prose h3 {
+  font-size: 1.05em;
+}
+.memo-prose :is(h1, h2, h3) {
+  margin-top: 0.6em;
 }
 
 .card-infographic {

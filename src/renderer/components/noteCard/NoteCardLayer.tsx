@@ -6,6 +6,7 @@ import { NOTE_CARD_MAX_CHARACTERS, type NoteCardTarget } from "../../lib/noteCar
 import { APPLE_KEYBOARD } from "../../lib/platform"
 import type { NoteCardState } from "../../lib/useNoteCard"
 import { noteMessages } from "../../messages/note"
+import { MemoEditor } from "../MemoEditor"
 import { useCardPlacement } from "./useCardPlacement"
 
 const SAVE_KEYS = APPLE_KEYBOARD ? ["⌘", "↵"] : ["Ctrl", "↵"]
@@ -24,7 +25,6 @@ export function NoteCardLayer({
 }): JSX.Element | null {
   const t = useTranslator(noteMessages)
   const card = useRef<HTMLElement>(null)
-  const input = useRef<HTMLTextAreaElement>(null)
   const { openTarget, saved, focusRequest } = state
   const position = useCardPlacement(openTarget !== null, openTarget?.kind === "paper", state.close)
   const [minimized, setMinimized] = useState(false)
@@ -44,14 +44,8 @@ export function NoteCardLayer({
       if (returnFocus.current?.isConnected) returnFocus.current.focus({ preventScroll: true })
     }
   }, [isOpen])
-  // A card kept from last time continues where its text ends.
+  // A card kept from last time continues where its text ends, once it has its place.
   const placed = position.placed
-  useEffect(() => {
-    const field = input.current
-    if (!isOpen || !placed || focusRequest === 0 || !field) return
-    field.focus({ preventScroll: true })
-    field.setSelectionRange(field.value.length, field.value.length)
-  }, [isOpen, placed, focusRequest])
 
   if (!openTarget) {
     if (!saved) return null
@@ -92,8 +86,8 @@ export function NoteCardLayer({
       onPointerDown={(event) => {
         // Pressing anywhere on the card brings it forward and back to writing.
         event.stopPropagation()
-        if (event.target instanceof Element && event.target.closest("button, textarea")) return
-        input.current?.focus({ preventScroll: true })
+        if (event.target instanceof Element && event.target.closest("button, .ProseMirror")) return
+        card.current?.querySelector<HTMLElement>(".ProseMirror")?.focus({ preventScroll: true })
       }}
     >
       <header className="note-card-head" {...position.handle}>
@@ -118,25 +112,18 @@ export function NoteCardLayer({
           <X size={15} />
         </button>
       </header>
-      <textarea
-        ref={input}
-        className="note-card-input"
-        aria-label={t("card.content")}
-        placeholder={t("card.placeholder")}
-        maxLength={NOTE_CARD_MAX_CHARACTERS}
-        value={state.draft}
-        onChange={(event) => state.setDraft(event.target.value)}
-        onKeyDown={(event) => {
-          if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-            event.preventDefault()
-            state.save(position.pin)
-          } else if (event.key === "Escape") {
-            event.preventDefault()
-            event.stopPropagation()
-            state.close()
-          }
-        }}
-      />
+      <div className="note-card-input">
+        <MemoEditor
+          markdown={state.draft}
+          onChange={state.setDraft}
+          placeholder={t("card.placeholder")}
+          ariaLabel={t("card.content")}
+          maxLength={NOTE_CARD_MAX_CHARACTERS}
+          focusRequest={placed ? focusRequest : 0}
+          onSubmit={(text) => state.save(position.pin, text)}
+          onEscape={state.close}
+        />
+      </div>
       {state.full ? (
         <p className="note-card-error" role="alert">
           {t("card.full")}

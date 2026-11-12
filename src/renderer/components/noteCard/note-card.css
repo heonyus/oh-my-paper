@@ -80,17 +80,15 @@
   min-height: 140px;
   max-height: 50vh;
   padding: var(--space-3);
-  border: 0;
-  outline: 0;
-  resize: vertical;
-  background: transparent;
+  overflow: auto;
   color: var(--ink);
-  font: inherit;
   font-size: var(--type-body-size);
   line-height: 1.6;
 }
-.note-card-input::placeholder {
-  color: var(--ink-muted);
+.note-card-input .memo-prose {
+  min-height: 116px;
+  font-size: inherit;
+  line-height: inherit;
 }
 .note-card-error {
   margin: 0;
