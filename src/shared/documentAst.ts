@@ -94,18 +94,19 @@ const sourceDocumentAstSchema = z
     blocks: z.array(sourceBlockSchema).default([]),
   })
   .superRefine((artifact, context) => {
-    const pageIds = new Set<string>()
+    // The first page with an ID, which is the one a search through the pages would find.
+    const pages = new Map<string, (typeof artifact.pages)[number]>()
     for (const page of artifact.pages) {
-      if (pageIds.has(page.id))
+      if (pages.has(page.id))
         context.addIssue({ code: z.ZodIssueCode.custom, message: "duplicate page ID" })
-      pageIds.add(page.id)
+      else pages.set(page.id, page)
     }
     const itemIds = new Set<string>()
     for (const item of artifact.items) {
       if (itemIds.has(item.id))
         context.addIssue({ code: z.ZodIssueCode.custom, message: "duplicate source item ID" })
       itemIds.add(item.id)
-      const page = artifact.pages.find((candidate) => candidate.id === item.pageId)
+      const page = pages.get(item.pageId)
       if (
         !page ||
         item.normalizedEnd <= item.normalizedStart ||

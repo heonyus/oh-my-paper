@@ -12,7 +12,7 @@ import {
 } from "../shared/discoveryIpc"
 import { documentAnalysisSnapshotSchema } from "../shared/documentAnalysis"
 import type { DocumentAstRequest } from "../shared/documentAstIpc"
-import { documentAstResultSchema } from "../shared/documentAstIpc"
+import { receivedDocumentAstResultSchema } from "../shared/documentAstIpc"
 import type { DocumentOcrProviderStatus } from "../shared/documentOcr"
 import type {
   CitationLookupRequest,
@@ -171,7 +171,7 @@ export function installLocalReaderApi(): void {
       await localRpc("clearPageTranslationCache", request, z.object({ ok: z.boolean() }))
     },
     readDocumentAst: async (request: DocumentAstRequest) => {
-      return localRpc("readDocumentAst", request, documentAstResultSchema)
+      return localRpc("readDocumentAst", request, receivedDocumentAstResultSchema)
     },
     onPreparation: (_listener: (update: PreparationUpdate) => void) => () => {},
     saveApiKey: unavailableWebFeature("provider.saveApiKey"),

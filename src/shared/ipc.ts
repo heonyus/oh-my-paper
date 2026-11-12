@@ -42,6 +42,7 @@ import {
   type DocumentAstResult,
   documentAstRequestSchema,
   documentAstResultSchema,
+  receivedDocumentAstResultSchema,
 } from "./documentAstIpc"
 import {
   type DocumentLayoutResult,
@@ -535,4 +536,5 @@ export {
   documentPageParseRequestSchema,
   documentPageParseResultSchema,
   PAPER_CONTEXT_MAX_CHARACTERS,
+  receivedDocumentAstResultSchema,
 }

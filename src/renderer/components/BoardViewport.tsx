@@ -28,6 +28,7 @@ import { useBoardPanPreview } from "../lib/useBoardPanPreview"
 import { useCardStreams } from "../lib/useCardStreams"
 import { usePageJump } from "../lib/usePageJump"
 import { usePanConstraint } from "../lib/usePanConstraint"
+import { useStagedCards } from "../lib/useStagedCards"
 import { mostVisiblePage, revealWorldRectHorizontally } from "../lib/viewport"
 import { boardMessages } from "../messages/board"
 import type { BoardCard, CardId, SourceFragment } from "../types"
@@ -82,6 +83,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
   const [translationHover, setTranslationHover] = useState<TranslationHover | null>(null)
   const peekHideTimer = useRef<number | undefined>(undefined)
   const cardStreams = useCardStreams(props.cards)
+  const drawnCards = useStagedCards(cardStreams.displayCards, props.viewport, activeCardId)
   const panConstraint = usePanConstraint()
   const handlePageJump = usePageJump(viewportStateRef, viewportRef, props.onViewportChange)
   const previewPan = useBoardPanPreview(viewportStateRef, worldRef, viewportRef)
@@ -428,7 +430,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
           }))}
         />
         <BoardCardsLayer
-          cards={cardStreams.displayCards}
+          cards={drawnCards}
           activeId={activeCardId}
           autoEditId={createdMemoId}
           zoom={props.viewport.zoom}

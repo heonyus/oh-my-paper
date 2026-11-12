@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { sourceDocumentAstSchema } from "./documentAst"
+import { type SourceDocumentAst, sourceDocumentAstSchema } from "./documentAst"
 import { documentIdSchema, sha256Schema } from "./schemas"
 
 export const astFingerprintSchema = z.string().regex(/^[a-f0-9]{64}$/)
@@ -41,6 +41,50 @@ export const documentAstResultSchema = z.discriminatedUnion("status", [
     ]),
   }),
 ])
+
+/**
+ * An AST as the reader receives it. The process that built it has just checked every item
+ * against `sourceDocumentAstSchema` before sending it (see the server's RPC and the desktop IPC
+ * handler), and a paper's AST runs to megabytes; checking it a second time on arrival held the
+ * reader's main thread, and the page being drawn, each time a paper was opened.
+ */
+const receivedAstSchema = z.custom<SourceDocumentAst>(
+  (value) => typeof value === "object" && value !== null,
+)
+
+/** `documentAstResultSchema` for the receiving side: the envelope is checked, the AST is not. */
+export const receivedDocumentAstResultSchema: z.ZodType<DocumentAstResult> = z.discriminatedUnion(
+  "status",
+  [
+    z.object({
+      status: z.literal("ready"),
+      sourceHash: sha256Schema,
+      fingerprint: astFingerprintSchema,
+      ast: receivedAstSchema,
+    }),
+    z.object({
+      status: z.literal("degraded"),
+      sourceHash: sha256Schema,
+      fingerprint: astFingerprintSchema,
+      ast: receivedAstSchema,
+      reason: z.literal("sidecar_unavailable"),
+    }),
+    z.object({
+      status: z.literal("building"),
+      sourceHash: sha256Schema,
+      fingerprint: astFingerprintSchema,
+    }),
+    z.object({
+      status: z.literal("failed"),
+      reason: z.enum([
+        "unknown_document",
+        "stale_source",
+        "source_unavailable",
+        "response_too_large",
+      ]),
+    }),
+  ],
+)
 
 export type DocumentAstRequest = z.infer<typeof documentAstRequestSchema>
 export type DocumentAstResult = z.infer<typeof documentAstResultSchema>

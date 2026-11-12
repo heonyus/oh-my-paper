@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import {
   bindPdfExternalLinks,
+  firstPageDrawn,
   urlFromPdfClickTarget,
 } from "../../src/renderer/lib/pdfColumnSupport"
 
@@ -52,5 +53,60 @@ describe("PDF column links", () => {
 
     expect(openExternal).toHaveBeenCalledWith({ url: "https://example.com/paper" })
     release()
+  })
+})
+
+describe("first page drawn", () => {
+  function fakeBus() {
+    const listeners = new Set<() => void>()
+    return {
+      listeners,
+      on: (_name: string, listener: () => void) => void listeners.add(listener),
+      off: (_name: string, listener: () => void) => void listeners.delete(listener),
+      render: () => {
+        for (const listener of [...listeners]) listener()
+      },
+    }
+  }
+
+  it("resolves when PDF.js draws a page and stops listening", async () => {
+    const bus = fakeBus()
+    const settled = vi.fn()
+    const drawn = firstPageDrawn(bus).then(settled)
+    await Promise.resolve()
+    expect(settled).not.toHaveBeenCalled()
+
+    bus.render()
+    await drawn
+    expect(settled).toHaveBeenCalledOnce()
+    expect(bus.listeners.size).toBe(0)
+  })
+
+  it("resolves after the grace period when no page is drawn", async () => {
+    vi.useFakeTimers()
+    try {
+      const bus = fakeBus()
+      const settled = vi.fn()
+      const drawn = firstPageDrawn(bus, undefined, 500).then(settled)
+      await vi.advanceTimersByTimeAsync(499)
+      expect(settled).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1)
+      await drawn
+      expect(bus.listeners.size).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("resolves at once when the paper is closed", async () => {
+    const bus = fakeBus()
+    const closing = new AbortController()
+    const drawn = firstPageDrawn(bus, closing.signal)
+    closing.abort()
+    await drawn
+    expect(bus.listeners.size).toBe(0)
+
+    await firstPageDrawn(bus, closing.signal)
+    expect(bus.listeners.size).toBe(0)
   })
 })

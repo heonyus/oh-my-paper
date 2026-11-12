@@ -5,6 +5,7 @@ import { Topbar } from "../renderer/components/AppChrome"
 import { AppStatusOverlays } from "../renderer/components/AppStatusOverlays"
 import { LibraryHome } from "../renderer/components/LibraryHome"
 import { NoteCardOverlays } from "../renderer/components/noteCard/NoteCardOverlays"
+import { ReaderWorkspace, warmReader } from "../renderer/components/ReaderWorkspaceLoader"
 import { createPinnedNoteCard } from "../renderer/lib/board"
 import { useLocale, useTranslator } from "../renderer/lib/locale"
 import { noteCardTarget } from "../renderer/lib/noteCard"
@@ -25,11 +26,6 @@ import { TipsGallery } from "./tips/TipsGallery"
 import { useWelcome } from "./useWelcome"
 import { WebOnboarding } from "./WebOnboarding"
 
-const ReaderWorkspace = lazy(() =>
-  import("../renderer/components/ReaderWorkspace").then((module) => ({
-    default: module.ReaderWorkspace,
-  })),
-)
 const loadSettingsDialog = () => import("../renderer/components/AppSettingsDialog")
 const AppSettingsDialog = lazy(() =>
   loadSettingsDialog().then((module) => ({ default: module.AppSettingsDialog })),
@@ -80,6 +76,8 @@ export function ReaderApp(): JSX.Element {
 
   // 설정 opens at once: its code is fetched while the app is idle, not on the first click.
   useEffect(() => prefetchWhenIdle(loadSettingsDialog), [])
+  // So does the first paper: the reader and its PDF worker are ready before it is chosen.
+  useEffect(() => prefetchWhenIdle(warmReader), [])
 
   useEffect(() => {
     if (!openImportUrl || !workspace || !credentialsReady || openImportState !== "idle") return
