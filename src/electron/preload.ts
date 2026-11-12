@@ -21,7 +21,6 @@ import {
   citationLookupResultSchema,
   clipboardWriteTextRequestSchema,
   documentAstRequestSchema,
-  documentAstResultSchema,
   documentBytesRequestSchema,
   documentBytesResultSchema,
   documentImportPathRequestSchema,
@@ -41,6 +40,7 @@ import {
   preparationUpdateSchema,
   providerConfigSchema,
   providerStatusSchema,
+  receivedDocumentAstResultSchema,
   workspaceReadResultSchema,
   workspaceSaveRequestSchema,
 } from "../shared/ipc"
@@ -196,7 +196,9 @@ const api: OhMyPaperApi = {
   },
   readDocumentAst: async (request) => {
     const value = documentAstRequestSchema.parse(request)
-    return documentAstResultSchema.parse(await ipcRenderer.invoke(ipcChannels.documentAst, value))
+    return receivedDocumentAstResultSchema.parse(
+      await ipcRenderer.invoke(ipcChannels.documentAst, value),
+    )
   },
   onPreparation: (listener) => {
     const handler = (_event: Electron.IpcRendererEvent, value: unknown): void => {

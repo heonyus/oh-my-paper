@@ -40,7 +40,7 @@ describe("NoteCardBody", () => {
     expect(screen.getByRole("textbox", { name: "메모 내용" })).toHaveTextContent("")
   })
 
-  it("shows a saved memo rendered and still editable", () => {
+  it("shows a saved memo rendered without starting an editor for it", () => {
     render(
       <NoteCardBody
         card={{ ...card, body: "## 요지\n\n- 먼저 쓴다" }}
@@ -52,7 +52,24 @@ describe("NoteCardBody", () => {
 
     expect(screen.getByRole("heading", { name: "요지" })).toBeInTheDocument()
     expect(memo.querySelector("li")).toHaveTextContent("먼저 쓴다")
+    expect(memo).not.toHaveAttribute("contenteditable")
+    expect(Reflect.get(memo, "editor")).toBeUndefined()
+  })
+
+  it("turns into the editor, with the same memo in it, when clicked", () => {
+    render(
+      <NoteCardBody
+        card={{ ...card, body: "## 요지\n\n- 먼저 쓴다" }}
+        autoEdit={false}
+        onBodyChange={vi.fn()}
+      />,
+    )
+    fireEvent.click(screen.getByRole("textbox", { name: "메모 내용" }))
+    const memo = screen.getByRole("textbox", { name: "메모 내용" })
+
     expect(memo).toHaveAttribute("contenteditable", "true")
+    expect(tiptapOf(memo).getMarkdown().trim()).toBe("## 요지\n\n- 먼저 쓴다")
+    expect(screen.getByRole("heading", { name: "요지" })).toBeInTheDocument()
   })
 
   it("saves what the reader writes when they leave it, and offers no grading", () => {

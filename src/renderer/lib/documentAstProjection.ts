@@ -30,16 +30,38 @@ export type ProjectedCitationIndexEntry = CitationIndexEntry & {
   readonly sourceRanges: readonly AstSourceRange[]
 }
 
-function itemsForPage(ast: SourceDocumentAst, page: number) {
-  return ast.items
-    .filter((item) => item.pageId === `page:${page}`)
-    .sort(
+type AstItem = SourceDocumentAst["items"][number]
+
+const itemsByPageOfAst = new WeakMap<SourceDocumentAst, ReadonlyMap<string, readonly AstItem[]>>()
+
+/**
+ * Every page's items in reading order, grouped in one pass over the paper and kept for as long
+ * as its AST is. Filtering the whole paper's items once per page made each of these projections
+ * cost pages × items, on the main thread, each time a paper was opened.
+ */
+function itemsByPage(ast: SourceDocumentAst): ReadonlyMap<string, readonly AstItem[]> {
+  const known = itemsByPageOfAst.get(ast)
+  if (known) return known
+  const grouped = new Map<string, AstItem[]>()
+  for (const item of ast.items) {
+    const items = grouped.get(item.pageId)
+    if (items) items.push(item)
+    else grouped.set(item.pageId, [item])
+  }
+  for (const items of grouped.values())
+    items.sort(
       (left, right) =>
         left.normalizedStart - right.normalizedStart || left.id.localeCompare(right.id),
     )
+  itemsByPageOfAst.set(ast, grouped)
+  return grouped
 }
 
-function pageText(items: ReturnType<typeof itemsForPage>): string {
+function itemsForPage(ast: SourceDocumentAst, page: number): readonly AstItem[] {
+  return itemsByPage(ast).get(`page:${page}`) ?? []
+}
+
+function pageText(items: readonly AstItem[]): string {
   let text = ""
   for (const item of items) {
     if (item.normalizedStart > text.length) text += " ".repeat(item.normalizedStart - text.length)
@@ -48,11 +70,17 @@ function pageText(items: ReturnType<typeof itemsForPage>): string {
   return text.trim()
 }
 
+const pageTextsOfAst = new WeakMap<SourceDocumentAst, readonly string[]>()
+
 export function pageTextsFromAst(ast: SourceDocumentAst): readonly string[] {
-  return ast.pages
+  const known = pageTextsOfAst.get(ast)
+  if (known) return known
+  const texts = ast.pages
     .slice()
     .sort((left, right) => left.page - right.page)
     .map((page) => pageText(itemsForPage(ast, page.page)))
+  pageTextsOfAst.set(ast, texts)
+  return texts
 }
 
 export function preparedSummaryFromAst(

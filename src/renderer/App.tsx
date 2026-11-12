@@ -1,4 +1,4 @@
-import { type JSX, lazy, Suspense, useState } from "react"
+import { type JSX, lazy, Suspense, useEffect, useState } from "react"
 import { analysedPaperCount } from "../shared/documentAnalysis"
 import { LOOSE_NOTE_ID } from "../shared/readerNote"
 import { LibraryTopbar, Topbar, type WebAccount } from "./components/AppChrome"
@@ -6,10 +6,12 @@ import { AppStatusOverlays } from "./components/AppStatusOverlays"
 import type { HostedCredentialSettingsProps } from "./components/HostedCredentialSettings"
 import { LibraryWorkspace } from "./components/LibraryWorkspace"
 import { NoteCardOverlays } from "./components/noteCard/NoteCardOverlays"
+import { ReaderWorkspace, warmReader } from "./components/ReaderWorkspaceLoader"
 import { ResearchNavigation } from "./components/ResearchNavigation"
 import { WorkspaceSections } from "./components/WorkspaceSections"
 import { useLocale } from "./lib/locale"
 import { noteCardTarget } from "./lib/noteCard"
+import { prefetchWhenIdle } from "./lib/prefetchWhenIdle"
 import { appShellStyle } from "./lib/uiFontScale"
 import { useAppWorkspace } from "./lib/useAppWorkspace"
 import { useCrossDocumentCardJump } from "./lib/useCrossDocumentCardJump"
@@ -18,9 +20,6 @@ import { useQuickMemo } from "./lib/useQuickMemo"
 import { withCardExample } from "./lib/vocabulary"
 import type { DocumentId } from "./types"
 
-const ReaderWorkspace = lazy(() =>
-  import("./components/ReaderWorkspace").then((module) => ({ default: module.ReaderWorkspace })),
-)
 const AppSettingsDialog = lazy(() =>
   import("./components/AppSettingsDialog").then((module) => ({
     default: module.AppSettingsDialog,
@@ -97,6 +96,7 @@ export function App({
   const [dataExchangeOpen, setDataExchangeOpen] = useState(false)
   const [proposalOpen, setProposalOpen] = useState(false)
   const [looseNoteOpen, setLooseNoteOpen] = useState(false)
+  useEffect(() => prefetchWhenIdle(warmReader), [])
   // N over a paper leaves a memo on its board; anywhere else, a card for the loose note.
   const noteCard = useNoteCard(
     noteCardTarget(readerMode && !libraryView ? activeDocument : null, currentPage),

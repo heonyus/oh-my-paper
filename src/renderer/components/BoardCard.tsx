@@ -11,7 +11,7 @@ import { BoardCardHeader } from "./BoardCardHeader"
 import { BoardCardResizeHandle } from "./BoardCardResizeHandle"
 import { InfographicFrame } from "./InfographicFrame"
 import { MarkdownContent } from "./MarkdownContent"
-import { MemoEditor } from "./MemoEditor"
+import { Memo } from "./Memo"
 import { NoteCardBody } from "./NoteCardBody"
 
 type BoardCardProps = {
@@ -123,7 +123,7 @@ export const BoardCard = memo(function BoardCard({
           ) : null}
           {card.sourceMeta ? <BoardCardCitationMeta meta={card.sourceMeta} /> : null}
           {card.kind === "sticky" ? (
-            <MemoEditor
+            <Memo
               markdown={card.body}
               onChange={(body) => onBodyChange?.(card.id, body)}
               placeholder={t("card.stickyPlaceholder")}

@@ -29,7 +29,8 @@ export function DocumentRetrievalSwitcher({
   const resultsRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
   const results = useMemo(
-    () => (runtime ? rankPdfPassages(runtime.index, query) : []),
+    // The index is built the first time it is read, so an empty query leaves it unbuilt.
+    () => (runtime && query.trim() ? rankPdfPassages(runtime.index, query) : []),
     [query, runtime],
   )
 

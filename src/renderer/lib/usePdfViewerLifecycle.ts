@@ -1,12 +1,12 @@
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs"
 import { EventBus, PDFLinkService } from "pdfjs-dist/legacy/web/pdf_viewer.mjs"
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react"
-import "./pdfWorker"
 import { readerMessages } from "../messages/reader"
 import type { DocumentRecord } from "../types"
 import { BoardPdfViewer } from "./boardPdfViewer"
 import { clearParsedDocumentPages } from "./documentPageRuntime"
 import { useTranslator } from "./locale"
+import { yieldToMain } from "./mainThread"
 import { PdfAstRuntimeSession } from "./pdfAstRuntimeSession"
 import type { ViewerSession } from "./pdfColumnSupport"
 import * as Pdf from "./pdfColumnSupport"
@@ -25,6 +25,7 @@ import {
 } from "./pdfRetrievalRuntime"
 import { buildPdfRetrievalIndex } from "./pdfSearch"
 import { bindViewerEventBridge } from "./pdfViewerEventBridge"
+import { readerPdfWorker } from "./pdfWorker"
 import { preparePdfView } from "./preparePdfSession"
 import type { BibliographyMap } from "./structureDetector"
 
@@ -185,22 +186,37 @@ export function usePdfViewerLifecycle({
         // Page canvases on the GPU: without this PDF.js makes them software canvases
         // (`willReadFrequently`), and every frame of a pan or zoom re-uploaded each visible
         // page's whole bitmap, tens of megabytes a page on a Retina screen at reading zoom.
-        const loadingTask = getDocument({ data: bytes, enableHWA: true })
+        const loadingTask = getDocument({
+          data: bytes,
+          enableHWA: true,
+          worker: readerPdfWorker(),
+        })
         const pdf = await loadingTask.promise
         if (disposed) {
           await loadingTask.destroy()
           return
         }
+        const pageDrawn = Pdf.firstPageDrawn(eventBus, download.signal)
         linkService.setDocument(pdf)
         viewer.setDocument(pdf)
         sessionRef.current = { viewer, pdf, loadingTask }
         unregisterPdf = registerPdfDocument(resourceDocument.id, pdf)
-        const ast = await astRuntime.load()
-        if (disposed) {
-          await loadingTask.destroy()
-          return
-        }
+        // The page comes first. Everything below reads the whole paper: its parsed text is
+        // megabytes to check, and without one PDF.js is asked for every page's text, which the
+        // page being drawn would wait behind.
         const preparation = (async (): Promise<void> => {
+          await pageDrawn
+          if (disposed) return
+          const ast = await astRuntime.load()
+          if (disposed) return
+          // Pages whose text was laid out before the parsed text arrived are bound to it now.
+          for (const page of container.querySelectorAll<HTMLElement>(".page")) {
+            const pageNumber = Number(page.getAttribute("data-page-number"))
+            if (Number.isInteger(pageNumber) && page.querySelector(".textLayer span"))
+              astRuntime.bind(pageNumber)
+          }
+          await yieldToMain()
+          if (disposed) return
           const { summary, bibliography, outline, pageTexts } = await preparePdfView(
             resourceDocument.id,
             resourceDocument.title,
@@ -212,7 +228,8 @@ export function usePdfViewerLifecycle({
           retrievalSession = createPdfRetrievalSession({
             viewer,
             container,
-            index: buildPdfRetrievalIndex(pageTexts),
+            // Built when the reader first searches the paper by meaning, not on every open.
+            index: () => buildPdfRetrievalIndex(pageTexts),
             onPageJump,
           })
           pageTextsRef.current = [...pageTexts]

@@ -13,6 +13,12 @@ export function onPageRendered(pageNumber: number, listener: () => void): () => 
   return () => window.removeEventListener(pageRenderedEvent, handle)
 }
 
+/** Calls `listener` whenever PDF.js finishes drawing any page's canvas. */
+export function onAnyPageRendered(listener: () => void): () => void {
+  window.addEventListener(pageRenderedEvent, listener)
+  return () => window.removeEventListener(pageRenderedEvent, listener)
+}
+
 const textLayerRenderedEvent = "ohmypaper:text-layer-rendered"
 
 /** Tells listeners that PDF.js finished laying out a page's text layer. */

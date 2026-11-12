@@ -1,5 +1,5 @@
 import type { PDFDocumentLoadingTask, PDFDocumentProxy } from "pdfjs-dist/legacy/build/pdf.mjs"
-import type { PDFViewer } from "pdfjs-dist/legacy/web/pdf_viewer.mjs"
+import type { EventBus, PDFViewer } from "pdfjs-dist/legacy/web/pdf_viewer.mjs"
 import type { OhMyPaperApi } from "../../shared/ipc"
 
 const PDF_URL_PATTERN = /https:\/\/[^\s<>"')]+/iu
@@ -62,4 +62,32 @@ export function pageJumpHandler(
     const pageElement = viewer.getPageView(page - 1)?.div
     if (pageElement) onPageJump?.(page, pageElement)
   }
+}
+
+/** How long work that follows the first page waits for a page that never draws. */
+const FIRST_PAGE_GRACE_MS = 1_500
+
+/**
+ * Resolves once PDF.js has drawn a page of the paper just opened; also after `graceMs` when
+ * none is drawn, and at once when `signal` aborts. Reading the whole paper (its text, outline
+ * and search index) waits on this, so that work no longer runs on the main thread ahead of the
+ * page the reader is waiting to see.
+ */
+export function firstPageDrawn(
+  eventBus: Pick<EventBus, "on" | "off">,
+  signal?: AbortSignal,
+  graceMs = FIRST_PAGE_GRACE_MS,
+): Promise<void> {
+  return new Promise((resolve) => {
+    const finish = (): void => {
+      clearTimeout(timer)
+      eventBus.off("pagerendered", finish)
+      signal?.removeEventListener("abort", finish)
+      resolve()
+    }
+    const timer = setTimeout(finish, graceMs)
+    eventBus.on("pagerendered", finish)
+    if (signal?.aborted) finish()
+    else signal?.addEventListener("abort", finish, { once: true })
+  })
 }

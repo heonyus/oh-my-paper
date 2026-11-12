@@ -7,7 +7,11 @@ import { createAstFingerprint } from "../../src/electron/documentAstStore"
 import type { PreparedPdf } from "../../src/electron/preparePdf"
 import { buildSourceDocumentAst } from "../../src/electron/sourceAst"
 import { defaultWorkspace, WorkspaceStore } from "../../src/electron/workspaceStore"
-import { documentAstRequestSchema, documentAstResultSchema } from "../../src/shared/documentAstIpc"
+import {
+  documentAstRequestSchema,
+  documentAstResultSchema,
+  receivedDocumentAstResultSchema,
+} from "../../src/shared/documentAstIpc"
 import { documentIdSchema, documentRecordSchema, sha256Schema } from "../../src/shared/schemas"
 
 const id = documentIdSchema.parse("aabbccddeeff0011")
@@ -49,6 +53,28 @@ describe("document:ast IPC contract and service", () => {
       documentAstRequestSchema.parse({ id: "../../workspace", sourceHash, fingerprint }),
     ).toThrow()
     expect(request.id).toBe(id)
+  })
+
+  it("checks a received result's envelope and hands its AST over as it was sent", () => {
+    const ast = buildSourceDocumentAst(sourceHash, [
+      { page: 1, width: 600, height: 800, items: [] },
+    ])
+    const received = receivedDocumentAstResultSchema.parse({
+      status: "ready",
+      sourceHash,
+      fingerprint,
+      ast,
+    })
+    expect(received.status === "ready" && received.ast).toBe(ast)
+    expect(() =>
+      receivedDocumentAstResultSchema.parse({ status: "ready", sourceHash, fingerprint }),
+    ).toThrow()
+    expect(() =>
+      receivedDocumentAstResultSchema.parse({ status: "ready", sourceHash: "x", fingerprint, ast }),
+    ).toThrow()
+    expect(
+      receivedDocumentAstResultSchema.parse({ status: "failed", reason: "stale_source" }),
+    ).toEqual({ status: "failed", reason: "stale_source" })
   })
 
   it("coalesces local rebuilds and returns safe stale/unknown states", async () => {

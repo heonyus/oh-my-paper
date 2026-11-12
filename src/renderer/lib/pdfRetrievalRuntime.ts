@@ -21,7 +21,8 @@ export type PdfRetrievalSession = {
 type PdfRetrievalSessionOptions = {
   readonly viewer: PDFViewer
   readonly container: HTMLElement
-  readonly index: PdfRetrievalIndex
+  /** Builds the paper's search index; called once, the first time the index is read. */
+  readonly index: () => PdfRetrievalIndex
   readonly onPageJump?: ((page: number, pageElement: HTMLElement) => void) | undefined
 }
 
@@ -59,8 +60,12 @@ export function createPdfRetrievalSession(
     clearMarks(options.container)
   }
 
+  let index: PdfRetrievalIndex | null = null
   const runtime: PdfRetrievalRuntime = {
-    index: options.index,
+    get index() {
+      index ??= options.index()
+      return index
+    },
     activate: (result, query) => {
       clearMarks(options.container)
       active = { page: result.page, query }
