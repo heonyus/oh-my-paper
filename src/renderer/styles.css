@@ -129,6 +129,12 @@ body,
   margin: 0;
   overflow: clip;
 }
+/* A sideways swipe stays in the app instead of going back or forward in the browser's history;
+   see lib/historySwipe.ts for the browsers that decide by the wheel event. */
+html,
+body {
+  overscroll-behavior-x: none;
+}
 button {
   font: inherit;
   color: inherit;

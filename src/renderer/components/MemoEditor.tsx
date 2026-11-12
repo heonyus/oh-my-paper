@@ -124,7 +124,10 @@ export function MemoEditor({
   }, [editor, markdown])
 
   useEffect(() => {
-    if (editor && (autoFocus || focusRequest > 0)) editor.commands.focus("end")
+    // A memo sits on a board that moves under a transform; scrolling it into view would shove
+    // the page aside instead.
+    if (editor && (autoFocus || focusRequest > 0))
+      editor.commands.focus("end", { scrollIntoView: false })
   }, [editor, autoFocus, focusRequest])
 
   const openedAt = useRef(focusAt)
@@ -132,7 +135,7 @@ export function MemoEditor({
     const point = openedAt.current
     if (!editor || !point) return
     openedAt.current = undefined
-    editor.commands.focus(positionUnder(editor, point) ?? "end")
+    editor.commands.focus(positionUnder(editor, point) ?? "end", { scrollIntoView: false })
   }, [editor])
 
   useEffect(() => flush, [flush])

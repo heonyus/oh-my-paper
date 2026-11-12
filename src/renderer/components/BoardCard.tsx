@@ -21,6 +21,8 @@ type BoardCardProps = {
   readonly onDelete: (id: CardId) => void
   readonly onJump: (page: number) => void
   readonly onBodyChange?: ((id: CardId, body: string) => void) | undefined
+  /** Focus has left the card altogether. */
+  readonly onLeave?: ((id: CardId) => void) | undefined
   readonly onMinimize: (id: CardId) => void
   readonly onRegenerateTitle?: ((id: CardId) => void) | undefined
   readonly onResize: (id: CardId, width: number, height: number) => void
@@ -46,6 +48,7 @@ export const BoardCard = memo(function BoardCard({
   onDelete,
   onJump,
   onBodyChange,
+  onLeave,
   onMinimize,
   onRegenerateTitle,
   onResize,
@@ -92,6 +95,7 @@ export const BoardCard = memo(function BoardCard({
         )
           return
         onActiveChange(null)
+        onLeave?.(card.id)
       }}
     >
       <BoardCardHeader
