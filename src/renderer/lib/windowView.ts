@@ -5,6 +5,7 @@
  */
 const DOCUMENT_KEY = "ohmypaper.windowDocument"
 const TABS_KEY = "ohmypaper.readerTabs"
+const READING_KEY = "ohmypaper.windowReading"
 
 function read(storage: () => Storage, key: string): string | null {
   try {
@@ -30,6 +31,15 @@ export function windowDocument(): string | null {
 
 export function rememberWindowDocument(id: string | null): void {
   write(() => window.sessionStorage, DOCUMENT_KEY, id)
+}
+
+/** Whether this window was showing its paper in the reader, not the library, when last seen. */
+export function windowWasReading(): boolean {
+  return read(() => window.sessionStorage, READING_KEY) === "1"
+}
+
+export function rememberWindowReading(reading: boolean): void {
+  write(() => window.sessionStorage, READING_KEY, reading ? "1" : null)
 }
 
 function parseTabs(value: string | null): readonly string[] | null {
