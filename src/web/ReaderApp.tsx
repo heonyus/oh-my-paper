@@ -5,7 +5,6 @@ import { Topbar } from "../renderer/components/AppChrome"
 import { AppStatusOverlays } from "../renderer/components/AppStatusOverlays"
 import { LibraryHome } from "../renderer/components/LibraryHome"
 import { NoteCardOverlays } from "../renderer/components/noteCard/NoteCardOverlays"
-import { createPinnedNoteCard } from "../renderer/lib/board"
 import { useLocale, useTranslator } from "../renderer/lib/locale"
 import { noteCardTarget } from "../renderer/lib/noteCard"
 import { prefetchWhenIdle } from "../renderer/lib/prefetchWhenIdle"
@@ -13,6 +12,7 @@ import { appShellStyle } from "../renderer/lib/uiFontScale"
 import { useAppWorkspace } from "../renderer/lib/useAppWorkspace"
 import { useCrossDocumentCardJump } from "../renderer/lib/useCrossDocumentCardJump"
 import { useNoteCard } from "../renderer/lib/useNoteCard"
+import { useQuickMemo } from "../renderer/lib/useQuickMemo"
 import { withCardExample } from "../renderer/lib/vocabulary"
 import { noteMessages } from "../renderer/messages/note"
 import { analysedPaperCount } from "../shared/documentAnalysis"
@@ -64,17 +64,12 @@ export function ReaderApp(): JSX.Element {
   const credentialsReady = app.provider.configured
   const libraryVisible = !researchOpen && app.libraryView
   const [looseNoteOpen, setLooseNoteOpen] = useState(false)
-  // A note card goes to the paper on screen; from the library or research, to the loose note.
+  // N over a paper leaves a memo on its board; from the library or research, a card for the
+  // loose note.
   const noteCard = useNoteCard(
     noteCardTarget(!researchOpen && !app.libraryView ? app.activeDocument : null, app.currentPage),
     app.appendToNote,
-    (target, text, at) => {
-      if (target.documentId !== app.activeDocument?.id) return
-      app.updateCards([
-        ...app.activeCards,
-        createPinnedNoteCard(target.documentId, target.page, at, text, locale),
-      ])
-    },
+    useQuickMemo(app, locale),
     Boolean(workspace) && credentialsReady && welcome.state === "seen",
   )
 

@@ -1,6 +1,7 @@
-import { render, screen } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { BoardCardsLayer } from "../../src/renderer/components/BoardCardsLayer"
+import { trackQuickMemo } from "../../src/renderer/lib/quickMemos"
 import { boardCardSchema } from "../../src/shared/schemas"
 
 const markdownRenders = vi.hoisted(() => ({ count: 0 }))
@@ -104,5 +105,49 @@ describe("BoardCardsLayer annotations", () => {
     rerender(layer(1, [{ ...explanation, body: "새 본문" }]))
     expect(markdownRenders.count).toBeGreaterThan(drawn)
     expect(screen.getByText("새 본문")).toBeInTheDocument()
+  })
+})
+
+describe("a memo opened with N", () => {
+  const memo = boardCardSchema.parse({
+    ...translation,
+    id: "5d0c1c6a-0d0b-4a53-9a38-3f0a6f6f8b11",
+    kind: "sticky",
+    title: "메모",
+    body: "",
+  })
+
+  it("is taken away again when the reader leaves it empty", () => {
+    vi.useFakeTimers()
+    const commitCards = vi.fn()
+    const settle = vi.fn((body: string) => (body.trim() ? ("keep" as const) : ("discard" as const)))
+    trackQuickMemo(memo.id, settle)
+    renderLayer([translation, memo], commitCards)
+
+    fireEvent.blur(screen.getByRole("textbox", { name: "포스트잇 내용" }))
+    act(() => vi.runAllTimers())
+
+    expect(settle).toHaveBeenCalledWith("")
+    expect(commitCards).toHaveBeenCalledWith([translation])
+    vi.useRealTimers()
+  })
+
+  it("stays on the board once something is written, and settles only once", async () => {
+    const commitCards = vi.fn()
+    const settle = vi.fn(() => "keep" as const)
+    const written = { ...memo, body: "요지를 먼저 쓴다" }
+    trackQuickMemo(written.id, settle)
+    renderLayer([translation, written], commitCards)
+    const editor = screen.getByRole("textbox", { name: "포스트잇 내용" })
+
+    fireEvent.blur(editor)
+    await waitFor(() => expect(settle).toHaveBeenCalledWith("요지를 먼저 쓴다"))
+    fireEvent.blur(editor)
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5))
+    })
+
+    expect(settle).toHaveBeenCalledTimes(1)
+    expect(commitCards).not.toHaveBeenCalled()
   })
 })

@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { useWorkspacePersistence } from "../../src/renderer/lib/useWorkspacePersistence"
-import { type Workspace, workspaceSchema } from "../../src/shared/schemas"
+import { documentRecordSchema, type Workspace, workspaceSchema } from "../../src/shared/schemas"
 
 const workspace = workspaceSchema.parse({
   documents: [],
@@ -13,7 +13,57 @@ const workspace = workspaceSchema.parse({
 
 afterEach(() => vi.useRealTimers())
 
+function paper(id: string) {
+  return documentRecordSchema.parse({
+    id,
+    name: `${id}.pdf`,
+    hash: id.padEnd(64, "0"),
+    bytes: 1024,
+    importedAt: "2026-08-27T00:00:00.000Z",
+    pageCount: 3,
+    title: id,
+    authors: [],
+    year: null,
+    doi: null,
+    quality: { textCharacters: 2000, needsOcr: false, warnings: [] },
+  })
+}
+
 describe("useWorkspacePersistence", () => {
+  it("keeps this window on its own paper when a save returns the paper another window opened", async () => {
+    vi.useFakeTimers()
+    const mine = paper("aabbccddeeff0011")
+    const theirs = paper("1122334455667788")
+    const open = { ...workspace, documents: [mine, theirs], activeDocumentId: mine.id }
+    // The backend answers every save with the other window's paper as the one open.
+    const saveWorkspace = vi.fn(async (value: Workspace) => ({
+      ...value,
+      activeDocumentId: theirs.id,
+    }))
+    let acknowledged: Workspace | null = null
+    Object.defineProperty(window, "ohmypaper", {
+      configurable: true,
+      value: {
+        saveWorkspace,
+        onBeforeWorkspaceClose: () => () => {},
+        flushWorkspace: async () => {},
+      },
+    })
+    const { rerender } = renderHook(
+      ({ value }: { readonly value: Workspace }) =>
+        useWorkspacePersistence(value, (update) => {
+          acknowledged = typeof update === "function" ? update(value) : update
+        }),
+      { initialProps: { value: open } },
+    )
+    const panned = { ...open, viewport: { ...open.viewport, x: 40 } }
+    rerender({ value: panned })
+    await act(async () => vi.advanceTimersByTimeAsync(250))
+
+    expect(saveWorkspace).toHaveBeenCalled()
+    expect(acknowledged).toMatchObject({ activeDocumentId: mine.id, viewport: { x: 40 } })
+  })
+
   it("coalesces rapid workspace changes into one latest save", async () => {
     vi.useFakeTimers()
     const saveWorkspace = vi.fn(async (value: Workspace) => value)
