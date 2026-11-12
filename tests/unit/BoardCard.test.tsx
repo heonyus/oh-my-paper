@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import type { Editor } from "@tiptap/core"
 import { describe, expect, it, vi } from "vitest"
 import { BoardCard } from "../../src/renderer/components/BoardCard"
 import { boardCardSchema } from "../../src/shared/schemas"
@@ -20,6 +21,13 @@ const card = boardCardSchema.parse({
     fragments: [{ x: 420, y: 180, width: 80, height: 18 }],
   },
 })
+
+/** The Tiptap editor behind a memo's editable area; Tiptap keeps it on the element. */
+function tiptapOf(element: HTMLElement): Editor {
+  const editor: unknown = Reflect.get(element, "editor")
+  if (!editor) throw new Error("memo editor must be mounted")
+  return editor as Editor
+}
 
 const translationCard = boardCardSchema.parse({
   ...card,
@@ -209,7 +217,7 @@ describe("BoardCard controls", () => {
     expect(screen.queryByRole("button", { name: "카드 제목 다시 생성" })).not.toBeInTheDocument()
   })
 
-  it("edits a post-it as Markdown and commits on command-enter", () => {
+  it("shows a post-it's Markdown rendered while it is written and saves it on command-enter", () => {
     const sticky = boardCardSchema.parse({
       ...card,
       id: "2889c232-6a05-46df-bd89-9f128b49ad42",
@@ -235,11 +243,34 @@ describe("BoardCard controls", () => {
     // The reader's own note is never retitled by AI.
     expect(screen.queryByRole("button", { name: "카드 제목 다시 생성" })).not.toBeInTheDocument()
 
-    fireEvent.change(editor, { target: { value: "**핵심**\n\n$$x=1$$" } })
+    act(() => {
+      tiptapOf(editor).commands.insertContent("**핵심** 정리", { contentType: "markdown" })
+    })
+    // Rendered in the editor itself, before anything is saved.
+    expect(screen.getByText("핵심").tagName).toBe("STRONG")
+    expect(onBodyChange).not.toHaveBeenCalled()
+
     fireEvent.keyDown(editor, { key: "Enter", metaKey: true })
 
-    expect(onBodyChange).toHaveBeenCalledWith(sticky.id, "**핵심**\n\n$$x=1$$")
-    expect(screen.getByText("핵심").tagName).toBe("STRONG")
+    expect(onBodyChange).toHaveBeenCalledWith(sticky.id, "**핵심** 정리")
+  })
+
+  it("minimizes a post-it to its title bar", () => {
+    const { container } = render(
+      <BoardCard
+        {...advancedControls}
+        card={{ ...card, kind: "sticky", minimized: true }}
+        active={false}
+        zoom={1}
+        onMove={vi.fn()}
+        onDelete={vi.fn()}
+        onJump={vi.fn()}
+        onActiveChange={vi.fn()}
+      />,
+    )
+
+    expect(container.querySelector(".card-body")).toBeNull()
+    expect(screen.getByRole("button", { name: "카드 펼치기" })).toBeInTheDocument()
   })
 
   it("minimizes to a persistent bar and removes the dead overflow menu", () => {

@@ -1,4 +1,4 @@
-import { type JSX, memo, useEffect, useRef, useState } from "react"
+import { type JSX, memo, useRef } from "react"
 import { initialResearchCardHeight } from "../lib/board"
 import { infographicHtml } from "../lib/infographicHtml"
 import { useTranslator } from "../lib/locale"
@@ -11,6 +11,7 @@ import { BoardCardHeader } from "./BoardCardHeader"
 import { BoardCardResizeHandle } from "./BoardCardResizeHandle"
 import { InfographicFrame } from "./InfographicFrame"
 import { MarkdownContent } from "./MarkdownContent"
+import { MemoEditor } from "./MemoEditor"
 import { NoteCardBody } from "./NoteCardBody"
 
 type BoardCardProps = {
@@ -59,28 +60,7 @@ export const BoardCard = memo(function BoardCard({
 }: BoardCardProps): JSX.Element {
   const t = useTranslator(boardMessages)
   const cardElement = useRef<HTMLElement>(null)
-  const editor = useRef<HTMLTextAreaElement>(null)
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(card.body)
-
-  useEffect(() => {
-    if (autoEdit) setEditing(true)
-  }, [autoEdit])
-
-  useEffect(() => {
-    if (editing) editor.current?.focus()
-  }, [editing])
-
-  useEffect(() => {
-    setDraft(card.body)
-  }, [card.body])
-
-  function finishEditing(): void {
-    onBodyChange?.(card.id, draft)
-    setEditing(false)
-  }
-
-  const renderedBody = <MarkdownContent source={card.kind === "sticky" ? draft : card.body} />
+  const renderedBody = <MarkdownContent source={card.body} />
   const html = card.kind === "infographic" && !card.loading ? infographicHtml(card.body) : null
   const supportsChat =
     card.kind === "explanation" || card.kind === "infographic" || card.kind === "citation"
@@ -138,33 +118,13 @@ export const BoardCard = memo(function BoardCard({
             <span className="card-loading-bar" role="status" aria-label={t("card.generating")} />
           ) : null}
           {card.sourceMeta ? <BoardCardCitationMeta meta={card.sourceMeta} /> : null}
-          {card.kind === "sticky" && editing ? (
-            <textarea
-              ref={editor}
-              className="post-it-editor"
-              aria-label={t("card.stickyContent")}
-              value={draft}
+          {card.kind === "sticky" ? (
+            <MemoEditor
+              markdown={card.body}
+              onChange={(body) => onBodyChange?.(card.id, body)}
               placeholder={t("card.stickyPlaceholder")}
-              onChange={(event) => setDraft(event.target.value)}
-              onBlur={finishEditing}
-              onKeyDown={(event) => {
-                if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-                  event.currentTarget.blur()
-                } else if (event.key === "Escape") {
-                  setDraft(card.body)
-                  setEditing(false)
-                }
-              }}
-            />
-          ) : card.kind === "sticky" && draft.trim() === "" ? (
-            <textarea
-              ref={editor}
-              className="post-it-editor"
-              aria-label={t("card.stickyContent")}
-              value={draft}
-              placeholder={t("card.stickyEmptyPlaceholder")}
-              onChange={(event) => setDraft(event.target.value)}
-              onBlur={finishEditing}
+              ariaLabel={t("card.stickyContent")}
+              autoFocus={autoEdit}
             />
           ) : card.kind === "note" ? (
             <NoteCardBody
@@ -172,17 +132,6 @@ export const BoardCard = memo(function BoardCard({
               autoEdit={autoEdit}
               onBodyChange={(body) => onBodyChange?.(card.id, body)}
             />
-          ) : card.kind === "sticky" ? (
-            <button
-              type="button"
-              className="card-markdown post-it-preview"
-              onDoubleClick={() => {
-                setDraft(card.body)
-                setEditing(true)
-              }}
-            >
-              {renderedBody}
-            </button>
           ) : html ? (
             <InfographicFrame html={html} title={card.title} />
           ) : (

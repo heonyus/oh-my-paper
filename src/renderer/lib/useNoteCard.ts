@@ -58,8 +58,9 @@ export function useNoteCard(
     setFull(false)
   }, [])
   const save = useCallback(
-    (at: NoteCardPin | null): void => {
-      const text = draft.trim()
+    /** `written` is the card's text as the editor holds it, ahead of the draft it last reported. */
+    (at: NoteCardPin | null, written: string = draft): void => {
+      const text = written.trim()
       if (!openTarget || !text) return
       if (!onAppend(noteCardNoteId(openTarget), noteCardMarkdown(text, openTarget))) {
         setFull(true)

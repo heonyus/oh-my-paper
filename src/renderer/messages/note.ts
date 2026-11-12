@@ -54,7 +54,6 @@ const ko = {
   // A memo card on the board
   "memo.content": "메모 내용",
   "memo.placeholder": "메모",
-  "memo.edit": "메모 고쳐 쓰기",
 
   // A note card, written from anywhere and added to a note
   "card.label": "노트 카드",
@@ -125,7 +124,6 @@ const en: Readonly<Record<keyof typeof ko, string>> = {
 
   "memo.content": "Memo content",
   "memo.placeholder": "Memo",
-  "memo.edit": "Edit memo",
 
   "card.label": "Note card",
   "card.content": "Note card text",
