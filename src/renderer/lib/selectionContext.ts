@@ -87,35 +87,61 @@ function astPageText(page: number): string {
   return normalizeWhitespace(pageTextsFromAst(ast)[page - 1] ?? "")
 }
 
-export function addSelectionContext(
-  selection: BoardTextSelection,
+/**
+ * The text before and after `quote` on its page, running into the neighbouring pages near the
+ * page's edges. Null when the page is not drawn or the quote is not found on it.
+ */
+function contextAround(
   pageElement: HTMLElement,
-): BoardTextSelection {
+  pageNumber: number,
+  quoteText: string,
+): { readonly before: string; readonly after: string } | null {
   const pageText = normalizeWhitespace(
     [...pageElement.querySelectorAll<HTMLSpanElement>(".textLayer span")]
       .map((span) => span.textContent?.trim() ?? "")
       .filter(Boolean)
       .join(" "),
   )
-  const quote = normalizeWhitespace(selection.quote)
-  const found = locateQuote(pageText, quote)
-  if (!found) return selection
-  const section = selectedHeadingSection(selection, pageElement)
+  const found = locateQuote(pageText, normalizeWhitespace(quoteText))
+  if (!found) return null
   let before = pageText.slice(Math.max(0, found.start - BEFORE_CHARACTERS), found.start)
   let after = pageText.slice(found.end, found.end + AFTER_CHARACTERS)
   // A passage near the top of a page refers back to the end of the previous one.
   if (found.start < BEFORE_CHARACTERS) {
-    const previous = astPageText(selection.page - 1)
+    const previous = astPageText(pageNumber - 1)
     if (previous)
       before = `${previous.slice(-(BEFORE_CHARACTERS - found.start))} ${before}`.trimStart()
   }
   if (pageText.length - found.end < AFTER_CHARACTERS) {
-    const next = astPageText(selection.page + 1)
+    const next = astPageText(pageNumber + 1)
     if (next) after = `${after} ${next.slice(0, AFTER_CHARACTERS - after.length)}`.trimEnd()
   }
-  const context = { before, after }
+  return { before, after }
+}
+
+export function addSelectionContext(
+  selection: BoardTextSelection,
+  pageElement: HTMLElement,
+): BoardTextSelection {
+  const context = contextAround(pageElement, selection.page, selection.quote)
+  if (!context) return selection
+  const section = selectedHeadingSection(selection, pageElement)
   return {
     ...selection,
     context: section ? { ...context, section } : context,
   }
+}
+
+/**
+ * The surroundings of a passage a card is anchored to, for asking about it again without the
+ * reader selecting it a second time. Empty when its page is not on screen.
+ */
+export function passageContext(
+  pageNumber: number,
+  quoteText: string,
+): { readonly before: string; readonly after: string } {
+  const pageElement = document.querySelector<HTMLElement>(`.page[data-page-number="${pageNumber}"]`)
+  return (
+    (pageElement && contextAround(pageElement, pageNumber, quoteText)) ?? { before: "", after: "" }
+  )
 }

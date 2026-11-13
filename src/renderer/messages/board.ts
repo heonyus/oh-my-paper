@@ -74,6 +74,8 @@ const ko = {
   "translation.copy": "번역 복사",
   "translation.copied": "번역 복사됨",
   "translation.delete": "번역 지우기",
+  "translation.missing": "번역을 받지 못했습니다.",
+  "translation.retry": "다시 번역",
 
   // Minimap
   "minimap.label": "보드 미니맵",
@@ -171,6 +173,8 @@ const en: Readonly<Record<keyof typeof ko, string>> = {
   "translation.copy": "Copy translation",
   "translation.copied": "Translation copied",
   "translation.delete": "Remove translation",
+  "translation.missing": "No translation came back.",
+  "translation.retry": "Translate again",
 
   "minimap.label": "Board minimap",
   "minimap.title": "Minimap",

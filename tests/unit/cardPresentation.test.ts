@@ -4,7 +4,9 @@ import {
   normalizeWorkspaceTranslations,
   parsedCardResponse,
   parsedTranslationResponse,
+  translationMissing,
 } from "../../src/renderer/lib/cardPresentation"
+import { interruptedCardBody } from "../../src/renderer/lib/structureCardState"
 import { workspaceSchema } from "../../src/shared/schemas"
 
 describe("card presentation", () => {
@@ -55,6 +57,71 @@ describe("card presentation", () => {
       title: "verifiable ground truth",
       body: "1. **검증 가능한 정답**",
     })
+  })
+
+  it("finds a word's meanings however the model dressed its answer", () => {
+    const body = (answer: string): string => parsedTranslationResponse(answer, "numerator").body
+
+    // A line of its own before the JSON, a remark after it, a code fence around it.
+    expect(body('다음은 번역입니다:\n{"meanings":["분자"]}')).toBe("1. **분자**")
+    expect(body('{"meanings":["분자"]}\n\n문맥상 분수의 위쪽 수입니다.')).toBe("1. **분자**")
+    expect(body('```json\n{"meanings":["분자","분수의 윗부분"]}\n```')).toBe(
+      "1. **분자**\n2. 분수의 윗부분",
+    )
+    // More meanings than were asked for: the best three, not none.
+    expect(body('{"meanings":["분자","계수","피제수","나뉘는 수"]}')).toBe(
+      "1. **분자**\n2. 계수\n3. 피제수",
+    )
+    expect(body('{"meaning":"분자"}')).toBe("1. **분자**")
+    // Prose: the Korean in brackets after the word, or on a later line.
+    expect(body("Numerator (분자)")).toBe("1. **분자**")
+    expect(body("\nnumerator\n분자, 분수의 위쪽 수")).toBe("1. **분자**\n2. 분수의 위쪽 수")
+  })
+
+  it("shows what the model said when it gave no Korean, and marks an empty answer missing", () => {
+    // A term left as it is still answers the reader; an empty card answers nothing.
+    expect(parsedTranslationResponse("numerator", "numerator").body).toBe("1. **numerator**")
+    expect(parsedTranslationResponse("", "numerator").body).toBe(interruptedCardBody)
+    expect(
+      parsedTranslationResponse("  \n ", "a long passage of more than five words here").body,
+    ).toBe(interruptedCardBody)
+
+    expect(translationMissing({ body: "", loading: false })).toBe(true)
+    expect(translationMissing({ body: interruptedCardBody, loading: false })).toBe(true)
+    expect(translationMissing({ body: "", loading: true })).toBe(false)
+    expect(translationMissing({ body: "1. **분자**", loading: false })).toBe(false)
+  })
+
+  it("marks a translation saved with nothing in it as missing instead of leaving it blank", () => {
+    const workspace = workspaceSchema.parse({
+      documents: [],
+      cards: [
+        {
+          id: "83fcb8ab-9085-4f88-af36-f4d25cdd2366",
+          documentId: "aabbccddeeff0011",
+          kind: "translation",
+          title: "numerator",
+          body: "",
+          x: 0,
+          y: 0,
+          minimized: false,
+          loading: false,
+          chat: [],
+          anchor: {
+            page: 1,
+            quote: "numerator",
+            x: 0,
+            y: 0,
+            fragments: [{ x: 0, y: 0, width: 1, height: 1 }],
+          },
+        },
+      ],
+      sidebarOpen: true,
+      viewport: { x: 0, y: 0, zoom: 1 },
+      activeDocumentId: null,
+    })
+
+    expect(normalizeWorkspaceTranslations(workspace).cards[0]?.body).toBe(interruptedCardBody)
   })
 
   it("uses a neutral paragraph title while preserving translated paragraph breaks", () => {

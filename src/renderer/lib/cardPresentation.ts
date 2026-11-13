@@ -3,9 +3,13 @@ import type { BoardCard, Workspace } from "../types"
 import { interruptedCardBody } from "./structureCardState"
 
 const genericSuffix = /\s*(?:해설|분석|카드)$/u
-const wordTranslationSchema = z.object({
-  meanings: z.array(z.string().trim().min(1)).min(1).max(3),
-})
+/** However many the model lists, in whichever of the shapes models answer in. */
+const wordTranslationSchema = z.union([
+  z.object({ meanings: z.array(z.string()).min(1) }).transform((value) => value.meanings),
+  z.object({ meaning: z.string() }).transform((value) => [value.meaning]),
+  z.array(z.string()).min(1),
+])
+const MEANINGS_SHOWN = 3
 
 export function translationSelectionTitle(value: string): string | null {
   const trimmed = value.trim().replace(/^["'`]+|["'`.,;:!?]+$/gu, "")
@@ -37,27 +41,75 @@ function cleanMeaning(value: string): string {
     .trim()
 }
 
+function parsedJson(value: string): unknown {
+  try {
+    return JSON.parse(value)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The meanings in the JSON a model was asked for. Models wrap it in a code fence, lead up to
+ * it with a line of their own or add a remark after it, and list more meanings than asked;
+ * none of that loses the meanings.
+ */
+function jsonMeanings(value: string): readonly string[] {
+  const unfenced = value.trim().replace(/^```(?:json)?\s*|\s*```$/gu, "")
+  const embedded = unfenced.match(/\{[\s\S]*\}|\[[\s\S]*\]/u)?.[0]
+  for (const candidate of [unfenced, embedded]) {
+    if (!candidate) continue
+    const result = wordTranslationSchema.safeParse(parsedJson(candidate))
+    if (!result.success) continue
+    const meanings = result.data.map(cleanMeaning).filter(Boolean)
+    if (meanings.length > 0) return meanings.slice(0, MEANINGS_SHOWN)
+  }
+  return []
+}
+
+const korean = /[가-힣]/u
+
+/** The Korean a line of prose offers as meanings: after a label, or in brackets after the word. */
+function proseMeanings(line: string): readonly string[] {
+  const bracketed = [...line.matchAll(/\(([^()]*)\)/gu)].map((match) => match[1] ?? "")
+  const plain = line.replace(/\([^()]*\)/gu, " ")
+  const afterLabel = plain.split(":").at(-1) ?? ""
+  for (const candidate of [afterLabel, plain, ...bracketed]) {
+    const meanings = candidate
+      .split(/[,/·]/u)
+      .map(cleanMeaning)
+      .filter((meaning) => korean.test(meaning))
+    if (meanings.length > 0) return meanings.slice(0, MEANINGS_SHOWN)
+  }
+  return []
+}
+
 function legacyMeanings(value: string): readonly string[] {
-  const numbered = value
+  const lines = value
     .split("\n")
-    .map((line) => line.match(/^\s*\d+[.)]\s*(.+)$/u)?.[1])
+    .map((line) => line.trim())
+    .filter(Boolean)
+  const numbered = lines
+    .map((line) => line.match(/^\d+[.)]\s*(.+)$/u)?.[1])
     .filter((line): line is string => Boolean(line))
     .map(cleanMeaning)
     .filter(Boolean)
-  if (numbered.length > 0) return numbered.slice(0, 3)
+  if (numbered.length > 0) return numbered.slice(0, MEANINGS_SHOWN)
   const boldKorean = [...value.matchAll(/\*\*([^*]+)\*\*/gu)]
     .map((match) => match[1] ?? "")
-    .filter((match) => /[가-힣]/u.test(match))
+    .filter((match) => korean.test(match))
     .flatMap((match) => match.split(/[,/·]/u))
     .map(cleanMeaning)
     .filter(Boolean)
-  if (boldKorean.length > 0) return boldKorean.slice(0, 3)
-  const concise = value.split(/\n|\(/u)[0]?.split(":").at(-1) ?? ""
-  return concise
-    .split(/[,/·]/u)
-    .map(cleanMeaning)
-    .filter((meaning) => /[가-힣]/u.test(meaning))
-    .slice(0, 3)
+  if (boldKorean.length > 0) return boldKorean.slice(0, MEANINGS_SHOWN)
+  for (const line of lines) {
+    const meanings = proseMeanings(line)
+    if (meanings.length > 0) return meanings
+  }
+  // Nothing Korean to pick out (a term the model left as it is, a gloss in another language):
+  // what it said is still an answer, and showing it beats showing nothing.
+  const said = cleanMeaning(lines[0] ?? "")
+  return said ? [said] : []
 }
 
 /** The meanings a word translation card lists, in order, without their numbering or emphasis. */
@@ -106,17 +158,17 @@ export function parsedTranslationResponse(
   selectedText: string,
 ): { readonly title: string; readonly body: string } {
   const title = translationCardTitle(selectedText)
+  // An answer with nothing in it is no translation: the card says so and can ask again.
+  if (!value.trim()) return { title, body: interruptedCardBody }
   if (!shortEnglishSelection(selectedText)) return { title, body: value.trim() }
-  let parsed: unknown
-  try {
-    // Models sometimes wrap the JSON in a code fence despite being told not to.
-    parsed = JSON.parse(value.trim().replace(/^```(?:json)?\s*|\s*```$/gu, ""))
-  } catch {
-    parsed = null
-  }
-  const result = wordTranslationSchema.safeParse(parsed)
-  const meanings = result.success ? result.data.meanings.map(cleanMeaning) : legacyMeanings(value)
-  return { title, body: formatMeanings(meanings) }
+  const fromJson = jsonMeanings(value)
+  const meanings = fromJson.length > 0 ? fromJson : legacyMeanings(value)
+  return { title, body: meanings.length > 0 ? formatMeanings(meanings) : interruptedCardBody }
+}
+
+/** A translation that never arrived, or arrived empty: there is nothing to show but a retry. */
+export function translationMissing(card: Pick<BoardCard, "body" | "loading">): boolean {
+  return !card.loading && (card.body.trim() === "" || card.body === interruptedCardBody)
 }
 
 export function normalizeWorkspaceTranslations(workspace: Workspace): Workspace {
@@ -128,6 +180,11 @@ export function normalizeWorkspaceTranslations(workspace: Workspace): Workspace 
     }
     if (card.kind !== "translation" || card.loading || card.body === interruptedCardBody)
       return card
+    // Saved before an empty answer was told apart from a translation: an empty card.
+    if (!card.body.trim()) {
+      changed = true
+      return { ...card, body: interruptedCardBody }
+    }
     const parsed = parsedTranslationResponse(card.body, card.anchor.quote)
     if (parsed.title === card.title && parsed.body === card.body) return card
     changed = true
