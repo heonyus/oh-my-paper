@@ -20,6 +20,7 @@ import { useLocale, useTranslator } from "../lib/locale"
 import { paperContextForQuestion } from "../lib/pdfSearch"
 import { useSelectionShortcuts } from "../lib/selectionActions"
 import { selectionAiRequest } from "../lib/selectionAiRequest"
+import { passageContext } from "../lib/selectionContext"
 import { worldRectToScreen } from "../lib/selectionGeometry"
 import { createStructureActionHandler } from "../lib/structureActions"
 import { useAnchorRepair } from "../lib/useAnchorRepair"
@@ -226,6 +227,24 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
     )
   }
 
+  /** Asks again for a translation that never came back, for the passage the card is on. */
+  function retryTranslation(card: BoardCard): void {
+    commitCards(
+      cardsRef.current.map((item) =>
+        item.id === card.id ? { ...item, body: "", loading: true } : item,
+      ),
+    )
+    void props
+      .onAiRequest({
+        action: "translation",
+        page: card.anchor.page,
+        quote: card.anchor.quote,
+        ...passageContext(card.anchor.page, card.anchor.quote),
+      })
+      .then((body) => updateCardBody(card.id, body))
+      .catch(() => updateCardBody(card.id, ""))
+  }
+
   function addCard(kind: BoardOverlays.SelectionAction): void {
     if (!selectionMenu) return
     // Selected in the translation, so the passage already reads in the reader's language.
@@ -272,9 +291,13 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
         })
         .catch(() => {
           cardStreams.clear(card.id)
-          // Stored as the card's body and read back as a translation, which keeps only Korean
-          // meanings (see cardPresentation), so it is not translated yet.
-          updateCardBody(card.id, "AI 설정을 확인한 뒤 다시 실행하세요.")
+          // A translation that failed is a missing one, which its peek offers to ask for again;
+          // the sentence would be read back as if it were the word's meaning. The other cards
+          // show it as their text, so it is not translated yet.
+          updateCardBody(
+            card.id,
+            kind === "translation" ? "" : "AI 설정을 확인한 뒤 다시 실행하세요.",
+          )
         })
     }
   }
@@ -467,6 +490,7 @@ export function BoardViewport(props: BoardViewportProps): JSX.Element {
             setTranslationHover(null)
             deleteHighlight(peekCard.id)
           }}
+          onRetry={() => retryTranslation(peekCard)}
         />
       ) : null}
       {selectedHighlight && highlightMenuPosition ? (

@@ -1,5 +1,6 @@
-import { Check, Copy, Trash2 } from "lucide-react"
+import { Check, Copy, RotateCw, Trash2 } from "lucide-react"
 import { type CSSProperties, type JSX, useLayoutEffect, useRef, useState } from "react"
+import { translationMissing } from "../lib/cardPresentation"
 import { useTranslator } from "../lib/locale"
 import { boardMessages } from "../messages/board"
 import type { BoardCard } from "../types"
@@ -65,6 +66,7 @@ export function TranslationPeek({
   onPointerEnter,
   onPointerLeave,
   onDelete,
+  onRetry,
 }: {
   readonly card: BoardCard
   readonly anchor: PeekAnchor
@@ -72,12 +74,15 @@ export function TranslationPeek({
   readonly onPointerEnter: () => void
   readonly onPointerLeave: () => void
   readonly onDelete: () => void
+  /** Asks for the translation again; offered when none came back. */
+  readonly onRetry?: (() => void) | undefined
 }): JSX.Element {
   const t = useTranslator(boardMessages)
   const ref = useRef<HTMLElement>(null)
   const [copied, setCopied] = useState(false)
   const [placement, setPlacement] = useState<Placement | null>(null)
-  const meanings = card.loading ? null : wordMeanings(card.body)
+  const missing = translationMissing(card)
+  const meanings = card.loading || missing ? null : wordMeanings(card.body)
 
   // Placed from its rendered size, so it sits right over the passage whatever its length, and
   // placed again when its text arrives or changes.
@@ -114,7 +119,7 @@ export function TranslationPeek({
       ref={ref}
       className="translation-peek"
       data-side={placement?.side}
-      data-kind={meanings ? "word" : "passage"}
+      data-kind={meanings || missing ? "word" : "passage"}
       style={style}
       aria-label={t("translation.label")}
       onPointerEnter={onPointerEnter}
@@ -124,6 +129,11 @@ export function TranslationPeek({
       {card.loading ? (
         <p className="translation-peek-loading" role="status">
           {t("translation.loading")}
+        </p>
+      ) : missing ? (
+        // No translation to show: say so, where an empty box said nothing.
+        <p className="translation-peek-loading" role="status">
+          {t("translation.missing")}
         </p>
       ) : meanings ? (
         <p className="translation-peek-meanings">
@@ -136,14 +146,27 @@ export function TranslationPeek({
       )}
       {card.loading ? null : (
         <span className="translation-peek-actions">
-          <button
-            type="button"
-            aria-label={copied ? t("translation.copied") : t("translation.copy")}
-            title={copied ? t("translation.copied") : t("translation.copy")}
-            onClick={() => void copy()}
-          >
-            {copied ? <Check size={12} /> : <Copy size={12} />}
-          </button>
+          {missing ? (
+            onRetry ? (
+              <button
+                type="button"
+                aria-label={t("translation.retry")}
+                title={t("translation.retry")}
+                onClick={onRetry}
+              >
+                <RotateCw size={12} />
+              </button>
+            ) : null
+          ) : (
+            <button
+              type="button"
+              aria-label={copied ? t("translation.copied") : t("translation.copy")}
+              title={copied ? t("translation.copied") : t("translation.copy")}
+              onClick={() => void copy()}
+            >
+              {copied ? <Check size={12} /> : <Copy size={12} />}
+            </button>
+          )}
           <button
             type="button"
             aria-label={t("translation.delete")}
