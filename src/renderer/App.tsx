@@ -6,7 +6,7 @@ import { AppStatusOverlays } from "./components/AppStatusOverlays"
 import type { HostedCredentialSettingsProps } from "./components/HostedCredentialSettings"
 import { LibraryWorkspace } from "./components/LibraryWorkspace"
 import { NoteCardOverlays } from "./components/noteCard/NoteCardOverlays"
-import { ReaderWorkspace, warmReader } from "./components/ReaderWorkspaceLoader"
+import { ReaderWorkspace, startReaderAhead, warmReader } from "./components/ReaderWorkspaceLoader"
 import { ResearchNavigation } from "./components/ResearchNavigation"
 import { WorkspaceSections } from "./components/WorkspaceSections"
 import { useLocale } from "./lib/locale"
@@ -96,6 +96,7 @@ export function App({
   const [dataExchangeOpen, setDataExchangeOpen] = useState(false)
   const [proposalOpen, setProposalOpen] = useState(false)
   const [looseNoteOpen, setLooseNoteOpen] = useState(false)
+  useState(startReaderAhead)
   useEffect(() => prefetchWhenIdle(warmReader), [])
   // N over a paper leaves a memo on its board; anywhere else, a card for the loose note.
   const noteCard = useNoteCard(
@@ -247,6 +248,7 @@ export function App({
           />
           <Suspense fallback={<p role="status">논문을 여는 중…</p>}>
             <ReaderWorkspace
+              fallback={<p role="status">논문을 여는 중…</p>}
               key={activeDocument?.id ?? "empty"}
               document={activeDocument}
               workspace={workspace}

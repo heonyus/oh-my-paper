@@ -130,6 +130,39 @@ beforeEach(() => vi.useFakeTimers())
 afterEach(() => vi.useRealTimers())
 
 describe("useWorkspacePersistence patch saves", () => {
+  it("saves nothing at start when given the workspace as the backend returned it", async () => {
+    const backend = fakeBackend(library)
+    Object.defineProperty(window, "ohmypaper", {
+      configurable: true,
+      value: { ...backend, onBeforeWorkspaceClose: () => () => {}, flushWorkspace: async () => {} },
+    })
+    const stored = await backend.readWorkspace()
+    const { result } = renderHook(() => {
+      const [workspace, setWorkspace] = useState<Workspace | null>(stored)
+      const acknowledge = useCallback((update: WorkspaceUpdate) => {
+        setWorkspace((current) => (typeof update === "function" ? update(current) : update))
+      }, [])
+      const failure = useWorkspacePersistence(workspace, acknowledge, stored)
+      return { workspace, setWorkspace, failed: failure !== null }
+    })
+    await settle()
+    // What was read is what is stored: the whole workspace is not sent back.
+    expect(backend.saveWorkspace).not.toHaveBeenCalled()
+    expect(backend.saveWorkspacePatch).not.toHaveBeenCalled()
+
+    act(() => result.current.setWorkspace(turnPage(result.current.workspace, 3)))
+    await settle()
+
+    expect(backend.saveWorkspace).not.toHaveBeenCalled()
+    expect(backend.saveWorkspacePatch.mock.calls.map(([request]) => request)).toEqual([
+      {
+        baseSnapshotToken: stored.snapshotToken,
+        patch: { documents: { changed: [{ key: first.id, set: { lastReadPage: 3 } }] } },
+      },
+    ])
+    expect(result.current.failed).toBe(false)
+  })
+
   it("sends a page turn as one changed field against the acknowledged workspace", async () => {
     const backend = fakeBackend(library)
     const { result } = await openApp(backend)

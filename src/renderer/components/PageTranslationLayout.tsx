@@ -10,6 +10,7 @@ import {
   useState,
 } from "react"
 import { parsedDocumentPage } from "../lib/documentPageRuntime"
+import { whenIdle } from "../lib/mainThread"
 import { onPageRendered } from "../lib/pageRenderEvents"
 import {
   backgroundColor,
@@ -148,6 +149,11 @@ type RenderedPage = {
   readonly canvas: HTMLCanvasElement
 }
 
+/** How long a mirror of a page the reader has not drawn waits for the page to go idle. */
+const mirrorPatienceMs = 4_000
+/** How far a drawing's width may be from the width it is shown at and still count as sharp. */
+const mirrorSharpness = 0.15
+
 function viewerCanvas(pageNumber: number): HTMLCanvasElement | null {
   const canvas = sourcePage(pageNumber)?.querySelector<HTMLCanvasElement>(".canvasWrapper canvas")
   return canvas && canvas.width > 0 && canvas.height > 0 ? canvas : null
@@ -170,6 +176,8 @@ function useMirroredPage(
   useEffect(() => {
     let cancelled = false
     let task: RenderTask | null = null
+    let turns = 0
+    let releaseIdle: (() => void) | null = null
 
     function paint(source: HTMLCanvasElement): void {
       const target = canvasRef.current
@@ -190,19 +198,39 @@ function useMirroredPage(
       }
     }
 
+    /** Whether the reader's own drawing of the page is about as large as the mirror shows it. */
+    const sharp = (stand: HTMLCanvasElement, shown: number): boolean =>
+      shown > 0 && stand.width >= shown * (1 - mirrorSharpness)
+
     async function update(): Promise<void> {
+      const turn = ++turns
       const current = rendered.current
       const shown = (containerRef.current?.getBoundingClientRect().width ?? 0) * devicePixelRatio
       const fresh =
         current?.page === pdfPage &&
-        (shown === 0 || Math.abs(shown - current.width) / current.width < 0.15)
+        (shown === 0 || Math.abs(shown - current.width) / current.width < mirrorSharpness)
       if (current && fresh) {
         paint(current.canvas)
         return
       }
       const stand = viewerCanvas(pageNumber)
       if (stand) paint(stand)
+      // The reader has this page drawn about as large as it is shown here: its drawing is
+      // the mirror, and the page is not drawn a second time on the same thread.
+      if (stand && sharp(stand, shown)) return
       if (!pdfPage || shown === 0) return
+      // A page the reader has not drawn is not on screen, and neither is the translation
+      // beside it. Drawing it waits for an idle moment, so it does not take the worker and
+      // the main thread from the page that is being read.
+      await new Promise<void>((resolve) => {
+        releaseIdle = whenIdle(resolve, mirrorPatienceMs)
+      })
+      if (cancelled || turn !== turns) return
+      const arrived = viewerCanvas(pageNumber)
+      if (arrived && sharp(arrived, shown)) {
+        paint(arrived)
+        return
+      }
       const base = pdfPage.getViewport({ scale: 1 })
       const scale = Math.min(
         shown / base.width,
@@ -232,6 +260,7 @@ function useMirroredPage(
     return () => {
       cancelled = true
       task?.cancel()
+      releaseIdle?.()
       unsubscribe()
     }
   }, [pageNumber, pdfPage, canvasRef, containerRef, masks])
@@ -327,30 +356,62 @@ function fitEquation(element: HTMLElement, region: LayoutRegion, max: number): v
 }
 
 /**
- * Sets a run of paragraphs as one flow down its column at one size: each keeps the gap the
- * source has before it, so paragraph spacing matches and any space a shorter translation
- * frees gathers at the end of the run. Returns the height the run takes, as a page fraction.
+ * The height each paragraph of a run takes at `size`. Every size is written before any height
+ * is read: read one by one, each read laid the page out again, once per paragraph for every
+ * size tried, and a page of translation took a thousand layouts to set.
  */
-function flowRun(
+function runHeights(elements: readonly HTMLElement[], size: number): readonly number[] {
+  for (const element of elements) {
+    element.style.setProperty("--fit-font-size", String(size))
+    element.style.height = "auto"
+  }
+  return elements.map((element) => element.offsetHeight)
+}
+
+/**
+ * Where each paragraph of a run starts when the run flows down its column: each keeps the gap
+ * the source has before it, so paragraph spacing matches and any space a shorter translation
+ * frees gathers at the end of the run. Positions and the run's height are page fractions.
+ */
+function runFlow(
+  run: readonly LayoutRegion[],
+  heights: readonly number[],
+  pageHeight: number,
+): { readonly tops: readonly number[]; readonly height: number } {
+  const first = run[0]
+  if (!first) return { tops: [], height: 0 }
+  let y = first.rect.y
+  const tops = run.map((region, index) => {
+    const previous = run[index - 1]
+    if (previous) y += Math.max(0, region.rect.y - (previous.rect.y + previous.rect.height))
+    const top = y
+    y += (heights[index] ?? 0) / pageHeight
+    return top
+  })
+  return { tops, height: y - first.rect.y }
+}
+
+/** The height a run takes at `size`, as a page fraction, without moving its paragraphs. */
+function runHeight(
   run: readonly LayoutRegion[],
   elements: readonly HTMLElement[],
   size: number,
   pageHeight: number,
 ): number {
-  const first = run[0]
-  if (!first) return 0
-  let y = first.rect.y
-  run.forEach((region, index) => {
-    const element = elements[index]
-    if (!element) return
-    const previous = run[index - 1]
-    if (previous) y += Math.max(0, region.rect.y - (previous.rect.y + previous.rect.height))
-    element.style.setProperty("--fit-font-size", String(size))
-    element.style.height = "auto"
-    element.style.top = `${y * 100}%`
-    y += element.offsetHeight / pageHeight
+  return runFlow(run, runHeights(elements, size), pageHeight).height
+}
+
+/** Sets a run of paragraphs as one flow down its column at one size. */
+function flowRun(
+  run: readonly LayoutRegion[],
+  elements: readonly HTMLElement[],
+  size: number,
+  pageHeight: number,
+): void {
+  const { tops } = runFlow(run, runHeights(elements, size), pageHeight)
+  elements.forEach((element, index) => {
+    element.style.top = `${(tops[index] ?? 0) * 100}%`
   })
-  return y - first.rect.y
 }
 
 /**
@@ -472,7 +533,7 @@ function useFittedRegions(
         const max = Math.min(...run.map((region) => region.typography?.fontSize ?? Infinity))
         const span = last.rect.y + last.rect.height - first.rect.y
         const fitsWithin = (room: number) => (size: number) =>
-          flowRun(run, present, size, pageHeight) <= room + 1 / pageHeight
+          runHeight(run, present, size, pageHeight) <= room + 1 / pageHeight
         // Keep close to the source size: use the run's own space, then free space below it,
         // and only then set smaller type.
         const room = roomBelow(last.rect, obstacles) - first.rect.y

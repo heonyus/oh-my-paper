@@ -4,8 +4,10 @@ import { describe, expect, it, vi } from "vitest"
 import {
   autoOpenDelayMs,
   PageTranslationPortal,
+  useTranslationsToBuild,
   visibleResearchSidebarWidth,
 } from "../../src/renderer/components/PageTranslationPortal"
+import { announcePageRendered } from "../../src/renderer/lib/pageRenderEvents"
 import {
   openPageTranslation,
   setPageTranslationDocument,
@@ -145,8 +147,28 @@ describe("PageTranslationPortal", () => {
     view.rerender(<Reader key={secondDocument.id} paper={secondDocument} />)
 
     act(() => openPageTranslation(1))
+    // Translations are built once the paper itself is showing.
+    act(() => announcePageRendered(1))
 
     const pane = document.querySelector('.board-world [data-page="1"]')
     expect(pane?.closest(".board-world")).toHaveAttribute("data-paper", secondDocument.id)
+  })
+
+  it("builds the translations beside the page being read, and keeps those already built", () => {
+    const open = [1, 3, 4, 6, 7, 12]
+    const view = renderHook(({ page }) => useTranslationsToBuild(open, page), {
+      initialProps: { page: 4 },
+    })
+    // Nothing before the paper has a page on screen.
+    expect(view.result.current).toEqual([])
+
+    act(() => announcePageRendered(4))
+    expect(view.result.current).toEqual([3, 4])
+
+    view.rerender({ page: 6 })
+    expect(view.result.current).toEqual([3, 4, 6, 7])
+
+    view.rerender({ page: 1 })
+    expect(view.result.current).toEqual([1, 3, 4, 6, 7])
   })
 })

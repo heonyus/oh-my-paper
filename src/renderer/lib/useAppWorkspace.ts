@@ -111,9 +111,11 @@ export function useAppWorkspace() {
     readonly entries: readonly CitationIndexEntry[]
   } | null>(null)
 
+  const [storedWorkspace, setStoredWorkspace] = useState<Workspace | null>(null)
   const workspaceSaveFailure = useWorkspacePersistence(
     history.workspace,
     history.setWorkspaceTransient,
+    storedWorkspace,
   )
   const documentAnalysisJobs = useDocumentAnalysisQueue()
   const knowledgeClientOps = useKnowledgeClientOps()
@@ -148,6 +150,7 @@ export function useAppWorkspace() {
   useAppBootstrap({
     preparation,
     resetWorkspace: history.resetWorkspace,
+    onWorkspaceRead: setStoredWorkspace,
     setPreparation,
     setProvider,
     setOcrStatus,

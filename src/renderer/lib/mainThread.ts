@@ -46,10 +46,13 @@ export function afterNextPaint(run: () => void): () => void {
 /** How long `whenIdle` waits for the page to go idle before running anyway. */
 const IDLE_TIMEOUT_MS = 500
 
-/** Calls `run` when the page has nothing else to do. Returns the call that cancels it. */
-export function whenIdle(run: () => void): () => void {
+/**
+ * Calls `run` when the page has nothing else to do, or after `patienceMs` when it stays busy.
+ * Returns the call that cancels it.
+ */
+export function whenIdle(run: () => void, patienceMs = IDLE_TIMEOUT_MS): () => void {
   if (typeof window.requestIdleCallback === "function") {
-    const handle = window.requestIdleCallback(run, { timeout: IDLE_TIMEOUT_MS })
+    const handle = window.requestIdleCallback(run, { timeout: patienceMs })
     return () => window.cancelIdleCallback(handle)
   }
   const timer = window.setTimeout(run, 32)

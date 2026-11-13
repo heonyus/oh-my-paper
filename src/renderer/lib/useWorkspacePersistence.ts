@@ -22,6 +22,13 @@ export function withWindowDocument(
 export function useWorkspacePersistence(
   workspace: Workspace | null,
   onAcknowledged: WorkspaceSetter,
+  /**
+   * The workspace as the backend returned it when the app started. It is already saved, so the
+   * first save carries only what has changed since, or nothing: without it every start sent
+   * the whole workspace back and checked the whole of it again as it returned, while the
+   * paper the reader had just reopened was being drawn.
+   */
+  stored: Workspace | null = null,
 ): string | null {
   const [failure, setFailure] = useState<string | null>(null)
   const failed = failure !== null
@@ -71,9 +78,14 @@ export function useWorkspacePersistence(
     })
   }, [onAcknowledged])
 
+  const adopted = useRef<Workspace | null>(null)
   useEffect(() => {
     latest.current = workspace
     if (!workspace) return
+    if (stored && adopted.current !== stored) {
+      adopted.current = stored
+      if (baseline.current === null) baseline.current = stored
+    }
     const timer = window.setTimeout(
       () => {
         void persistLatest().catch((error: unknown) =>
@@ -83,7 +95,7 @@ export function useWorkspacePersistence(
       retryAttempt === 0 ? 220 : 0,
     )
     return () => window.clearTimeout(timer)
-  }, [persistLatest, retryAttempt, workspace])
+  }, [persistLatest, retryAttempt, workspace, stored])
 
   useEffect(() => {
     if (!failed) return

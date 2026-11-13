@@ -2,10 +2,8 @@ import { useEffect, useRef, useState } from "react"
 import type { BoardCard, CardId, Viewport } from "../types"
 import { drawnOnPassage } from "./board"
 import { afterNextPaint, whenIdle } from "./mainThread"
-import { onAnyPageRendered } from "./pageRenderEvents"
+import { usePaperShown } from "./usePaperShown"
 
-/** How long the cards wait for a paper whose first page never draws. */
-const PAPER_GRACE_MS = 800
 /** The height a card is taken to have, for ordering, until it is drawn and has its own. */
 const ASSUMED_CARD_HEIGHT = 320
 
@@ -71,20 +69,9 @@ export function useStagedCards(
     // Highlights and translations are marks on the passage, cheap and drawn with the page.
     () => new Set(cards.filter((card) => !drawnOnPassage(card)).map((card) => card.id)),
   )
-  const [paperShown, setPaperShown] = useState(false)
+  const paperShown = usePaperShown()
   const cardsRef = useRef(cards)
   cardsRef.current = cards
-
-  useEffect(() => {
-    if (paperShown) return
-    const show = (): void => setPaperShown(true)
-    const timer = window.setTimeout(show, PAPER_GRACE_MS)
-    const release = onAnyPageRendered(show)
-    return () => {
-      window.clearTimeout(timer)
-      release()
-    }
-  }, [paperShown])
 
   useEffect(() => {
     if (!paperShown || waiting.size === 0) return

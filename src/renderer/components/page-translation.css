@@ -271,7 +271,8 @@
   color: inherit;
   text-decoration: underline dotted color-mix(in srgb, currentColor 45%, transparent);
 }
-.page-translation-layout-region:hover,
+/* A paragraph lit whole; where the sentence pointed at could be painted, only it is lit. */
+.page-translation-layout-region:hover:not([data-sentence-hover]),
 .page-translation-layout-region[data-source-hover="true"] {
   background: color-mix(in srgb, var(--action) 8%, transparent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--action) 30%, transparent);
@@ -328,7 +329,7 @@
 .page-translation-block + .page-translation-block[data-group-start="true"] {
   margin-top: 16px;
 }
-.page-translation-block:hover {
+.page-translation-block:hover:not([data-sentence-hover]) {
   background: color-mix(in srgb, var(--action) 6%, transparent);
 }
 .page-translation-block[data-source-hover="true"] {
@@ -500,7 +501,8 @@
   background: color-mix(in srgb, var(--action) 9%, transparent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--action) 18%, transparent);
 }
-/* The lit sentence itself, which seldom starts or ends where a line does. */
+/* The lit sentence itself, which seldom starts or ends where a line does: on the page, and in
+   the translation pane beside it. */
 ::highlight(page-translation-source) {
   background-color: color-mix(in srgb, var(--action) 16%, transparent);
 }

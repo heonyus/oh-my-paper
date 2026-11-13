@@ -45,7 +45,6 @@ export function PageTranslationPane({
   const [printPages, setPrintPages] = useState<Readonly<Record<number, string>> | null>(null)
   const placement = usePageTranslationPlacement(currentPage)
   const bodyRef = useRef<HTMLDivElement>(null)
-  usePageSourceHover(currentPage, bodyRef)
   const {
     blocks,
     status,
@@ -73,6 +72,7 @@ export function PageTranslationPane({
     publishPageTranslationBlocks(currentPage, blocks)
     return () => clearPageTranslationBlocks(currentPage)
   }, [currentPage, blocks])
+  usePageSourceHover(currentPage, bodyRef, blocks)
   useTranslationHighlights(currentPage, bodyRef, blocks)
 
   const visibleBlocks = useMemo(

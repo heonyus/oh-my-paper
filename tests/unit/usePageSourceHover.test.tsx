@@ -3,9 +3,17 @@ import { type JSX, useRef } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { usePageSourceHover } from "../../src/renderer/lib/usePageSourceHover"
 
-function Pane({ page }: { readonly page: number }): JSX.Element {
+type PaneBlocks = Parameters<typeof usePageSourceHover>[2]
+
+function Pane({
+  page,
+  blocks,
+}: {
+  readonly page: number
+  readonly blocks?: PaneBlocks
+}): JSX.Element {
   const bodyRef = useRef<HTMLDivElement>(null)
-  usePageSourceHover(page, bodyRef)
+  usePageSourceHover(page, bodyRef, blocks)
   return (
     <div ref={bodyRef} className="page-translation-body">
       <article data-block-ids="p3-b1">첫 문장 번역</article>
@@ -77,6 +85,53 @@ describe("hovering English source text", () => {
     expect(translationTwo).toHaveAttribute("data-source-hover", "true")
     expect(shared).toHaveAttribute("data-page-translation-active", "true")
     expect(second).not.toHaveAttribute("data-page-translation-active")
+  })
+
+  it("pairs a translated sentence with its source when the pointer is on the translation", () => {
+    const lit = new Map<string, { readonly ranges: readonly Range[] }>()
+    vi.stubGlobal(
+      "Highlight",
+      class {
+        readonly ranges: readonly Range[]
+        constructor(...ranges: Range[]) {
+          this.ranges = ranges
+        }
+      },
+    )
+    vi.stubGlobal("CSS", { highlights: lit })
+    const { second } = pdfPage()
+    const shared = document.querySelectorAll<HTMLElement>(".textLayer span")[1]
+    const { container } = render(
+      <Pane
+        page={3}
+        blocks={[
+          { id: "p3-b2", source: "admitted to the ICU.", translation: "둘째 문단" },
+          { id: "p3-b3", source: "Patients without data", translation: "번역" },
+        ]}
+      />,
+    )
+    const translationTwo = container.querySelectorAll("article")[1]
+    const text = translationTwo?.firstChild
+    if (!shared || !translationTwo || !text) throw new Error("pane missing")
+    // The browser says the pointer is on the last word, which is sentence p3-b3's.
+    Object.defineProperty(document, "caretPositionFromPoint", {
+      configurable: true,
+      value: () => ({ offsetNode: text, offset: 7 }),
+    })
+    try {
+      hover(translationTwo)
+
+      expect(second).toHaveAttribute("data-page-translation-active", "true")
+      expect(shared).not.toHaveAttribute("data-page-translation-active")
+      expect(translationTwo).toHaveAttribute("data-sentence-hover")
+      expect(lit.get("page-translation-source")?.ranges.map(String)).toEqual(["번역"])
+
+      hover(document.body)
+      expect(translationTwo).not.toHaveAttribute("data-sentence-hover")
+      expect(lit.has("page-translation-source")).toBe(false)
+    } finally {
+      Reflect.deleteProperty(document, "caretPositionFromPoint")
+    }
   })
 
   it("clears the highlight when the pointer leaves the page text", () => {

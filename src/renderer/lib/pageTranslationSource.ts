@@ -89,6 +89,22 @@ function highlightRegistry(): HighlightRegistry | null {
     : null
 }
 
+/**
+ * Lights `ranges` of text under `key`, in place of whatever the key lit before; none puts it
+ * out. The translation pane lights its side of a sentence through this, in the same tint.
+ */
+export function setLitText(key: string, ranges: readonly Range[]): void {
+  if (ranges.length === 0 && !litText.has(key)) return
+  if (ranges.length > 0) litText.set(key, ranges)
+  else litText.delete(key)
+  paintLitText()
+}
+
+/** Whether lit text can be painted on its own, rather than by tinting the element holding it. */
+export function litTextIsPainted(): boolean {
+  return highlightRegistry() !== null
+}
+
 function paintLitText(): void {
   const registry = highlightRegistry()
   if (!registry) return
@@ -180,11 +196,7 @@ export function setPageSourceActive(pageNumber: number, blockId: string, active:
     const range = active ? sourceTextRange(span, blockId) : null
     if (range) text.push(range)
   }
-  const key = `${pageNumber}:${blockId}`
-  if (text.length === 0 && !litText.has(key)) return
-  if (text.length > 0) litText.set(key, text)
-  else litText.delete(key)
-  paintLitText()
+  setLitText(`${pageNumber}:${blockId}`, text)
 }
 
 /**
